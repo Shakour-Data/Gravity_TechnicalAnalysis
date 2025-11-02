@@ -1,0 +1,162 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "1d",
+  "training_date": "2025-11-01T18:52:57.153781",
+  "lookback_days": 365,
+  "horizons": [
+    3,
+    7,
+    30
+  ],
+  "n_samples": 295,
+  "level1": {
+    "n_features": 21,
+    "feature_names": [
+      "sma_signal",
+      "sma_confidence",
+      "sma_weighted",
+      "ema_signal",
+      "ema_confidence",
+      "ema_weighted",
+      "wma_signal",
+      "wma_confidence",
+      "wma_weighted",
+      "dema_signal",
+      "dema_confidence",
+      "dema_weighted",
+      "tema_signal",
+      "tema_confidence",
+      "tema_weighted",
+      "macd_signal",
+      "macd_confidence",
+      "macd_weighted",
+      "adx_signal",
+      "adx_confidence",
+      "adx_weighted"
+    ],
+    "weights_file": "ml_models\\multi_horizon\\indicator_weights_btcusdt.json"
+  },
+  "level2": {
+    "n_features": 12,
+    "feature_names": [
+      "dim1_indicators_score",
+      "dim1_indicators_confidence",
+      "dim1_indicators_weighted",
+      "dim2_candlestick_score",
+      "dim2_candlestick_confidence",
+      "dim2_candlestick_weighted",
+      "dim3_elliott_score",
+      "dim3_elliott_confidence",
+      "dim3_elliott_weighted",
+      "dim4_classical_score",
+      "dim4_classical_confidence",
+      "dim4_classical_weighted"
+    ],
+    "weights_file": "ml_models\\multi_horizon\\dimension_weights_btcusdt.json"
+  },
+  "statistics": {
+    "level1": {
+      "n_samples": 295,
+      "n_features": 21,
+      "n_horizons": 3,
+      "horizons": [
+        3,
+        7,
+        30
+      ],
+      "feature_names": [
+        "sma_signal",
+        "sma_confidence",
+        "sma_weighted",
+        "ema_signal",
+        "ema_confidence",
+        "ema_weighted",
+        "wma_signal",
+        "wma_confidence",
+        "wma_weighted",
+        "dema_signal",
+        "dema_confidence",
+        "dema_weighted",
+        "tema_signal",
+        "tema_confidence",
+        "tema_weighted",
+        "macd_signal",
+        "macd_confidence",
+        "macd_weighted",
+        "adx_signal",
+        "adx_confidence",
+        "adx_weighted"
+      ],
+      "target_statistics": {
+        "return_3d": {
+          "mean": 0.015576183531258593,
+          "std": 0.04167394391351242,
+          "min": -0.09817512204146904,
+          "max": 0.14877987113038998,
+          "positive_ratio": 0.6508474576271186
+        },
+        "return_7d": {
+          "mean": 0.03794326369830791,
+          "std": 0.05996031598661937,
+          "min": -0.10866097055571122,
+          "max": 0.25212110543316707,
+          "positive_ratio": 0.7627118644067796
+        },
+        "return_30d": {
+          "mean": 0.17964397208947586,
+          "std": 0.14362911149137159,
+          "min": -0.14995909926855613,
+          "max": 0.5251379072022554,
+          "positive_ratio": 0.8576271186440678
+        }
+      }
+    },
+    "level2": {
+      "n_samples": 295,
+      "n_features": 12,
+      "n_horizons": 3,
+      "horizons": [
+        3,
+        7,
+        30
+      ],
+      "feature_names": [
+        "dim1_indicators_score",
+        "dim1_indicators_confidence",
+        "dim1_indicators_weighted",
+        "dim2_candlestick_score",
+        "dim2_candlestick_confidence",
+        "dim2_candlestick_weighted",
+        "dim3_elliott_score",
+        "dim3_elliott_confidence",
+        "dim3_elliott_weighted",
+        "dim4_classical_score",
+        "dim4_classical_confidence",
+        "dim4_classical_weighted"
+      ],
+      "target_statistics": {
+        "return_3d": {
+          "mean": 0.015576183531258593,
+          "std": 0.04167394391351242,
+          "min": -0.09817512204146904,
+          "max": 0.14877987113038998,
+          "positive_ratio": 0.6508474576271186
+        },
+        "return_7d": {
+          "mean": 0.03794326369830791,
+          "std": 0.05996031598661937,
+          "min": -0.10866097055571122,
+          "max": 0.25212110543316707,
+          "positive_ratio": 0.7627118644067796
+        },
+        "return_30d": {
+          "mean": 0.17964397208947586,
+          "std": 0.14362911149137159,
+          "min": -0.14995909926855613,
+          "max": 0.5251379072022554,
+          "positive_ratio": 0.8576271186440678
+        }
+      }
+    }
+  }
+}
