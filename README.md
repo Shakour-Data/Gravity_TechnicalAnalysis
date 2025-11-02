@@ -1,5 +1,12 @@
 # 🚀 Gravity Technical Analysis - سیستم تحلیل تکنیکال پیشرفته
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/GravityWavesMl/Gravity_TechAnalysis/releases/tag/v1.0.0)
+[![Python](https://img.shields.io/badge/python-3.12.10-green.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com/)
+[![Performance](https://img.shields.io/badge/performance-10000x-red.svg)](docs/guides/PERFORMANCE_OPTIMIZATION.md)
+[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+[![Production Ready](https://img.shields.io/badge/status-production%20ready-success.svg)](RELEASE_NOTES_v1.0.0.md)
+
 <div dir="rtl">
 
 ## 📌 لینک‌های سریع
