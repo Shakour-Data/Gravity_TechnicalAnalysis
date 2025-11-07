@@ -1,74 +1,145 @@
-# 📁 ساختار پروژه Gravity Technical Analysis
+# 📁 Project Structure - v1.1.0 (Clean Architecture)# 📁 ساختار پروژه Gravity Technical Analysis
 
-<div dir="rtl">
 
-## 📊 نمای کلی ساختار
 
-```
+**Last Updated:** November 7, 2025  <div dir="rtl">
+
+**Version:** 1.1.0  
+
+**Architecture:** Clean Architecture (5 Layers)## 📊 نمای کلی ساختار
+
+
+
+---```
+
 Gravity_TechAnalysis/
-├── 📁 api/                          # API و Endpoints
+
+## 📊 Overview - Clean Architecture├── 📁 api/                          # API و Endpoints
+
 │   ├── routes/                      # مسیرهای API
-│   ├── schemas/                     # Validation schemas
-│   └── __init__.py
-│
-├── 📁 analysis/                     # هسته تحلیل تکنیکال
-│   ├── market_phase.py             # تحلیل فاز بازار
-│   ├── trend_structure.py          # ساختار روند (Dow Theory)
-│   └── __init__.py
-│
-├── 📁 config/                       # تنظیمات پروژه
-│   ├── settings.py                 # تنظیمات اصلی
-│   └── __init__.py
-│
-├── 📁 database/                     # مدیریت پایگاه داده
-│   ├── connection.py               # اتصال به DB
-│   ├── models/                     # مدل‌های ORM
-│   └── __init__.py
-│
-├── 📁 docs/                         # 📚 مستندات کامل پروژه
-│   ├── 📄 PROJECT_SUMMARY.md       # خلاصه کامل پروژه
-│   ├── 📄 QUICKSTART.md            # شروع سریع
-│   ├── 📄 README.md                # معرفی اصلی
-│   │
-│   ├── 📁 guides/                  # راهنماهای جامع (7 راهنما)
-│   │   ├── TREND_ANALYSIS_GUIDE.md             # روند (10 اندیکاتور)
-│   │   ├── MOMENTUM_ANALYSIS_GUIDE.md          # مومنتوم (8 اندیکاتور)
-│   │   ├── VOLATILITY_ANALYSIS_GUIDE.md        # نوسان (8 اندیکاتور)
-│   │   ├── CYCLE_ANALYSIS_GUIDE.md             # چرخه (7 اندیکاتور)
-│   │   ├── SUPPORT_RESISTANCE_GUIDE.md         # حمایت/مقاومت (6 روش)
-│   │   ├── VOLUME_MATRIX_GUIDE.md              # ماتریس حجم-ابعاد
-│   │   ├── FIVE_DIMENSIONAL_DECISION_GUIDE.md  # 5D Decision Matrix
-│   │   ├── TREND_ANALYSIS_SUMMARY.md           # خلاصه روند
-│   │   ├── DOW_THEORY.md                       # نظریه داو
-│   │   └── HISTORICAL_SYSTEM_GUIDE.md          # سیستم تاریخی
-│   │
-│   ├── 📁 architecture/            # معماری و طراحی
-│   │   ├── SIGNAL_CALCULATION.md           # نحوه محاسبه سیگنال
-│   │   ├── ML_WEIGHTS.md                   # وزن‌دهی ML
-│   │   ├── ML_FEATURES_GUIDE.md            # ویژگی‌های ML
-│   │   ├── MOMENTUM_ANALYSIS_PLAN.md       # طرح مومنتوم
-│   │   └── SCORING_SYSTEM_GUIDE.md         # سیستم امتیازدهی
-│   │
-│   ├── 📁 api/                     # مستندات API
+
+```│   ├── schemas/                     # Validation schemas
+
+Gravity_TechAnalysis/│   └── __init__.py
+
+││
+
+├── 🎯 src/                          # SOURCE CODE (v1.1.0 Clean Architecture)├── 📁 analysis/                     # هسته تحلیل تکنیکال
+
+│   ├── __init__.py                  # Version 1.1.0│   ├── market_phase.py             # تحلیل فاز بازار
+
+│   ││   ├── trend_structure.py          # ساختار روند (Dow Theory)
+
+│   ├── 📁 core/                     # LAYER 1: Core Domain Logic│   └── __init__.py
+
+│   │   ├── domain/entities/        # ✅ 3 entities (candle, signal, decision)│
+
+│   │   ├── indicators/             # ✅ 6 indicator files (2,836 LOC)├── 📁 config/                       # تنظیمات پروژه
+
+│   │   ├── patterns/               # ✅ 4 pattern files (1,717 LOC)│   ├── settings.py                 # تنظیمات اصلی
+
+│   │   └── analysis/               # ✅ 1 analysis file (489 LOC)│   └── __init__.py
+
+│   ││
+
+│   ├── 📁 application/             # LAYER 2: Use Cases ⏳ Phase 3├── 📁 database/                     # مدیریت پایگاه داده
+
+│   ├── 📁 infrastructure/          # LAYER 3: External Deps ⏳ Phase 4│   ├── connection.py               # اتصال به DB
+
+│   ├── 📁 interfaces/              # LAYER 4: API Layer ⏳ Phase 5│   ├── models/                     # مدل‌های ORM
+
+│   └── 📁 shared/                  # LAYER 5: Utilities ⏳ Phase 6│   └── __init__.py
+
+││
+
+├── 📁 docs/                        # Documentation (71 files organized)├── 📁 docs/                         # 📚 مستندات کامل پروژه
+
+│   ├── architecture/               # Architecture docs + FILE_IDENTITY_SYSTEM│   ├── 📄 PROJECT_SUMMARY.md       # خلاصه کامل پروژه
+
+│   ├── guides/                     # 11 user guides│   ├── 📄 QUICKSTART.md            # شروع سریع
+
+│   ├── api/                        # API documentation│   ├── 📄 README.md                # معرفی اصلی
+
+│   ├── operations/                 # Ops guides│   │
+
+│   ├── team/                       # ✅ NEW - Team docs (TEAM.md, TEAM_PROMPTS.md)│   ├── 📁 guides/                  # راهنماهای جامع (7 راهنما)
+
+│   └── archive/reports/            # ✅ NEW - Old reports archived│   │   ├── TREND_ANALYSIS_GUIDE.md             # روند (10 اندیکاتور)
+
+││   │   ├── MOMENTUM_ANALYSIS_GUIDE.md          # مومنتوم (8 اندیکاتور)
+
+├── 📁 tests/                       # Test suite (38 test files)│   │   ├── VOLATILITY_ANALYSIS_GUIDE.md        # نوسان (8 اندیکاتور)
+
+├── 📁 examples/                    # Code examples│   │   ├── CYCLE_ANALYSIS_GUIDE.md             # چرخه (7 اندیکاتور)
+
+├── 📁 k8s/                         # Kubernetes manifests│   │   ├── SUPPORT_RESISTANCE_GUIDE.md         # حمایت/مقاومت (6 روش)
+
+├── 📁 helm/                        # Helm charts│   │   ├── VOLUME_MATRIX_GUIDE.md              # ماتریس حجم-ابعاد
+
+├── 📁 deprecated/                  # ✅ Archived old files│   │   ├── FIVE_DIMENSIONAL_DECISION_GUIDE.md  # 5D Decision Matrix
+
+││   │   ├── TREND_ANALYSIS_SUMMARY.md           # خلاصه روند
+
+└── 📄 ROOT (10 essential files)│   │   ├── DOW_THEORY.md                       # نظریه داو
+
+    ├── README.md│   │   └── HISTORICAL_SYSTEM_GUIDE.md          # سیستم تاریخی
+
+    ├── CHANGELOG.md│   │
+
+    ├── CONTRIBUTING.md│   ├── 📁 architecture/            # معماری و طراحی
+
+    ├── LICENSE│   │   ├── SIGNAL_CALCULATION.md           # نحوه محاسبه سیگنال
+
+    ├── STRUCTURE.md (this file)│   │   ├── ML_WEIGHTS.md                   # وزن‌دهی ML
+
+    ├── ARCHITECTURE_*.md (3 files)│   │   ├── ML_FEATURES_GUIDE.md            # ویژگی‌های ML
+
+    ├── MIGRATION_STRATEGY.md│   │   ├── MOMENTUM_ANALYSIS_PLAN.md       # طرح مومنتوم
+
+    ├── RELEASE_*.md (2 files)│   │   └── SCORING_SYSTEM_GUIDE.md         # سیستم امتیازدهی
+
+    └── pyproject.toml, .editorconfig│   │
+
+```│   ├── 📁 api/                     # مستندات API
+
 │   │   └── (فایل‌های مستندات API)
-│   │
+
+---│   │
+
 │   └── 📁 changelogs/              # تاریخچه تغییرات
-│       ├── CHANGELOG_ACCURACY.md
+
+## 📊 Migration Status│       ├── CHANGELOG_ACCURACY.md
+
 │       ├── CHANGELOG_CLASSICAL_PATTERNS.md
-│       ├── API_SCORE_RANGE_CHANGE.md
-│       └── TREND_VS_MOMENTUM.md
-│
+
+- **Phase 1:** ✅ 100% (Preparation)│       ├── API_SCORE_RANGE_CHANGE.md
+
+- **Phase 2:** ✅ 80% (Core Layer)│       └── TREND_VS_MOMENTUM.md
+
+- **Overall:** 18% (1.8/10 phases)│
+
 ├── 📁 examples/                     # 💡 مثال‌های کاربردی
-│   ├── 📁 basic/                   # مثال‌های ساده
-│   │   ├── example.py                          # مثال اصلی
-│   │   ├── example_api_response.py             # مثال API
-│   │   ├── example_separate_analysis.py        # تحلیل جداگانه
+
+### Completed│   ├── 📁 basic/                   # مثال‌های ساده
+
+- 14 files with identity cards (7.1%)│   │   ├── example.py                          # مثال اصلی
+
+- 21 files in src/core/ (5,532 LOC)│   │   ├── example_api_response.py             # مثال API
+
+- Docs reorganized (team/, archive/)│   │   ├── example_separate_analysis.py        # تحلیل جداگانه
+
 │   │   ├── example_trend_vs_momentum.py        # مقایسه
-│   │   └── example_volatility_analysis.py      # نوسان
+
+### Next: Phase 3 - Application Layer│   │   └── example_volatility_analysis.py      # نوسان
+
 │   │
-│   ├── 📁 advanced/                # مثال‌های پیشرفته
+
+---│   ├── 📁 advanced/                # مثال‌های پیشرفته
+
 │   │   ├── example_5d_decision_matrix.py       # 5D Matrix
-│   │   ├── example_comprehensive_analysis.py   # تحلیل جامع
+
+For complete details, see `MIGRATION_STRATEGY.md`│   │   ├── example_comprehensive_analysis.py   # تحلیل جامع
+
 │   │   ├── example_scoring_system.py           # سیستم امتیاز
 │   │   ├── example_complete_analysis.py        # تحلیل کامل
 │   │   └── example_historical_system.py        # سیستم تاریخی
