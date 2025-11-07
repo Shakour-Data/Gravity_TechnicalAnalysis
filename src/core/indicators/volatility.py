@@ -93,7 +93,7 @@ class VolatilityIndicators:
         return tr
     
     @staticmethod
-    def atr(candles: List[Candle], period: int = 14) -> VolatilityResult:
+    def atr(candles: List[Candle], period: int = 14) -> IndicatorResult:
         """
         Average True Range (ATR)
         
@@ -115,7 +115,7 @@ class VolatilityIndicators:
             period: ATR period (default: 14)
             
         Returns:
-            VolatilityResult
+            IndicatorResult
         """
         tr = VolatilityIndicators.true_range(candles)
         
@@ -155,17 +155,22 @@ class VolatilityIndicators:
             confidence = 0.9
             description = "نوسان بسیار پایین - احتمال شکست قریب‌الوقوع"
         
-        return VolatilityResult(
-            value=current_atr,
-            normalized=normalized,
-            percentile=percentile,
+        return IndicatorResult(
+            indicator_name=f"ATR({period})",
+            category=IndicatorCategory.VOLATILITY,
             signal=signal,
+            value=current_atr,
             confidence=confidence,
-            description=f"ATR={current_atr:.2f} ({percentile:.0f}th percentile) - {description}"
+            description=f"ATR={current_atr:.4f} ({current_atr/current_price*100:.2f}% قیمت) - {percentile:.0f}th percentile - {description}",
+            additional_values={
+                "atr": float(current_atr),
+                "atr_percent": float(current_atr / current_price * 100),
+                "percentile": float(percentile)
+            }
         )
     
     @staticmethod
-    def bollinger_bands(candles: List[Candle], period: int = 20, std_dev: float = 2.0) -> VolatilityResult:
+    def bollinger_bands(candles: List[Candle], period: int = 20, std_dev: float = 2.0) -> IndicatorResult:
         """
         Bollinger Bands
         
@@ -191,7 +196,7 @@ class VolatilityIndicators:
             std_dev: Standard deviation multiplier (default: 2.0)
             
         Returns:
-            VolatilityResult
+            IndicatorResult with upper/lower bands in additional_values
         """
         closes = np.array([c.close for c in candles])
         
@@ -242,13 +247,21 @@ class VolatilityIndicators:
             confidence = 0.6
             description = "نوسان عادی"
         
-        return VolatilityResult(
-            value=current_bandwidth,
-            normalized=normalized,
-            percentile=percentile,
+        return IndicatorResult(
+            indicator_name=f"Bollinger Bands({period},{std_dev})",
+            category=IndicatorCategory.VOLATILITY,
             signal=signal,
+            value=current_bandwidth,
             confidence=confidence,
-            description=f"Bandwidth={current_bandwidth:.2f}% ({percentile:.0f}th) - قیمت در {price_position*100:.0f}% باند - {description}"
+            description=f"Bandwidth={current_bandwidth:.2f}% ({percentile:.0f}th) - قیمت در {price_position*100:.0f}% باند - {description}",
+            additional_values={
+                "upper": float(current_upper),
+                "middle": float(sma.iloc[-1]),
+                "lower": float(current_lower),
+                "bandwidth": float(current_bandwidth),
+                "percentile": float(percentile),
+                "price_position": float(price_position)
+            }
         )
     
     @staticmethod

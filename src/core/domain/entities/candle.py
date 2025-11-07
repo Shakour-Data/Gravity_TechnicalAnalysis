@@ -110,10 +110,12 @@ class Candle:
         """Body size as percentage of total range"""
         return (self.body_size / self.total_range * 100) if self.total_range > 0 else 0
     
+    @property
     def is_bullish(self) -> bool:
         """Check if candle is bullish"""
         return self.close > self.open
     
+    @property
     def is_bearish(self) -> bool:
         """Check if candle is bearish"""
         return self.close < self.open

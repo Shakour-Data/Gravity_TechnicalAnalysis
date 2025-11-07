@@ -34,7 +34,12 @@ This module implements Elliott Wave counting and analysis:
 import numpy as np
 import pandas as pd
 from typing import List, Optional, Tuple
-from models.schemas import Candle, ElliottWaveResult, WavePoint, SignalStrength
+from src.core.domain.entities import (
+    Candle,
+    ElliottWaveResult,
+    WavePoint,
+    CoreSignalStrength as SignalStrength
+)
 from datetime import datetime
 
 

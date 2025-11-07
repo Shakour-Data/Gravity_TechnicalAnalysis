@@ -48,7 +48,12 @@ Continuation Patterns:
 import numpy as np
 from typing import List, Optional, Tuple, Dict
 from scipy.signal import find_peaks, argrelextrema
-from models.schemas import Candle, PatternResult, SignalStrength, PatternType
+from src.core.domain.entities import (
+    Candle,
+    PatternResult,
+    CoreSignalStrength as SignalStrength,
+    PatternType
+)
 from datetime import datetime
 
 

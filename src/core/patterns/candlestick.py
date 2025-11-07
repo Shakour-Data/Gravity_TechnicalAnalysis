@@ -38,7 +38,12 @@ This module recognizes major candlestick patterns:
 """
 
 from typing import List, Optional
-from models.schemas import Candle, PatternResult, SignalStrength, PatternType
+from src.core.domain.entities import (
+    Candle,
+    PatternResult,
+    CoreSignalStrength as SignalStrength,
+    PatternType
+)
 from datetime import datetime
 
 
