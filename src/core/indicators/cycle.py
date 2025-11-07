@@ -300,12 +300,15 @@ class CycleIndicators:
         smooth_returns = pd.Series(returns).rolling(window=period).mean().fillna(0)
         phase_changes = smooth_returns * 180
         accumulated_phase = np.cumsum(phase_changes)
-        current_phase = accumulated_phase[-1] % 360
+        
+        # pandas Series requires .iloc for position-based indexing
+        current_phase_raw = accumulated_phase.iloc[-1]
+        current_phase = current_phase_raw % 360
         if current_phase < 0:
             current_phase += 360
         
         normalized = np.sin(np.radians(current_phase))
-        full_rotations = abs(accumulated_phase[-1]) // 360
+        full_rotations = abs(current_phase_raw) // 360
         cycle_period = len(closes) // int(full_rotations) if full_rotations > 0 else period * 2
         
         if current_phase < 45 or current_phase >= 315:
@@ -608,9 +611,9 @@ class CycleIndicators:
         return phase
     
     @staticmethod
-    def calculate_all(candles: List[Candle]) -> dict:
-        """Calculate all cycle indicators - Note: schaff_trend_cycle excluded as it returns IndicatorResult"""
-        results = {
+    def calculate_all(candles: List[Candle]) -> List[IndicatorResult]:
+        """Calculate all cycle indicators - Returns list of IndicatorResult for analysis service"""
+        cycle_results = {
             'dpo': CycleIndicators.dpo(candles),
             'ehlers_cycle': CycleIndicators.ehlers_cycle_period(candles),
             'dominant_cycle': CycleIndicators.dominant_cycle(candles),
@@ -618,6 +621,20 @@ class CycleIndicators:
             'hilbert_transform': CycleIndicators.hilbert_transform_phase(candles),
             'market_cycle_model': CycleIndicators.market_cycle_model(candles),
         }
+        
+        # Convert CycleResult to IndicatorResult
+        results = [
+            convert_cycle_to_indicator_result(cycle_results['dpo'], "DPO"),
+            convert_cycle_to_indicator_result(cycle_results['ehlers_cycle'], "Ehlers Cycle"),
+            convert_cycle_to_indicator_result(cycle_results['dominant_cycle'], "Dominant Cycle"),
+            convert_cycle_to_indicator_result(cycle_results['phase_accumulation'], "Phase Accumulation"),
+            convert_cycle_to_indicator_result(cycle_results['hilbert_transform'], "Hilbert Transform"),
+            convert_cycle_to_indicator_result(cycle_results['market_cycle_model'], "Market Cycle"),
+            # Add sine_wave and schaff_trend_cycle which already return IndicatorResult
+            CycleIndicators.sine_wave(candles),
+            CycleIndicators.schaff_trend_cycle(candles),
+        ]
+        
         return results
     
     # Backward compatibility aliases
