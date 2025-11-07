@@ -45,7 +45,7 @@ from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 from enum import Enum
 
-from models.schemas import Candle, SignalStrength
+from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
 from indicators.trend import TrendIndicators
 from indicators.momentum import MomentumIndicators
 from indicators.volume import VolumeIndicators

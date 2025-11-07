@@ -36,7 +36,7 @@ from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
-from models.schemas import Candle
+from src.core.domain.entities import Candle
 
 
 class DivergenceType(Enum):
