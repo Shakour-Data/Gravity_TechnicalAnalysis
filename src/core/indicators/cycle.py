@@ -239,8 +239,9 @@ class CycleIndicators:
         )
     
     @staticmethod
-    def schaff_trend_cycle(candles: List[Candle], fast: int = 23, slow: int = 50, cycle: int = 10) -> CycleResult:
-        """Schaff Trend Cycle (STC)"""
+    @staticmethod
+    def schaff_trend_cycle(candles: List[Candle], fast: int = 23, slow: int = 50, cycle: int = 10) -> IndicatorResult:
+        """Schaff Trend Cycle (STC) - Returns IndicatorResult for backward compatibility"""
         closes = np.array([c.close for c in candles])
         ema_fast = pd.Series(closes).ewm(span=fast, adjust=False).mean()
         ema_slow = pd.Series(closes).ewm(span=slow, adjust=False).mean()
@@ -258,9 +259,6 @@ class CycleIndicators:
         stc = stoch2.ewm(span=3, adjust=False).mean()
         
         current_stc = stc.iloc[-1]
-        normalized = (current_stc - 50) / 50
-        phase = (current_stc / 100) * 360
-        cycle_period = cycle * 2
         
         if current_stc > 85:
             signal = SignalStrength.VERY_BEARISH
@@ -283,14 +281,14 @@ class CycleIndicators:
             confidence = 0.65
             description = "وسط محدوده"
         
-        return CycleResult(
-            value=current_stc,
-            normalized=normalized,
-            phase=phase,
-            cycle_period=cycle_period,
+        return IndicatorResult(
+            indicator_name=f"STC({fast},{slow},{cycle})",
+            category=IndicatorCategory.CYCLE,
             signal=signal,
+            value=current_stc,
             confidence=confidence,
-            description=f"STC={current_stc:.1f} - {description}"
+            description=f"STC={current_stc:.1f} - {description}",
+            additional_values={}
         )
     
     @staticmethod
@@ -481,6 +479,92 @@ class CycleIndicators:
         )
     
     @staticmethod
+    def sine_wave(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        """
+        Sine Wave Indicator using Hilbert Transform
+        
+        Uses exponential smoothing and normalization to create a sine wave
+        representation of price movement for cycle analysis.
+        
+        Args:
+            candles: List of price candles
+            period: Period for smoothing calculation
+            
+        Returns:
+            IndicatorResult with sine wave value [-1, +1]
+        
+        Interpretation:
+        - Value > 0.7: Strong uptrend in cycle (VERY_BULLISH)
+        - Value > 0.3: Moderate uptrend (BULLISH)
+        - Value > 0: Weak uptrend (BULLISH_BROKEN)
+        - Value < -0.7: Strong downtrend in cycle (VERY_BEARISH)
+        - Value < -0.3: Moderate downtrend (BEARISH)
+        - Value < 0: Weak downtrend (BEARISH_BROKEN)
+        """
+        closes = np.array([c.close for c in candles])
+        
+        # Simple sine wave approximation using EWM smoothing
+        prices = pd.Series(closes)
+        smoothed = prices.ewm(span=period).mean()
+        
+        # Calculate sine and lead sine
+        sine_values = []
+        lead_sine_values = []
+        
+        for i in range(len(smoothed)):
+            if i < period:
+                sine_values.append(0)
+                lead_sine_values.append(0)
+            else:
+                window = smoothed.iloc[i-period:i].values
+                # Normalize to [-1, +1]
+                if window.max() != window.min():
+                    normalized = 2 * (window[-1] - window.min()) / (window.max() - window.min()) - 1
+                else:
+                    normalized = 0
+                sine_values.append(normalized)
+                # Lead sine (phase shifted)
+                lead_sine_values.append(normalized * 0.9)  # Simplified lead
+        
+        sine_current = sine_values[-1] if sine_values else 0.0
+        lead_sine_current = lead_sine_values[-1] if lead_sine_values else 0.0
+        
+        # Signal based on sine wave crossing
+        if sine_current > 0.7:
+            signal = SignalStrength.VERY_BULLISH
+            confidence = 0.8
+        elif sine_current > 0.3:
+            signal = SignalStrength.BULLISH
+            confidence = 0.7
+        elif sine_current > 0:
+            signal = SignalStrength.BULLISH_BROKEN
+            confidence = 0.6
+        elif sine_current < -0.7:
+            signal = SignalStrength.VERY_BEARISH
+            confidence = 0.8
+        elif sine_current < -0.3:
+            signal = SignalStrength.BEARISH
+            confidence = 0.7
+        elif sine_current < 0:
+            signal = SignalStrength.BEARISH_BROKEN
+            confidence = 0.6
+        else:
+            signal = SignalStrength.NEUTRAL
+            confidence = 0.5
+        
+        return IndicatorResult(
+            indicator_name=f"Sine Wave({period})",
+            category=IndicatorCategory.CYCLE,
+            signal=signal,
+            value=float(sine_current),
+            confidence=confidence,
+            description=f"موج سینوسی در موقعیت {sine_current:.2f}",
+            additional_values={
+                "lead_sine": float(lead_sine_current)
+            }
+        )
+    
+    @staticmethod
     def _estimate_cycle_period(oscillator: np.ndarray, min_period: int = 8) -> int:
         """Estimate cycle period from peaks"""
         if len(oscillator) < min_period * 2:
@@ -525,17 +609,23 @@ class CycleIndicators:
     
     @staticmethod
     def calculate_all(candles: List[Candle]) -> dict:
-        """Calculate all cycle indicators"""
+        """Calculate all cycle indicators - Note: schaff_trend_cycle excluded as it returns IndicatorResult"""
         results = {
             'dpo': CycleIndicators.dpo(candles),
             'ehlers_cycle': CycleIndicators.ehlers_cycle_period(candles),
             'dominant_cycle': CycleIndicators.dominant_cycle(candles),
-            'schaff_trend_cycle': CycleIndicators.schaff_trend_cycle(candles),
             'phase_accumulation': CycleIndicators.phase_accumulation(candles),
             'hilbert_transform': CycleIndicators.hilbert_transform_phase(candles),
             'market_cycle_model': CycleIndicators.market_cycle_model(candles),
         }
         return results
+    
+    # Backward compatibility aliases
+    @staticmethod
+    def detrended_price_oscillator(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        """Backward compatible alias for dpo() - returns IndicatorResult instead of CycleResult"""
+        cycle_result = CycleIndicators.dpo(candles, period)
+        return convert_cycle_to_indicator_result(cycle_result, f"DPO({period})")
 
 
 def convert_cycle_to_indicator_result(cycle_result: CycleResult, indicator_name: str) -> IndicatorResult:
