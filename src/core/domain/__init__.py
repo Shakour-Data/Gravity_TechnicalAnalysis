@@ -15,10 +15,10 @@ from .entities import (
     CandleType,
     Signal,
     SignalType,
-    SignalStrength,
     Decision,
     DecisionType,
     ConfidenceLevel,
+    CoreSignalStrength,
 )
 
 __all__ = [
@@ -26,8 +26,9 @@ __all__ = [
     "CandleType",
     "Signal",
     "SignalType",
-    "SignalStrength",
     "Decision",
     "DecisionType",
     "ConfidenceLevel",
+    "CoreSignalStrength",
 ]
+

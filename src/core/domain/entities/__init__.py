@@ -23,7 +23,7 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.3)
 
 # Existing exports (Phase 2)
 from .candle import Candle, CandleType
-from .signal import Signal, SignalType
+from .signal import Signal, SignalType, SignalStrength as OldSignalStrength
 from .decision import Decision, DecisionType, ConfidenceLevel
 
 # NEW exports (Phase 2.1 - Task 1.3)
@@ -35,8 +35,8 @@ from .pattern_result import PatternResult
 from .wave_point import WavePoint
 from .elliott_wave_result import ElliottWaveResult
 
-# Note: SignalStrength from signal.py is kept for backward compatibility
-# New code should use CoreSignalStrength from signal_strength.py
+# Note: CoreSignalStrength (7-level) from signal_strength.py is the new standard
+# OldSignalStrength (3-level) from signal.py is kept for legacy Signal class
 
 __all__ = [
     # Existing (Phase 2)
@@ -44,13 +44,12 @@ __all__ = [
     "CandleType",
     "Signal",
     "SignalType",
-    "SignalStrength",  # From signal.py (old)
     "Decision",
     "DecisionType",
     "ConfidenceLevel",
     
     # NEW (Phase 2.1)
-    "CoreSignalStrength",  # From signal_strength.py (new, with Persian labels)
+    "CoreSignalStrength",  # From signal_strength.py (new, with Persian labels, 7 levels)
     "IndicatorCategory",
     "IndicatorResult",
     "PatternType",
