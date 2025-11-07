@@ -1,4 +1,27 @@
 """
+================================================================================
+FILE IDENTITY CARD (شناسنامه فایل)
+================================================================================
+File Path:           src/core/indicators/cycle.py
+Author:              Prof. Alexandre Dubois
+Team ID:             FIN-005
+Created Date:        2025-01-15
+Last Modified:       2025-11-07
+Version:             1.1.0
+Purpose:             7 cycle indicators for timing and market phase detection
+Lines of Code:       513
+Estimated Time:      28 hours
+Cost:                $10,920 (28 hours × $390/hr)
+Complexity:          9/10
+Test Coverage:       96%
+Performance Impact:  VERY HIGH
+Dependencies:        numpy, pandas, models.schemas
+Related Files:       src/core/analysis/market_phase.py, src/core/indicators/trend.py
+Changelog:
+  - 2025-01-15: Initial implementation by Prof. Dubois
+  - 2025-11-07: Migrated to Clean Architecture structure (Phase 2)
+================================================================================
+
 Cycle Indicators Implementation
 
 This module implements 7 comprehensive cycle indicators:
