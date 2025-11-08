@@ -1,5 +1,19 @@
 name: CI/CD Pipeline
 
+# ═══════════════════════════════════════════════════════════════════
+# SETUP REQUIRED:
+# 1. Create GitHub Environments:
+#    - Go to: Settings > Environments > New environment
+#    - Create: 'dev' (for development deployments)
+#    - Create: 'prod' (for production deployments)
+# 
+# 2. Add Secrets (Settings > Secrets and variables > Actions):
+#    - KUBE_CONFIG_DEV: Kubernetes config for dev cluster
+#    - KUBE_CONFIG_PROD: Kubernetes config for prod cluster
+#    - DOCKER_USERNAME: Docker Hub username
+#    - DOCKER_PASSWORD: Docker Hub password/token
+# ═══════════════════════════════════════════════════════════════════
+
 on:
   push:
     branches: [ main, develop ]
@@ -148,12 +162,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/develop'
-    environment: development
-    
+    environment:
+      name: dev
+      url: https://dev.gravitytech.ai
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Note: Create KUBE_CONFIG_DEV secret in GitHub repository settings
+      # Settings > Secrets and variables > Actions > New repository secret
       - name: Configure kubectl
         uses: azure/k8s-set-context@v3
         with:
@@ -174,12 +191,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'release'
-    environment: production
-    
+    environment:
+      name: prod
+      url: https://api.gravitytech.ai
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Note: Create KUBE_CONFIG_PROD secret in GitHub repository settings
+      # Settings > Secrets and variables > Actions > New repository secret
       - name: Configure kubectl
         uses: azure/k8s-set-context@v3
         with:
