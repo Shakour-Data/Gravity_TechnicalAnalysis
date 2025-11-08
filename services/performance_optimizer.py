@@ -69,7 +69,7 @@ Contact: emily.watson@gravitywave.ml
 """
 
 import numpy as np
-from numba import jit, prange, vectorize, cuda
+from numba import jit, njit, prange, vectorize, cuda
 from functools import lru_cache
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -513,6 +513,168 @@ def benchmark_performance():
     print(f"✅ Estimated speedup: 5000-10000x for typical workloads")
     print(f"✅ Memory usage: 10x reduction")
     print(f"✅ CPU utilization: {mp.cpu_count()} cores")
+
+
+@njit(cache=True, parallel=True)
+def fast_donchian_channels(highs: np.ndarray, lows: np.ndarray, period: int) -> tuple:
+    """
+    Ultra-fast Donchian Channels calculation with Numba JIT
+    
+    Target: <0.1ms for 10,000 candles (600x faster)
+    
+    Args:
+        highs: Array of high prices
+        lows: Array of low prices
+        period: Lookback period
+        
+    Returns:
+        Tuple of (upper_band, middle_band, lower_band)
+    """
+    n = len(highs)
+    upper = np.empty(n, dtype=np.float32)
+    lower = np.empty(n, dtype=np.float32)
+    middle = np.empty(n, dtype=np.float32)
+    
+    # Initialize first values
+    upper[:period-1] = np.nan
+    lower[:period-1] = np.nan
+    middle[:period-1] = np.nan
+    
+    # Vectorized calculation using parallel processing
+    for i in prange(period-1, n):
+        upper[i] = np.max(highs[i-period+1:i+1])
+        lower[i] = np.min(lows[i-period+1:i+1])
+        middle[i] = (upper[i] + lower[i]) / 2.0
+    
+    return upper, middle, lower
+
+
+@njit(cache=True)
+def fast_aroon(highs: np.ndarray, lows: np.ndarray, period: int) -> tuple:
+    """
+    Ultra-fast Aroon Indicator calculation with Numba JIT
+    
+    Target: <0.1ms for 10,000 candles (800x faster)
+    
+    Args:
+        highs: Array of high prices
+        lows: Array of low prices
+        period: Lookback period
+        
+    Returns:
+        Tuple of (aroon_up, aroon_down, aroon_oscillator)
+    """
+    n = len(highs)
+    aroon_up = np.empty(n, dtype=np.float32)
+    aroon_down = np.empty(n, dtype=np.float32)
+    
+    # Initialize first values
+    aroon_up[:period-1] = np.nan
+    aroon_down[:period-1] = np.nan
+    
+    # Optimized calculation
+    for i in range(period-1, n):
+        window_highs = highs[i-period+1:i+1]
+        window_lows = lows[i-period+1:i+1]
+        
+        # Find periods since highest high
+        periods_since_high = period - 1 - np.argmax(window_highs)
+        # Find periods since lowest low
+        periods_since_low = period - 1 - np.argmin(window_lows)
+        
+        aroon_up[i] = ((period - periods_since_high) / period) * 100.0
+        aroon_down[i] = ((period - periods_since_low) / period) * 100.0
+    
+    aroon_oscillator = aroon_up - aroon_down
+    
+    return aroon_up, aroon_down, aroon_oscillator
+
+
+@njit(cache=True)
+def fast_vortex_indicator(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int) -> tuple:
+    """
+    Ultra-fast Vortex Indicator calculation with Numba JIT
+    
+    Target: <0.1ms for 10,000 candles (700x faster)
+    
+    Args:
+        highs: Array of high prices
+        lows: Array of low prices
+        closes: Array of close prices
+        period: Lookback period
+        
+    Returns:
+        Tuple of (vi_plus, vi_minus, vi_diff)
+    """
+    n = len(highs)
+    vi_plus = np.empty(n-1, dtype=np.float32)
+    vi_minus = np.empty(n-1, dtype=np.float32)
+    
+    # Calculate vortex movements
+    vortex_plus = np.abs(highs[1:] - lows[:-1])
+    vortex_minus = np.abs(lows[1:] - highs[:-1])
+    
+    # Calculate True Range
+    high_low = highs[1:] - lows[1:]
+    high_close = np.abs(highs[1:] - closes[:-1])
+    low_close = np.abs(lows[1:] - closes[:-1])
+    true_range = np.maximum(high_low, np.maximum(high_close, low_close))
+    
+    # Initialize
+    vi_plus[:period-1] = np.nan
+    vi_minus[:period-1] = np.nan
+    
+    # Rolling sum calculation
+    for i in range(period-1, len(vortex_plus)):
+        vp_sum = np.sum(vortex_plus[i-period+1:i+1])
+        vm_sum = np.sum(vortex_minus[i-period+1:i+1])
+        tr_sum = np.sum(true_range[i-period+1:i+1])
+        
+        if tr_sum > 0:
+            vi_plus[i] = vp_sum / tr_sum
+            vi_minus[i] = vm_sum / tr_sum
+        else:
+            vi_plus[i] = 1.0
+            vi_minus[i] = 1.0
+    
+    vi_diff = vi_plus - vi_minus
+    
+    return vi_plus, vi_minus, vi_diff
+
+
+@njit(cache=True)
+def fast_mcginley_dynamic(closes: np.ndarray, period: int, k_factor: float = 0.6) -> np.ndarray:
+    """
+    Ultra-fast McGinley Dynamic calculation with Numba JIT
+    
+    Target: <0.1ms for 10,000 candles (500x faster)
+    
+    Args:
+        closes: Array of close prices
+        period: Period
+        k_factor: Adjustment factor
+        
+    Returns:
+        Array of McGinley Dynamic values
+    """
+    n = len(closes)
+    md = np.empty(n, dtype=np.float32)
+    
+    # Initialize with first price
+    md[0] = closes[0]
+    
+    # Optimized calculation
+    for i in range(1, n):
+        if md[i-1] > 0:
+            ratio = closes[i] / md[i-1]
+            divisor = k_factor * period * (ratio ** 4)
+            if divisor < 1.0:
+                divisor = 1.0
+            md[i] = md[i-1] + (closes[i] - md[i-1]) / divisor
+        else:
+            md[i] = closes[i]
+    
+    return md
 
 
 if __name__ == "__main__":
