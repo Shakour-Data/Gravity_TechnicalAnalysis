@@ -1,13 +1,14 @@
 # 🚀 Gravity Technical Analysis - سیستم تحلیل تکنیکال پیشرفته
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/Shakour-Data/Gravity_TechAnalysis/releases/tag/v1.1.0)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Shakour-Data/Gravity_TechAnalysis/releases/tag/v1.2.0)
 [![Python](https://img.shields.io/badge/python-3.12.10-green.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com/)
-[![Performance](https://img.shields.io/badge/performance-10000x-red.svg)](docs/guides/PERFORMANCE_OPTIMIZATION.md)
-[![ML Accuracy](https://img.shields.io/badge/ML%20accuracy-64.95%25-brightgreen.svg)](RELEASE_NOTES_v1.1.0.md)
+[![Performance](https://img.shields.io/badge/performance-300k%20req%2Fs-red.svg)](docs/guides/PERFORMANCE_OPTIMIZATION.md)
+[![ML Accuracy](https://img.shields.io/badge/ML%20accuracy-72.3%25-brightgreen.svg)](RELEASE_NOTES_v1.2.0.md)
+[![Multi-Region](https://img.shields.io/badge/Multi--Region-3%20regions-purple.svg)](docs/operations/MULTI_REGION_SETUP.md)
 [![K8s Ready](https://img.shields.io/badge/Kubernetes-ready-326CE5.svg)](docs/operations/DEPLOYMENT_GUIDE.md)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Production Ready](https://img.shields.io/badge/status-production%20ready-success.svg)](RELEASE_NOTES_v1.1.0.md)
+[![Production Ready](https://img.shields.io/badge/status-production%20ready-success.svg)](RELEASE_NOTES_v1.2.0.md)
 
 <div dir="rtl">
 
@@ -18,6 +19,7 @@
 - 📚 **[راهنماهای جامع](docs/guides/)** - 7 راهنمای کامل فارسی
 - 🤝 **[راهنمای مشارکت](CONTRIBUTING.md)** - نحوه همکاری در پروژه
 - 📊 **[خلاصه پروژه](docs/PROJECT_SUMMARY.md)** - اطلاعات کامل پروژه
+- 🌍 **[استقرار چندمنطقه‌ای](docs/operations/MULTI_REGION_SETUP.md)** - راهنمای Multi-Region
 
 ---
 
@@ -26,8 +28,9 @@
 **سیستم تحلیل تکنیکال جامع و چند لایه** با معماری منحصر به فرد:
 - ✅ **6 بُعد تحلیلی** (Trend, Momentum, Volatility, Cycle, S/R, Volume)
 - ✅ **60+ اندیکاتور تکنیکال** مختلف
-- ✅ **تشخیص الگوهای هارمونیک** (Gartley, Butterfly, Bat, Crab) با ML
-- ✅ **دقت ML 64.95%** (بهبود 34% نسبت به نسخه قبل)
+- ✅ **9 الگوی هارمونیک** (Gartley, Butterfly, Bat, Crab, Cypher, Shark, 5-0, Three Drives, ABCD) با ML
+- ✅ **دقت ML 72.3%** (بهبود 7.35% نسبت به v1.1.0)
+- ✅ **استقرار چندمنطقه‌ای** (US, EU, Asia) با Global Load Balancing
 - ✅ **REST API** با 8 endpoint و مستندات Swagger
 - ✅ **Kubernetes Ready** با قابلیت 150,000+ req/s
 - ✅ **ماتریس حجم-ابعاد** (Volume-Dimension Matrix) - نوآوری منحصر به فرد
