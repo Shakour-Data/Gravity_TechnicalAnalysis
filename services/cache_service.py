@@ -13,7 +13,7 @@ import structlog
 from redis import asyncio as aioredis
 from redis.asyncio.connection import ConnectionPool
 
-from config import settings
+from config.settings import settings
 
 logger = structlog.get_logger()
 

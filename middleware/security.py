@@ -4,7 +4,7 @@ Security middleware setup
 
 from fastapi import FastAPI
 from fastapi.security import HTTPBearer
-from config import settings
+from config.settings import settings
 
 
 security = HTTPBearer()

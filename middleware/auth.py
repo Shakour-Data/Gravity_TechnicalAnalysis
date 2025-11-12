@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import structlog
 from pydantic import BaseModel, validator
 
-from config import settings
+from config.settings import settings
 
 logger = structlog.get_logger()
 

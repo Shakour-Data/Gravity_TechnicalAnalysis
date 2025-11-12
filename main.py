@@ -48,7 +48,7 @@ from prometheus_client import make_asgi_app
 import structlog
 import time
 
-from config import settings
+from config.settings import settings
 from api.v1 import router as api_v1_router
 from middleware.logging import setup_logging
 from middleware.security import setup_security
@@ -174,6 +174,12 @@ async def log_requests(request: Request, call_next):
 
 # Include API routers
 app.include_router(api_v1_router, prefix="/api/v1")
+
+# Include Pattern Recognition & ML routers (Day 6)
+from api.v1.patterns import router as patterns_router
+from api.v1.ml import router as ml_router
+app.include_router(patterns_router, prefix="/api/v1")
+app.include_router(ml_router, prefix="/api/v1")
 
 # Prometheus metrics endpoint
 if settings.metrics_enabled:

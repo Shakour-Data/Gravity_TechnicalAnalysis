@@ -9,11 +9,31 @@ import asyncio
 from typing import Optional, Callable, Any, Dict
 from enum import Enum
 import structlog
-from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
-from aio_pika import connect_robust, Message, DeliveryMode, Channel, Connection
-from aio_pika.pool import Pool
 
-from config import settings
+# Make aiokafka optional
+try:
+    from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
+    KAFKA_AVAILABLE = True
+except ImportError:
+    KAFKA_AVAILABLE = False
+    AIOKafkaProducer = None
+    AIOKafkaConsumer = None
+
+# Make aio_pika optional
+try:
+    from aio_pika import connect_robust, Message, DeliveryMode, Channel, Connection
+    from aio_pika.pool import Pool
+    RABBITMQ_AVAILABLE = True
+except ImportError:
+    RABBITMQ_AVAILABLE = False
+    connect_robust = None
+    Message = None
+    DeliveryMode = None
+    Channel = None
+    Connection = None
+    Pool = None
+
+from config.settings import settings
 
 logger = structlog.get_logger()
 
@@ -55,9 +75,13 @@ class EventPublisher:
         Args:
             broker_type: نوع message broker ("kafka" یا "rabbitmq")
         """
+        if not settings.kafka_enabled and not settings.rabbitmq_enabled:
+            logger.info("event_messaging_disabled")
+            return
+        
         self.broker_type = broker_type
         
-        if broker_type == "kafka":
+        if broker_type == "kafka" and KAFKA_AVAILABLE:
             await self._init_kafka()
         elif broker_type == "rabbitmq":
             await self._init_rabbitmq()

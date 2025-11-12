@@ -7,10 +7,24 @@ Service Discovery Integration - Eureka & Consul
 import asyncio
 from typing import Optional
 import structlog
-from py_eureka_client import eureka_client
-import consul.aio
 
-from config import settings
+# Make py_eureka_client optional
+try:
+    from py_eureka_client import eureka_client
+    EUREKA_AVAILABLE = True
+except ImportError:
+    EUREKA_AVAILABLE = False
+    eureka_client = None
+
+# Make consul optional
+try:
+    import consul.aio
+    CONSUL_AVAILABLE = True
+except ImportError:
+    CONSUL_AVAILABLE = False
+    consul = None
+
+from config.settings import settings
 
 logger = structlog.get_logger()
 
@@ -28,7 +42,7 @@ class ServiceDiscovery:
     
     def __init__(self):
         self.registry_type: Optional[str] = None
-        self.consul_client: Optional[consul.aio.Consul] = None
+        self.consul_client: Optional[object] = None  # Made generic to avoid import issues
         self._heartbeat_task: Optional[asyncio.Task] = None
     
     async def initialize(self):
@@ -36,6 +50,11 @@ class ServiceDiscovery:
         
         if not settings.eureka_enabled:
             logger.info("service_discovery_disabled")
+            return
+        
+        if not EUREKA_AVAILABLE:
+            logger.warning("eureka_client_not_installed", 
+                          message="py_eureka_client is not installed. Service discovery disabled.")
             return
         
         # تشخیص نوع registry
