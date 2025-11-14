@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     cache_enabled: bool = True
     cache_ttl: int = 300
     
+    # Data Service Integration (NEW)
+    DATA_SERVICE_URL: str = "http://localhost:8080"
+    DATA_SERVICE_TIMEOUT: int = 30
+    DATA_SERVICE_MAX_RETRIES: int = 3
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
     # Service Discovery
     eureka_enabled: bool = False
     eureka_server_url: Optional[str] = None
@@ -80,3 +86,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """Get application settings (for dependency injection)."""
+    return settings

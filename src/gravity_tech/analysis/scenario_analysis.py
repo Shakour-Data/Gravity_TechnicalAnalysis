@@ -7,16 +7,20 @@ Team: Gravity Technical Analysis
 Version: 1.0.0
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime
 import numpy as np
 from dataclasses import dataclass
+import structlog
 
 from gravity_tech.models.schemas import Candle, IndicatorResult, SignalStrength
 from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.indicators.momentum import MomentumIndicators
 from gravity_tech.indicators.volume import VolumeIndicators
 from gravity_tech.patterns.classical import detect_classical_patterns
+from gravity_tech.clients.data_service_client import DataServiceClient, CandleData
+
+logger = structlog.get_logger()
 
 
 @dataclass
@@ -61,12 +65,94 @@ class ScenarioAnalyzer:
     1. Optimistic (خوشبینانه)
     2. Neutral (خنثی)  
     3. Pessimistic (بدبینانه)
+    
+    Data Integration:
+    - دریافت داده از Data Service Microservice
+    - پردازش داده‌های تعدیل‌شده (adjusted prices/volumes)
+    - محاسبه سناریوها بر اساس داده‌های clean
     """
     
-    def __init__(self):
+    def __init__(self, data_service_client: Optional[DataServiceClient] = None):
+        """
+        Initialize scenario analyzer.
+        
+        Args:
+            data_service_client: Client for Data Service (optional for testing)
+        """
         self.trend_indicators = TrendIndicators()
         self.momentum_indicators = MomentumIndicators()
         self.volume_indicators = VolumeIndicators()
+        self.data_client = data_service_client
+    
+    async def analyze_from_service(
+        self,
+        symbol: str,
+        timeframe: str = "1d",
+        lookback_days: int = 365
+    ) -> ThreeScenarioAnalysis:
+        """
+        تحلیل سه‌سناریویی با دریافت داده از Data Service
+        
+        Args:
+            symbol: نماد (مثل "AAPL", "فولاد")
+            timeframe: بازه زمانی (1d, 1h, etc.)
+            lookback_days: تعداد روزهای گذشته
+        
+        Returns:
+            ThreeScenarioAnalysis
+        
+        Raises:
+            ValueError: اگر Data Service client تنظیم نشده باشد
+        """
+        if not self.data_client:
+            raise ValueError("Data service client not configured. Use analyze() with candles instead.")
+        
+        logger.info(
+            "fetching_data_for_scenario_analysis",
+            symbol=symbol,
+            timeframe=timeframe,
+            lookback_days=lookback_days
+        )
+        
+        # دریافت داده از Data Service
+        from datetime import timedelta
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=lookback_days)
+        
+        candle_data = await self.data_client.get_candles(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            use_cache=True
+        )
+        
+        # تبدیل CandleData به Candle objects
+        candles = [self._convert_to_candle(c) for c in candle_data]
+        
+        current_price = candles[-1].close
+        
+        logger.info(
+            "data_received_for_scenario_analysis",
+            symbol=symbol,
+            candles_count=len(candles),
+            current_price=current_price
+        )
+        
+        # تحلیل سناریوها
+        return self.analyze(symbol, candles, current_price)
+    
+    @staticmethod
+    def _convert_to_candle(candle_data: CandleData) -> Candle:
+        """Convert CandleData from Data Service to internal Candle model."""
+        return Candle(
+            timestamp=candle_data.timestamp,
+            open=candle_data.adjusted_open,
+            high=candle_data.adjusted_high,
+            low=candle_data.adjusted_low,
+            close=candle_data.adjusted_close,
+            volume=candle_data.adjusted_volume
+        )
     
     def analyze(
         self,
@@ -79,7 +165,7 @@ class ScenarioAnalyzer:
         
         Args:
             symbol: نماد
-            candles: شمع‌های قیمتی
+            candles: شمع‌های قیمتی (adjusted)
             current_price: قیمت فعلی (اختیاری)
         
         Returns:
@@ -87,6 +173,13 @@ class ScenarioAnalyzer:
         """
         if current_price is None:
             current_price = candles[-1].close
+        
+        logger.info(
+            "starting_scenario_analysis",
+            symbol=symbol,
+            candles_count=len(candles),
+            current_price=current_price
+        )
         
         # محاسبه ATR برای target و stop loss
         atr = self._calculate_atr(candles)
