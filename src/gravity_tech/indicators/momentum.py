@@ -12,6 +12,11 @@ This module implements 10 comprehensive momentum indicators:
 8. TSI - True Strength Index
 9. KST - Know Sure Thing
 10. PMO - Price Momentum Oscillator
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

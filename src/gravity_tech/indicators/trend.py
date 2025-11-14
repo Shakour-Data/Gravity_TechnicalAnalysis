@@ -12,6 +12,11 @@ This module implements 10 comprehensive trend indicators:
 8. Parabolic SAR
 9. Supertrend
 10. Ichimoku Cloud
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

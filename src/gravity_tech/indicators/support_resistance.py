@@ -12,6 +12,11 @@ This module implements 10 comprehensive support/resistance indicators:
 8. Floor Pivots
 9. Psychological Levels
 10. Previous High/Low Levels
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

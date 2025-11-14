@@ -12,6 +12,11 @@ This module implements 10 comprehensive volume indicators:
 8. VPT - Volume Price Trend  
 9. Volume Oscillator
 10. VWMA - Volume Weighted Moving Average
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np
