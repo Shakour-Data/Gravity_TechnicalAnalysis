@@ -68,3 +68,20 @@ data/
 *.sqlite3
 tool_performance.db
 tool_performance.json
+
+# Temporary and cache files
+.pytest_cache/
+.coverage
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Development reports and logs
+DAY_*.md
+CODE_REVIEW_*.md
+CLEANUP_REPORT.md
+*_REPORT.md
+
+# Deprecated files
+deprecated/
