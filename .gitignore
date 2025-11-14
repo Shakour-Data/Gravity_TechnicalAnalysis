@@ -60,3 +60,11 @@ ml_models/*.h5
 ml_models/*.onnx
 ml_models/*.pt
 ml_models/*.pth
+
+# Database files (local development only)
+data/
+*.db
+*.sqlite
+*.sqlite3
+tool_performance.db
+tool_performance.json
