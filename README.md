@@ -5,10 +5,11 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com/)
 [![Performance](https://img.shields.io/badge/performance-300k%20req%2Fs-red.svg)](docs/guides/PERFORMANCE_OPTIMIZATION.md)
 [![ML Accuracy](https://img.shields.io/badge/ML%20accuracy-72.3%25-brightgreen.svg)](docs/releases/RELEASE_NOTES_v1.2.0.md)
+[![Test Coverage](https://img.shields.io/badge/coverage-65%25-orange.svg)](docs/team/IMPROVEMENT_TASKS.md)
 [![Multi-Region](https://img.shields.io/badge/Multi--Region-3%20regions-purple.svg)](docs/operations/MULTI_REGION_SETUP.md)
 [![K8s Ready](https://img.shields.io/badge/Kubernetes-ready-326CE5.svg)](docs/operations/DEPLOYMENT_GUIDE.md)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Production Ready](https://img.shields.io/badge/status-production%20ready-success.svg)](docs/releases/RELEASE_NOTES_v1.2.0.md)
+[![Status](https://img.shields.io/badge/status-needs%20improvement-orange.svg)](docs/team/IMPROVEMENT_TASKS.md)
 
 <div dir="rtl">
 
@@ -19,6 +20,7 @@
 - 📚 **[راهنماهای جامع](docs/guides/)** - 7 راهنمای کامل فارسی
 - 🤝 **[راهنمای مشارکت](docs/CONTRIBUTING.md)** - نحوه همکاری در پروژه
 - 📝 **[تغییرات نسخه‌ها](docs/CHANGELOG.md)** - تاریخچه تغییرات پروژه
+- ⚠️ **[کارهای بهبود](docs/team/IMPROVEMENT_TASKS.md)** - وظایف تیم برای رسیدن به 95% پوشش تست
 - 📊 **[خلاصه پروژه](docs/PROJECT_SUMMARY.md)** - اطلاعات کامل پروژه
 - 🌍 **[استقرار چندمنطقه‌ای](docs/operations/MULTI_REGION_SETUP.md)** - راهنمای Multi-Region
 
