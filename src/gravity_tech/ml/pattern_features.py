@@ -1,8 +1,5 @@
 """
 Pattern Feature Extraction for Machine Learning
-Day 4: Pattern Recognition ML (Part 1)
-Author: Dr. Rajesh Kumar Patel (Lead ML Engineer)
-Date: November 11, 2025
 
 Extracts features from harmonic patterns for ML model training:
 - Fibonacci ratio accuracy
@@ -10,6 +7,11 @@ Extracts features from harmonic patterns for ML model training:
 - Price action characteristics
 - Volume confirmation
 - Momentum indicators at pattern points
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

@@ -1,8 +1,13 @@
 """
-Training script for ML-based weight optimization
+Training Script for ML-Based Weight Optimization
 
 This script trains a machine learning model to learn optimal weights
 for combining indicator signals based on historical data.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import asyncio

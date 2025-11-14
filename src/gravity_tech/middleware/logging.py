@@ -1,5 +1,12 @@
 """
-Logging middleware setup
+Logging Middleware Setup
+
+Structured logging configuration for the application.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import structlog

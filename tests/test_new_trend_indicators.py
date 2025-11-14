@@ -7,7 +7,11 @@ Tests for 4 new trend indicators:
 3. Vortex Indicator (VI)
 4. McGinley Dynamic
 
-Author: Prof. Alexandre Dubois (with Sarah O'Connor - QA Lead)
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 Created: November 7, 2025
 """
 

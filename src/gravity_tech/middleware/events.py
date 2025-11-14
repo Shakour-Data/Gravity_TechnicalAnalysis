@@ -2,6 +2,11 @@
 Event-Driven Messaging - Kafka & RabbitMQ Integration
 
 ارسال و دریافت پیام‌های async برای communication بین میکروسرویس‌ها
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from __future__ import annotations

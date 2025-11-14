@@ -7,6 +7,11 @@ This module uses Gradient Boosting to learn optimal weights for combining
 2. Candlestick Patterns
 3. Elliott Wave Theory
 4. Classical Chart Patterns
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

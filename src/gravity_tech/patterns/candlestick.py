@@ -12,6 +12,11 @@ This module recognizes major candlestick patterns:
 8. Three White Soldiers / Three Black Crows
 9. Tweezer Top / Tweezer Bottom
 10. Marubozu
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from typing import List, Optional

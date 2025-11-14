@@ -9,6 +9,11 @@ Quick Database Setup Script
 1. تشخیص خودکار نوع دیتابیس
 2. ساخت schema
 3. نمایش وضعیت
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import sys

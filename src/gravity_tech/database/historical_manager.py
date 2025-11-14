@@ -1,6 +1,5 @@
 """
 Historical Score Manager
-========================
 
 این ماژول برای ذخیره و بازیابی امتیازهای تاریخی استفاده می‌شود.
 
@@ -8,6 +7,12 @@ Historical Score Manager
 1. کاربر بتواند امتیاز هر تاریخی را ببیند
 2. نمودارهای تاریخی ترسیم شوند
 3. Backtesting انجام شود
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 4. مقایسه عملکرد اندیکاتورها
 """
 

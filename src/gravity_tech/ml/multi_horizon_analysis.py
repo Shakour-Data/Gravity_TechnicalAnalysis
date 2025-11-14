@@ -7,6 +7,11 @@ Multi-Horizon Trend Analysis System
 - 30-Day Score (بلندمدت): برای Position Trading
 
 با تشخیص الگو: STRONG_UPTREND, BUY_THE_DIP, TREND_REVERSAL, ...
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

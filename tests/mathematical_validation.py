@@ -1,13 +1,13 @@
 """
-═══════════════════════════════════════════════════════════════════════
 MATHEMATICAL VALIDATION REPORT - New Trend Indicators v1.1.0
-═══════════════════════════════════════════════════════════════════════
 
-Author:       Dr. James Richardson, PhD
-Role:         Chief Quantitative Analyst
-Team ID:      TM-002-QA
-Date:         November 8, 2025
-Review Type:  Mathematical Correctness & Statistical Validity
+Mathematical Correctness & Statistical Validity
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 Status:       ✅ APPROVED WITH NOTES
 
 ═══════════════════════════════════════════════════════════════════════

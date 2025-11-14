@@ -1,5 +1,10 @@
 """
 Comprehensive test showing how accuracy affects decision making
+
+Author: Gravity Tech Team
+Date: 2024
+Version: 1.0
+License: MIT
 """
 from datetime import datetime
 from src.core.domain.entities import (
@@ -51,34 +56,34 @@ def test_scenario(title: str, indicators: dict):
     cycle_acc = get_avg_confidence(indicators['cycle'])
     volume_acc = get_avg_confidence(indicators['volume'])
     
-    print(f"\nاندیکاتورها:")
-    print(f"  روند:    {len(indicators['trend'])} اندیکاتور، دقت متوسط: {trend_acc:.2f}")
-    print(f"  مومنتوم:  {len(indicators['momentum'])} اندیکاتور، دقت متوسط: {momentum_acc:.2f}")
-    print(f"  سیکل:    {len(indicators['cycle'])} اندیکاتور، دقت متوسط: {cycle_acc:.2f}")
-    print(f"  حجم:     {len(indicators['volume'])} اندیکاتور، دقت متوسط: {volume_acc:.2f}")
+    print(f"\nIndicators:")
+    print(f"  Trend:    {len(indicators['trend'])} indicators, avg accuracy: {trend_acc:.2f}")
+    print(f"  Momentum:  {len(indicators['momentum'])} indicators, avg accuracy: {momentum_acc:.2f}")
+    print(f"  Cycle:    {len(indicators['cycle'])} indicators, avg accuracy: {cycle_acc:.2f}")
+    print(f"  Volume:     {len(indicators['volume'])} indicators, avg accuracy: {volume_acc:.2f}")
     
-    print(f"\nسیگنال‌های دسته‌بندی:")
-    print(f"  روند:    {analysis.overall_trend_signal.value}")
-    print(f"  مومنتوم:  {analysis.overall_momentum_signal.value}")
-    print(f"  سیکل:    {analysis.overall_cycle_signal.value}")
+    print(f"\nCategory signals:")
+    print(f"  Trend:    {analysis.overall_trend_signal.value}")
+    print(f"  Momentum:  {analysis.overall_momentum_signal.value}")
+    print(f"  Cycle:    {analysis.overall_cycle_signal.value}")
     
-    print(f"\n🎯 نتیجه نهایی:")
-    print(f"  سیگنال کلی: {analysis.overall_signal.value}")
-    print(f"  اعتماد کلی: {analysis.overall_confidence:.1%}")
+    print(f"\n🎯 Final result:")
+    print(f"  Overall signal: {analysis.overall_signal.value}")
+    print(f"  Overall confidence: {analysis.overall_confidence:.1%}")
     
     return analysis
 
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("🧪 تست جامع: تأثیر دقت در تصمیم‌گیری")
+    print("🧪 Comprehensive Test: Impact of Accuracy on Decision Making")
     print("=" * 70)
     
     # Scenario 1: All high confidence, all bullish
     print("\n" + "▼" * 70)
-    print("سناریو 1: همه صعودی، همه با دقت بالا")
+    print("Scenario 1: All bullish, all with high accuracy")
     test_scenario(
-        "شرایط ایده‌آل - سیگنال قوی و مطمئن",
+        "Ideal conditions - Strong and confident signal",
         {
             'trend': [
                 create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
@@ -99,9 +104,9 @@ if __name__ == "__main__":
     
     # Scenario 2: All high confidence, mixed signals
     print("\n" + "▼" * 70)
-    print("سناریو 2: سیگنال‌های متناقض، همه با دقت بالا")
+    print("Scenario 2: Conflicting signals, all with high accuracy")
     test_scenario(
-        "عدم اطمینان - اندیکاتورهای دقیق با سیگنال‌های مختلف",
+        "Uncertainty - Accurate indicators with different signals",
         {
             'trend': [
                 create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
@@ -122,9 +127,9 @@ if __name__ == "__main__":
     
     # Scenario 3: Trend high confidence, others low
     print("\n" + "▼" * 70)
-    print("سناریو 3: فقط روند قابل اعتماد")
+    print("Scenario 3: Only trend is reliable")
     test_scenario(
-        "تکیه بر روند - سایر اندیکاتورها نامطمئن",
+        "Rely on trend - Other indicators uncertain",
         {
             'trend': [
                 create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
@@ -146,9 +151,9 @@ if __name__ == "__main__":
     
     # Scenario 4: Momentum and Cycle high, Trend low
     print("\n" + "▼" * 70)
-    print("سناریو 4: مومنتوم و سیکل قوی، روند ضعیف")
+    print("Scenario 4: Momentum and cycle strong, trend weak")
     test_scenario(
-        "تغییر روند احتمالی - مومنتوم و سیکل سیگنال تغییر می‌دهند",
+        "Possible trend change - Momentum and cycle giving change signals",
         {
             'trend': [
                 create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.4),
@@ -170,9 +175,9 @@ if __name__ == "__main__":
     
     # Scenario 5: All low confidence
     print("\n" + "▼" * 70)
-    print("سناریو 5: همه دقت پایین")
+    print("Scenario 5: All low accuracy")
     test_scenario(
-        "بازار نامشخص - همه اندیکاتورها نامطمئن",
+        "Uncertain market - All indicators uncertain",
         {
             'trend': [
                 create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.3),
@@ -192,9 +197,9 @@ if __name__ == "__main__":
     )
     
     print(f"\n{'='*70}")
-    print("💡 خلاصه:")
-    print("  1. دقت بالا + توافق → اعتماد بالا")
-    print("  2. دقت بالا + عدم توافق → اعتماد متوسط")
-    print("  3. دقت پایین → اعتماد پایین (حتی با توافق)")
-    print("  4. دسته‌های با دقت بالاتر، وزن بیشتری در تصمیم دارند")
+    print("💡 Summary:")
+    print("  1. High accuracy + agreement → high confidence")
+    print("  2. High accuracy + disagreement → medium confidence")
+    print("  3. Low accuracy → low confidence (even with agreement)")
+    print("  4. Categories with higher accuracy have more weight in decision")
     print("="*70)

@@ -1,7 +1,12 @@
 """
-API endpoints for Three-Scenario Analysis
+API Endpoints for Three-Scenario Analysis
 
 Provides REST API for optimistic/neutral/pessimistic scenario analysis.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query

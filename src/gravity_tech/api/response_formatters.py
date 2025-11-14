@@ -1,10 +1,14 @@
 """
 API Response Formatters
-=======================
 
 این ماژول توابعی برای فرمت کردن خروجی API فراهم می‌کند.
 
 همه امتیازها به محدوده [-100, +100] و اعتماد به [0, 100] تبدیل می‌شوند.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from typing import Dict, List, Any

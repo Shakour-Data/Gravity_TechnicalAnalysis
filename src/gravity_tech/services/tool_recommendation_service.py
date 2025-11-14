@@ -1,8 +1,14 @@
 """
 Tool Recommendation Service
 
-این سرویس business logic برای پیشنهاد ابزارها را فراهم می‌کند
-و بین API، ML models، و database ارتباط برقرار می‌کند.
+This service provides business logic for tool recommendations
+and establishes communication between API, ML models, and database.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 """
 
 import asyncio
@@ -20,14 +26,14 @@ from pathlib import Path
 
 class ToolRecommendationService:
     """
-    سرویس پیشنهاد ابزارها
+    Tool Recommendation Service.
     
-    مسئولیت‌ها:
-    - دریافت داده از Data Service
-    - تحلیل کانتکست بازار
-    - فراخوانی ML models برای پیشنهاد
-    - ذخیره و بازیابی عملکرد تاریخی
-    - کش کردن نتایج
+    Responsibilities:
+    - Fetch data from Data Service
+    - Analyze market context
+    - Call ML models for recommendations
+    - Store and retrieve historical performance
+    - Cache results
     """
     
     def __init__(
@@ -37,12 +43,12 @@ class ToolRecommendationService:
         db_connection_string: Optional[str] = None
     ):
         """
-        Initialize Tool Recommendation Service
+        Initialize Tool Recommendation Service.
         
         Args:
-            data_service_url: URL سرویس داده
-            redis_url: URL Redis برای کش
-            db_connection_string: رشته اتصال دیتابیس
+            data_service_url: Data service URL
+            redis_url: Redis URL for cache
+            db_connection_string: Database connection string
         """
         self.data_service_url = data_service_url or "http://localhost:8001"
         self.redis_url = redis_url
@@ -66,18 +72,18 @@ class ToolRecommendationService:
         top_n: int = 15
     ) -> Dict[str, Any]:
         """
-        دریافت پیشنهادات ابزارها برای یک نماد
+        Get tool recommendations for a symbol.
         
         Args:
-            symbol: نماد دارایی
-            timeframe: بازه زمانی
-            analysis_goal: هدف تحلیل
-            trading_style: سبک معامله‌گری
-            limit_candles: تعداد کندل
-            top_n: تعداد ابزارهای پیشنهادی
+            symbol: Asset symbol
+            timeframe: Time frame
+            analysis_goal: Analysis goal
+            trading_style: Trading style
+            limit_candles: Number of candles
+            top_n: Number of recommended tools
         
         Returns:
-            دیکشنری کامل با پیشنهادات
+            Complete dictionary with recommendations
         """
         
         # 1. Check cache
@@ -145,18 +151,18 @@ class ToolRecommendationService:
         limit_candles: int = 200
     ) -> Dict[str, Any]:
         """
-        تحلیل با ابزارهای انتخابی کاربر
+        Analysis with user-selected tools.
         
         Args:
-            symbol: نماد دارایی
-            timeframe: بازه زمانی
-            selected_tools: لیست ابزارهای انتخاب شده
-            include_ml_scoring: شامل امتیازدهی ML
-            include_patterns: شامل تشخیص الگو
-            limit_candles: تعداد کندل
+            symbol: Asset symbol
+            timeframe: Time frame
+            selected_tools: List of selected tools
+            include_ml_scoring: Include ML scoring
+            include_patterns: Include pattern detection
+            limit_candles: Number of candles
         
         Returns:
-            نتایج تحلیل
+            Analysis results
         """
         
         # 1. Fetch market data
@@ -199,13 +205,13 @@ class ToolRecommendationService:
         limit: int
     ) -> pd.DataFrame:
         """
-        دریافت داده بازار از Data Service
+        Fetch market data from Data Service.
         
         TODO: Integrate with actual DataServiceClient
         """
         
-        # فعلاً داده شبیه‌سازی شده برمی‌گرداند
-        # در production باید از DataServiceClient استفاده شود
+        # Currently returns simulated data
+        # In production, should use DataServiceClient
         
         dates = pd.date_range(end=datetime.utcnow(), periods=limit, freq='D')
         
@@ -236,27 +242,27 @@ class ToolRecommendationService:
         trading_style: str
     ) -> Dict[str, Any]:
         """
-        تحلیل کانتکست بازار
+        Analyze market context.
         
-        شامل:
-        - رژیم بازار (trending/ranging/volatile)
-        - سطح نوسان
-        - قدرت ترند
-        - پروفایل حجم
+        Includes:
+        - Market regime (trending/ranging/volatile)
+        - Volatility level
+        - Trend strength
+        - Volume profile
         """
         
-        # محاسبه volatility
+        # Calculate volatility
         returns = candles['close'].pct_change()
         volatility = returns.std() * np.sqrt(252) * 100  # Annualized
         
-        # محاسبه trend strength
+        # Calculate trend strength
         sma_20 = candles['close'].rolling(20).mean()
         sma_50 = candles['close'].rolling(50).mean()
         current_price = candles['close'].iloc[-1]
         
         trend_strength = abs((current_price - sma_20.iloc[-1]) / sma_20.iloc[-1]) * 100
         
-        # تشخیص رژیم
+        # Detect regime
         if trend_strength > 5:
             if current_price > sma_20.iloc[-1] and sma_20.iloc[-1] > sma_50.iloc[-1]:
                 regime = "trending_bullish"
@@ -293,7 +299,7 @@ class ToolRecommendationService:
     
     def _get_ml_weights(self, market_regime: str) -> Dict[str, float]:
         """
-        دریافت وزن‌های ML برای رژیم بازار
+        Get ML weights for market regime.
         
         TODO: Load from trained ML model
         """
@@ -358,12 +364,12 @@ class ToolRecommendationService:
         top_n: int
     ) -> Dict[str, List[Dict]]:
         """
-        دریافت پیشنهادات ابزارها
+        Get tool recommendations.
         
         TODO: Use actual DynamicToolRecommender
         """
         
-        # فعلاً پیشنهادات شبیه‌سازی شده
+        # Currently simulated recommendations
         must_use = [
             {
                 "name": "ADX",
@@ -371,9 +377,9 @@ class ToolRecommendationService:
                 "ml_weight": 0.28,
                 "confidence": 0.87,
                 "historical_accuracy": "82.0%",
-                "reason": "در بازار روندی بسیار موثر است | وزن ML بالا",
+                "reason": "Very effective in trending markets | High ML weight",
                 "priority": "must_use",
-                "best_for": ["قدرت ترند", "تایید جهت حرکت"]
+                "best_for": ["Trend strength", "Confirm movement direction"]
             },
             {
                 "name": "MACD",
@@ -381,9 +387,9 @@ class ToolRecommendationService:
                 "ml_weight": 0.24,
                 "confidence": 0.83,
                 "historical_accuracy": "79.0%",
-                "reason": "در بازار روندی بسیار موثر است",
+                "reason": "Very effective in trending markets",
                 "priority": "must_use",
-                "best_for": ["تشخیص ترند", "سیگنال خرید/فروش"]
+                "best_for": ["Trend detection", "Buy/sell signals"]
             }
         ]
         
@@ -394,9 +400,9 @@ class ToolRecommendationService:
                 "ml_weight": 0.18,
                 "confidence": 0.76,
                 "historical_accuracy": "76.0%",
-                "reason": "برای تشخیص نقاط اصلاح در روند",
+                "reason": "For detecting correction points in trend",
                 "priority": "recommended",
-                "best_for": ["اشباع خرید/فروش", "واگرایی"]
+                "best_for": ["Overbought/oversold", "Divergence"]
             }
         ]
         
@@ -416,7 +422,7 @@ class ToolRecommendationService:
         market_context: Dict[str, Any],
         analysis_goal: str
     ) -> Dict[str, Any]:
-        """ساخت استراتژی معاملاتی"""
+        """Build trading strategy."""
         
         must_use = recommendations.get("must_use", [])
         recommended = recommendations.get("recommended", [])
@@ -424,7 +430,7 @@ class ToolRecommendationService:
         primary_tools = [tool["name"] for tool in must_use[:5]]
         supporting_tools = [tool["name"] for tool in recommended[:5]]
         
-        # محاسبه confidence میانگین
+        # Calculate average confidence
         all_tools = must_use + recommended
         if all_tools:
             avg_confidence = np.mean([tool["confidence"] for tool in all_tools])
@@ -435,7 +441,7 @@ class ToolRecommendationService:
             "primary_tools": primary_tools,
             "supporting_tools": supporting_tools,
             "confidence": float(avg_confidence),
-            "based_on": f"تحلیل {len(all_tools)} ابزار برتر",
+            "based_on": f"Analysis of {len(all_tools)} top tools",
             "regime": market_context["regime"],
             "expected_accuracy": f"{avg_confidence * 100:.1f}%",
             "analysis_goal": analysis_goal
@@ -447,12 +453,12 @@ class ToolRecommendationService:
         candles: pd.DataFrame
     ) -> Dict[str, Any]:
         """
-        محاسبه یک اندیکاتور
+        Calculate an indicator.
         
         TODO: Use actual indicator calculators
         """
         
-        # فعلاً نتایج شبیه‌سازی شده
+        # Currently simulated results
         if tool_name.upper() == "MACD":
             return {
                 "macd": 125.3,
@@ -488,7 +494,7 @@ class ToolRecommendationService:
         candles: pd.DataFrame
     ) -> Dict[str, Any]:
         """
-        امتیازدهی ML بر اساس نتایج ابزارها
+        ML scoring based on tool results.
         
         TODO: Use actual ML scoring models
         """
@@ -510,7 +516,7 @@ class ToolRecommendationService:
         candles: pd.DataFrame
     ) -> List[Dict[str, Any]]:
         """
-        تشخیص الگوهای قیمتی
+        Detect price patterns.
         
         TODO: Use actual pattern detection
         """
@@ -532,9 +538,9 @@ class ToolRecommendationService:
         ml_scoring: Optional[Dict[str, Any]],
         patterns: Optional[List[Dict[str, Any]]]
     ) -> Dict[str, Any]:
-        """ساخت خلاصه نتایج"""
+        """Create results summary."""
         
-        # شمارش سیگنال‌ها
+        # Count signals
         bullish_count = 0
         bearish_count = 0
         neutral_count = 0
@@ -548,7 +554,7 @@ class ToolRecommendationService:
             else:
                 neutral_count += 1
         
-        # تعیین سیگنال کلی
+        # Determine overall signal
         if bullish_count > bearish_count:
             overall_signal = "bullish"
             if bullish_count >= len(tool_results) * 0.7:
@@ -577,7 +583,7 @@ class ToolRecommendationService:
         }
     
     def _get_from_cache(self, key: str) -> Optional[Dict]:
-        """دریافت از کش"""
+        """Get from cache."""
         cached_item = self._cache.get(key)
         if cached_item:
             data, expiry = cached_item
@@ -588,7 +594,7 @@ class ToolRecommendationService:
         return None
     
     def _save_to_cache(self, key: str, data: Dict, ttl: int = 300):
-        """ذخیره در کش"""
+        """Save to cache."""
         expiry = datetime.utcnow() + timedelta(seconds=ttl)
         self._cache[key] = (data, expiry)
     
@@ -602,15 +608,15 @@ class ToolRecommendationService:
         metadata: Optional[Dict] = None
     ):
         """
-        ثبت عملکرد ابزار برای یادگیری آینده
+        Record tool performance for future learning.
         
         Args:
-            tool_name: نام ابزار
-            market_regime: رژیم بازار
-            prediction: پیش‌بینی ابزار
-            actual_result: نتیجه واقعی
-            accuracy: دقت
-            metadata: اطلاعات اضافی
+            tool_name: Tool name
+            market_regime: Market regime
+            prediction: Tool prediction
+            actual_result: Actual result
+            accuracy: Accuracy
+            metadata: Additional information
         """
         
         # TODO: Save to database
@@ -624,7 +630,7 @@ class ToolRecommendationService:
             "timestamp": datetime.utcnow()
         }
         
-        # فعلاً فقط log می‌کنیم
+        # Currently just logging
         print(f"📊 Performance recorded: {tool_name} - {accuracy:.1%} accuracy")
     
     def get_tool_statistics(
@@ -634,7 +640,7 @@ class ToolRecommendationService:
         days: int = 30
     ) -> Dict[str, Any]:
         """
-        دریافت آمار عملکرد یک ابزار
+        Get performance statistics for a tool.
         
         TODO: Load from database
         """

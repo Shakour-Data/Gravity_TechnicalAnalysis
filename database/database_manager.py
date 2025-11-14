@@ -10,6 +10,11 @@ Database Manager with Auto-Setup and Fallback
 - اگر PostgreSQL موجود باشد → استفاده از PostgreSQL
 - اگر PostgreSQL موجود نباشد → fallback به SQLite in-memory
 - اگر SQLite هم ناموجود باشد → fallback به JSON file storage
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import os

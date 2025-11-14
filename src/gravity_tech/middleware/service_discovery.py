@@ -2,6 +2,11 @@
 Service Discovery Integration - Eureka & Consul
 
 ثبت خودکار سرویس در Service Registry و گزارش وضعیت سلامت
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import asyncio

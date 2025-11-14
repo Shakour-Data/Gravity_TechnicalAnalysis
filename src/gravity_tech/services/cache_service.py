@@ -1,7 +1,12 @@
 """
-Redis Cache Manager با Connection Pooling و Error Handling
+Redis Cache Manager with Connection Pooling and Error Handling
 
-مدیریت کامل caching برای بهبود performance
+Complete caching management for performance improvement.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import json
@@ -20,9 +25,9 @@ logger = structlog.get_logger()
 
 class CacheManager:
     """
-    مدیریت Redis Cache با قابلیت‌های پیشرفته
+    Redis Cache Manager with advanced features.
     
-    ویژگی‌ها:
+    Features:
     - Connection pooling
     - Auto retry
     - Error handling
@@ -43,28 +48,28 @@ class CacheManager:
         self._is_available = False
     
     async def initialize(self):
-        """راه‌اندازی اولیه Redis connection"""
+        """Initialize Redis connection."""
         if not settings.cache_enabled:
             logger.info("cache_disabled")
             return
         
         try:
-            # ایجاد connection pool
+            # Create connection pool
             self.connection_pool = ConnectionPool(
                 host=settings.redis_host,
                 port=settings.redis_port,
                 db=settings.redis_db,
                 max_connections=50,
-                decode_responses=False,  # برای ذخیره binary data
+                decode_responses=False,  # For storing binary data
                 socket_timeout=5,
                 socket_connect_timeout=5,
                 retry_on_timeout=True,
             )
             
-            # ایجاد Redis client
+            # Create Redis client
             self.redis = aioredis.Redis(connection_pool=self.connection_pool)
             
-            # تست اتصال
+            # Test connection
             await self.redis.ping()
             self._is_available = True
             
@@ -78,17 +83,17 @@ class CacheManager:
         except Exception as e:
             logger.error("redis_initialization_failed", error=str(e))
             self._is_available = False
-            # در صورت خطا، ادامه می‌دهیم بدون cache
+            # In case of error, continue without cache
     
     async def get(self, key: str) -> Optional[Any]:
         """
-        دریافت مقدار از cache
+        Get value from cache.
         
         Args:
-            key: کلید cache
+            key: Cache key
         
         Returns:
-            مقدار deserialize شده یا None
+            Deserialized value or None
         """
         if not self._is_available or not self.redis:
             return None
@@ -114,15 +119,15 @@ class CacheManager:
         ttl: Optional[int] = None
     ) -> bool:
         """
-        ذخیره مقدار در cache
+        Store value in cache.
         
         Args:
-            key: کلید cache
-            value: مقدار (باید JSON-serializable باشد)
-            ttl: زمان انقضا (ثانیه)، اگر None باشد از settings استفاده می‌شود
+            key: Cache key
+            value: Value (must be JSON-serializable)
+            ttl: Expiration time (seconds), uses settings if None
         
         Returns:
-            True در صورت موفقیت
+            True on success
         """
         if not self._is_available or not self.redis:
             return False
@@ -141,13 +146,13 @@ class CacheManager:
     
     async def delete(self, key: str) -> bool:
         """
-        حذف کلید از cache
+        Delete key from cache.
         
         Args:
-            key: کلید cache
+            key: Cache key
         
         Returns:
-            True در صورت موفقیت
+            True on success
         """
         if not self._is_available or not self.redis:
             return False
@@ -163,13 +168,13 @@ class CacheManager:
     
     async def delete_pattern(self, pattern: str) -> int:
         """
-        حذف تمام کلیدهایی که با pattern مچ می‌شوند
+        Delete all keys matching the pattern.
         
         Args:
-            pattern: الگوی Redis (مثلاً "user:*")
+            pattern: Redis pattern (e.g., "user:*")
         
         Returns:
-            تعداد کلیدهای حذف شده
+            Number of deleted keys
         """
         if not self._is_available or not self.redis:
             return 0
@@ -200,7 +205,7 @@ class CacheManager:
             return 0
     
     async def exists(self, key: str) -> bool:
-        """بررسی وجود کلید در cache"""
+        """Check if key exists in cache."""
         if not self._is_available or not self.redis:
             return False
         
@@ -211,7 +216,7 @@ class CacheManager:
             return False
     
     async def get_ttl(self, key: str) -> Optional[int]:
-        """دریافت TTL باقی‌مانده کلید (ثانیه)"""
+        """Get remaining TTL of key (seconds)."""
         if not self._is_available or not self.redis:
             return None
         
@@ -223,7 +228,7 @@ class CacheManager:
             return None
     
     async def increment(self, key: str, amount: int = 1) -> Optional[int]:
-        """افزایش counter"""
+        """Increment counter."""
         if not self._is_available or not self.redis:
             return None
         
@@ -234,7 +239,7 @@ class CacheManager:
             return None
     
     async def health_check(self) -> bool:
-        """بررسی سلامت Redis connection"""
+        """Check Redis connection health."""
         if not self._is_available or not self.redis:
             return False
         
@@ -247,7 +252,7 @@ class CacheManager:
             return False
     
     async def close(self):
-        """بستن اتصالات"""
+        """Close connections."""
         if self.redis:
             await self.redis.close()
         
@@ -263,21 +268,21 @@ cache_manager = CacheManager()
 
 def cache_key_generator(*args, **kwargs) -> str:
     """
-    تولید کلید منحصر به فرد برای cache
+    Generate unique key for cache.
     
     Args:
-        *args: آرگومان‌های تابع
-        **kwargs: کیلید ورد آرگومان‌ها
+        *args: Function arguments
+        **kwargs: Keyword arguments
     
     Returns:
-        کلید hash شده
+        Hashed key
     """
-    # ترکیب تمام آرگومان‌ها
+    # Combine all arguments
     key_parts = [str(arg) for arg in args]
     key_parts.extend([f"{k}={v}" for k, v in sorted(kwargs.items())])
     key_string = ":".join(key_parts)
     
-    # Hash برای کوتاه‌تر کردن
+    # Hash to shorten
     return hashlib.md5(key_string.encode()).hexdigest()
 
 
@@ -287,23 +292,23 @@ def cached(
     key_generator: Optional[Callable] = None
 ):
     """
-    Decorator برای cache کردن خروجی توابع
+    Decorator for caching function output.
     
     Args:
-        ttl: زمان انقضا (ثانیه)
-        key_prefix: پیشوند کلید cache
-        key_generator: تابع برای تولید کلید (اختیاری)
+        ttl: Expiration time (seconds)
+        key_prefix: Cache key prefix
+        key_generator: Function for generating key (optional)
     
     Example:
         >>> @cached(ttl=300, key_prefix="analysis")
         ... async def analyze_symbol(symbol: str, timeframe: str):
-        ...     # محاسبات سنگین
+        ...     # Heavy computations
         ...     return result
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # تولید کلید cache
+            # Generate cache key
             if key_generator:
                 cache_key = key_generator(*args, **kwargs)
             else:
@@ -311,7 +316,7 @@ def cached(
             
             full_key = f"{key_prefix}:{func.__name__}:{cache_key}"
             
-            # تلاش برای دریافت از cache با graceful degradation
+            # Try to get from cache with graceful degradation
             try:
                 cached_result = await cache_manager.get(full_key)
                 if cached_result is not None:
@@ -325,7 +330,7 @@ def cached(
                 logger.warning("cache_get_failed", error=str(e), key=full_key)
                 # Continue to execute function even if cache fails
             
-            # اجرای تابع
+            # Execute function
             logger.debug(
                 "function_cache_miss",
                 function=func.__name__,
@@ -333,7 +338,7 @@ def cached(
             )
             result = await func(*args, **kwargs)
             
-            # ذخیره در cache با graceful degradation
+            # Save in cache with graceful degradation
             try:
                 await cache_manager.set(full_key, result, ttl=ttl)
             except Exception as e:

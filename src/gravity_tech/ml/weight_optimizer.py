@@ -3,6 +3,11 @@ ML-Based Weight Optimization for Signal Calculation
 
 This module uses machine learning to dynamically calculate optimal weights
 for combining different indicator categories (Trend, Momentum, Cycle, Volume).
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

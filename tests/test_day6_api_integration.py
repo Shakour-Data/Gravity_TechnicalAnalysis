@@ -1,6 +1,12 @@
 """
 Day 6 API Integration Tests
-Test Pattern Recognition and ML endpoints
+
+Test Pattern Recognition and ML endpoints.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import requests

@@ -7,6 +7,11 @@ ML-Based Dynamic Tool Recommender
 - رژیم بازار (trending/ranging/volatile)
 - عملکرد تاریخی ابزارها
 - مشخصات دارایی (volatility، timeframe، نوع)
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

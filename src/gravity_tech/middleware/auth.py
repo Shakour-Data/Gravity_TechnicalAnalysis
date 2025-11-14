@@ -2,6 +2,11 @@
 Enhanced Security Middleware
 
 امنیت پیشرفته: Authentication, Authorization, Rate Limiting, Input Validation
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends

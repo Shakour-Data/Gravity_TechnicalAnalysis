@@ -6,6 +6,11 @@ This module implements Elliott Wave counting and analysis:
 - Identifies 3-wave corrective patterns (A-B-C)
 - Validates wave rules and guidelines
 - Projects targets based on Fibonacci ratios
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

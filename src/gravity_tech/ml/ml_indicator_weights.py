@@ -3,6 +3,11 @@ ML-Based Weight Learning for 10 Trend Indicators
 
 This module uses Gradient Boosting (LightGBM/XGBoost) to learn optimal weights
 for combining 10 trend indicators based on their ability to predict future returns.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

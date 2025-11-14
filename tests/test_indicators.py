@@ -1,5 +1,12 @@
 """
-Test suite for Technical Analysis Service
+Test Suite for Technical Analysis Service
+
+Comprehensive tests for technical indicators and analysis services.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import pytest

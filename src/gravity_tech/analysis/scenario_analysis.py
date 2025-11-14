@@ -2,9 +2,12 @@
 Three-Scenario Analysis Module
 تحلیل سه‌سناریویی (خوشبینانه - خنثی - بدبینانه)
 
-Author: Dr. James Richardson (Chief Quantitative Analyst)
-Team: Gravity Technical Analysis
+This module provides comprehensive three-scenario analysis for market predictions.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
 Version: 1.0.0
+License: MIT
 """
 
 from typing import List, Dict, Any, Tuple, Optional

@@ -1,13 +1,16 @@
 """
 Comprehensive Tests for Harmonic Pattern Recognition
-Day 4: Pattern Recognition ML (Part 1)
-Author: Dr. Rajesh Kumar Patel (Lead ML Engineer)
-Date: November 11, 2025
 
 Tests:
 - Harmonic pattern detection (Gartley, Butterfly, Bat, Crab)
 - Feature extraction pipeline
 - XGBoost classifier training and prediction
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 - Confidence scoring system
 """
 

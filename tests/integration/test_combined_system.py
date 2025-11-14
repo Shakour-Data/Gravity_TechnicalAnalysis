@@ -1,7 +1,12 @@
 """
-تست سیستم کامل Multi-Horizon (Trend + Momentum)
+Test Complete Multi-Horizon System (Trend + Momentum)
 
-تست end-to-end برای سیستم تحلیل ترکیبی
+Author: Gravity Tech Team
+Date: 2024
+Version: 1.0
+License: MIT
+
+End-to-end test for combined analysis system.
 """
 
 import numpy as np
@@ -9,7 +14,7 @@ import pandas as pd
 import sys
 import os
 
-# اضافه کردن مسیر پروژه
+# Add project path
 sys.path.insert(0, os.path.abspath('.'))
 
 from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
@@ -24,7 +29,7 @@ def create_realistic_market_data(
     num_samples: int = 2000,
     trend: str = 'mixed'
 ) -> pd.DataFrame:
-    """ایجاد داده‌های بازار"""
+    """Create market data."""
     np.random.seed(42)
     
     dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1h')
@@ -70,21 +75,21 @@ def create_realistic_market_data(
 
 
 def test_trend_system():
-    """تست سیستم روند"""
+    """Test trend system."""
     print("\n" + "="*80)
     print("🔵 TESTING TREND SYSTEM")
     print("="*80)
     
-    # ایجاد داده
+    # Create data
     candles = create_realistic_market_data(num_samples=1500, trend='uptrend')
     print(f"\n✅ Generated {len(candles)} candles")
     
-    # استخراج ویژگی‌ها
+    # Extract features
     trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
     X_trend, Y_trend = trend_extractor.extract_training_dataset(candles)
     print(f"✅ Trend features: {X_trend.shape}")
     
-    # آموزش
+    # Training
     trend_learner = MultiHorizonWeightLearner(
         horizons=['3d', '7d', '30d'],
         test_size=0.2,
@@ -93,7 +98,7 @@ def test_trend_system():
     trend_learner.train(X_trend, Y_trend, verbose=False)
     print("✅ Trend model trained")
     
-    # تحلیل
+    # Analysis
     trend_analyzer = MultiHorizonAnalyzer(trend_learner)
     latest_features = X_trend.iloc[-1].to_dict()
     trend_analysis = trend_analyzer.analyze(latest_features)
@@ -107,17 +112,17 @@ def test_trend_system():
 
 
 def test_momentum_system(candles):
-    """تست سیستم مومنتوم"""
+    """Test momentum system."""
     print("\n" + "="*80)
     print("🟢 TESTING MOMENTUM SYSTEM")
     print("="*80)
     
-    # استخراج ویژگی‌ها
+    # Extract features
     momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d', '7d', '30d'])
     X_momentum, Y_momentum = momentum_extractor.extract_training_dataset(candles)
     print(f"\n✅ Momentum features: {X_momentum.shape}")
     
-    # آموزش
+    # Training
     momentum_learner = MultiHorizonWeightLearner(
         horizons=['3d', '7d', '30d'],
         test_size=0.2,
@@ -126,7 +131,7 @@ def test_momentum_system(candles):
     momentum_learner.train(X_momentum, Y_momentum, verbose=False)
     print("✅ Momentum model trained")
     
-    # تحلیل
+    # Analysis
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
     latest_features = X_momentum.iloc[-1].to_dict()
     momentum_analysis = momentum_analyzer.analyze(latest_features)
@@ -144,16 +149,16 @@ def test_combined_system(
     momentum_learner,
     candles
 ):
-    """تست سیستم ترکیبی"""
+    """Test combined system."""
     print("\n" + "="*80)
     print("🟣 TESTING COMBINED SYSTEM")
     print("="*80)
     
-    # ایجاد آنالایزرها
+    # Create analyzers
     trend_analyzer = MultiHorizonAnalyzer(trend_learner)
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
     
-    # ایجاد آنالایزر ترکیبی
+    # Create combined analyzer
     combined_analyzer = CombinedTrendMomentumAnalyzer(
         trend_analyzer=trend_analyzer,
         momentum_analyzer=momentum_analyzer,
@@ -161,7 +166,7 @@ def test_combined_system(
         momentum_weight=0.5
     )
     
-    # استخراج آخرین ویژگی‌ها
+    # Extract latest features
     trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
     momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d', '7d', '30d'])
     
@@ -171,17 +176,17 @@ def test_combined_system(
     trend_features = X_trend.iloc[-1].to_dict()
     momentum_features = X_momentum.iloc[-1].to_dict()
     
-    # تحلیل ترکیبی
+    # Combined analysis
     combined_analysis = combined_analyzer.analyze(trend_features, momentum_features)
     
-    # نمایش نتایج
+    # Display results
     combined_analyzer.print_analysis(combined_analysis)
     
     return combined_analyzer, combined_analysis
 
 
 def test_different_scenarios():
-    """تست سناریوهای مختلف"""
+    """Test different scenarios."""
     print("\n" + "="*80)
     print("🎬 TESTING DIFFERENT MARKET SCENARIOS")
     print("="*80)
@@ -197,10 +202,10 @@ def test_different_scenarios():
         print(f"📈 Scenario: {name}")
         print("="*80)
         
-        # ایجاد داده
+        # Create data
         candles = create_realistic_market_data(num_samples=1500, trend=trend_type)
         
-        # آموزش
+        # Training
         print("\n🔄 Training models...")
         
         trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
@@ -215,7 +220,7 @@ def test_different_scenarios():
         momentum_learner = MultiHorizonWeightLearner(horizons=['3d', '7d', '30d'], test_size=0.2, random_state=42)
         momentum_learner.train(X_momentum, Y_momentum, verbose=False)
         
-        # تحلیل ترکیبی
+        # Combined analysis
         trend_analyzer = MultiHorizonAnalyzer(trend_learner)
         momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
         combined_analyzer = CombinedTrendMomentumAnalyzer(
@@ -227,7 +232,7 @@ def test_different_scenarios():
         
         combined_analysis = combined_analyzer.analyze(trend_features, momentum_features)
         
-        # نمایش خلاصه
+        # Display summary
         print("\n📋 Summary:")
         print(f"  Final Action:    {combined_analysis.final_action.value}")
         print(f"  Final Confidence: {combined_analysis.final_confidence:.0%}")
@@ -237,24 +242,24 @@ def test_different_scenarios():
 
 
 def main():
-    """تابع اصلی تست"""
+    """Main test function."""
     print("\n" + "🚀"*40)
     print("COMPLETE MULTI-HORIZON SYSTEM TEST")
-    print("🚀"*40)
+    print("="*40)
     
     try:
-        # تست سیستم روند
+        # Test trend system
         trend_learner, trend_analyzer, candles = test_trend_system()
         
-        # تست سیستم مومنتوم
+        # Test momentum system
         momentum_learner, momentum_analyzer = test_momentum_system(candles)
         
-        # تست سیستم ترکیبی
+        # Test combined system
         combined_analyzer, combined_analysis = test_combined_system(
             trend_learner, momentum_learner, candles
         )
         
-        # تست سناریوهای مختلف
+        # Test different scenarios
         test_different_scenarios()
         
         print("\n" + "="*80)

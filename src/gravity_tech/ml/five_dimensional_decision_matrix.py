@@ -1,6 +1,5 @@
 """
 5-Dimensional Decision Matrix
-==============================
 
 این ماژول یک سیستم تصمیم‌گیری 5 بُعدی برای تحلیل جامع بازار ارائه می‌دهد.
 
@@ -12,6 +11,11 @@
 5. Support/Resistance (حمایت/مقاومت): سطوح کلیدی قیمتی
 
 این ماژول تمام 5 dimension را با هم ترکیب می‌کند و یک سیگنال نهایی تولید می‌کند.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from dataclasses import dataclass

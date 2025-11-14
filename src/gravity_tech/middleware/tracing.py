@@ -2,6 +2,11 @@
 Distributed Tracing Setup - OpenTelemetry
 
 پیکربندی Distributed Tracing برای ردیابی درخواست‌ها در سراسر میکروسرویس‌ها
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from opentelemetry import trace

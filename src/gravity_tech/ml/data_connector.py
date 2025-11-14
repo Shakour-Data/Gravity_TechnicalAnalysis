@@ -3,6 +3,11 @@ Data Connector for Historical Market Data
 
 This module connects to the microservice containing historical daily candle data
 for Bitcoin and other cryptocurrencies.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import requests

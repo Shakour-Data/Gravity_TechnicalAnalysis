@@ -1,29 +1,37 @@
 """
 Display Formatters for API Responses
-====================================
 
-این ماژول توابعی برای تبدیل امتیازها از محدوده داخلی به محدوده نمایشی فراهم می‌کند.
+This module provides functions to convert scores from internal range to display range.
 
-محدوده‌ها:
------------
-داخلی (Internal):
+Ranges:
+Internal:
   - Score: [-1.0, +1.0]
   - Confidence: [0.0, 1.0]
-
-نمایشی برای API (Display):
+Display:
   - Score: [-100, +100]
   - Confidence: [0, 100]
 
-استفاده:
----------
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
+  - Confidence: [0.0, 1.0]
+
+Display for API:
+  - Score: [-100, +100]
+  - Confidence: [0, 100]
+
+Usage:
+------
 ```python
 from gravity_tech.utils.display_formatters import score_to_display, confidence_to_display
 
-# امتیاز داخلی
+# Internal score
 internal_score = 0.75
 display_score = score_to_display(internal_score)  # → 75
 
-# اعتماد داخلی
+# Internal confidence
 internal_confidence = 0.85
 display_confidence = confidence_to_display(internal_confidence)  # → 85
 ```
@@ -34,13 +42,13 @@ from typing import Union
 
 def score_to_display(score: float) -> int:
     """
-    تبدیل امتیاز از محدوده [-1, +1] به [-100, +100]
+    Convert score from range [-1, +1] to [-100, +100].
     
     Args:
-        score: امتیاز داخلی بین -1 و +1
+        score: Internal score between -1 and +1
         
     Returns:
-        امتیاز نمایشی بین -100 و +100 (عدد صحیح)
+        Display score between -100 and +100 (integer)
         
     Examples:
         >>> score_to_display(1.0)
@@ -54,25 +62,25 @@ def score_to_display(score: float) -> int:
         >>> score_to_display(-1.0)
         -100
     """
-    # محدود کردن به [-1, +1]
+    # Limit to [-1, +1]
     score = max(-1.0, min(1.0, score))
     
-    # تبدیل به [-100, +100]
+    # Convert to [-100, +100]
     display_score = score * 100
     
-    # گرد کردن به عدد صحیح
+    # Round to integer
     return int(round(display_score))
 
 
 def confidence_to_display(confidence: float) -> int:
     """
-    تبدیل اعتماد از محدوده [0, 1] به [0, 100]
+    Convert confidence from range [0, 1] to [0, 100].
     
     Args:
-        confidence: اعتماد داخلی بین 0 و 1
+        confidence: Internal confidence between 0 and 1
         
     Returns:
-        اعتماد نمایشی بین 0 و 100 (عدد صحیح)
+        Display confidence between 0 and 100 (integer)
         
     Examples:
         >>> confidence_to_display(1.0)
@@ -84,28 +92,28 @@ def confidence_to_display(confidence: float) -> int:
         >>> confidence_to_display(0.0)
         0
     """
-    # محدود کردن به [0, 1]
+    # Limit to [0, 1]
     confidence = max(0.0, min(1.0, confidence))
     
-    # تبدیل به [0, 100]
+    # Convert to [0, 100]
     display_confidence = confidence * 100
     
-    # گرد کردن به عدد صحیح
+    # Round to integer
     return int(round(display_confidence))
 
 
 def display_to_score(display_score: Union[int, float]) -> float:
     """
-    تبدیل امتیاز نمایشی از [-100, +100] به [-1, +1]
+    Convert display score from [-100, +100] to [-1, +1].
     
-    این تابع برای زمانی است که نیاز به تبدیل معکوس داریم
-    (مثلاً دریافت ورودی از کاربر)
+    This function is for when we need reverse conversion
+    (e.g., receiving input from user).
     
     Args:
-        display_score: امتیاز نمایشی بین -100 و +100
+        display_score: Display score between -100 and +100
         
     Returns:
-        امتیاز داخلی بین -1 و +1
+        Internal score between -1 and +1
         
     Examples:
         >>> display_to_score(100)
@@ -117,22 +125,22 @@ def display_to_score(display_score: Union[int, float]) -> float:
         >>> display_to_score(-50)
         -0.5
     """
-    # محدود کردن به [-100, +100]
+    # Limit to [-100, +100]
     display_score = max(-100, min(100, display_score))
     
-    # تبدیل به [-1, +1]
+    # Convert to [-1, +1]
     return display_score / 100.0
 
 
 def display_to_confidence(display_confidence: Union[int, float]) -> float:
     """
-    تبدیل اعتماد نمایشی از [0, 100] به [0, 1]
+    Convert display confidence from [0, 100] to [0, 1].
     
     Args:
-        display_confidence: اعتماد نمایشی بین 0 و 100
+        display_confidence: Display confidence between 0 and 100
         
     Returns:
-        اعتماد داخلی بین 0 و 1
+        Internal confidence between 0 and 1
         
     Examples:
         >>> display_to_confidence(100)
@@ -142,23 +150,23 @@ def display_to_confidence(display_confidence: Union[int, float]) -> float:
         >>> display_to_confidence(0)
         0.0
     """
-    # محدود کردن به [0, 100]
+    # Limit to [0, 100]
     display_confidence = max(0, min(100, display_confidence))
     
-    # تبدیل به [0, 1]
+    # Convert to [0, 1]
     return display_confidence / 100.0
 
 
 def get_signal_label(score: float, use_persian: bool = False) -> str:
     """
-    تبدیل امتیاز به برچسب سیگنال
+    Convert score to signal label.
     
     Args:
-        score: امتیاز بین -1 و +1
-        use_persian: استفاده از برچسب فارسی
+        score: Score between -1 and +1
+        use_persian: Use Persian labels
         
     Returns:
-        برچسب سیگنال
+        Signal label
         
     Examples:
         >>> get_signal_label(0.95)
@@ -200,14 +208,14 @@ def get_signal_label(score: float, use_persian: bool = False) -> str:
 
 def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
     """
-    تبدیل اعتماد به برچسب کیفیت
+    Convert confidence to quality label.
     
     Args:
-        confidence: اعتماد بین 0 و 1
-        use_persian: استفاده از برچسب فارسی
+        confidence: Confidence between 0 and 1
+        use_persian: Use Persian labels
         
     Returns:
-        برچسب کیفیت
+        Quality label
         
     Examples:
         >>> get_confidence_label(0.95)
@@ -244,7 +252,7 @@ def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# مثال‌های استفاده
+# Usage Examples
 # ═══════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":

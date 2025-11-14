@@ -2,6 +2,11 @@
 Resilience Patterns - Circuit Breaker, Retry, Timeout, Bulkhead
 
 الگوهای مقاومتی برای افزایش قابلیت اطمینان میکروسرویس
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import asyncio

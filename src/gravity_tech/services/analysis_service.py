@@ -1,7 +1,12 @@
 """
-Technical Analysis Service - Main orchestrator
+Technical Analysis Service - Main Orchestrator
 
-This service coordinates all indicators and pattern detection
+This service coordinates all indicators and pattern detection.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from typing import List

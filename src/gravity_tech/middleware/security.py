@@ -1,5 +1,12 @@
 """
-Security middleware setup
+Security Middleware Setup
+
+HTTP Bearer token security configuration.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 from fastapi import FastAPI

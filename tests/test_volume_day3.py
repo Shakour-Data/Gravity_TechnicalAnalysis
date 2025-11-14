@@ -1,12 +1,13 @@
 """
-================================================================================
 TEST SUITE - DAY 3 VOLUME INDICATORS
-================================================================================
-Author:              Maria Gonzalez + Sarah O'Connor
-Created Date:        November 9, 2025
-Purpose:             Unit tests for 3 Day 3 volume indicators
-Test Coverage:       100% (all functions, edge cases, signals)
-================================================================================
+
+Unit tests for 3 Day 3 volume indicators.
+Test Coverage: 100% (all functions, edge cases, signals)
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import pytest

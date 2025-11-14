@@ -13,6 +13,12 @@ All analysis adheres to Dow Theory principles:
 - Trends have three phases
 - The market discounts all news
 - Volume confirms the trend
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 - Trends persist until definitive reversal signals appear
 """
 

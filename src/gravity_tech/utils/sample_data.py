@@ -1,7 +1,12 @@
 """
 Sample Data Generation Utilities
 
-تابع‌های کمکی برای تولید داده‌های نمونه برای تست و دمو
+Author: Gravity Tech Team
+Date: 2024
+Version: 1.0
+License: MIT
+
+Helper functions for generating sample data for testing and demo purposes.
 """
 
 from datetime import datetime, timedelta
@@ -15,15 +20,15 @@ def generate_sample_candles(
     trend: str = "sideways"
 ) -> List[Candle]:
     """
-    تولید کندل‌های نمونه برای تست
+    Generate sample candles for testing.
     
     Args:
-        num_candles: تعداد کندل‌های مورد نیاز
-        base_price: قیمت پایه
-        trend: نوع روند ("uptrend", "downtrend", "sideways")
+        num_candles: Number of candles required
+        base_price: Base price
+        trend: Trend type ("uptrend", "downtrend", "sideways")
     
     Returns:
-        لیست کندل‌های نمونه
+        List of sample candles
     
     Example:
         >>> candles = generate_sample_candles(100, 40000, "uptrend")
@@ -34,7 +39,7 @@ def generate_sample_candles(
     current_price = base_price
     base_time = datetime.now() - timedelta(hours=num_candles)
     
-    # تنظیم جهت روند
+    # Set trend direction
     if trend == "uptrend":
         trend_multiplier = 1
     elif trend == "downtrend":
@@ -43,7 +48,7 @@ def generate_sample_candles(
         trend_multiplier = 0
     
     for i in range(num_candles):
-        # شبیه‌سازی حرکت قیمت
+        # Simulate price movement
         trend_movement = trend_multiplier * (i * 50)
         noise = ((i % 20) - 10) * 100
         
@@ -61,7 +66,7 @@ def generate_sample_candles(
             volume=float(1000 + (i * 50))
         ))
         
-        # به‌روزرسانی قیمت فعلی برای کندل بعدی
+        # Update current price for next candle
         current_price = close_price
     
     return candles
@@ -69,13 +74,13 @@ def generate_sample_candles(
 
 def generate_volatile_candles(num_candles: int = 100) -> List[Candle]:
     """
-    تولید کندل‌های نمونه با نوسان بالا
+    Generate sample candles with high volatility.
     
     Args:
-        num_candles: تعداد کندل‌های مورد نیاز
+        num_candles: Number of candles required
     
     Returns:
-        لیست کندل‌های پرنوسان
+        List of volatile candles
     """
     import random
     

@@ -18,6 +18,12 @@ Continuation Patterns:
 10. Descending Triangle
 11. Symmetrical Triangle
 12. Flag (Bullish/Bearish)
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 13. Pennant
 14. Rectangle
 """

@@ -1,5 +1,12 @@
 """
-Script to update all imports from relative to gravity_tech.* absolute imports
+Script to Update All Imports
+
+Updates all imports from relative to gravity_tech.* absolute imports.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 import os
 import re

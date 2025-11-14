@@ -1,11 +1,16 @@
 """
 Test Multi-Horizon System
 
-اسکریپت تست کامل سیستم چند افقی:
-1. آموزش مدل با داده Bitcoin
-2. تحلیل و نمایش سه امتیاز (3d, 7d, 30d)
-3. تشخیص الگوها
-4. ایجاد توصیه‌ها
+Author: Gravity Tech Team
+Date: 2024
+Version: 1.0
+License: MIT
+
+Complete test script for multi-horizon system:
+1. Train model with Bitcoin data
+2. Analyze and display three scores (3d, 7d, 30d)
+3. Detect patterns
+4. Generate recommendations
 """
 
 import sys
@@ -27,7 +32,7 @@ import json
 
 def test_training():
     """
-    تست 1: آموزش مدل با Bitcoin
+    Test 1: Train model with Bitcoin.
     """
     print("\n" + "🧪"*35)
     print("TEST 1: TRAINING MULTI-HORIZON SYSTEM")
@@ -47,13 +52,13 @@ def test_training():
 
 def test_analysis(result):
     """
-    تست 2: تحلیل با مدل آموزش دیده
+    Test 2: Analysis with trained model.
     """
     print("\n" + "🧪"*35)
     print("TEST 2: MULTI-HORIZON ANALYSIS")
     print("🧪"*35)
     
-    # دریافت داده جدید (شبیه‌سازی)
+    # Get new data (simulation)
     candles = create_realistic_market_data(
         base_price=50000,
         candles_count=150,
@@ -64,28 +69,28 @@ def test_analysis(result):
     print(f"   Last candle: {candles[-1].timestamp}")
     print(f"   Price: ${candles[-1].close:,.2f}")
     
-    # استخراج ویژگی‌های فعلی
+    # Extract current features
     extractor = MultiHorizonFeatureExtractor(
         lookback_period=100,
         horizons=[3, 7, 30]
     )
     
-    # ویژگی‌های سطح 1
+    # Level 1 features
     features_l1 = extractor.extract_indicator_features(candles[-100:])
     
-    # ایجاد analyzer با مدل آموزش دیده
+    # Create analyzer with trained model
     analyzer_l1 = MultiHorizonTrendAnalyzer(
         result['learner_indicators']
     )
     
-    # تحلیل
+    # Analysis
     analysis_l1 = analyzer_l1.analyze(features_l1)
     
-    # نمایش نتیجه
+    # Display result
     analyzer_l1.print_analysis(analysis_l1)
     
     # ═══════════════════════════════════════════════════════════
-    # تست سطح 2
+    # Test level 2
     # ═══════════════════════════════════════════════════════════
     print("\n" + "-"*70)
     print("📊 LEVEL 2 ANALYSIS (Dimensions)")
@@ -110,7 +115,7 @@ def test_analysis(result):
 
 def test_pattern_detection(analyses):
     """
-    تست 3: تشخیص الگوها
+    Test 3: Pattern detection.
     """
     print("\n" + "🧪"*35)
     print("TEST 3: PATTERN DETECTION")
@@ -127,7 +132,7 @@ def test_pattern_detection(analyses):
     print(f"   Type: {analysis_l2.pattern.value}")
     print(f"   Confidence: {analysis_l2.pattern_confidence:.0%}")
     
-    # مقایسه
+    # Comparison
     if analysis_l1.pattern == analysis_l2.pattern:
         print(f"\n✅ Both levels agree: {analysis_l1.pattern.value}")
     else:
@@ -140,7 +145,7 @@ def test_pattern_detection(analyses):
 
 def test_recommendations(analyses):
     """
-    تست 4: توصیه‌ها
+    Test 4: Recommendations.
     """
     print("\n" + "🧪"*35)
     print("TEST 4: RECOMMENDATIONS")
@@ -163,13 +168,13 @@ def test_recommendations(analyses):
 
 def test_save_and_load():
     """
-    تست 5: ذخیره و بارگذاری
+    Test 5: Save & Load.
     """
     print("\n" + "🧪"*35)
     print("TEST 5: SAVE & LOAD")
     print("🧪"*35)
     
-    # بارگذاری مدل ذخیره شده
+    # Load saved model
     learner = load_trained_model(
         symbol="BTCUSDT",
         level="indicators",
@@ -178,7 +183,7 @@ def test_save_and_load():
     
     print("\n✅ Model loaded successfully")
     
-    # بررسی وزن‌ها
+    # Check weights
     for horizon in ['3d', '7d', '30d']:
         weights = learner.get_horizon_weights(horizon)
         print(f"\n{horizon.upper()}:")
@@ -191,7 +196,7 @@ def test_save_and_load():
 
 def generate_report(result, analyses):
     """
-    ایجاد گزارش نهایی
+    Generate final report.
     """
     print("\n" + "="*70)
     print("📊 FINAL TEST REPORT")
@@ -230,7 +235,7 @@ def generate_report(result, analyses):
         }
     }
     
-    # ذخیره گزارش
+    # Save report
     output_dir = Path(result['output_dir'])
     report_file = output_dir / "test_report.json"
     
@@ -239,7 +244,7 @@ def generate_report(result, analyses):
     
     print(f"\n✅ Report saved: {report_file}")
     
-    # نمایش خلاصه
+    # Display summary
     print("\n📈 SUMMARY:")
     print("-" * 70)
     print(f"Symbol: {config['symbol']}")
@@ -255,29 +260,29 @@ def generate_report(result, analyses):
 
 def run_all_tests():
     """
-    اجرای همه تست‌ها
+    Run all tests.
     """
     print("\n" + "🚀"*35)
     print("MULTI-HORIZON SYSTEM - FULL TEST SUITE")
-    print("🚀"*35)
+    print("="*35)
     
     try:
-        # Test 1: آموزش
+        # Test 1: Training
         result = test_training()
         
-        # Test 2: تحلیل
+        # Test 2: Analysis
         analyses = test_analysis(result)
         
-        # Test 3: تشخیص الگو
+        # Test 3: Pattern detection
         test_pattern_detection(analyses)
         
-        # Test 4: توصیه‌ها
+        # Test 4: Recommendations
         test_recommendations(analyses)
         
-        # Test 5: ذخیره/بارگذاری
+        # Test 5: Save/Load
         test_save_and_load()
         
-        # گزارش نهایی
+        # Final report
         generate_report(result, analyses)
         
         print("\n" + "="*70)

@@ -5,6 +5,11 @@ This module extracts features from historical candle data:
 - 10 trend indicator signals and confidences
 - 4 dimension scores (Indicators, Candlestick, Elliott, Classical)
 - Future returns as labels for supervised learning
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

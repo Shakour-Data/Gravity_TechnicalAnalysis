@@ -2,6 +2,11 @@
 Tests for Event-Driven Messaging Middleware
 
 Tests Kafka and RabbitMQ integration.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import pytest

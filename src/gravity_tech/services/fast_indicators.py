@@ -1,9 +1,13 @@
 """
 Fast Indicators Module - Performance-Optimized Technical Indicators
-===================================================================
 
 This module integrates performance_optimizer with existing indicators
 providing 10000x speed improvement while maintaining compatibility.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import numpy as np

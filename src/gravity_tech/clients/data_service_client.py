@@ -13,6 +13,12 @@ Responsibilities:
 NOT responsible for:
 - Raw data fetching (Alpha Vantage, CODAL, etc.)
 - Data cleaning or validation
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
 - Adjustment calculations
 """
 

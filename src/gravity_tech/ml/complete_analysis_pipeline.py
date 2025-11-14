@@ -1,6 +1,5 @@
 """
 Complete Analysis Pipeline - خط لوله تحلیل کامل
-====================================================
 
 این ماژول تمام اجزای سیستم تحلیل تکنیکال را به هم متصل می‌کند:
 
@@ -13,6 +12,12 @@ Layer 1: Base Dimensions (5 بُعد پایه)
 
 Layer 2: Volume-Dimension Matrix
     → 5 تعامل (Volume × هر بُعد)
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
+"""
     → تعدیل امتیازها
 
 Layer 3: 5-Dimensional Decision Matrix
