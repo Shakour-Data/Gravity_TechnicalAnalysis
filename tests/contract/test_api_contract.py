@@ -6,25 +6,35 @@ with consumer services.
 """
 
 import pytest
-from pact import Consumer, Provider, Like, EachLike, Term
+
+# Try to import pact, skip all tests if not available
+try:
+    from pact import Consumer, Provider, Like, EachLike, Term
+    PACT_AVAILABLE = True
+except ImportError:
+    PACT_AVAILABLE = False
+    pytestmark = pytest.mark.skip(reason="pact-python library not installed")
 import atexit
 import os
 from pathlib import Path
 
 
-# Setup Pact
-PACT_DIR = Path(__file__).parent.parent.parent / "pacts"
-PACT_DIR.mkdir(exist_ok=True)
+# Setup Pact (only if available)
+if PACT_AVAILABLE:
+    PACT_DIR = Path(__file__).parent.parent.parent / "pacts"
+    PACT_DIR.mkdir(exist_ok=True)
 
-pact = Consumer('TechAnalysisConsumer').has_pact_with(
-    Provider('TechAnalysisAPI'),
-    pact_dir=str(PACT_DIR),
-    host_name='localhost',
-    port=8000
-)
+    pact = Consumer('TechAnalysisConsumer').has_pact_with(
+        Provider('TechAnalysisAPI'),
+        pact_dir=str(PACT_DIR),
+        host_name='localhost',
+        port=8000
+    )
 
-# Cleanup
-atexit.register(pact.stop)
+    # Cleanup
+    atexit.register(pact.stop)
+else:
+    pact = None
 
 
 @pytest.fixture(scope='session')
