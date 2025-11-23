@@ -56,6 +56,8 @@ class TrendIndicators:
     
     @staticmethod
     def sma(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for SMA")
         """
         Simple Moving Average
         
@@ -106,6 +108,8 @@ class TrendIndicators:
     
     @staticmethod
     def ema(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for EMA")
         """
         Exponential Moving Average
         
@@ -153,6 +157,8 @@ class TrendIndicators:
     
     @staticmethod
     def wma(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for WMA")
         """
         Weighted Moving Average
         
@@ -208,6 +214,8 @@ class TrendIndicators:
     
     @staticmethod
     def dema(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for DEMA")
         """
         Double Exponential Moving Average
         DEMA = 2*EMA - EMA(EMA)
@@ -258,6 +266,8 @@ class TrendIndicators:
     
     @staticmethod
     def tema(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for TEMA")
         """
         Triple Exponential Moving Average
         TEMA = 3*EMA - 3*EMA(EMA) + EMA(EMA(EMA))
@@ -309,6 +319,8 @@ class TrendIndicators:
     
     @staticmethod
     def macd(candles: List[Candle], fast: int = 12, slow: int = 26, signal_period: int = 9) -> IndicatorResult:
+        if not candles or len(candles) < max(fast, slow, signal_period) or fast <= 0 or slow <= 0 or signal_period <= 0:
+            raise ValueError("Not enough candles or invalid period for MACD")
         """
         Moving Average Convergence Divergence
         
@@ -370,6 +382,8 @@ class TrendIndicators:
     
     @staticmethod
     def adx(candles: List[Candle], period: int = 14) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for ADX")
         """
         Average Directional Index
         Measures trend strength
@@ -485,4 +499,356 @@ class TrendIndicators:
         if len(candles) >= 28:
             results.append(TrendIndicators.adx(candles, 14))
         
+        # New indicators for v1.1.0
+        if len(candles) >= 20:
+            results.append(TrendIndicators.donchian_channels(candles, 20))
+            results.append(TrendIndicators.aroon(candles, 25))
+            results.append(TrendIndicators.vortex_indicator(candles, 14))
+            results.append(TrendIndicators.mcginley_dynamic(candles, 20))
+        
         return results
+    
+    @staticmethod
+    def donchian_channels(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        """
+        Donchian Channels - Trend breakout indicator
+        
+        Developed by Richard Donchian, measures volatility and identifies breakouts.
+        Upper band = highest high over period
+        Lower band = lowest low over period
+        Middle band = (Upper + Lower) / 2
+        
+        Args:
+            candles: List of candles
+            period: Lookback period (default: 20)
+            
+        Returns:
+            IndicatorResult with breakout signal
+        """
+        if len(candles) < period:
+            raise ValueError(f"Need at least {period} candles for Donchian Channels")
+        
+        highs = np.array([c.high for c in candles])
+        lows = np.array([c.low for c in candles])
+        closes = np.array([c.close for c in candles])
+        
+        # Calculate bands
+        upper_band = pd.Series(highs).rolling(window=period).max()
+        lower_band = pd.Series(lows).rolling(window=period).min()
+        middle_band = (upper_band + lower_band) / 2
+        
+        current_price = closes[-1]
+        current_upper = upper_band.iloc[-1]
+        current_lower = lower_band.iloc[-1]
+        current_middle = middle_band.iloc[-1]
+        
+        # Calculate channel width (volatility measure)
+        channel_width = ((current_upper - current_lower) / current_middle) * 100
+        
+        # Price position within channel (0-100%)
+        price_position = ((current_price - current_lower) / (current_upper - current_lower)) * 100
+        
+        # Signal generation
+        if current_price >= current_upper:
+            signal = SignalStrength.VERY_BULLISH
+            description = "شکست سقف کانال دانچین - سیگنال خرید قوی (Breakout above upper band)"
+        elif current_price >= current_upper * 0.995:
+            signal = SignalStrength.BULLISH
+            description = "نزدیک به سقف کانال - روند صعودی (Near upper band)"
+        elif price_position > 65:
+            signal = SignalStrength.BULLISH_BROKEN
+            description = "بالای میانگین کانال - روند صعودی ضعیف (Above middle)"
+        elif current_price <= current_lower:
+            signal = SignalStrength.VERY_BEARISH
+            description = "شکست کف کانال - سیگنال فروش قوی (Breakout below lower band)"
+        elif current_price <= current_lower * 1.005:
+            signal = SignalStrength.BEARISH
+            description = "نزدیک به کف کانال - روند نزولی (Near lower band)"
+        elif price_position < 35:
+            signal = SignalStrength.BEARISH_BROKEN
+            description = "پایین میانگین کانال - روند نزولی ضعیف (Below middle)"
+        else:
+            signal = SignalStrength.NEUTRAL
+            description = "در میانه کانال - بدون روند مشخص (Middle of channel)"
+        
+        # Confidence based on channel width and position
+        volatility_factor = min(1.0, channel_width / 10)  # Normalized
+        position_certainty = abs(price_position - 50) / 50  # How far from middle
+        confidence = 0.5 + (volatility_factor * 0.2) + (position_certainty * 0.3)
+        confidence = min(0.95, confidence)
+        
+        return IndicatorResult(
+            indicator_name=f"Donchian Channels({period})",
+            category=IndicatorCategory.TREND,
+            signal=signal,
+            value=float(current_middle),
+            confidence=float(confidence),
+            description=description,
+            additional_values={
+                "upper_band": float(current_upper),
+                "middle_band": float(current_middle),
+                "lower_band": float(current_lower),
+                "channel_width_pct": float(channel_width),
+                "price_position_pct": float(price_position)
+            }
+        )
+    
+    @staticmethod
+    def aroon(candles: List[Candle], period: int = 25) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for Aroon")
+        """
+        Aroon Indicator - Trend strength and direction
+        
+        Developed by Tushar Chande to identify trend changes and strength.
+        Aroon Up = ((period - periods since highest high) / period) × 100
+        Aroon Down = ((period - periods since lowest low) / period) × 100
+        Aroon Oscillator = Aroon Up - Aroon Down
+        
+        Args:
+            candles: List of candles
+            period: Lookback period (default: 25)
+            
+        Returns:
+            IndicatorResult with trend strength signal
+        """
+        if len(candles) < period:
+            raise ValueError(f"Need at least {period} candles for Aroon")
+        
+        highs = np.array([c.high for c in candles[-period:]])
+        lows = np.array([c.low for c in candles[-period:]])
+        
+        # Find periods since highest high and lowest low
+        periods_since_high = period - 1 - np.argmax(highs)
+        periods_since_low = period - 1 - np.argmin(lows)
+        
+        # Calculate Aroon Up and Down
+        aroon_up = ((period - periods_since_high) / period) * 100
+        aroon_down = ((period - periods_since_low) / period) * 100
+        aroon_oscillator = aroon_up - aroon_down
+        
+        # Signal generation based on Aroon values
+        if aroon_up > 90 and aroon_down < 30:
+            signal = SignalStrength.VERY_BULLISH
+            description = f"روند صعودی بسیار قوی - Aroon Up: {aroon_up:.1f}% (Strong uptrend)"
+        elif aroon_up > 70 and aroon_down < 50:
+            signal = SignalStrength.BULLISH
+            description = f"روند صعودی - Aroon Up: {aroon_up:.1f}% (Uptrend)"
+        elif aroon_oscillator > 25:
+            signal = SignalStrength.BULLISH_BROKEN
+            description = f"روند صعودی ضعیف - Oscillator: {aroon_oscillator:.1f} (Weak uptrend)"
+        elif aroon_down > 90 and aroon_up < 30:
+            signal = SignalStrength.VERY_BEARISH
+            description = f"روند نزولی بسیار قوی - Aroon Down: {aroon_down:.1f}% (Strong downtrend)"
+        elif aroon_down > 70 and aroon_up < 50:
+            signal = SignalStrength.BEARISH
+            description = f"روند نزولی - Aroon Down: {aroon_down:.1f}% (Downtrend)"
+        elif aroon_oscillator < -25:
+            signal = SignalStrength.BEARISH_BROKEN
+            description = f"روند نزولی ضعیف - Oscillator: {aroon_oscillator:.1f} (Weak downtrend)"
+        else:
+            signal = SignalStrength.NEUTRAL
+            description = f"بدون روند مشخص - Up/Down متعادل (No clear trend)"
+        
+        # Confidence based on strength of signal
+        trend_strength = max(aroon_up, aroon_down) / 100
+        oscillator_strength = abs(aroon_oscillator) / 100
+        confidence = 0.5 + (trend_strength * 0.25) + (oscillator_strength * 0.25)
+        confidence = min(0.95, confidence)
+        
+        return IndicatorResult(
+            indicator_name=f"Aroon({period})",
+            category=IndicatorCategory.TREND,
+            signal=signal,
+            value=float(aroon_oscillator),
+            confidence=float(confidence),
+            description=description,
+            additional_values={
+                "aroon_up": float(aroon_up),
+                "aroon_down": float(aroon_down),
+                "aroon_oscillator": float(aroon_oscillator),
+                "periods_since_high": int(periods_since_high),
+                "periods_since_low": int(periods_since_low)
+            }
+        )
+    
+    @staticmethod
+    def vortex_indicator(candles: List[Candle], period: int = 14) -> IndicatorResult:
+        if not candles or len(candles) < period + 1 or period <= 0:
+            raise ValueError("Not enough candles or invalid period for Vortex Indicator")
+        """
+        Vortex Indicator (VI) - Trend direction and strength
+        
+        Developed by Etienne Botes and Douglas Siepman to identify trend start/end.
+        VI+ = Sum of |High[i] - Low[i-1]| / Sum of True Range
+        VI- = Sum of |Low[i] - High[i-1]| / Sum of True Range
+        
+        Args:
+            candles: List of candles
+            period: Lookback period (default: 14)
+            
+        Returns:
+            IndicatorResult with vortex signal
+        """
+        if len(candles) < period + 1:
+            raise ValueError(f"Need at least {period + 1} candles for Vortex Indicator")
+        
+        highs = np.array([c.high for c in candles])
+        lows = np.array([c.low for c in candles])
+        closes = np.array([c.close for c in candles])
+        
+        # Calculate vortex movements
+        vortex_plus = np.abs(highs[1:] - lows[:-1])
+        vortex_minus = np.abs(lows[1:] - highs[:-1])
+        
+        # Calculate True Range
+        high_low = highs[1:] - lows[1:]
+        high_close = np.abs(highs[1:] - closes[:-1])
+        low_close = np.abs(lows[1:] - closes[:-1])
+        true_range = np.maximum(high_low, np.maximum(high_close, low_close))
+        
+        # Calculate VI+ and VI-
+        vi_plus_sum = pd.Series(vortex_plus).rolling(window=period).sum()
+        vi_minus_sum = pd.Series(vortex_minus).rolling(window=period).sum()
+        true_range_sum = pd.Series(true_range).rolling(window=period).sum()
+        
+        vi_plus = vi_plus_sum / true_range_sum
+        vi_minus = vi_minus_sum / true_range_sum
+        
+        current_vi_plus = vi_plus.iloc[-1]
+        current_vi_minus = vi_minus.iloc[-1]
+        vi_diff = current_vi_plus - current_vi_minus
+        
+        # Signal generation
+        if current_vi_plus > current_vi_minus and current_vi_plus > 1.1:
+            signal = SignalStrength.VERY_BULLISH
+            description = f"روند صعودی قوی - VI+: {current_vi_plus:.3f} > VI-: {current_vi_minus:.3f}"
+        elif current_vi_plus > current_vi_minus and vi_diff > 0.05:
+            signal = SignalStrength.BULLISH
+            description = f"روند صعودی - VI+ بالاتر از VI- (Uptrend confirmed)"
+        elif current_vi_plus > current_vi_minus:
+            signal = SignalStrength.BULLISH_BROKEN
+            description = f"روند صعودی ضعیف - VI+ کمی بالاتر (Weak uptrend)"
+        elif current_vi_minus > current_vi_plus and current_vi_minus > 1.1:
+            signal = SignalStrength.VERY_BEARISH
+            description = f"روند نزولی قوی - VI-: {current_vi_minus:.3f} > VI+: {current_vi_plus:.3f}"
+        elif current_vi_minus > current_vi_plus and vi_diff < -0.05:
+            signal = SignalStrength.BEARISH
+            description = f"روند نزولی - VI- بالاتر از VI+ (Downtrend confirmed)"
+        elif current_vi_minus > current_vi_plus:
+            signal = SignalStrength.BEARISH_BROKEN
+            description = f"روند نزولی ضعیف - VI- کمی بالاتر (Weak downtrend)"
+        else:
+            signal = SignalStrength.NEUTRAL
+            description = "بدون روند مشخص - VI+ و VI- نزدیک هم (No clear trend)"
+        
+        # Confidence based on divergence between VI+ and VI-
+        divergence = abs(vi_diff)
+        confidence = 0.5 + min(0.45, divergence * 2)
+        
+        return IndicatorResult(
+            indicator_name=f"Vortex Indicator({period})",
+            category=IndicatorCategory.TREND,
+            signal=signal,
+            value=float(vi_diff),
+            confidence=float(confidence),
+            description=description,
+            additional_values={
+                "vi_plus": float(current_vi_plus),
+                "vi_minus": float(current_vi_minus),
+                "vi_difference": float(vi_diff)
+            }
+        )
+    
+    @staticmethod
+    def mcginley_dynamic(candles: List[Candle], period: int = 20, k_factor: float = 0.6) -> IndicatorResult:
+        """
+        McGinley Dynamic - Adaptive moving average
+        
+        Developed by John R. McGinley to track the market better than EMAs.
+        Automatically adjusts to market speed, reducing whipsaws.
+        
+        Formula: MD[i] = MD[i-1] + (Price - MD[i-1]) / (k × N × (Price/MD[i-1])^4)
+        
+        Args:
+            candles: List of candles
+            period: Period (default: 20)
+            k_factor: Adjustment factor (default: 0.6)
+            
+        Returns:
+            IndicatorResult with adaptive trend signal
+        """
+        if len(candles) < period:
+            raise ValueError(f"Need at least {period} candles for McGinley Dynamic")
+        
+        closes = np.array([c.close for c in candles])
+        
+        # Initialize with EMA
+        md = np.zeros(len(closes))
+        md[0] = closes[0]
+        
+        # Calculate McGinley Dynamic
+        for i in range(1, len(closes)):
+            if md[i-1] != 0:
+                ratio = closes[i] / md[i-1]
+                divisor = k_factor * period * (ratio ** 4)
+                divisor = max(1.0, divisor)  # Prevent division issues
+                md[i] = md[i-1] + (closes[i] - md[i-1]) / divisor
+            else:
+                md[i] = closes[i]
+        
+        current_md = md[-1]
+        current_price = closes[-1]
+        
+        # Calculate slope for trend direction
+        if len(md) >= 5:
+            recent_md = md[-5:]
+            slope = (recent_md[-1] - recent_md[0]) / 5
+            slope_pct = (slope / current_md) * 100
+        else:
+            slope_pct = 0
+        
+        # Price deviation from MD
+        deviation_pct = ((current_price - current_md) / current_md) * 100
+        
+        # Signal generation
+        if deviation_pct > 3 and slope_pct > 0.5:
+            signal = SignalStrength.VERY_BULLISH
+            description = f"قیمت بالای MD با شیب صعودی - سیگنال خرید قوی +{deviation_pct:.2f}%"
+        elif deviation_pct > 1 and slope_pct > 0:
+            signal = SignalStrength.BULLISH
+            description = f"روند صعودی - قیمت بالای MD +{deviation_pct:.2f}%"
+        elif deviation_pct > 0:
+            signal = SignalStrength.BULLISH_BROKEN
+            description = f"روند صعودی ضعیف - قیمت کمی بالای MD +{deviation_pct:.2f}%"
+        elif deviation_pct < -3 and slope_pct < -0.5:
+            signal = SignalStrength.VERY_BEARISH
+            description = f"قیمت پایین MD با شیب نزولی - سیگنال فروش قوی {deviation_pct:.2f}%"
+        elif deviation_pct < -1 and slope_pct < 0:
+            signal = SignalStrength.BEARISH
+            description = f"روند نزولی - قیمت پایین MD {deviation_pct:.2f}%"
+        elif deviation_pct < 0:
+            signal = SignalStrength.BEARISH_BROKEN
+            description = f"روند نزولی ضعیف - قیمت کمی پایین MD {deviation_pct:.2f}%"
+        else:
+            signal = SignalStrength.NEUTRAL
+            description = "قیمت نزدیک MD - بدون روند مشخص"
+        
+        # Confidence based on deviation and slope consistency
+        confidence = 0.6 + min(0.35, abs(deviation_pct) / 10) + min(0.05, abs(slope_pct))
+        confidence = min(0.95, confidence)
+        
+        return IndicatorResult(
+            indicator_name=f"McGinley Dynamic({period})",
+            category=IndicatorCategory.TREND,
+            signal=signal,
+            value=float(current_md),
+            confidence=float(confidence),
+            description=description,
+            additional_values={
+                "md_value": float(current_md),
+                "current_price": float(current_price),
+                "deviation_pct": float(deviation_pct),
+                "slope_pct": float(slope_pct)
+            }
+        )
