@@ -1,3 +1,185 @@
+"""Momentum indicators for Gravity Technical Analysis
+
+Implemented indicators:
+- True Strength Index (TSI)
+- Schaff Trend Cycle (simplified)
+- Connors RSI (CRSI)
+
+These functions return a dict with keys:
+ - values: np.ndarray of indicator values (float)
+ - signal: optional 'BUY'|'SELL'|None based on last value
+ - confidence: float in [0,1] (simple heuristic)
+
+Lightweight, well-documented implementations intended for Day 2.
+"""
+from typing import Dict, Any
+
+import numpy as np
+
+
+def _ema(values: np.ndarray, period: int) -> np.ndarray:
+    """Simple EMA implementation (vectorized).
+    """
+    alpha = 2.0 / (period + 1)
+    out = np.empty_like(values, dtype=float)
+    out[0] = values[0]
+    for i in range(1, len(values)):
+        out[i] = alpha * values[i] + (1 - alpha) * out[i - 1]
+    return out
+
+
+def tsi(prices: np.ndarray, r: int = 25, s: int = 13) -> Dict[str, Any]:
+    """True Strength Index (TSI).
+
+    TSI = 100 * (EMA(EMA(delta, r), s) / EMA(EMA(abs(delta), r), s))
+
+    Args:
+        prices: 1-D array of prices
+        r: first EMA period
+        s: second EMA period
+
+    Returns:
+        dict with values, signal, confidence
+    """
+    prices = np.asarray(prices, dtype=float)
+    if prices.size < max(r, s) + 2:
+        raise ValueError("insufficient data for TSI")
+
+    delta = np.diff(prices, prepend=prices[0])
+    abs_delta = np.abs(delta)
+
+    ema1 = _ema(delta, r)
+    ema2 = _ema(ema1, s)
+
+    ema1_abs = _ema(abs_delta, r)
+    ema2_abs = _ema(ema1_abs, s)
+
+    denom = np.where(ema2_abs == 0, 1e-8, ema2_abs)
+    tsi_values = 100.0 * (ema2 / denom)
+
+    last = tsi_values[-1]
+    signal = 'BUY' if last > 0 else 'SELL' if last < 0 else None
+    confidence = min(1.0, abs(last) / 100.0)
+
+    return {"values": tsi_values, "signal": signal, "confidence": float(confidence)}
+
+
+def schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, cycle: int = 10) -> Dict[str, Any]:
+    """Simplified Schaff Trend Cycle (STC) implementation.
+
+    Uses MACD (fast, slow) then applies a bounded stochastic over `cycle` to produce 0-100 output.
+    This is a simplified, robust version suitable for testing and initial integration.
+    """
+    prices = np.asarray(prices, dtype=float)
+    if prices.size < slow + cycle:
+        raise ValueError("insufficient data for Schaff Trend Cycle")
+
+    ema_fast = _ema(prices, fast)
+    ema_slow = _ema(prices, slow)
+    macd = ema_fast - ema_slow
+
+    # Percent K over MACD
+    stc = np.empty_like(macd)
+    for i in range(len(macd)):
+        start = max(0, i - cycle + 1)
+        window = macd[start:i + 1]
+        if window.size == 0:
+            stc[i] = 50.0
+        else:
+            mn = np.min(window)
+            mx = np.max(window)
+            denom = mx - mn if (mx - mn) != 0 else 1e-8
+            stc[i] = 100.0 * (macd[i] - mn) / denom
+
+    last = stc[-1]
+    signal = 'BUY' if last > 50 else 'SELL' if last < 50 else None
+    confidence = abs(last - 50.0) / 50.0
+    confidence = float(min(1.0, confidence))
+
+    return {"values": stc, "signal": signal, "confidence": confidence}
+
+
+def _rsi_from_changes(changes: np.ndarray, period: int = 3) -> np.ndarray:
+    gains = np.where(changes > 0, changes, 0.0)
+    losses = np.where(changes < 0, -changes, 0.0)
+    avg_gain = _ema(gains, period)
+    avg_loss = _ema(losses, period)
+    denom = avg_gain + avg_loss
+    # RSI scaled 0-100
+    rsi = 100.0 * (avg_gain / np.where(denom == 0, 1e-8, denom))
+    return rsi
+
+
+def connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2, roc_period: int = 100) -> Dict[str, Any]:
+    """Connors RSI (CRSI) composed of three components: short RSI, streak percentile, ROC percentile.
+
+    This simplified version computes:
+      CRSI = (RSI_short + Streak_RSI + ROC_RSI) / 3
+    """
+    prices = np.asarray(prices, dtype=float)
+    n = prices.size
+    if n < max(rsi_period, streak_period, 10):
+        raise ValueError("insufficient data for Connors RSI")
+
+    # 1) Short-term RSI
+    changes = np.diff(prices, prepend=prices[0])
+    rsi_short = _rsi_from_changes(changes, rsi_period)
+
+    # 2) Streak: consecutive up/down days
+    streak = np.zeros(n, dtype=float)
+    s = 0
+    for i in range(1, n):
+        if prices[i] > prices[i - 1]:
+            s = s + 1 if s >= 0 else 1
+        elif prices[i] < prices[i - 1]:
+            s = s - 1 if s <= 0 else -1
+        else:
+            s = 0
+        streak[i] = s
+
+    # Convert streak to pseudo-RSI by measuring its position in rolling window
+    streak_rsi = np.empty(n)
+    window = max(5, streak_period * 5)
+    for i in range(n):
+        start = max(0, i - window + 1)
+        win = streak[start:i + 1]
+        if win.size == 0:
+            streak_rsi[i] = 50.0
+        else:
+            mn = np.min(win)
+            mx = np.max(win)
+            denom = mx - mn if (mx - mn) != 0 else 1e-8
+            streak_rsi[i] = 100.0 * (streak[i] - mn) / denom
+
+    # 3) ROC percentile over roc_period
+    roc = np.empty(n)
+    for i in range(n):
+        if i < roc_period:
+            roc[i] = 0.0
+        else:
+            prev = prices[i - roc_period]
+            roc[i] = 100.0 * ((prices[i] - prev) / prev) if prev != 0 else 0.0
+
+    # Convert ROC to percentile within rolling window
+    roc_rsi = np.empty(n)
+    roc_window = max(10, roc_period // 10)
+    for i in range(n):
+        start = max(0, i - roc_window + 1)
+        win = roc[start:i + 1]
+        if win.size == 0:
+            roc_rsi[i] = 50.0
+        else:
+            mn = np.min(win)
+            mx = np.max(win)
+            denom = mx - mn if (mx - mn) != 0 else 1e-8
+            roc_rsi[i] = 100.0 * (roc[i] - mn) / denom
+
+    crsi_values = (rsi_short + streak_rsi + roc_rsi) / 3.0
+    last = crsi_values[-1]
+    signal = 'BUY' if last > 50 else 'SELL' if last < 50 else None
+    confidence = float(min(1.0, abs(last - 50.0) / 50.0))
+
+    return {"values": crsi_values, "signal": signal, "confidence": confidence}
 """
 ================================================================================
 FILE IDENTITY CARD (شناسنامه فایل)
@@ -53,6 +235,8 @@ class MomentumIndicators:
     
     @staticmethod
     def rsi(candles: List[Candle], period: int = 14) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for RSI")
         """
         Relative Strength Index
         
@@ -103,6 +287,8 @@ class MomentumIndicators:
     
     @staticmethod
     def stochastic(candles: List[Candle], k_period: int = 14, d_period: int = 3) -> IndicatorResult:
+        if not candles or len(candles) < k_period or k_period <= 0 or d_period <= 0:
+            raise ValueError("Not enough candles or invalid period for Stochastic")
         """
         Stochastic Oscillator
         
@@ -160,6 +346,8 @@ class MomentumIndicators:
     
     @staticmethod
     def cci(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for CCI")
         """
         Commodity Channel Index
         
@@ -208,6 +396,8 @@ class MomentumIndicators:
     
     @staticmethod
     def roc(candles: List[Candle], period: int = 12) -> IndicatorResult:
+        if not candles or len(candles) < period + 1 or period <= 0:
+            raise ValueError("Not enough candles or invalid period for ROC")
         """
         Rate of Change
         
@@ -251,6 +441,8 @@ class MomentumIndicators:
     
     @staticmethod
     def williams_r(candles: List[Candle], period: int = 14) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for Williams %R")
         """
         Williams %R
         
@@ -302,6 +494,8 @@ class MomentumIndicators:
     
     @staticmethod
     def mfi(candles: List[Candle], period: int = 14) -> IndicatorResult:
+        if not candles or len(candles) < period + 1 or period <= 0:
+            raise ValueError("Not enough candles or invalid period for MFI")
         """
         Money Flow Index
         
@@ -355,15 +549,15 @@ class MomentumIndicators:
             category=IndicatorCategory.MOMENTUM,
             signal=signal,
             value=float(mfi_current),
+            additional_values={"mfi": float(mfi_current)},
             confidence=confidence,
             description=f"جریان پول: {mfi_current:.1f}"
         )
     
     @staticmethod
-    def ultimate_oscillator(candles: List[Candle], 
-                           period1: int = 7, 
-                           period2: int = 14, 
-                           period3: int = 28) -> IndicatorResult:
+    def ultimate_oscillator(candles: List[Candle], period1: int = 7, period2: int = 14, period3: int = 28) -> IndicatorResult:
+        if not candles or len(candles) < 28:
+            raise ValueError("Not enough candles for Ultimate Oscillator")
         """
         Ultimate Oscillator
         
