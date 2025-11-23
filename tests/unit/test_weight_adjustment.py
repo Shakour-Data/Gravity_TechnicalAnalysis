@@ -7,7 +7,7 @@ from src.core.domain.entities import (
     IndicatorCategory,
     CoreSignalStrength as SignalStrength
 )
-from models.schemas import TechnicalAnalysisResult
+from gravity_tech.models.schemas import TechnicalAnalysisResult
 
 
 def create_indicator(name: str, category: IndicatorCategory, 

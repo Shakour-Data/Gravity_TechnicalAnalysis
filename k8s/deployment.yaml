@@ -5,14 +5,16 @@ metadata:
   namespace: tech-analysis-prod
   labels:
     app: technical-analysis
-    version: v1
+    version: v1.1.0
+    component: api
+    team: gravity-tech
 spec:
   replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+      maxSurge: 2       # Increase for faster rollout
+      maxUnavailable: 0  # Zero downtime deployment
   selector:
     matchLabels:
       app: technical-analysis
@@ -60,11 +62,11 @@ spec:
           
           resources:
             requests:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 1000m      # Increased for ML inference
+              memory: 1Gi     # Increased for ML models
             limits:
-              cpu: 2000m
-              memory: 2Gi
+              cpu: 4000m      # Allow burst for batch processing
+              memory: 4Gi     # ML models need more memory
           
           livenessProbe:
             httpGet:
@@ -104,12 +106,20 @@ spec:
               mountPath: /tmp
             - name: cache
               mountPath: /app/.cache
+            - name: ml-models
+              mountPath: /app/ml_models
+              readOnly: true
       
       volumes:
         - name: tmp
           emptyDir: {}
         - name: cache
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 1Gi  # Limit cache size
+        - name: ml-models
+          configMap:
+            name: ml-models-config
+            optional: true  # Allow startup without ML models
       
       # Service Account for RBAC
       automountServiceAccountToken: true

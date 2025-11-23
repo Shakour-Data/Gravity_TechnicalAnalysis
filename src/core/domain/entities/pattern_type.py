@@ -30,6 +30,9 @@ from enum import Enum
 
 
 class PatternType(str, Enum):
-    """Chart pattern types with Persian labels"""
-    CLASSICAL = "کلاسیک"
-    CANDLESTICK = "کندل استیک"
+    """Chart pattern types"""
+    CLASSICAL = "CLASSICAL"
+    CANDLESTICK = "CANDLESTICK"
+    
+    def __str__(self) -> str:
+        return self.value

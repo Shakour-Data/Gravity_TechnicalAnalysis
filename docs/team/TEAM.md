@@ -262,30 +262,28 @@
 - **Hourly Rate:** $340/hour
 - **Team ID:** TM-011-QAL
 
-### 12. **Marco Rossi** - Security & Authentication Expert
-- **Location:** Rome, Italy
-- **IQ:** 185
-- **Experience:** 19 years
+### 12. **Dr. Hans Mueller** - Documentation & Technical Writing Lead
+- **Location:** Berlin, Germany
+- **IQ:** 181
+- **Experience:** 16 years
 - **Credentials:**
-  - MS in Cybersecurity, Politecnico di Milano
-  - Former Security Architect at Intesa Sanpaolo (7 years)
-  - CISSP and CEH certified
-  - Prevented multiple zero-day exploits
+  - PhD in Technical Communication, Technical University of Berlin
+  - Former Documentation Lead at SAP (6 years)
+  - Published author of technical documentation standards
+  - Expert in API documentation and user guides
 - **Specializations:**
-  - JWT and OAuth2.0
-  - API security and rate limiting
-  - Encryption and cryptography
-  - Security auditing and penetration testing
-- **Role:** Security implementation, authentication, vulnerability assessment
+  - API documentation (OpenAPI, Swagger)
+  - Technical writing and content strategy
+  - Documentation-as-code (MkDocs)
+  - User experience documentation
+- **Role:** Create comprehensive documentation, API guides, architecture diagrams
 - **Responsibilities:**
-  - Implement JWT authentication
-  - Design rate limiting and API protection
-  - Conduct security audits
-  - Ensure OWASP compliance
-- **Hourly Rate:** $380/hour
-- **Team ID:** TM-012-SAE
-
-### 13. **Dr. Hans Mueller** - Documentation & Technical Writing Lead
+  - Write all technical documentation
+  - Create API reference guides
+  - Design architecture diagrams
+  - Ensure documentation quality and completeness
+- **Hourly Rate:** $320/hour
+- **Team ID:** TM-012-DTL
 - **Location:** Berlin, Germany
 - **IQ:** 181
 - **Experience:** 16 years
@@ -325,14 +323,13 @@
 | 9 | Lars Andersson | DevOps Lead | Sweden | 183 | 18 years | $370 | TM-009-DIL |
 | 10 | Yuki Tanaka | ML Engineer | Japan | 188 | 16 years | $400 | TM-010-MLE |
 | 11 | Sarah O'Connor | QA Lead | Ireland | 182 | 17 years | $340 | TM-011-QAL |
-| 12 | Marco Rossi | Security Expert | Italy | 185 | 19 years | $380 | TM-012-SAE |
-| 13 | Dr. Hans Mueller | Documentation Lead | Germany | 181 | 16 years | $320 | TM-013-DTL |
+| 12 | Dr. Hans Mueller | Documentation Lead | Germany | 181 | 16 years | $320 | TM-012-DTL |
 
-**Total Team:** 13 world-class experts  
+**Total Team:** 12 world-class experts  
 **Average IQ:** 184  
 **Average Experience:** 18.5 years  
-**Combined Experience:** 240 years  
-**Geographic Diversity:** 11 countries
+**Combined Experience:** 222 years  
+**Geographic Diversity:** 10 countries
 
 ---
 
@@ -352,11 +349,10 @@
 | Lars Andersson | 30 | 24 | 720 | $370 | $266,400 |
 | Yuki Tanaka | 35 | 24 | 840 | $400 | $336,000 |
 | Sarah O'Connor | 30 | 24 | 720 | $340 | $244,800 |
-| Marco Rossi | 25 | 24 | 600 | $380 | $228,000 |
 | Dr. Mueller | 25 | 24 | 600 | $320 | $192,000 |
 
-**Total Development Cost:** $3,546,000 (6 months)  
-**Monthly Average:** $591,000
+**Total Development Cost:** $3,318,000 (6 months)  
+**Monthly Average:** $553,000
 
 ---
 
@@ -381,7 +377,6 @@ Software Team
 │   ├── DevOps: Lars Andersson
 │   ├── ML: Yuki Tanaka
 │   ├── QA: Sarah O'Connor
-│   ├── Security: Marco Rossi
 │   └── Documentation: Dr. Hans Mueller
 ```
 

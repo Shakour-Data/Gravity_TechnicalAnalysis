@@ -63,5 +63,5 @@ class IndicatorResult:
         """Validate indicator result data"""
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"confidence must be 0.0-1.0, got {self.confidence}")
-        if not self.indicator_name:
+        if not self.indicator_name or not self.indicator_name.strip():
             raise ValueError("indicator_name cannot be empty")

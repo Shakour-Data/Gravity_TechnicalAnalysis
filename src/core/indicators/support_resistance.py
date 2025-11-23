@@ -148,7 +148,12 @@ class SupportResistanceIndicators:
         nearest_price = fib_levels[nearest_level]
         
         # Signal based on trend and position
-        trend_up = candles[-1].close > candles[-10].close
+        # Use available candles for trend determination, minimum 2
+        trend_lookback = min(10, len(candles) - 1)
+        if trend_lookback >= 1:
+            trend_up = candles[-1].close > candles[-trend_lookback - 1].close
+        else:
+            trend_up = True  # Default to uptrend if insufficient data
         
         if trend_up:
             if nearest_level in ["0.236", "0.382"]:
@@ -312,21 +317,21 @@ class SupportResistanceIndicators:
     def calculate_all(candles: List[Candle]) -> List[IndicatorResult]:
         """
         Calculate all support/resistance indicators
-        
+
         Args:
             candles: List of candles
-            
+
         Returns:
             List of all support/resistance indicator results
         """
         results = []
-        
-        if len(candles) >= 10:
+
+        if len(candles) >= 1:
             results.append(SupportResistanceIndicators.pivot_points(candles))
             results.append(SupportResistanceIndicators.camarilla_pivots(candles))
-        
+
         if len(candles) >= 50:
             results.append(SupportResistanceIndicators.fibonacci_retracement(candles, 50))
             results.append(SupportResistanceIndicators.support_resistance_levels(candles, 50))
-        
+
         return results

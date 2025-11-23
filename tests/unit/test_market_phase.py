@@ -2,8 +2,8 @@
 Test Market Phase Analysis based on Dow Theory
 """
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle
-from analysis.market_phase import analyze_market_phase
+from gravity_tech.models.schemas import Candle
+from gravity_tech.analysis.market_phase import analyze_market_phase
 import numpy as np
 
 def generate_markup_phase_candles(count=100):

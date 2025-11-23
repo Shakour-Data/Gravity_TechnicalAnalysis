@@ -2,11 +2,16 @@
 Tests for Resilience Middleware
 
 Tests Circuit Breaker, Retry, Timeout, and Bulkhead patterns.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import pytest
 import asyncio
-from middleware.resilience import (
+from gravity_tech.middleware.resilience import (
     CircuitBreaker,
     retry_with_backoff,
     timeout,

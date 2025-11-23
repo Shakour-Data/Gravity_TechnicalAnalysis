@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gravity-technical-analysis"
-version = "1.0.0"
+version = "1.4.0"
 description = "Enterprise-grade technical analysis microservice with ML-powered indicators"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12.10,<3.13"
 license = {text = "MIT"}
 authors = [
     {name = "Shakour Alishahi", email = "shakour@gravity.ai"},
@@ -78,7 +78,10 @@ Issues = "https://github.com/GravityWavesMl/Gravity_TechAnalysis/issues"
 Changelog = "https://github.com/GravityWavesMl/Gravity_TechAnalysis/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["gravity_tech_analysis"]
+packages = {find = {where = ["src"]}}
+
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.black]
 line-length = 100

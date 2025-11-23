@@ -7,7 +7,7 @@ Test Classical Pattern Recognition
 import numpy as np
 from datetime import datetime, timedelta
 from src.core.domain.entities import Candle
-from patterns.classical import ClassicalPatterns
+from gravity_tech.patterns.classical import ClassicalPatterns
 
 
 def create_test_candles(pattern_type: str, num_candles: int = 50) -> list:

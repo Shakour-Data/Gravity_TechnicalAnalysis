@@ -4,8 +4,8 @@ Test to show Cycle score in final calculation
 import asyncio
 from datetime import datetime, timedelta
 from src.core.domain.entities import Candle
-from models.schemas import AnalysisRequest
-from services.analysis_service import TechnicalAnalysisService
+from gravity_tech.models.schemas import AnalysisRequest
+from gravity_tech.services.analysis_service import TechnicalAnalysisService
 import numpy as np
 
 async def test_cycle_scoring():

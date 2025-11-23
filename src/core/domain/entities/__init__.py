@@ -38,6 +38,9 @@ from .elliott_wave_result import ElliottWaveResult
 # Note: CoreSignalStrength (7-level) from signal_strength.py is the new standard
 # OldSignalStrength (3-level) from signal.py is kept for legacy Signal class
 
+# Alias for backward compatibility
+SignalStrength = CoreSignalStrength
+
 __all__ = [
     # Existing (Phase 2)
     "Candle",
@@ -50,6 +53,7 @@ __all__ = [
     
     # NEW (Phase 2.1)
     "CoreSignalStrength",  # From signal_strength.py (new, with Persian labels, 7 levels)
+    "SignalStrength",      # Alias for backward compatibility
     "IndicatorCategory",
     "IndicatorResult",
     "PatternType",

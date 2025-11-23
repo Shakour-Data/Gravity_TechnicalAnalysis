@@ -65,7 +65,7 @@ class PatternResult:
             raise ValueError(f"confidence must be 0.0-1.0, got {self.confidence}")
         if self.end_time < self.start_time:
             raise ValueError(f"end_time ({self.end_time}) must be >= start_time ({self.start_time})")
-        if not self.pattern_name:
+        if not self.pattern_name or not self.pattern_name.strip():
             raise ValueError("pattern_name cannot be empty")
         if self.price_target is not None and self.price_target <= 0:
             raise ValueError(f"price_target must be positive, got {self.price_target}")

@@ -2,12 +2,17 @@
 Tests for Cache Service
 
 Tests Redis cache manager with connection pooling.
+
+Author: Gravity Tech Team
+Date: November 14, 2025
+Version: 1.0.0
+License: MIT
 """
 
 import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
-from services.cache_service import CacheManager, cached
+from gravity_tech.services.cache_service import CacheManager, cached
 
 
 @pytest.fixture
@@ -16,6 +21,7 @@ def cache_manager():
     manager = CacheManager()
     # Mock Redis for testing
     manager.redis = AsyncMock()
+    manager._is_available = True  # Enable cache for testing
     return manager
 
 
@@ -66,21 +72,23 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_increment(self, cache_manager):
         """Test increment operation."""
-        cache_manager.redis.incr.return_value = 5
+        cache_manager.redis.incrby.return_value = 5
         
         result = await cache_manager.increment("counter_key")
         assert result == 5
-        cache_manager.redis.incr.assert_called_once_with("counter_key")
+        cache_manager.redis.incrby.assert_called_once_with("counter_key", 1)
     
     @pytest.mark.asyncio
     async def test_delete_pattern(self, cache_manager):
         """Test pattern-based deletion."""
-        cache_manager.redis.keys.return_value = [b'key1', b'key2', b'key3']
+        # Mock scan to return cursor and keys
+        cache_manager.redis.scan.return_value = (0, [b'key1', b'key2', b'key3'])
         cache_manager.redis.delete.return_value = 3
         
         result = await cache_manager.delete_pattern("test:*")
         assert result == 3
-        cache_manager.redis.keys.assert_called_once_with("test:*")
+        cache_manager.redis.scan.assert_called()
+        cache_manager.redis.delete.assert_called_once_with(b'key1', b'key2', b'key3')
     
     @pytest.mark.asyncio
     async def test_get_nonexistent_key(self, cache_manager):
@@ -125,7 +133,7 @@ class TestCachedDecorator:
             return f"computed_{arg1}_{arg2}"
         
         # Patch the cache manager
-        with patch('services.cache_service.cache_manager', mock_cache):
+        with patch('gravity_tech.services.cache_service.cache_manager', mock_cache):
             result = await expensive_function("a", "b")
             assert result == "cached_result"
             assert call_count == 0  # Function not called
@@ -145,7 +153,7 @@ class TestCachedDecorator:
             call_count += 1
             return f"computed_{arg1}_{arg2}"
         
-        with patch('services.cache_service.cache_manager', mock_cache):
+        with patch('gravity_tech.services.cache_service.cache_manager', mock_cache):
             result = await expensive_function("a", "b")
             assert result == "computed_a_b"
             assert call_count == 1  # Function called once
@@ -164,14 +172,18 @@ class TestCachedDecorator:
         async def analyze_symbol(symbol: str, timeframe: str):
             return f"result_{symbol}_{timeframe}"
         
-        with patch('services.cache_service.cache_manager', mock_cache):
+        with patch('gravity_tech.services.cache_service.cache_manager', mock_cache):
             await analyze_symbol("BTCUSDT", "1h")
             
-            # Check the cache key
+            # Check the cache key structure
             get_call_args = mock_cache.get.call_args[0]
-            assert "analysis" in get_call_args[0]
-            assert "BTCUSDT" in get_call_args[0]
-            assert "1h" in get_call_args[0]
+            cache_key = get_call_args[0]
+            # Key should have format: prefix:function_name:hash
+            assert cache_key.startswith("analysis:analyze_symbol:")
+            # The hash part should be a 32-character hex string (MD5)
+            hash_part = cache_key.split(":")[-1]
+            assert len(hash_part) == 32
+            assert all(c in '0123456789abcdef' for c in hash_part)
 
 
 class TestCacheConnectionPooling:
@@ -183,11 +195,13 @@ class TestCacheConnectionPooling:
         manager = CacheManager()
         
         # Mock the Redis and connection pool
-        with patch('services.cache_service.aioredis.Redis') as mock_redis, \
-             patch('services.cache_service.aioredis.ConnectionPool') as mock_pool:
+        with patch('gravity_tech.services.cache_service.aioredis.Redis') as mock_redis, \
+             patch('gravity_tech.services.cache_service.ConnectionPool') as mock_pool:
             
             mock_pool.return_value = Mock()
-            mock_redis.return_value = AsyncMock()
+            mock_redis_instance = AsyncMock()
+            mock_redis_instance.ping.return_value = True
+            mock_redis.return_value = mock_redis_instance
             
             await manager.initialize()
             
@@ -219,13 +233,13 @@ class TestCacheIntegration:
         """Test cache invalidation with patterns."""
         manager = CacheManager()
         manager.redis = AsyncMock()
+        manager._is_available = True
         
-        # Setup data
-        manager.redis.keys.return_value = [
-            b'analysis:BTCUSDT:1h',
-            b'analysis:BTCUSDT:4h',
-            b'analysis:ETHUSDT:1h'
-        ]
+        # Setup data - mock scan to return keys
+        manager.redis.scan.return_value = (
+            0,  # cursor
+            [b'analysis:BTCUSDT:1h', b'analysis:BTCUSDT:4h']
+        )
         manager.redis.delete.return_value = 2
         
         # Invalidate all BTCUSDT analysis
@@ -248,6 +262,7 @@ class TestCacheIntegration:
         """Test concurrent cache operations."""
         manager = CacheManager()
         manager.redis = AsyncMock()
+        manager._is_available = True
         manager.redis.get.return_value = b'{"value": "data"}'
         
         # Simulate concurrent access
@@ -271,7 +286,7 @@ class TestCacheErrorHandling:
         async def function_with_cache():
             return "computed_value"
         
-        with patch('services.cache_service.cache_manager', mock_cache):
+        with patch('gravity_tech.services.cache_service.cache_manager', mock_cache):
             # Should still execute function despite cache failure
             result = await function_with_cache()
             assert result == "computed_value"
@@ -285,9 +300,9 @@ class TestCacheErrorHandling:
         
         cache_manager.redis.setex.return_value = True
         
-        # Should handle gracefully
-        with pytest.raises(TypeError):
-            await cache_manager.set("key", NonSerializable())
+        # Should handle gracefully and return False (not raise exception)
+        result = await cache_manager.set("key", NonSerializable())
+        assert result is False  # Set should fail gracefully
 
 
 if __name__ == '__main__':

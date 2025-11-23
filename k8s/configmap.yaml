@@ -3,21 +3,24 @@ kind: ConfigMap
 metadata:
   name: technical-analysis-config
   namespace: tech-analysis-prod
+  labels:
+    app: technical-analysis
+    version: v1.1.0
 data:
   APP_NAME: "technical-analysis-service"
-  APP_VERSION: "1.0.0"
+  APP_VERSION: "1.1.0"
   ENVIRONMENT: "production"
   DEBUG: "False"
   HOST: "0.0.0.0"
   PORT: "8000"
-  WORKERS: "4"
+  WORKERS: "8"  # Increased for higher throughput
   
   # Cache
   REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
   REDIS_DB: "0"
   CACHE_ENABLED: "True"
-  CACHE_TTL: "300"
+  CACHE_TTL: "600"  # 10 minutes for production
   
   # Observability
   METRICS_ENABLED: "True"
@@ -25,6 +28,6 @@ data:
   LOG_LEVEL: "INFO"
   
   # Analysis
-  MAX_CANDLES: "1000"
+  MAX_CANDLES: "10000"  # Support larger datasets
   PARALLEL_PROCESSING: "True"
-  MAX_WORKERS: "10"
+  MAX_WORKERS: "16"     # More workers for ML inference

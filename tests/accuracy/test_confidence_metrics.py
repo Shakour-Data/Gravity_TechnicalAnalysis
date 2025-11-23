@@ -9,10 +9,10 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from ml.data_connector import DataConnector
-from ml.feature_extraction import FeatureExtractor
-from ml.ml_indicator_weights import IndicatorWeightLearner
-from ml.ml_dimension_weights import DimensionWeightLearner
+from gravity_tech.ml.data_connector import DataConnector
+from gravity_tech.ml.feature_extraction import FeatureExtractor
+from gravity_tech.ml.ml_indicator_weights import IndicatorWeightLearner
+from gravity_tech.ml.ml_dimension_weights import DimensionWeightLearner
 
 def main():
     print("="*60)

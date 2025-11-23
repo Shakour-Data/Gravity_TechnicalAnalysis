@@ -30,10 +30,13 @@ from enum import Enum
 
 
 class IndicatorCategory(str, Enum):
-    """Technical indicator categories with Persian labels"""
-    TREND = "روند"
-    MOMENTUM = "مومنتوم"
-    CYCLE = "سیکل"
-    VOLUME = "حجم"
-    VOLATILITY = "نوسان"
-    SUPPORT_RESISTANCE = "حمایت و مقاومت"
+    """Technical indicator categories"""
+    TREND = "TREND"
+    MOMENTUM = "MOMENTUM"
+    CYCLE = "CYCLE"
+    VOLUME = "VOLUME"
+    VOLATILITY = "VOLATILITY"
+    SUPPORT_RESISTANCE = "SUPPORT_RESISTANCE"
+    
+    def __str__(self) -> str:
+        return self.value
