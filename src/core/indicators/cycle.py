@@ -52,9 +52,10 @@ from src.core.domain.entities import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class CycleResult:
     """Result of a cycle indicator calculation"""
+    indicator_name: str  # Name of the indicator
     value: float  # Raw indicator value
     normalized: float  # Normalized to [-1, +1] for ML
     phase: float  # Cycle phase [0, 360] degrees
@@ -69,6 +70,8 @@ class CycleIndicators:
     
     @staticmethod
     def dpo(candles: List[Candle], period: int = 20) -> CycleResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for DPO")
         """
         Detrended Price Oscillator (DPO)
         
@@ -117,6 +120,7 @@ class CycleIndicators:
             description = "نزدیک مرکز سیکل"
         
         return CycleResult(
+            indicator_name=f"DPO({period})",
             value=current_dpo,
             normalized=normalized,
             phase=phase,
@@ -128,6 +132,8 @@ class CycleIndicators:
     
     @staticmethod
     def ehlers_cycle_period(candles: List[Candle], smooth_period: int = 5) -> CycleResult:
+        if not candles or len(candles) < smooth_period or smooth_period <= 0:
+            raise ValueError("Not enough candles or invalid smooth_period for Ehlers Cycle Period")
         """Ehler's Cycle Period Detector using Hilbert Transform"""
         closes = np.array([c.close for c in candles])
         smooth = pd.Series(closes).rolling(window=smooth_period).mean().fillna(method='bfill')
@@ -176,6 +182,7 @@ class CycleIndicators:
             description = "سیکل عادی"
         
         return CycleResult(
+            indicator_name=f"Ehlers Cycle Period({smooth_period})",
             value=float(cycle_period),
             normalized=normalized,
             phase=current_phase,
@@ -187,6 +194,8 @@ class CycleIndicators:
     
     @staticmethod
     def dominant_cycle(candles: List[Candle], min_period: int = 8, max_period: int = 50) -> CycleResult:
+        if not candles or len(candles) < min_period * 2 or min_period <= 0 or max_period <= 0:
+            raise ValueError("Not enough candles or invalid period for Dominant Cycle")
         """Dominant Cycle using Autocorrelation"""
         closes = np.array([c.close for c in candles])
         prices = pd.Series(closes)
@@ -229,6 +238,7 @@ class CycleIndicators:
             description = "وسط سیکل"
         
         return CycleResult(
+            indicator_name=f"Dominant Cycle({min_period},{max_period})",
             value=float(best_period),
             normalized=normalized,
             phase=phase,
@@ -241,6 +251,8 @@ class CycleIndicators:
     @staticmethod
     @staticmethod
     def schaff_trend_cycle(candles: List[Candle], fast: int = 23, slow: int = 50, cycle: int = 10) -> IndicatorResult:
+        if not candles or len(candles) < max(fast, slow, cycle) or fast <= 0 or slow <= 0 or cycle <= 0:
+            raise ValueError("Not enough candles or invalid period for Schaff Trend Cycle")
         """Schaff Trend Cycle (STC) - Returns IndicatorResult for backward compatibility"""
         closes = np.array([c.close for c in candles])
         ema_fast = pd.Series(closes).ewm(span=fast, adjust=False).mean()
@@ -293,6 +305,8 @@ class CycleIndicators:
     
     @staticmethod
     def phase_accumulation(candles: List[Candle], period: int = 14) -> CycleResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for Phase Accumulation")
         """Phase Accumulation Indicator"""
         closes = np.array([c.close for c in candles])
         returns = np.diff(closes) / closes[:-1]
@@ -300,12 +314,15 @@ class CycleIndicators:
         smooth_returns = pd.Series(returns).rolling(window=period).mean().fillna(0)
         phase_changes = smooth_returns * 180
         accumulated_phase = np.cumsum(phase_changes)
-        current_phase = accumulated_phase[-1] % 360
+        
+        # pandas Series requires .iloc for position-based indexing
+        current_phase_raw = accumulated_phase.iloc[-1]
+        current_phase = current_phase_raw % 360
         if current_phase < 0:
             current_phase += 360
         
         normalized = np.sin(np.radians(current_phase))
-        full_rotations = abs(accumulated_phase[-1]) // 360
+        full_rotations = abs(current_phase_raw) // 360
         cycle_period = len(closes) // int(full_rotations) if full_rotations > 0 else period * 2
         
         if current_phase < 45 or current_phase >= 315:
@@ -330,6 +347,7 @@ class CycleIndicators:
             description = "انتقال فاز"
         
         return CycleResult(
+            indicator_name=f"Hilbert Transform Phase({period})",
             value=current_phase,
             normalized=normalized,
             phase=current_phase,
@@ -341,6 +359,8 @@ class CycleIndicators:
     
     @staticmethod
     def hilbert_transform_phase(candles: List[Candle], period: int = 7) -> CycleResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for Hilbert Transform Phase")
         """Hilbert Transform for Phase Detection"""
         closes = np.array([c.close for c in candles])
         smooth = pd.Series(closes).rolling(window=period).mean().fillna(method='bfill')
@@ -395,6 +415,7 @@ class CycleIndicators:
             description = "انتقال"
         
         return CycleResult(
+            indicator_name=f"Hilbert Transform Phase({period})",
             value=current_phase,
             normalized=normalized,
             phase=current_phase,
@@ -406,6 +427,8 @@ class CycleIndicators:
     
     @staticmethod
     def market_cycle_model(candles: List[Candle], lookback: int = 50) -> CycleResult:
+        if not candles or lookback <= 0:
+            raise ValueError("Not enough candles or invalid lookback for Market Cycle Model")
         """4-Phase Market Cycle Model"""
         if len(candles) < lookback:
             lookback = len(candles)
@@ -469,6 +492,7 @@ class CycleIndicators:
         cycle_period = 40
         
         return CycleResult(
+            indicator_name=f"Market Cycle Model({lookback})",
             value=phase,
             normalized=normalized,
             phase=phase,
@@ -480,6 +504,8 @@ class CycleIndicators:
     
     @staticmethod
     def sine_wave(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        if not candles or len(candles) < period or period <= 0:
+            raise ValueError("Not enough candles or invalid period for Sine Wave")
         """
         Sine Wave Indicator using Hilbert Transform
         
@@ -608,9 +634,9 @@ class CycleIndicators:
         return phase
     
     @staticmethod
-    def calculate_all(candles: List[Candle]) -> dict:
-        """Calculate all cycle indicators - Note: schaff_trend_cycle excluded as it returns IndicatorResult"""
-        results = {
+    def calculate_all(candles: List[Candle]) -> List[IndicatorResult]:
+        """Calculate all cycle indicators - Returns list of IndicatorResult for analysis service"""
+        cycle_results = {
             'dpo': CycleIndicators.dpo(candles),
             'ehlers_cycle': CycleIndicators.ehlers_cycle_period(candles),
             'dominant_cycle': CycleIndicators.dominant_cycle(candles),
@@ -618,6 +644,20 @@ class CycleIndicators:
             'hilbert_transform': CycleIndicators.hilbert_transform_phase(candles),
             'market_cycle_model': CycleIndicators.market_cycle_model(candles),
         }
+        
+        # Convert CycleResult to IndicatorResult
+        results = [
+            convert_cycle_to_indicator_result(cycle_results['dpo'], "DPO"),
+            convert_cycle_to_indicator_result(cycle_results['ehlers_cycle'], "Ehlers Cycle"),
+            convert_cycle_to_indicator_result(cycle_results['dominant_cycle'], "Dominant Cycle"),
+            convert_cycle_to_indicator_result(cycle_results['phase_accumulation'], "Phase Accumulation"),
+            convert_cycle_to_indicator_result(cycle_results['hilbert_transform'], "Hilbert Transform"),
+            convert_cycle_to_indicator_result(cycle_results['market_cycle_model'], "Market Cycle"),
+            # Add sine_wave and schaff_trend_cycle which already return IndicatorResult
+            CycleIndicators.sine_wave(candles),
+            CycleIndicators.schaff_trend_cycle(candles),
+        ]
+        
         return results
     
     # Backward compatibility aliases
