@@ -22,7 +22,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.gravity_tech.database.database_manager import DatabaseManager
+from database.database_manager import DatabaseManager
 
 def main():
     print("=" * 70)
@@ -63,7 +63,6 @@ def main():
         print("   - tool_performance_stats")
         print("   - ml_weights_history")
         print("   - tool_recommendations_log")
-        print("   - historical_scores (Hybrid Architecture)")
         
         # Test write
         print()

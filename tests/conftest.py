@@ -31,7 +31,7 @@ def sample_candles():
     base_price = 40000
     base_time = datetime.now() - timedelta(days=100)
     
-    for i in range(2000):  # Increased from 100 to 2000 candles
+    for i in range(100):
         open_price = base_price + (i * 10)
         close_price = open_price + ((i % 10) - 5) * 50
         high_price = max(open_price, close_price) + 100
@@ -43,46 +43,10 @@ def sample_candles():
             high=high_price,
             low=low_price,
             close=close_price,
-            volume=1000 + (i * 10),
-            symbol="BTCUSDT",
-            timeframe="1h"
+            volume=1000 + (i * 10)
         ))
     
     return candles
-
-
-@pytest.fixture
-def trend_learner(sample_candles):
-    """Create and train trend weight learner."""
-    from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
-    from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
-    
-    # Extract features
-    extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
-    X, y = extractor.extract_training_dataset(sample_candles)
-    
-    # Create and train learner
-    learner = MultiHorizonWeightLearner()
-    learner.train(X, y)
-    
-    return learner
-
-
-@pytest.fixture
-def momentum_learner(sample_candles):
-    """Create and train momentum weight learner."""
-    from gravity_tech.ml.multi_horizon_momentum_features import MultiHorizonMomentumFeatureExtractor
-    from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
-    
-    # Extract features
-    extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d', '7d', '30d'])
-    X, y = extractor.extract_training_dataset(sample_candles)
-    
-    # Create and train learner
-    learner = MultiHorizonWeightLearner()
-    learner.train(X, y)
-    
-    return learner
 
 
 @pytest.fixture
@@ -237,23 +201,3 @@ def pytest_collection_modifyitems(config, items):
         # Add 'integration' marker to tests in integration/ folder
         if 'integration' in str(item.fspath):
             item.add_marker(pytest.mark.integration)
-
-
-@pytest.fixture
-def trend_learner():
-    """Create a MultiHorizonWeightLearner for trend analysis."""
-    from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
-    return MultiHorizonWeightLearner(horizons=['3d', '7d', '30d'])
-
-
-@pytest.fixture
-def momentum_learner():
-    """Create a MultiHorizonWeightLearner for momentum analysis."""
-    from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
-    return MultiHorizonWeightLearner(horizons=['3d', '7d', '30d'])
-
-
-@pytest.fixture
-def candles(sample_candles):
-    """Provide candles fixture for tests."""
-    return sample_candles

@@ -52,10 +52,9 @@ from gravity_tech.config.settings import settings
 from gravity_tech.api.v1 import router as api_v1_router
 from gravity_tech.middleware.logging import setup_logging
 from gravity_tech.middleware.security import setup_security
-# from gravity_tech.middleware.service_discovery import startup_service_discovery, shutdown_service_discovery
+from gravity_tech.middleware.service_discovery import startup_service_discovery, shutdown_service_discovery
 from gravity_tech.middleware.events import event_publisher
-from gravity_tech.services.cache_service import cache_manager, cache_warmer
-from gravity_tech.middleware.metrics import metrics_collector
+from gravity_tech.services.cache_service import cache_manager
 
 # Setup structured logging
 setup_logging()
@@ -97,8 +96,9 @@ This API follows semantic versioning. Current version: **v1**
 
 ## Rate Limiting
 
-- Standard: 1000 requests/hour
-- Enterprise: Custom limits (contact support)
+- Free tier: 100 requests/minute
+- Authenticated: 1000 requests/minute
+- Enterprise: Custom limits
 
 ## Support
 
@@ -161,16 +161,6 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     
     duration = time.time() - start_time
-    
-    # Record metrics
-    if settings.metrics_enabled:
-        metrics_collector.record_request(
-            method=request.method,
-            endpoint=request.url.path,
-            status_code=response.status_code,
-            duration=duration
-        )
-    
     logger.info(
         "request_completed",
         method=request.method,
@@ -191,10 +181,6 @@ from gravity_tech.api.v1.ml import router as ml_router
 app.include_router(patterns_router, prefix="/api/v1")
 app.include_router(ml_router, prefix="/api/v1")
 
-# Include Historical Analysis router (Hybrid Architecture)
-from gravity_tech.api.v1.historical import router as historical_router
-app.include_router(historical_router, prefix="/api/v1")
-
 # Prometheus metrics endpoint
 if settings.metrics_enabled:
     metrics_app = make_asgi_app()
@@ -208,17 +194,11 @@ async def startup_event():
     logger.info("application_startup", version=settings.app_version)
     
     # راه‌اندازی Redis Cache
-    try:
-        await cache_manager.initialize()
-        # Start cache warming in background
-        asyncio.create_task(cache_warmer.warm_common_symbols())
-        asyncio.create_task(cache_warmer.warm_ml_models())
-    except Exception as e:
-        logger.error("cache_initialization_failed", error=str(e))
+    await cache_manager.initialize()
     
     # راه‌اندازی Service Discovery
-    # if settings.eureka_enabled:
-    #     await startup_service_discovery()
+    if settings.eureka_enabled:
+        await startup_service_discovery()
     
     # راه‌اندازی Event Publisher (اختیاری)
     try:
@@ -229,44 +209,22 @@ async def startup_event():
     except Exception as e:
         logger.warning("event_publisher_initialization_failed", error=str(e))
     
-    # راه‌اندازی Data Ingestor برای ذخیره نتایج در دیتابیس
-    try:
-        await start_data_ingestor()
-    except Exception as e:
-        logger.warning("data_ingestor_initialization_failed", error=str(e))
-    
     logger.info("application_ready")
-    
-    # Set service info for metrics
-    if settings.metrics_enabled:
-        metrics_collector.set_service_info(settings.app_version, settings.environment)
 
 
 # Shutdown event
-# @app.on_event("shutdown")
+@app.on_event("shutdown")
 async def shutdown_event():
     """خاموش کردن سرویس"""
     logger.info("application_shutdown")
     
     # بستن اتصالات
-    try:
-        await cache_manager.close()
-    except Exception as e:
-        logger.error("cache_close_failed", error=str(e))
-    
-    try:
-        await event_publisher.close()
-    except Exception as e:
-        logger.error("event_publisher_close_failed", error=str(e))
-    
-    try:
-        await stop_data_ingestor()
-    except Exception as e:
-        logger.error("data_ingestor_close_failed", error=str(e))
+    await cache_manager.close()
+    await event_publisher.close()
     
     # حذف از Service Discovery
-    # if settings.eureka_enabled:
-    #     await shutdown_service_discovery()
+    if settings.eureka_enabled:
+        await shutdown_service_discovery()
     
     logger.info("application_stopped")
 

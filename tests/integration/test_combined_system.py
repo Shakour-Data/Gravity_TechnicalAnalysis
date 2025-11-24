@@ -17,31 +17,12 @@ import os
 # Add project path
 sys.path.insert(0, os.path.abspath('.'))
 
-
 from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
 from gravity_tech.ml.multi_horizon_momentum_features import MultiHorizonMomentumFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 from gravity_tech.ml.multi_horizon_analysis import MultiHorizonAnalyzer
 from gravity_tech.ml.multi_horizon_momentum_analysis import MultiHorizonMomentumAnalyzer
 from gravity_tech.ml.combined_trend_momentum_analysis import CombinedTrendMomentumAnalyzer
-
-# Import Candle entity for conversion
-from src.core.domain.entities import Candle
-def df_to_candles(df):
-    """Convert DataFrame to list of Candle objects."""
-    return [
-        Candle(
-            timestamp=row['timestamp'],
-            open=row['open'],
-            high=row['high'],
-            low=row['low'],
-            close=row['close'],
-            volume=row['volume'],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        for _, row in df.iterrows()
-    ]
 
 
 def create_realistic_market_data(
@@ -84,17 +65,12 @@ def create_realistic_market_data(
         'timestamp': dates,
         'close': prices
     })
-
-    # تولید اولیه
+    
+    df['high'] = df['close'] * (1 + np.abs(np.random.normal(0, 0.005, len(df))))
+    df['low'] = df['close'] * (1 - np.abs(np.random.normal(0, 0.005, len(df))))
     df['open'] = df['close'].shift(1).fillna(df['close'].iloc[0])
-    df['high'] = df[['open', 'close']].max(axis=1) * (1 + np.abs(np.random.normal(0, 0.005, len(df))))
-    df['low'] = df[['open', 'close']].min(axis=1) * (1 - np.abs(np.random.normal(0, 0.005, len(df))))
     df['volume'] = volumes
-
-    # تضمین سازگاری نهایی
-    df['high'] = df[['high', 'open', 'close']].max(axis=1)
-    df['low'] = df[['low', 'open', 'close']].min(axis=1)
-
+    
     return df
 
 
@@ -105,12 +81,11 @@ def test_trend_system():
     print("="*80)
     
     # Create data
-    df = create_realistic_market_data(num_samples=1500, trend='uptrend')
-    print(f"\n✅ Generated {len(df)} candles")
-    candles = df_to_candles(df)
-
+    candles = create_realistic_market_data(num_samples=1500, trend='uptrend')
+    print(f"\n✅ Generated {len(candles)} candles")
+    
     # Extract features
-    trend_extractor = MultiHorizonFeatureExtractor(lookback_period=30, horizons=[3, 7, 30])
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
     X_trend, Y_trend = trend_extractor.extract_training_dataset(candles)
     print(f"✅ Trend features: {X_trend.shape}")
     
@@ -129,9 +104,9 @@ def test_trend_system():
     trend_analysis = trend_analyzer.analyze(latest_features)
     
     print("\n📊 Trend Analysis Results:")
-    print(f"  3d Score: {trend_analysis.score_3d.score:+.3f} ({trend_analysis.score_3d.confidence:.0%})")
-    print(f"  7d Score: {trend_analysis.score_7d.score:+.3f} ({trend_analysis.score_7d.confidence:.0%})")
-    print(f"  30d Score: {trend_analysis.score_30d.score:+.3f} ({trend_analysis.score_30d.confidence:.0%})")
+    print(f"  3d Score: {trend_analysis.trend_3d.score:+.3f} ({trend_analysis.trend_3d.confidence:.0%})")
+    print(f"  7d Score: {trend_analysis.trend_7d.score:+.3f} ({trend_analysis.trend_7d.confidence:.0%})")
+    print(f"  30d Score: {trend_analysis.trend_30d.score:+.3f} ({trend_analysis.trend_30d.confidence:.0%})")
     
     return trend_learner, trend_analyzer, candles
 
@@ -194,10 +169,10 @@ def test_combined_system(
     # Extract latest features
     trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
     momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d', '7d', '30d'])
-
+    
     X_trend, _ = trend_extractor.extract_training_dataset(candles)
     X_momentum, _ = momentum_extractor.extract_training_dataset(candles)
-
+    
     trend_features = X_trend.iloc[-1].to_dict()
     momentum_features = X_momentum.iloc[-1].to_dict()
     
@@ -228,15 +203,14 @@ def test_different_scenarios():
         print("="*80)
         
         # Create data
-        df = create_realistic_market_data(num_samples=1500, trend=trend_type)
-        candles = df_to_candles(df)
-
+        candles = create_realistic_market_data(num_samples=1500, trend=trend_type)
+        
         # Training
         print("\n🔄 Training models...")
-
+        
         trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
         X_trend, Y_trend = trend_extractor.extract_training_dataset(candles)
-
+        
         momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d', '7d', '30d'])
         X_momentum, Y_momentum = momentum_extractor.extract_training_dataset(candles)
         
@@ -262,9 +236,9 @@ def test_different_scenarios():
         print("\n📋 Summary:")
         print(f"  Final Action:    {combined_analysis.final_action.value}")
         print(f"  Final Confidence: {combined_analysis.final_confidence:.0%}")
-        print(f"  3d Score:        {combined_analysis.combined_score_3d:+.3f} ({combined_analysis.confidence_3d:.0%})")
-        print(f"  7d Score:        {combined_analysis.combined_score_7d:+.3f} ({combined_analysis.confidence_7d:.0%})")
-        print(f"  30d Score:       {combined_analysis.combined_score_30d:+.3f} ({combined_analysis.confidence_30d:.0%})")
+        print(f"  3d Combined:     {combined_analysis.combined_score_3d:+.3f}")
+        print(f"  7d Combined:     {combined_analysis.combined_score_7d:+.3f}")
+        print(f"  30d Combined:    {combined_analysis.combined_score_30d:+.3f}")
 
 
 def main():

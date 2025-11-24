@@ -56,8 +56,6 @@ class TrendIndicators:
     
     @staticmethod
     def sma(candles: List[Candle], period: int = 20) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for SMA")
         """
         Simple Moving Average
         
@@ -108,8 +106,6 @@ class TrendIndicators:
     
     @staticmethod
     def ema(candles: List[Candle], period: int = 20) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for EMA")
         """
         Exponential Moving Average
         
@@ -157,8 +153,6 @@ class TrendIndicators:
     
     @staticmethod
     def wma(candles: List[Candle], period: int = 20) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for WMA")
         """
         Weighted Moving Average
         
@@ -214,8 +208,6 @@ class TrendIndicators:
     
     @staticmethod
     def dema(candles: List[Candle], period: int = 20) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for DEMA")
         """
         Double Exponential Moving Average
         DEMA = 2*EMA - EMA(EMA)
@@ -266,8 +258,6 @@ class TrendIndicators:
     
     @staticmethod
     def tema(candles: List[Candle], period: int = 20) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for TEMA")
         """
         Triple Exponential Moving Average
         TEMA = 3*EMA - 3*EMA(EMA) + EMA(EMA(EMA))
@@ -319,8 +309,6 @@ class TrendIndicators:
     
     @staticmethod
     def macd(candles: List[Candle], fast: int = 12, slow: int = 26, signal_period: int = 9) -> IndicatorResult:
-        if not candles or len(candles) < max(fast, slow, signal_period) or fast <= 0 or slow <= 0 or signal_period <= 0:
-            raise ValueError("Not enough candles or invalid period for MACD")
         """
         Moving Average Convergence Divergence
         
@@ -382,8 +370,6 @@ class TrendIndicators:
     
     @staticmethod
     def adx(candles: List[Candle], period: int = 14) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for ADX")
         """
         Average Directional Index
         Measures trend strength
@@ -595,8 +581,6 @@ class TrendIndicators:
     
     @staticmethod
     def aroon(candles: List[Candle], period: int = 25) -> IndicatorResult:
-        if not candles or len(candles) < period or period <= 0:
-            raise ValueError("Not enough candles or invalid period for Aroon")
         """
         Aroon Indicator - Trend strength and direction
         
@@ -674,8 +658,6 @@ class TrendIndicators:
     
     @staticmethod
     def vortex_indicator(candles: List[Candle], period: int = 14) -> IndicatorResult:
-        if not candles or len(candles) < period + 1 or period <= 0:
-            raise ValueError("Not enough candles or invalid period for Vortex Indicator")
         """
         Vortex Indicator (VI) - Trend direction and strength
         

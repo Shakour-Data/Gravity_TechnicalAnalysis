@@ -16,7 +16,6 @@ Created: November 7, 2025
 
 import pytest
 import numpy as np
-from datetime import datetime
 from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
 from src.core.indicators.trend import TrendIndicators
 
@@ -111,15 +110,8 @@ class TestDonchianChannels:
     
     def test_donchian_insufficient_data(self):
         """Test Donchian with insufficient candles"""
-        # Candle(timestamp, open, high, low, close, volume)
-        candles = [Candle(
-            timestamp=datetime.fromtimestamp(1699920000 + i*300),
-            open=100,
-            high=101,
-            low=99,
-            close=100,
-            volume=1000000
-        ) for i in range(10)]
+        # Candle(open, high, low, close, volume, timestamp)
+        candles = [Candle(100, 101, 99, 100, 1000000, 1699920000 + i*300) for i in range(10)]
         
         with pytest.raises(ValueError, match="Need at least 20 candles"):
             TrendIndicators.donchian_channels(candles, period=20)
@@ -171,14 +163,7 @@ class TestAroon:
     
     def test_aroon_insufficient_data(self):
         """Test Aroon with insufficient candles"""
-        candles = [Candle(
-            timestamp=datetime.fromtimestamp(1699920000 + i*300),
-            open=100,
-            high=101,
-            low=99,
-            close=100,
-            volume=1000000
-        ) for i in range(15)]
+        candles = [Candle(100, 101, 99, 100, 1000000, 1699920000 + i*300) for i in range(15)]
         
         with pytest.raises(ValueError, match="Need at least 25 candles"):
             TrendIndicators.aroon(candles, period=25)
@@ -222,14 +207,7 @@ class TestVortexIndicator:
     
     def test_vortex_insufficient_data(self):
         """Test Vortex with insufficient candles"""
-        candles = [Candle(
-            timestamp=datetime.fromtimestamp(1699920000 + i*300),
-            open=100,
-            high=101,
-            low=99,
-            close=100,
-            volume=1000000
-        ) for i in range(10)]
+        candles = [Candle(100, 101, 99, 100, 1000000, 1699920000 + i*300) for i in range(10)]
         
         with pytest.raises(ValueError, match="Need at least 15 candles"):
             TrendIndicators.vortex_indicator(candles, period=14)
@@ -286,14 +264,7 @@ class TestMcGinleyDynamic:
     
     def test_mcginley_insufficient_data(self):
         """Test McGinley with insufficient candles"""
-        candles = [Candle(
-            timestamp=datetime.fromtimestamp(1699920000 + i*300),
-            open=100,
-            high=101,
-            low=99,
-            close=100,
-            volume=1000000
-        ) for i in range(10)]
+        candles = [Candle(100, 101, 99, 100, 1000000, 1699920000 + i*300) for i in range(10)]
         
         with pytest.raises(ValueError, match="Need at least 20 candles"):
             TrendIndicators.mcginley_dynamic(candles, period=20)

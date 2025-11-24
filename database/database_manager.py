@@ -195,8 +195,7 @@ class DatabaseManager:
                     "tool_performance_history": [],
                     "tool_performance_stats": [],
                     "ml_weights_history": [],
-                    "tool_recommendations_log": [],
-                    "historical_scores": []
+                    "tool_recommendations_log": []
                 }
                 self._save_json()
             
@@ -223,43 +222,30 @@ class DatabaseManager:
     def _setup_postgresql_schema(self):
         """ساخت schema برای PostgreSQL"""
         
-        # Load main schema
         schema_file = Path(__file__).parent / "tool_performance_history.sql"
-        if schema_file.exists():
-            try:
-                with open(schema_file, 'r', encoding='utf-8') as f:
-                    schema_sql = f.read()
-                
-                conn = self.connection_pool.getconn()
-                cursor = conn.cursor()
-                cursor.execute(schema_sql)
-                conn.commit()
-                cursor.close()
-                self.connection_pool.putconn(conn)
-                
-                logger.info("✅ PostgreSQL tool_performance schema created")
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to create tool_performance schema: {e}")
         
-        # Load historical schema
-        historical_schema_file = Path(__file__).parent / "historical_schemas.sql"
-        if historical_schema_file.exists():
-            try:
-                with open(historical_schema_file, 'r', encoding='utf-8') as f:
-                    schema_sql = f.read()
-                
-                conn = self.connection_pool.getconn()
-                cursor = conn.cursor()
-                cursor.execute(schema_sql)
-                conn.commit()
-                cursor.close()
-                self.connection_pool.putconn(conn)
-                
-                logger.info("✅ PostgreSQL historical schema created")
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to create historical schema: {e}")
-        else:
-            logger.warning(f"⚠️ Historical schema file not found: {historical_schema_file}")
+        if not schema_file.exists():
+            logger.warning(f"⚠️ Schema file not found: {schema_file}")
+            return
+        
+        try:
+            with open(schema_file, 'r', encoding='utf-8') as f:
+                schema_sql = f.read()
+            
+            conn = self.connection_pool.getconn()
+            cursor = conn.cursor()
+            
+            # Execute schema
+            cursor.execute(schema_sql)
+            conn.commit()
+            
+            cursor.close()
+            self.connection_pool.putconn(conn)
+            
+            logger.info("✅ PostgreSQL schema created successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to create PostgreSQL schema: {e}")
+            # Don't raise - schema might already exist
     
     def _setup_sqlite_schema(self):
         """ساخت schema برای SQLite"""
@@ -398,56 +384,6 @@ class DatabaseManager:
         
         CREATE INDEX IF NOT EXISTS idx_recommendations_request 
             ON tool_recommendations_log(request_id);
-        
-        -- Historical Scores (Hybrid Architecture)
-        CREATE TABLE IF NOT EXISTS historical_scores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            
-            symbol TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            timeframe TEXT NOT NULL,
-            
-            trend_score REAL DEFAULT 0.0,
-            trend_confidence REAL DEFAULT 0.0,
-            momentum_score REAL DEFAULT 0.0,
-            momentum_confidence REAL DEFAULT 0.0,
-            combined_score REAL DEFAULT 0.0,
-            combined_confidence REAL DEFAULT 0.0,
-            
-            trend_weight REAL DEFAULT 0.5,
-            momentum_weight REAL DEFAULT 0.5,
-            
-            trend_signal TEXT DEFAULT 'NEUTRAL',
-            momentum_signal TEXT DEFAULT 'NEUTRAL',
-            combined_signal TEXT DEFAULT 'NEUTRAL',
-            
-            volume_score REAL DEFAULT 0.0,
-            volatility_score REAL DEFAULT 0.0,
-            cycle_score REAL DEFAULT 0.0,
-            support_resistance_score REAL DEFAULT 0.0,
-            
-            recommendation TEXT,
-            action TEXT,
-            price_at_analysis REAL,
-            
-            raw_data TEXT,
-            
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        
-        CREATE INDEX IF NOT EXISTS idx_historical_scores_symbol 
-            ON historical_scores(symbol);
-        CREATE INDEX IF NOT EXISTS idx_historical_scores_timeframe 
-            ON historical_scores(timeframe);
-        CREATE INDEX IF NOT EXISTS idx_historical_scores_timestamp 
-            ON historical_scores(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_historical_scores_symbol_timeframe 
-            ON historical_scores(symbol, timeframe);
-        CREATE INDEX IF NOT EXISTS idx_historical_scores_combined_score 
-            ON historical_scores(combined_score);
-        CREATE INDEX IF NOT EXISTS idx_historical_scores_created_at 
-            ON historical_scores(created_at);
         """
         
         try:

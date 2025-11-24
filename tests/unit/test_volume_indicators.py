@@ -101,7 +101,7 @@ class TestAccumulationDistribution:
         
         assert result is not None
         assert hasattr(result, 'signal')
-        assert isinstance(result.signal, SignalStrength)
+        assert -1.0 <= result.signal <= 1.0
 
 
 class TestChaikinMoneyFlow:
@@ -175,7 +175,7 @@ class TestMoneyFlowIndex:
         
         assert result is not None
         assert hasattr(result, 'signal')
-        assert isinstance(result.signal, SignalStrength)
+        assert -1.0 <= result.signal <= 1.0
 
 
 class TestVolumeRateOfChange:
@@ -281,12 +281,12 @@ class TestVolumeOscillator:
         assert 'oscillator' in result.additional_values
     
     def test_volume_oscillator_signal(self, sample_candles):
-        """Test Volume Oscillator signal generation"""
+        """Test volume oscillator signal"""
         result = VolumeIndicators.volume_oscillator(sample_candles)
         
         assert result is not None
         assert hasattr(result, 'signal')
-        assert isinstance(result.signal, SignalStrength)
+        assert -1.0 <= result.signal <= 1.0
 
 
 class TestEdgeCases:
@@ -294,7 +294,7 @@ class TestEdgeCases:
     
     def test_empty_candles(self):
         """Test with empty candle list"""
-        result = VolumeIndicators.obv([])
+        result = VolumeIndicators.on_balance_volume([])
         assert result is None
     
     def test_single_candle(self):
@@ -308,7 +308,7 @@ class TestEdgeCases:
             volume=1000000
         )]
         
-        result = VolumeIndicators.obv(candle)
+        result = VolumeIndicators.on_balance_volume(candle)
         assert result is None  # Need at least 2 candles
     
     def test_zero_volume_candles(self):
@@ -327,7 +327,7 @@ class TestEdgeCases:
             ))
         
         # Should handle gracefully
-        result = VolumeIndicators.obv(candles)
+        result = VolumeIndicators.on_balance_volume(candles)
         # May return None or handle zeros
         assert result is None or result.value == 0
 

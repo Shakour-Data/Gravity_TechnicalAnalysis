@@ -13,27 +13,14 @@ Date: November 14, 2025
 Version: 1.0.0
 License: MIT
 """
+4. مقایسه عملکرد اندیکاتورها
+"""
 
-from gravity_tech.config.settings import settings
-from dataclasses import dataclass, asdict
+import psycopg2
+from psycopg2.extras import RealDictCursor, execute_values
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
-import logging
-
-logger = logging.getLogger(__name__)
-
-# Try to import psycopg2
-try:
-    import psycopg2
-    from psycopg2 import pool
-    from psycopg2.extras import RealDictCursor, execute_values
-    HAS_PSYCOPG2 = True
-except ImportError:
-    HAS_PSYCOPG2 = False
-    RealDictCursor = None
-    execute_values = None
-    print("⚠️ psycopg2 not available. Will use SQLite fallback.")
-
+from dataclasses import dataclass, asdict
 import json
 
 
@@ -81,34 +68,21 @@ class HistoricalScoreManager:
     مدیریت ذخیره و بازیابی امتیازهای تاریخی
     """
     
-    def __init__(self, connection_string: Optional[str] = None):
+    def __init__(self, connection_string: str):
         """
         Args:
             connection_string: مثل "postgresql://user:pass@localhost:5432/dbname"
-                             اگر None باشد، از settings استفاده می‌شود
         """
-        self.connection_string = connection_string or settings.database_url
+        self.connection_string = connection_string
         self._connection = None
     
     def connect(self):
         """اتصال به دیتابیس"""
-        if self._connection is None:
-            if HAS_PSYCOPG2 and self.connection_string.startswith('postgresql://'):
-                try:
-                    import psycopg2.extras
-                    self._connection = psycopg2.connect(
-                        self.connection_string,
-                        cursor_factory=psycopg2.extras.RealDictCursor
-                    )
-                except Exception as e:
-                    print(f"⚠️ PostgreSQL connection failed: {e}")
-                    print("🔄 Falling back to SQLite...")
-                    import sqlite3
-                    self._connection = sqlite3.connect('data/tool_performance.db')
-            else:
-                # SQLite fallback
-                import sqlite3
-                self._connection = sqlite3.connect('data/tool_performance.db')
+        if self._connection is None or self._connection.closed:
+            self._connection = psycopg2.connect(
+                self.connection_string,
+                cursor_factory=RealDictCursor
+            )
         return self._connection
     
     def close(self):
@@ -156,30 +130,37 @@ class HistoricalScoreManager:
         try:
             # 1. ذخیره امتیاز اصلی
             cursor.execute("""
-                INSERT OR REPLACE INTO historical_scores (
+                INSERT INTO historical_scores (
                     symbol, timestamp, timeframe,
                     trend_score, trend_confidence,
                     momentum_score, momentum_confidence,
                     combined_score, combined_confidence,
                     trend_weight, momentum_weight,
                     trend_signal, momentum_signal, combined_signal,
-                    volume_score, volatility_score, cycle_score, support_resistance_score,
                     recommendation, action,
-                    price_at_analysis, raw_data
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                score_entry.symbol, score_entry.timestamp.isoformat(), score_entry.timeframe,
-                score_entry.trend_score, score_entry.trend_confidence,
-                score_entry.momentum_score, score_entry.momentum_confidence,
-                score_entry.combined_score, score_entry.combined_confidence,
-                score_entry.trend_weight, score_entry.momentum_weight,
-                score_entry.trend_signal, score_entry.momentum_signal, score_entry.combined_signal,
-                0.0, 0.0, 0.0, 0.0,  # volume_score, volatility_score, cycle_score, support_resistance_score
-                score_entry.recommendation, score_entry.action,
-                score_entry.price_at_analysis, None  # raw_data
-            ))
+                    price_at_analysis
+                ) VALUES (
+                    %(symbol)s, %(timestamp)s, %(timeframe)s,
+                    %(trend_score)s, %(trend_confidence)s,
+                    %(momentum_score)s, %(momentum_confidence)s,
+                    %(combined_score)s, %(combined_confidence)s,
+                    %(trend_weight)s, %(momentum_weight)s,
+                    %(trend_signal)s, %(momentum_signal)s, %(combined_signal)s,
+                    %(recommendation)s, %(action)s,
+                    %(price_at_analysis)s
+                )
+                ON CONFLICT (symbol, timestamp, timeframe) 
+                DO UPDATE SET
+                    trend_score = EXCLUDED.trend_score,
+                    trend_confidence = EXCLUDED.trend_confidence,
+                    momentum_score = EXCLUDED.momentum_score,
+                    momentum_confidence = EXCLUDED.momentum_confidence,
+                    combined_score = EXCLUDED.combined_score,
+                    combined_confidence = EXCLUDED.combined_confidence
+                RETURNING id
+            """, asdict(score_entry))
             
-            score_id = cursor.lastrowid
+            score_id = cursor.fetchone()['id']
             
             # 2. ذخیره horizon scores
             if horizon_scores:
@@ -202,7 +183,7 @@ class HistoricalScoreManager:
                 self._save_price_targets(cursor, score_id, price_targets)
             
             # 7. به‌روزرسانی metadata
-            # self._update_metadata(cursor, score_entry.symbol, score_entry.timeframe, score_id)
+            self._update_metadata(cursor, score_entry.symbol, score_entry.timeframe, score_id)
             
             conn.commit()
             return score_id
@@ -339,29 +320,16 @@ class HistoricalScoreManager:
     
     def _update_metadata(self, cursor, symbol: str, timeframe: str, score_id: int):
         """به‌روزرسانی metadata"""
-        # Check if we're using PostgreSQL or SQLite
-        is_postgres = hasattr(cursor.connection, 'server_version') or str(type(cursor.connection)).find('psycopg2') >= 0
-        
-        if is_postgres:
-            cursor.execute("""
-                INSERT INTO analysis_metadata (symbol, timeframe, last_analysis_at, last_score_id, total_analyses)
-                VALUES (%(symbol)s, %(timeframe)s, NOW(), %(score_id)s, 1)
-                ON CONFLICT (symbol, timeframe)
-                DO UPDATE SET
-                    last_analysis_at = NOW(),
-                    last_score_id = %(score_id)s,
-                    total_analyses = analysis_metadata.total_analyses + 1,
-                    updated_at = NOW()
-            """, {'symbol': symbol, 'timeframe': timeframe, 'score_id': score_id})
-        else:
-            # SQLite version
-            cursor.execute("""
-                INSERT OR REPLACE INTO analysis_metadata 
-                (symbol, timeframe, last_analysis_at, last_score_id, total_analyses, updated_at)
-                VALUES (?, ?, datetime('now'), ?, 
-                    COALESCE((SELECT total_analyses + 1 FROM analysis_metadata WHERE symbol = ? AND timeframe = ?), 1),
-                    datetime('now'))
-            """, (symbol, timeframe, score_id, symbol, timeframe))
+        cursor.execute("""
+            INSERT INTO analysis_metadata (symbol, timeframe, last_analysis_at, last_score_id, total_analyses)
+            VALUES (%(symbol)s, %(timeframe)s, NOW(), %(score_id)s, 1)
+            ON CONFLICT (symbol, timeframe)
+            DO UPDATE SET
+                last_analysis_at = NOW(),
+                last_score_id = %(score_id)s,
+                total_analyses = analysis_metadata.total_analyses + 1,
+                updated_at = NOW()
+        """, {'symbol': symbol, 'timeframe': timeframe, 'score_id': score_id})
     
     # ═══════════════════════════════════════════════════════════════════
     # بازیابی امتیازها (Retrieve)
@@ -582,449 +550,6 @@ class HistoricalScoreManager:
             return deleted_count
         finally:
             cursor.close()
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # متدهای جدید برای API Historical
-    # ═══════════════════════════════════════════════════════════════════
-    
-    def get_scores_by_symbol_timeframe(
-        self,
-        symbol: str,
-        timeframe: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        limit: int = 100
-    ) -> List[HistoricalScoreEntry]:
-        """
-        دریافت امتیازهای historical برای یک نماد و تایم‌فریم
-        
-        Args:
-            symbol: نماد معاملاتی
-            timeframe: تایم‌فریم
-            start_date: تاریخ شروع
-            end_date: تاریخ پایان
-            limit: حداکثر تعداد نتایج
-            
-        Returns:
-            لیست HistoricalScoreEntry
-        """
-        conn = self.connect()
-        # Check if we're using PostgreSQL or SQLite
-        is_postgres = hasattr(conn, 'server_version') or str(type(conn)).find('psycopg2') >= 0
-        if is_postgres:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = conn.cursor()
-        
-        try:
-            query = """
-                SELECT * FROM historical_scores
-                WHERE symbol = %s AND timeframe = %s
-            """
-            params = [symbol, timeframe]
-            
-            if start_date:
-                query += " AND timestamp >= %s"
-                params.append(start_date)
-            
-            if end_date:
-                query += " AND timestamp <= %s"
-                params.append(end_date)
-            
-            query += " ORDER BY timestamp DESC LIMIT %s"
-            params.append(limit)
-            
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-            
-            results = []
-            for row in rows:
-                # تبدیل row به HistoricalScoreEntry
-                entry = HistoricalScoreEntry(
-                    symbol=row['symbol'],
-                    timestamp=row['timestamp'],
-                    timeframe=row['timeframe'],
-                    trend_score=row['trend_score'],
-                    trend_confidence=row['trend_confidence'],
-                    momentum_score=row['momentum_score'],
-                    momentum_confidence=row['momentum_confidence'],
-                    combined_score=row['combined_score'],
-                    combined_confidence=row['combined_confidence'],
-                    trend_weight=row['trend_weight'],
-                    momentum_weight=row['momentum_weight'],
-                    trend_signal=row['trend_signal'],
-                    momentum_signal=row['momentum_signal'],
-                    combined_signal=row['combined_signal'],
-                    recommendation=row.get('recommendation'),
-                    action=row.get('action'),
-                    price_at_analysis=row.get('price_at_analysis')
-                )
-                results.append(entry)
-            
-            return results
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    def get_available_symbols(self) -> List[str]:
-        """دریافت لیست نمادهای موجود"""
-        conn = self.connect()
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute("SELECT DISTINCT symbol FROM historical_scores ORDER BY symbol")
-            rows = cursor.fetchall()
-            return [row[0] for row in rows]
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    def get_available_timeframes(self, symbol: Optional[str] = None) -> List[str]:
-        """دریافت لیست تایم‌فریم‌های موجود"""
-        conn = self.connect()
-        cursor = conn.cursor()
-        
-        try:
-            if symbol:
-                cursor.execute(
-                    "SELECT DISTINCT timeframe FROM historical_scores WHERE symbol = %s ORDER BY timeframe",
-                    (symbol,)
-                )
-            else:
-                cursor.execute("SELECT DISTINCT timeframe FROM historical_scores ORDER BY timeframe")
-            
-            rows = cursor.fetchall()
-            return [row[0] for row in rows]
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    def get_symbol_statistics(self, symbol: str, timeframe: Optional[str] = None) -> Dict[str, Any]:
-        """دریافت آمار historical برای یک نماد"""
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        try:
-            query = """
-                SELECT
-                    COUNT(*) as total_records,
-                    AVG(combined_score) as avg_score,
-                    MIN(combined_score) as min_score,
-                    MAX(combined_score) as max_score,
-                    AVG(combined_confidence) as avg_confidence,
-                    MIN(timestamp) as first_date,
-                    MAX(timestamp) as last_date
-                FROM historical_scores
-                WHERE symbol = %s
-            """
-            params = [symbol]
-            
-            if timeframe:
-                query += " AND timeframe = %s"
-                params.append(timeframe)
-            
-            cursor.execute(query, params)
-            result = cursor.fetchone()
-            
-            if result:
-                return dict(result)
-            else:
-                return {}
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    def cleanup_old_data(self, cutoff_date: datetime) -> int:
-        """
-        پاک کردن داده‌های قدیمی‌تر از تاریخ مشخص
-        
-        Args:
-            cutoff_date: تاریخ cutoff
-            
-        Returns:
-            تعداد رکوردهای حذف شده
-        """
-        conn = self.connect()
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute(
-                "DELETE FROM historical_scores WHERE timestamp < %s",
-                (cutoff_date,)
-            )
-            deleted_count = cursor.rowcount
-            conn.commit()
-            
-            return deleted_count
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # متدهای بهینه‌سازی شده برای عملکرد بهتر
-    # ═══════════════════════════════════════════════════════════════════
-    
-    async def get_paginated_scores(
-        self,
-        symbol: str,
-        timeframe: str,
-        page: int = 1,
-        page_size: int = 50,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        min_score: Optional[float] = None,
-        max_score: Optional[float] = None
-    ) -> Dict[str, Any]:
-        """
-        دریافت امتیازهای paginated با فیلتر پیشرفته
-        
-        Args:
-            symbol: نماد معاملاتی
-            timeframe: تایم‌فریم
-            page: شماره صفحه (1-based)
-            page_size: تعداد رکورد در هر صفحه
-            start_date: فیلتر تاریخ شروع
-            end_date: فیلتر تاریخ پایان
-            min_score: حداقل امتیاز ترکیبی
-            max_score: حداکثر امتیاز ترکیبی
-            
-        Returns:
-            دیکشنری شامل نتایج و اطلاعات pagination
-        """
-        conn = self.connect()
-        # بررسی نوع دیتابیس
-        is_postgres = hasattr(conn, 'server_version') or str(type(conn)).find('psycopg2') >= 0
-        if is_postgres:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = conn.cursor()
-        
-        try:
-            # ساخت query با فیلترها
-            query = """
-                SELECT * FROM historical_scores
-                WHERE symbol = ? AND timeframe = ?
-            """
-            params = [symbol, timeframe]
-            
-            if start_date:
-                query += " AND timestamp >= ?"
-                params.append(start_date)
-            
-            if end_date:
-                query += " AND timestamp <= ?"
-                params.append(end_date)
-            
-            if min_score is not None:
-                query += " AND combined_score >= ?"
-                params.append(min_score)
-            
-            if max_score is not None:
-                query += " AND combined_score <= ?"
-                params.append(max_score)
-            
-            # دریافت تعداد کل
-            count_query = f"SELECT COUNT(*) as total FROM ({query})"
-            cursor.execute(count_query, params)
-            total_count = cursor.fetchone()[0] if is_postgres else cursor.fetchone()['total']
-            
-            # اضافه کردن pagination
-            offset = (page - 1) * page_size
-            query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
-            params.extend([page_size, offset])
-            
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-            
-            # تبدیل به فرمت دیکشنری
-            results = []
-            for row in rows:
-                if is_postgres:
-                    result = dict(row)
-                else:
-                    # SQLite برمی‌گرداند tuple، تبدیل به dict
-                    columns = [desc[0] for desc in cursor.description]
-                    result = dict(zip(columns, row))
-                # تبدیل timestamp string به datetime اگر لازم باشد
-                if isinstance(result['timestamp'], str):
-                    result['timestamp'] = datetime.fromisoformat(result['timestamp'])
-                results.append(result)
-            
-            total_pages = (total_count + page_size - 1) // page_size
-            
-            return {
-                "results": results,
-                "pagination": {
-                    "page": page,
-                    "page_size": page_size,
-                    "total_count": total_count,
-                    "total_pages": total_pages,
-                    "has_next": page < total_pages,
-                    "has_prev": page > 1
-                }
-            }
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    async def get_score_statistics(
-        self,
-        symbol: str,
-        timeframe: str,
-        days: int = 30
-    ) -> Dict[str, Any]:
-        """
-        دریافت آمار خلاصه امتیازها برای تحلیل
-        
-        Args:
-            symbol: نماد معاملاتی
-            timeframe: تایم‌فریم
-            days: تعداد روزهای تحلیل
-            
-        Returns:
-            آمار خلاصه
-        """
-        conn = self.connect()
-        is_postgres = hasattr(conn, 'server_version') or str(type(conn)).find('psycopg2') >= 0
-        if is_postgres:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = conn.cursor()
-        
-        try:
-            cutoff_date = datetime.now() - timedelta(days=days)
-            
-            query = """
-                SELECT
-                    COUNT(*) as total_scores,
-                    AVG(combined_score) as avg_score,
-                    MIN(combined_score) as min_score,
-                    MAX(combined_score) as max_score,
-                    AVG(combined_confidence) as avg_confidence,
-                    COUNT(CASE WHEN combined_score > 0 THEN 1 END) as bullish_count,
-                    COUNT(CASE WHEN combined_score < 0 THEN 1 END) as bearish_count,
-                    COUNT(CASE WHEN combined_score = 0 THEN 1 END) as neutral_count
-                FROM historical_scores
-                WHERE symbol = ? AND timeframe = ? AND timestamp >= ?
-            """
-            
-            cursor.execute(query, [symbol, timeframe, cutoff_date])
-            row = cursor.fetchone()
-            
-            if is_postgres:
-                stats = dict(row)
-            else:
-                columns = [desc[0] for desc in cursor.description]
-                stats = dict(zip(columns, row))
-            
-            # محاسبه معیارهای اضافی
-            total = stats['total_scores']
-            if total > 0:
-                stats['bullish_percentage'] = (stats['bullish_count'] / total) * 100
-                stats['bearish_percentage'] = (stats['bearish_count'] / total) * 100
-                stats['neutral_percentage'] = (stats['neutral_count'] / total) * 100
-                
-                # قدرت روند (میانگین مطلق امتیاز)
-                stats['trend_strength'] = abs(stats['avg_score'])
-                
-                # نوسان امتیاز (انحراف معیار بهتر است اما برای سادگی از محدوده استفاده می‌کنیم)
-                stats['score_range'] = stats['max_score'] - stats['min_score']
-            
-            return stats
-        
-        finally:
-            cursor.close()
-            conn.close()
-    
-    async def get_score_trends(
-        self,
-        symbol: str,
-        timeframe: str,
-        days: int = 30,
-        interval: str = "1d"
-    ) -> List[Dict[str, Any]]:
-        """
-        دریافت روند امتیازها در طول زمان برای نمودار
-        
-        Args:
-            symbol: نماد معاملاتی
-            timeframe: تایم‌فریم تحلیل
-            days: تعداد روزهای تحلیل
-            interval: فاصله گروه‌بندی ('1d', '4h', '1h')
-            
-        Returns:
-            داده‌های سری زمانی برای نمودار
-        """
-        conn = self.connect()
-        is_postgres = hasattr(conn, 'server_version') or str(type(conn)).find('psycopg2') >= 0
-        if is_postgres:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = conn.cursor()
-        
-        try:
-            cutoff_date = datetime.now() - timedelta(days=days)
-            
-            # ساخت گروه‌بندی تاریخ بر اساس نوع دیتابیس
-            if is_postgres:
-                if interval == "1d":
-                    date_group = "DATE(timestamp)"
-                elif interval == "4h":
-                    date_group = "DATE_TRUNC('hour', timestamp) + INTERVAL '4 hours' * (EXTRACT(hour FROM timestamp)::int / 4)"
-                else:  # 1h
-                    date_group = "DATE_TRUNC('hour', timestamp)"
-            else:
-                # SQLite توابع تاریخ پیشرفته ندارد، از strftime استفاده می‌کنیم
-                if interval == "1d":
-                    date_group = "DATE(timestamp)"
-                else:
-                    date_group = "strftime('%Y-%m-%d %H:00:00', timestamp)"
-            
-            query = f"""
-                SELECT
-                    {date_group} as period,
-                    AVG(combined_score) as avg_score,
-                    AVG(combined_confidence) as avg_confidence,
-                    COUNT(*) as sample_count,
-                    MIN(combined_score) as min_score,
-                    MAX(combined_score) as max_score
-                FROM historical_scores
-                WHERE symbol = ? AND timeframe = ? AND timestamp >= ?
-                GROUP BY {date_group}
-                ORDER BY period
-            """
-            
-            cursor.execute(query, [symbol, timeframe, cutoff_date])
-            rows = cursor.fetchall()
-            
-            results = []
-            for row in rows:
-                if is_postgres:
-                    result = dict(row)
-                else:
-                    columns = [desc[0] for desc in cursor.description]
-                    result = dict(zip(columns, row))
-                
-                # تبدیل period به datetime اگر string باشد
-                if isinstance(result['period'], str):
-                    try:
-                        result['period'] = datetime.fromisoformat(result['period'])
-                    except:
-                        pass
-                
-                results.append(result)
-            
-            return results
-        
-        finally:
-            cursor.close()
-            conn.close()
 
 
 # ═══════════════════════════════════════════════════════════════════

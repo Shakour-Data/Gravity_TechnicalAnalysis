@@ -110,7 +110,7 @@ class TestVolumeOscillator:
     
     def test_volume_oscillator_basic(self, sample_candles):
         """Volume Oscillator should calculate correctly"""
-        result = VolumeIndicators.volume_oscillator(sample_candles, short_period=5, long_period=10)
+        result = VolumeIndicators.volume_oscillator(sample_candles, short=5, long=10)
         
         assert result is not None
         assert hasattr(result, 'value')

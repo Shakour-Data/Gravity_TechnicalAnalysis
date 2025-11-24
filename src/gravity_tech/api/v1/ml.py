@@ -39,7 +39,6 @@ import structlog
 from datetime import datetime
 from pathlib import Path
 import pickle
-from gravity_tech.ml.multi_horizon_analysis import MultiHorizonAnalyzer
 
 logger = structlog.get_logger()
 
@@ -112,23 +111,6 @@ class ModelInfoResponse(BaseModel):
     features_count: int
     supported_patterns: List[str]
     hyperparameters: Optional[Dict[str, Any]]
-
-
-class MultiHorizonRequest(BaseModel):
-    """Request for multi-horizon analysis"""
-    symbol: str = Field(..., description="Trading symbol (e.g., BTCUSDT)")
-    candles: List[Dict[str, Any]] = Field(..., min_items=30, description="OHLCV candle data")
-
-
-class MultiHorizonResponse(BaseModel):
-    """Multi-horizon analysis response"""
-    symbol: str
-    analysis_timestamp: datetime
-    market_pattern: str = Field(..., description="Overall market pattern")
-    pattern_confidence: float = Field(..., ge=0, le=1, description="Pattern confidence")
-    horizons: Dict[str, Dict[str, Any]] = Field(..., description="Analysis for each horizon (3d, 7d, 30d)")
-    recommendation: str = Field(..., description="Overall trading recommendation")
-    risk_level: str = Field(..., description="Risk assessment")
 
 
 class BacktestRequest(BaseModel):
@@ -419,78 +401,6 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch prediction failed: {str(e)}"
-        )
-
-
-@router.post(
-    "/multi-horizon/analyze",
-    response_model=MultiHorizonResponse,
-    summary="Multi-Horizon Market Analysis",
-    description="Analyze market trends across multiple time horizons using ML models"
-)
-async def analyze_multi_horizon(request: MultiHorizonRequest) -> MultiHorizonResponse:
-    """
-    Perform comprehensive market analysis across 3-day, 7-day, and 30-day horizons
-    
-    **Analysis includes:**
-    - Trend strength for each horizon
-    - Market pattern classification
-    - Confidence scores
-    - Trading recommendations
-    - Risk assessment
-    
-    **Input:** OHLCV candle data (minimum 30 candles)
-    **Output:** Multi-dimensional market analysis
-    """
-    try:
-        # Convert candle data to Candle objects
-        from gravity_tech.models.schemas import Candle
-        candles = []
-        for c in request.candles:
-            candle = Candle(
-                timestamp=datetime.fromisoformat(c['timestamp']) if isinstance(c['timestamp'], str) else c['timestamp'],
-                open=c['open'],
-                high=c['high'],
-                low=c['low'],
-                close=c['close'],
-                volume=c['volume']
-            )
-            candles.append(candle)
-        
-        # Initialize analyzer
-        analyzer = MultiHorizonAnalyzer()
-        
-        # Perform analysis
-        result = analyzer.analyze_market(candles)
-        
-        # Convert to response format
-        horizons = {}
-        for horizon in result.horizons:
-            horizons[horizon.horizon] = {
-                "score": horizon.score,
-                "confidence": horizon.confidence,
-                "signal": horizon.signal.value
-            }
-        
-        response = MultiHorizonResponse(
-            symbol=request.symbol,
-            analysis_timestamp=datetime.now(),
-            market_pattern=result.market_pattern.value,
-            pattern_confidence=result.pattern_confidence,
-            horizons=horizons,
-            recommendation=result.recommendation,
-            risk_level=result.risk_level
-        )
-        
-        logger.info("multi_horizon_analysis_completed", symbol=request.symbol, pattern=result.market_pattern.value)
-        
-        return response
-        
-    except Exception as e:
-        logger.error("multi_horizon_analysis_error", error=str(e), symbol=request.symbol)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Multi-horizon analysis failed: {str(e)}"
         )
 
 

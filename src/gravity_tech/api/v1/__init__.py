@@ -13,16 +13,11 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from gravity_tech.models.schemas import AnalysisRequest, TechnicalAnalysisResult, IndicatorResult
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
-from gravity_tech.middleware.events import event_publisher, MessageType
-from gravity_tech.api.v1.historical import router as historical_router
 import structlog
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["Technical Analysis"])
-
-# Include historical analysis router
-router.include_router(historical_router)
 
 
 @router.post(
@@ -51,22 +46,6 @@ async def analyze_complete(request: AnalysisRequest) -> TechnicalAnalysisResult:
     """
     try:
         result = await TechnicalAnalysisService.analyze(request)
-        
-        # Publish analysis completed event for data persistence
-        try:
-            await event_publisher.publish(
-                MessageType.ANALYSIS_COMPLETED,
-                {
-                    "symbol": request.symbol,
-                    "timeframe": request.timeframe,
-                    "results": result.dict() if hasattr(result, 'dict') else result,
-                    "request_id": id(request)  # Simple request ID
-                }
-            )
-        except Exception as publish_error:
-            logger.warning("event_publish_failed", error=str(publish_error))
-            # Don't fail the request if event publishing fails
-        
         return result
     except Exception as e:
         logger.error("analysis_endpoint_error", error=str(e))
