@@ -11,13 +11,60 @@ License: MIT
 
 from fastapi import APIRouter, HTTPException, status
 from typing import List
-from gravity_tech.models.schemas import AnalysisRequest, TechnicalAnalysisResult, IndicatorResult
+from gravity_tech.models.schemas import AnalysisRequest, TechnicalAnalysisResult, IndicatorResult, Candle
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
+from src.database import init_price_data
+from datetime import datetime, timedelta
 import structlog
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["Technical Analysis"])
+
+
+@router.get(
+    "/analyze/historical/{symbol}",
+    response_model=TechnicalAnalysisResult,
+    summary="Analyze Historical Data",
+    description="Fetch historical data from database and perform analysis"
+)
+async def analyze_historical(
+    symbol: str,
+    timeframe: str = "1d",
+    days: int = 365
+) -> TechnicalAnalysisResult:
+    """
+    Analyze historical data from local database
+    """
+    # Calculate start date
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
+    
+    # Fetch data
+    raw_candles = init_price_data.fetch_price_data(
+        symbol, 
+        start_date=start_date.strftime("%Y-%m-%d"),
+        end_date=end_date.strftime("%Y-%m-%d")
+    )
+    
+    if not raw_candles:
+        raise HTTPException(status_code=404, detail=f"No data found for symbol {symbol}")
+        
+    # Convert to Candle objects
+    candles = [Candle(symbol=symbol, timeframe=timeframe, **c) for c in raw_candles]
+    
+    if len(candles) < 50:
+        raise HTTPException(status_code=400, detail="Insufficient data for analysis (min 50 candles)")
+        
+    # Create request
+    request = AnalysisRequest(
+        symbol=symbol,
+        timeframe=timeframe,
+        candles=candles
+    )
+    
+    # Analyze
+    return await TechnicalAnalysisService.analyze(request)
 
 
 @router.post(
