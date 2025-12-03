@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from gravity_tech.models.schemas import AnalysisRequest, TechnicalAnalysisResult, IndicatorResult, Candle
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
-from src.database import init_price_data
+from src.database import tse_data_source
 from datetime import datetime, timedelta
 import structlog
 
@@ -41,7 +41,7 @@ async def analyze_historical(
     start_date = end_date - timedelta(days=days)
     
     # Fetch data
-    raw_candles = init_price_data.fetch_price_data(
+    raw_candles = tse_data_source.fetch_price_data(
         symbol, 
         start_date=start_date.strftime("%Y-%m-%d"),
         end_date=end_date.strftime("%Y-%m-%d")

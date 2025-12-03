@@ -6,20 +6,20 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
-from src.database import init_price_data
-from src.config import DB_FILE
+from src.database import tse_data_source
+from src.config import TSE_DB_FILE
 
 def main():
-    print(f"Initializing database at: {DB_FILE}")
+    print(f"Initializing database at: {TSE_DB_FILE}")
     
     # Create directory if it doesn't exist
-    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(TSE_DB_FILE), exist_ok=True)
     
     try:
-        init_price_data.create_tables()
+        tse_data_source.create_tables()
         print("Tables created successfully.")
         
-        init_price_data.insert_indices_info()
+        tse_data_source.insert_indices_info()
         print("Default indices info inserted.")
         
         print("Database initialization complete.")

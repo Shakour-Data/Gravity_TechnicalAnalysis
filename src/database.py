@@ -2,11 +2,15 @@ import sqlite3
 import logging
 from typing import List, Dict, Any, Optional
 import pandas as pd
-from src.config import DB_FILE
+from src.config import TSE_DB_FILE
 
 logger = logging.getLogger(__name__)
 
-class DatabaseManager:
+class TSEDatabaseConnector:
+    """
+    Connector for the External TSE Database (Input Source).
+    This class handles reading market data from the pre-built SQLite database.
+    """
     def __init__(self, db_file: str):
         self.db_file = db_file
 
@@ -15,6 +19,10 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_file)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
+
+    # Note: The database is assumed to be pre-built. 
+    # The create_tables and insert methods are kept for reference or initialization if needed,
+    # but the primary role of this class in this project is to READ data.
 
     def create_tables(self):
         """Creates all necessary tables if they do not exist."""
@@ -310,5 +318,52 @@ class DatabaseManager:
             
         return candles
 
-# Global instance as suggested by usage in DATABASE.md
-init_price_data = DatabaseManager(DB_FILE)
+    def fetch_market_index(self, index_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Fetches market index data (e.g., CWI).
+        """
+        from datetime import datetime
+        
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        query = "SELECT date, open, high, low, close FROM market_indices WHERE index_code = ?"
+        params = [index_code]
+        
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+            
+        query += " ORDER BY date ASC"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        candles = []
+        for row in rows:
+            try:
+                dt = datetime.strptime(row["date"], "%Y-%m-%d")
+            except ValueError:
+                continue
+                
+            candles.append({
+                "timestamp": dt,
+                "open": row["open"],
+                "high": row["high"],
+                "low": row["low"],
+                "close": row["close"],
+                "volume": 0  # Indices often don't have volume in the same way, or it's not in this table
+            })
+            
+        return candles
+
+# Global instance for accessing the External TSE Database
+tse_data_source = TSEDatabaseConnector(TSE_DB_FILE)
+# Alias for backward compatibility if needed, but prefer tse_data_source
+init_price_data = tse_data_source
