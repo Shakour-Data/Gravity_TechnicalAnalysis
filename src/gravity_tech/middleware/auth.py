@@ -15,7 +15,7 @@ from typing import Optional, List
 import time
 from collections import defaultdict
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import structlog
 from pydantic import BaseModel, field_validator
 
@@ -52,9 +52,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expiration_minutes)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expiration_minutes)
     
     to_encode.update({"exp": expire})
     
@@ -109,7 +109,7 @@ def verify_token(token: str) -> TokenData:
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
