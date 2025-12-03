@@ -24,7 +24,7 @@ License: MIT
 import numpy as np
 import pandas as pd
 from typing import List, Optional, Dict, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from gravity_tech.models.schemas import Candle, SignalStrength
@@ -431,7 +431,7 @@ class MarketPhaseAnalysis:
         recommendations = self._generate_recommendations(phase, strength, detailed)
         
         return {
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "market_phase": phase.value,
             "phase_strength": strength.value,
             "description": descriptions[phase],
