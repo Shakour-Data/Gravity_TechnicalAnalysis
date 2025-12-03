@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     
     # Security
     secret_key: str = "change-this-secret-key-in-production"
+    jwt_secret_key: str = "change-this-jwt-secret-key-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 24
+    jwt_expiration_minutes: int = 1440  # 24 hours in minutes
     
     # Redis Cache
     redis_host: str = "localhost"
