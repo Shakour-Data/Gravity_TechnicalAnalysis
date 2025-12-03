@@ -101,7 +101,7 @@ class TestAccumulationDistribution:
         
         assert result is not None
         assert hasattr(result, 'signal')
-        assert -1.0 <= result.signal <= 1.0
+        assert -2.0 <= result.signal.get_score() <= 2.0
 
 
 class TestChaikinMoneyFlow:
@@ -117,7 +117,7 @@ class TestChaikinMoneyFlow:
     
     def test_cmf_uptrend_positive(self, uptrend_candles):
         """Test CMF is positive in uptrend"""
-        result = VolumeIndicators.chaikin_money_flow(uptrend_candles, period=20)
+        result = VolumeIndicators.cmf(uptrend_candles, period=20)
         
         assert result is not None
         # CMF typically positive in uptrend
@@ -125,7 +125,7 @@ class TestChaikinMoneyFlow:
     
     def test_cmf_downtrend_negative(self, downtrend_candles):
         """Test CMF is negative in downtrend"""
-        result = VolumeIndicators.chaikin_money_flow(downtrend_candles, period=20)
+        result = VolumeIndicators.cmf(downtrend_candles, period=20)
         
         assert result is not None
         # CMF typically negative in downtrend
@@ -133,8 +133,8 @@ class TestChaikinMoneyFlow:
     
     def test_cmf_custom_period(self, sample_candles):
         """Test CMF with custom period"""
-        result_10 = VolumeIndicators.chaikin_money_flow(sample_candles, period=10)
-        result_30 = VolumeIndicators.chaikin_money_flow(sample_candles, period=30)
+        result_10 = VolumeIndicators.cmf(sample_candles, period=10)
+        result_30 = VolumeIndicators.cmf(sample_candles, period=30)
         
         assert result_10 is not None
         assert result_30 is not None
@@ -175,7 +175,7 @@ class TestMoneyFlowIndex:
         
         assert result is not None
         assert hasattr(result, 'signal')
-        assert -1.0 <= result.signal <= 1.0
+        assert -2.0 <= result.signal.get_score() <= 2.0
 
 
 class TestVolumeRateOfChange:
@@ -286,7 +286,7 @@ class TestVolumeOscillator:
         
         assert result is not None
         assert hasattr(result, 'signal')
-        assert -1.0 <= result.signal <= 1.0
+        assert -2.0 <= result.signal.get_score() <= 2.0
 
 
 class TestEdgeCases:
@@ -295,7 +295,9 @@ class TestEdgeCases:
     def test_empty_candles(self):
         """Test with empty candle list"""
         result = VolumeIndicators.on_balance_volume([])
-        assert result is None
+        assert result is not None
+        assert result.signal == SignalStrength.NEUTRAL
+        assert result.confidence == 0.0
     
     def test_single_candle(self):
         """Test with single candle"""
@@ -309,7 +311,9 @@ class TestEdgeCases:
         )]
         
         result = VolumeIndicators.on_balance_volume(candle)
-        assert result is None  # Need at least 2 candles
+        assert result is not None
+        assert result.signal == SignalStrength.NEUTRAL
+        assert result.confidence == 0.0  # Need at least 2 candles
     
     def test_zero_volume_candles(self):
         """Test with zero volume candles"""

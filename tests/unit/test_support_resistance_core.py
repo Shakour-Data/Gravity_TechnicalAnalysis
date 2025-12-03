@@ -115,7 +115,7 @@ class TestSupportResistanceLevels:
     
     def test_sr_levels_basic(self, sample_candles):
         """S/R levels should calculate correctly"""
-        result = SupportResistanceIndicators.support_resistance_levels(sample_candles, lookback=50)
+        result = SupportResistanceIndicators.support_resistance_levels(sample_candles, window=50)
         
         assert result is not None
         assert hasattr(result, 'value')

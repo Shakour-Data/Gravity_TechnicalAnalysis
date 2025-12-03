@@ -10,7 +10,7 @@ from datetime import datetime
 from src.core.domain.entities import (
     IndicatorResult,
     IndicatorCategory,
-    CoreSignalStrength as SignalStrength
+    CoreSignalStrength as SignalStrength,
 )
 from gravity_tech.models.schemas import TechnicalAnalysisResult
 

@@ -158,23 +158,27 @@ class TestIndicatorResultProperties:
 
     def test_indicator_result_equality(self):
         """Test IndicatorResult equality"""
+        fixed_timestamp = datetime(2023, 1, 1, 12, 0, 0)
         result1 = IndicatorResult(
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
-            value=65.5
+            value=65.5,
+            timestamp=fixed_timestamp
         )
         result2 = IndicatorResult(
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
-            value=65.5
+            value=65.5,
+            timestamp=fixed_timestamp
         )
         result3 = IndicatorResult(
             indicator_name="MACD",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
-            value=65.5
+            value=65.5,
+            timestamp=fixed_timestamp
         )
         assert result1 == result2
         assert result1 != result3
@@ -199,15 +203,15 @@ class TestIndicatorResultProperties:
 
     def test_indicator_result_timestamp_auto_generation(self):
         """Test automatic timestamp generation"""
-        with patch('src.core.domain.entities.indicator_result.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2023, 1, 1, 12, 0, 0)
-            result = IndicatorResult(
-                indicator_name="RSI",
-                category=IndicatorCategory.MOMENTUM,
-                signal=SignalStrength.BULLISH,
-                value=65.5
-            )
-            assert result.timestamp == datetime(2023, 1, 1, 12, 0, 0)
+        before = datetime.now()
+        result = IndicatorResult(
+            indicator_name="RSI",
+            category=IndicatorCategory.MOMENTUM,
+            signal=SignalStrength.BULLISH,
+            value=65.5
+        )
+        after = datetime.now()
+        assert before <= result.timestamp <= after
 
 
 class TestIndicatorResultEdgeCases:

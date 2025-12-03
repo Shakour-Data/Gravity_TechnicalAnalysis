@@ -7,7 +7,7 @@ This is a simplified test to verify the ML pipeline works correctly
 import sys
 sys.path.insert(0, '.')
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from gravity_tech.ml.data_connector import DataConnector
 from gravity_tech.ml.feature_extraction import FeatureExtractor
 from gravity_tech.ml.ml_indicator_weights import IndicatorWeightLearner
@@ -20,7 +20,7 @@ print("=" * 70)
 # Step 1: Fetch small dataset
 print("\n📥 Step 1: Fetching data...")
 connector = DataConnector()
-end_date = datetime.utcnow()
+end_date = datetime.now(timezone.utc)
 start_date = end_date - timedelta(days=200)  # Small dataset for quick test
 
 candles = connector.fetch_daily_candles("BTCUSDT", start_date, end_date)

@@ -1,13 +1,13 @@
 """
 Simple test for Elliott Wave analysis
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.core.domain.entities import Candle
 from gravity_tech.patterns.elliott_wave import analyze_elliott_waves
 
 # Generate sample candles with wave pattern
 candles = []
-base_time = datetime.utcnow()
+base_time = datetime.now(timezone.utc)
 base_price = 100.0
 
 # Create a simple 5-wave pattern

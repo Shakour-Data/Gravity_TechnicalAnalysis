@@ -397,7 +397,7 @@ class TestVolumeOscillator:
     def test_vo_basic(self):
         """Test basic Volume Oscillator calculation"""
         candles = generate_volume_candles(50)
-        result = VolumeIndicators.volume_oscillator(candles, short=5, long=10)
+        result = VolumeIndicators.volume_oscillator(candles, short_period=5, long_period=10)
         
         assert result.indicator_name == "Volume Oscillator(5,10)"
         assert result.category == IndicatorCategory.VOLUME
@@ -419,7 +419,7 @@ class TestVolumeOscillator:
                 volume=volume
             ))
         
-        result = VolumeIndicators.volume_oscillator(candles, short=5, long=10)
+        result = VolumeIndicators.volume_oscillator(candles, short_period=5, long_period=10)
         assert result.value > 0  # Positive oscillator
     
     def test_vo_low_volume(self):
@@ -438,15 +438,15 @@ class TestVolumeOscillator:
                 volume=volume
             ))
         
-        result = VolumeIndicators.volume_oscillator(candles, short=5, long=10)
+        result = VolumeIndicators.volume_oscillator(candles, short_period=5, long_period=10)
         assert result.value < 0  # Negative oscillator
     
     def test_vo_different_periods(self):
         """Test VO with different periods"""
         candles = generate_volume_candles(100)
         
-        vo1 = VolumeIndicators.volume_oscillator(candles, short=5, long=10)
-        vo2 = VolumeIndicators.volume_oscillator(candles, short=10, long=20)
+        vo1 = VolumeIndicators.volume_oscillator(candles, short_period=5, long_period=10)
+        vo2 = VolumeIndicators.volume_oscillator(candles, short_period=10, long_period=20)
         
         assert vo1.indicator_name == "Volume Oscillator(5,10)"
         assert vo2.indicator_name == "Volume Oscillator(10,20)"

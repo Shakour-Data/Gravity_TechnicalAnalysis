@@ -47,7 +47,7 @@ class TestJWTAuthentication:
         # Verify token
         payload = verify_token(token)
         assert payload is not None
-        assert payload["sub"] == "test_user"
+        assert payload.username == "test_user"
     
     def test_verify_expired_token(self):
         """Test verification of expired token."""
@@ -75,13 +75,13 @@ class TestJWTAuthentication:
     def test_token_contains_required_claims(self):
         """Test token contains required claims."""
         token = create_access_token(
-            data={"sub": "test_user", "role": "admin"}
+            data={"sub": "test_user", "scopes": ["admin"]}
         )
         
         payload = verify_token(token)
-        assert "sub" in payload
-        assert "exp" in payload
-        assert payload["role"] == "admin"
+        assert payload.username == "test_user"
+        assert payload.exp is not None
+        assert "admin" in payload.scopes
 
 
 class TestRateLimiter:
