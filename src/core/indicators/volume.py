@@ -490,8 +490,6 @@ def obv(candles: List[Candle]) -> IndicatorResult:
         )
 
 def cmf(candles: List[Candle], period: int = 20) -> IndicatorResult:
-    if not candles or len(candles) < period or period <= 0:
-        raise ValueError("Not enough candles or invalid period for Chaikin Money Flow")
     """
     Chaikin Money Flow
     
@@ -502,6 +500,8 @@ def cmf(candles: List[Candle], period: int = 20) -> IndicatorResult:
     Returns:
         IndicatorResult with signal
     """
+    if not candles or len(candles) < period or period <= 0:
+        raise ValueError("Not enough candles or invalid period for Chaikin Money Flow")
     df = pd.DataFrame([{
         'high': c.high,
         'low': c.low,
@@ -509,11 +509,14 @@ def cmf(candles: List[Candle], period: int = 20) -> IndicatorResult:
         'volume': c.volume
     } for c in candles])
     
-    mf_multiplier = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low'])
+    mf_multiplier = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low']).replace(0, 1)
     mf_volume = mf_multiplier * df['volume']
     
-    cmf = mf_volume.rolling(window=period).sum() / df['volume'].rolling(window=period).sum()
+    cmf = mf_volume.rolling(window=period).sum() / df['volume'].rolling(window=period).sum().replace(0, 1)
     cmf_current = cmf.iloc[-1]
+    
+    if pd.isna(cmf_current):
+        cmf_current = 0.0
     
     # Signal based on CMF value
     if cmf_current > 0.25:
@@ -530,18 +533,18 @@ def cmf(candles: List[Candle], period: int = 20) -> IndicatorResult:
         signal = SignalStrength.BEARISH_BROKEN
     else:
         signal = SignalStrength.NEUTRAL
-        
-        confidence = 0.7 + abs(cmf_current) * 0.8
-        
-        return IndicatorResult(
-            indicator_name=f"CMF({period})",
-            category=IndicatorCategory.VOLUME,
-            signal=signal,
-            value=float(cmf_current),
-            additional_values={"cmf": float(cmf_current)},
-            confidence=min(0.95, confidence),
-            description=f"جریان پول {'مثبت' if cmf_current > 0 else 'منفی'}: {cmf_current:.3f}"
-        )
+    
+    confidence = 0.7 + abs(cmf_current) * 0.8
+    
+    return IndicatorResult(
+        indicator_name=f"CMF({period})",
+        category=IndicatorCategory.VOLUME,
+        signal=signal,
+        value=float(cmf_current),
+        additional_values={"cmf": float(cmf_current)},
+        confidence=min(0.95, confidence),
+        description=f"جریان پول {'مثبت' if cmf_current > 0 else 'منفی'}: {cmf_current:.3f}"
+    )
 
 def vwap(candles: List[Candle]) -> IndicatorResult:
         """
@@ -703,22 +706,22 @@ def pvt(candles: List[Candle]) -> IndicatorResult:
             description=f"روند قیمت-حجم {'مثبت' if pvt_trend > 0 else 'منفی'}"
         )
 
-def volume_oscillator(candles: List[Candle], short: int = 5, long: int = 10) -> IndicatorResult:
+def volume_oscillator(candles: List[Candle], short_period: int = 5, long_period: int = 10) -> IndicatorResult:
         """
         Volume Oscillator
         
         Args:
             candles: List of candles
-            short: Short period
-            long: Long period
+            short_period: Short period
+            long_period: Long period
             
         Returns:
             IndicatorResult with signal
         """
         volumes = pd.Series([c.volume for c in candles])
         
-        short_ma = volumes.rolling(window=short).mean()
-        long_ma = volumes.rolling(window=long).mean()
+        short_ma = volumes.rolling(window=short_period).mean()
+        long_ma = volumes.rolling(window=long_period).mean()
         
         vo = ((short_ma - long_ma) / long_ma) * 100
         vo_current = vo.iloc[-1]
@@ -742,7 +745,7 @@ def volume_oscillator(candles: List[Candle], short: int = 5, long: int = 10) -> 
         confidence = 0.65
         
         return IndicatorResult(
-            indicator_name=f"Volume Oscillator({short},{long})",
+            indicator_name=f"Volume Oscillator({short_period},{long_period})",
             category=IndicatorCategory.VOLUME,
             signal=signal,
             value=float(vo_current),
@@ -778,6 +781,215 @@ def calculate_all(candles: List[Candle]) -> List[IndicatorResult]:
 
 class VolumeIndicators:
     """Volume indicators calculator"""
+    
+    @staticmethod
+    def on_balance_volume(candles: List[Candle]) -> IndicatorResult:
+        """
+        On Balance Volume (OBV)
+        
+        Args:
+            candles: List of candles
+            
+        Returns:
+            IndicatorResult with signal
+        """
+        if len(candles) < 2:
+            raise ValueError("Not enough candles for OBV")
+        
+        df = pd.DataFrame([{
+            'close': c.close,
+            'volume': c.volume
+        } for c in candles])
+        
+        obv = [0]
+        for i in range(1, len(df)):
+            if df['close'].iloc[i] > df['close'].iloc[i-1]:
+                obv.append(obv[-1] + df['volume'].iloc[i])
+            elif df['close'].iloc[i] < df['close'].iloc[i-1]:
+                obv.append(obv[-1] - df['volume'].iloc[i])
+            else:
+                obv.append(obv[-1])
+        
+        obv_series = pd.Series(obv)
+        obv_sma = obv_series.rolling(window=20).mean()
+        
+        obv_current = obv_series.iloc[-1]
+        obv_sma_current = obv_sma.iloc[-1]
+        
+        # Signal based on OBV trend and position relative to MA
+        obv_trend = obv_series.iloc[-5:].diff().mean()
+        price_trend = df['close'].iloc[-5:].diff().mean()
+        
+        # Check divergence
+        if obv_trend > 0 and price_trend > 0:
+            if obv_current > obv_sma_current * 1.1:
+                signal = SignalStrength.VERY_BULLISH
+            else:
+                signal = SignalStrength.BULLISH
+        elif obv_trend > 0 and price_trend < 0:
+            signal = SignalStrength.BULLISH_BROKEN  # Bullish divergence
+        elif obv_trend < 0 and price_trend < 0:
+            if obv_current < obv_sma_current * 0.9:
+                signal = SignalStrength.VERY_BEARISH
+            else:
+                signal = SignalStrength.BEARISH
+        elif obv_trend < 0 and price_trend > 0:
+            signal = SignalStrength.BEARISH_BROKEN  # Bearish divergence
+        else:
+            signal = SignalStrength.NEUTRAL
+        
+        confidence = 0.75
+        
+        return IndicatorResult(
+            indicator_name="OBV",
+            category=IndicatorCategory.VOLUME,
+            signal=signal,
+            value=float(obv_current),
+            additional_values={"obv": float(obv_current)},
+            confidence=confidence,
+            description=f"حجم {'تأیید کننده' if obv_trend * price_trend > 0 else 'واگرا با'} قیمت"
+        )
+    
+    @staticmethod
+    def cmf(candles: List[Candle], period: int = 20) -> IndicatorResult:
+        print(f"CMF called with {len(candles) if candles else 0} candles, period={period}")  # DEBUG
+        """
+        Chaikin Money Flow
+        
+        Args:
+            candles: List of candles
+            period: CMF period
+            
+        Returns:
+            IndicatorResult with signal
+        """
+        if not candles or len(candles) < period or period <= 0:
+            print("CMF returning None due to insufficient data")  # DEBUG
+            return None  # Return None for insufficient data
+        
+        try:
+            df = pd.DataFrame([{
+                'high': c.high,
+                'low': c.low,
+                'close': c.close,
+                'volume': c.volume
+            } for c in candles])
+            
+            mf_multiplier = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low']).replace(0, 1)
+            mf_volume = mf_multiplier * df['volume']
+            
+            cmf = mf_volume.rolling(window=period).sum() / df['volume'].rolling(window=period).sum().replace(0, 1)
+            cmf_current = cmf.iloc[-1]
+            
+            if pd.isna(cmf_current):
+                cmf_current = 0.0  # Default to 0 if NaN
+        except Exception as e:
+            print(f"CMF calculation error: {e}")  # DEBUG
+            return None  # Return None on any calculation error
+        
+        # Signal based on CMF value
+        if cmf_current > 0.25:
+            signal = SignalStrength.VERY_BULLISH
+        elif cmf_current > 0.1:
+            signal = SignalStrength.BULLISH
+        elif cmf_current > 0.05:
+            signal = SignalStrength.BULLISH_BROKEN
+        elif cmf_current < -0.25:
+            signal = SignalStrength.VERY_BEARISH
+        elif cmf_current < -0.1:
+            signal = SignalStrength.BEARISH
+        elif cmf_current < -0.05:
+            signal = SignalStrength.BEARISH_BROKEN
+        else:
+            signal = SignalStrength.NEUTRAL
+            
+        confidence = 0.7 + abs(cmf_current) * 0.8
+        
+        return IndicatorResult(
+            indicator_name=f"CMF({period})",
+            category=IndicatorCategory.VOLUME,
+            signal=signal,
+            value=float(cmf_current),
+            additional_values={"cmf": float(cmf_current)},
+            confidence=min(0.95, confidence),
+            description=f"جریان پول {'مثبت' if cmf_current > 0 else 'منفی'}: {cmf_current:.3f}"
+        )
+    
+    @staticmethod
+    def on_balance_volume(candles: List[Candle]) -> IndicatorResult:
+        """
+        On Balance Volume (OBV)
+        
+        Args:
+            candles: List of candles
+            
+        Returns:
+            IndicatorResult with signal
+        """
+        if len(candles) < 2:
+            return IndicatorResult(
+                indicator_name="OBV",
+                category=IndicatorCategory.VOLUME,
+                signal=SignalStrength.NEUTRAL,
+                value=0.0,
+                additional_values={"obv": 0.0},
+                confidence=0.0,
+                description="داده کافی برای محاسبه OBV وجود ندارد"
+            )
+        
+        df = pd.DataFrame([{
+            'close': c.close,
+            'volume': c.volume
+        } for c in candles])
+        
+        obv = [0]
+        for i in range(1, len(df)):
+            if df['close'].iloc[i] > df['close'].iloc[i-1]:
+                obv.append(obv[-1] + df['volume'].iloc[i])
+            elif df['close'].iloc[i] < df['close'].iloc[i-1]:
+                obv.append(obv[-1] - df['volume'].iloc[i])
+            else:
+                obv.append(obv[-1])
+        
+        obv_series = pd.Series(obv)
+        obv_sma = obv_series.rolling(window=20).mean()
+        
+        obv_current = obv_series.iloc[-1]
+        obv_sma_current = obv_sma.iloc[-1]
+        
+        # Signal based on OBV trend and position relative to MA
+        obv_trend = obv_series.iloc[-5:].diff().mean()
+        price_trend = df['close'].iloc[-5:].diff().mean()
+        
+        # Check divergence
+        if obv_trend > 0 and price_trend > 0:
+            if obv_current > obv_sma_current * 1.1:
+                signal = SignalStrength.VERY_BULLISH
+            else:
+                signal = SignalStrength.BULLISH
+        elif obv_trend > 0 and price_trend < 0:
+            signal = SignalStrength.BULLISH_BROKEN  # Bullish divergence
+        elif obv_trend < 0 and price_trend < 0:
+            if obv_current < obv_sma_current * 0.9:
+                signal = SignalStrength.VERY_BEARISH
+            else:
+                signal = SignalStrength.BEARISH
+        elif obv_trend < 0 and price_trend > 0:
+            signal = SignalStrength.BEARISH_BROKEN  # Bearish divergence
+        else:
+            signal = SignalStrength.NEUTRAL
+        
+        confidence = 0.75
+        
+        return IndicatorResult(
+            indicator_name="OBV",
+            category=IndicatorCategory.VOLUME,
+            signal=signal,
+            value=float(obv_current),
+            additional_values={"obv": float(obv_current)},
+            confidence=confidence,
+            description=f"حجم {'تأیید کننده' if obv_trend * price_trend > 0 else 'واگرا با'} قیمت"
+        )
     
     @staticmethod
     def accumulation_distribution(candles: List[Candle]) -> IndicatorResult:

@@ -136,7 +136,7 @@ class CycleIndicators:
             raise ValueError("Not enough candles or invalid smooth_period for Ehlers Cycle Period")
         """Ehler's Cycle Period Detector using Hilbert Transform"""
         closes = np.array([c.close for c in candles])
-        smooth = pd.Series(closes).rolling(window=smooth_period).mean().fillna(method='bfill')
+        smooth = pd.Series(closes).rolling(window=smooth_period).mean().bfill()
         
         in_phase = np.zeros(len(smooth))
         quadrature = np.zeros(len(smooth))
@@ -363,7 +363,7 @@ class CycleIndicators:
             raise ValueError("Not enough candles or invalid period for Hilbert Transform Phase")
         """Hilbert Transform for Phase Detection"""
         closes = np.array([c.close for c in candles])
-        smooth = pd.Series(closes).rolling(window=period).mean().fillna(method='bfill')
+        smooth = pd.Series(closes).rolling(window=period).mean().bfill()
         
         detrender = np.zeros(len(smooth))
         for i in range(period, len(smooth)):

@@ -66,6 +66,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < period:
+            raise ValueError(f"Need at least {period} candles for SMA")
+        
         closes = np.array([c.close for c in candles])
         sma_values = pd.Series(closes).rolling(window=period).mean()
         sma_current = sma_values.iloc[-1]
@@ -116,6 +119,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < period:
+            raise ValueError(f"Need at least {period} candles for EMA")
+        
         closes = np.array([c.close for c in candles])
         ema_values = pd.Series(closes).ewm(span=period, adjust=False).mean()
         ema_current = ema_values.iloc[-1]
@@ -163,6 +169,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < period:
+            raise ValueError(f"Need at least {period} candles for WMA")
+        
         closes = np.array([c.close for c in candles])
         weights = np.arange(1, period + 1)
         
@@ -219,6 +228,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < period * 2:  # Need more data for double EMA
+            raise ValueError(f"Need at least {period * 2} candles for DEMA")
+        
         closes = pd.Series([c.close for c in candles])
         
         ema1 = closes.ewm(span=period, adjust=False).mean()
@@ -269,6 +281,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < period * 3:  # Need more data for triple EMA
+            raise ValueError(f"Need at least {period * 3} candles for TEMA")
+        
         closes = pd.Series([c.close for c in candles])
         
         ema1 = closes.ewm(span=period, adjust=False).mean()
@@ -321,6 +336,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < slow:
+            raise ValueError(f"Need at least {slow} candles for MACD")
+        
         closes = pd.Series([c.close for c in candles])
         
         ema_fast = closes.ewm(span=fast, adjust=False).mean()
@@ -381,6 +399,9 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
+        if len(candles) < period * 2:
+            raise ValueError(f"Need at least {period * 2} candles for ADX")
+        
         df = pd.DataFrame([{
             'high': c.high,
             'low': c.low,
