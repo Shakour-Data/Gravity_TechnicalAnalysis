@@ -14,10 +14,10 @@ import pytest
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from src.core.indicators.trend import (
+from gravity_tech.core.indicators.trend import (
     TrendIndicators
 )
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     Candle,
     IndicatorResult,
     CoreSignalStrength as SignalStrength,
@@ -595,3 +595,4 @@ class TestTrendIndicators:
             assert "شکست سقف" in result_donchian.description
         elif current_price <= lower:
             assert "شکست کف" in result_donchian.description
+
