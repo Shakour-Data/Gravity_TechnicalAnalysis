@@ -2,7 +2,7 @@
 Advanced test to show how accuracy affects actual weights distribution
 """
 from datetime import datetime
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     IndicatorResult,
     IndicatorCategory,
     CoreSignalStrength as SignalStrength
@@ -153,3 +153,4 @@ def test_weight_distribution():
 
 if __name__ == "__main__":
     test_weight_distribution()
+
