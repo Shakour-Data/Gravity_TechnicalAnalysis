@@ -7,7 +7,7 @@ All models have been migrated to: src.core.domain.entities
 
 Please update your imports:
 OLD: from models.schemas import Candle, SignalStrength, IndicatorResult
-NEW: from src.core.domain.entities import Candle, CoreSignalStrength, IndicatorResult
+NEW: from gravity_tech.core.domain.entities import Candle, CoreSignalStrength, IndicatorResult
 
 This backward compatibility layer will be removed in Phase 2.2 (Day 3).
 """
@@ -26,7 +26,7 @@ warnings.warn(
 # BACKWARD COMPATIBILITY LAYER (Phase 2.1)
 # ============================================================================
 # Import all entities from new location and re-export
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     Candle,
     CoreSignalStrength as SignalStrength,  # Alias for compatibility
     IndicatorCategory,
