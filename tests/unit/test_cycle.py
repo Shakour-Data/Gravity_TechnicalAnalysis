@@ -15,12 +15,12 @@ import pytest
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from src.core.indicators.cycle import (
+from gravity_tech.core.indicators.cycle import (
     CycleIndicators,
     CycleResult,
     convert_cycle_to_indicator_result
 )
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     Candle,
     IndicatorResult,
     CoreSignalStrength as SignalStrength,
@@ -448,3 +448,4 @@ class TestCycleIndicators:
             result = indicator_func(sample_candles)
             assert isinstance(result.description, str)
             assert len(result.description) > 0
+
