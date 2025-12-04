@@ -18,7 +18,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.core.indicators.volume_day3 import (
+from gravity_tech.core.indicators.volume_day3 import (
     volume_weighted_macd,
     ease_of_movement,
     force_index
@@ -411,3 +411,4 @@ def test_extreme_volume_spike():
 if __name__ == "__main__":
     # Run tests
     pytest.main([__file__, "-v", "--tb=short"])
+
