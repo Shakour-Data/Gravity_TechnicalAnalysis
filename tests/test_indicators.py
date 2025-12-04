@@ -16,7 +16,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.core.domain.entities import Candle
+from gravity_tech.core.domain.entities import Candle
 from src.gravity_tech.indicators.trend import TrendIndicators
 from src.gravity_tech.indicators.momentum import MomentumIndicators
 from src.gravity_tech.indicators.cycle import CycleIndicators
@@ -178,3 +178,4 @@ def test_complete_analysis(sample_candles):
     assert result.overall_confidence is not None
     # Elliott wave may or may not be detected
     assert result.elliott_wave_analysis is None or result.elliott_wave_analysis.wave_pattern in ["IMPULSIVE", "CORRECTIVE"]
+
