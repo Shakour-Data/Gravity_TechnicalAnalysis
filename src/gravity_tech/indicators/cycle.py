@@ -10,4 +10,4 @@ License: MIT
 """
 
 # Proxy to new location
-from src.core.indicators.cycle import CycleIndicators
+from gravity_tech.core.indicators.cycle import CycleIndicators
