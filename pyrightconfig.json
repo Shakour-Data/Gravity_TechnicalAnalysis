@@ -1,0 +1,23 @@
+{
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "venv",
+    ".pytest_cache",
+    "htmlcov",
+    "ml_models"
+  ],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "pythonPlatform": "Windows",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["./src"]
+    }
+  ]
+}
