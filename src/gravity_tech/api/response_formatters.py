@@ -61,7 +61,7 @@ def format_trend_response(
         
     Example:
         ```python
-        from ml.multi_horizon_analysis import MultiHorizonTrendAnalyzer
+        from gravity_tech.ml.multi_horizon_analysis import MultiHorizonTrendAnalyzer
         
         analyzer = MultiHorizonTrendAnalyzer.load("models/trend")
         result = analyzer.analyze(trend_features)
