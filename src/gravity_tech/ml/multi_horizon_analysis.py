@@ -427,7 +427,7 @@ class MultiHorizonTrendAnalyzer:
 # ═══════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    from ml.multi_horizon_weights import MultiHorizonWeightLearner
+    from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
     
     # ساخت learner مصنوعی برای تست
     learner = MultiHorizonWeightLearner(horizons=['3d', '7d', '30d'])
