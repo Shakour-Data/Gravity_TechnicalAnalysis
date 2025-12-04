@@ -1,0 +1,13 @@
+apiVersion: v2
+name: technical-analysis
+description: A Helm chart for Technical Analysis Microservice
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - technical-analysis
+  - trading
+  - microservice
+maintainers:
+  - name: Gravity Tech Team
+    email: support@gravity-tech.com

@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: technical-analysis-ingress
+  namespace: tech-analysis-prod
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+spec:
+  tls:
+    - hosts:
+        - api.technical-analysis.example.com
+      secretName: technical-analysis-tls
+  rules:
+    - host: api.technical-analysis.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: technical-analysis-service
+                port:
+                  number: 8000

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tech-analysis-prod
+  labels:
+    app: technical-analysis
+    environment: production

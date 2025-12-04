@@ -1,0 +1,149 @@
+# Default values for technical-analysis.
+# This is a YAML-formatted file.
+
+# Number of replicas
+replicaCount: 3
+
+image:
+  repository: ghcr.io/gravitywavesml/gravity_techanalysis
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: http
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: api.technical-analysis.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: technical-analysis-tls
+      hosts:
+        - api.technical-analysis.example.com
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - technical-analysis
+          topologyKey: kubernetes.io/hostname
+
+# Application configuration
+config:
+  APP_NAME: "technical-analysis-service"
+  APP_VERSION: "1.0.0"
+  ENVIRONMENT: "production"
+  DEBUG: "False"
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  WORKERS: "4"
+  
+  # Redis
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  CACHE_ENABLED: "True"
+  CACHE_TTL: "300"
+  
+  # Observability
+  METRICS_ENABLED: "True"
+  TRACING_ENABLED: "True"
+  LOG_LEVEL: "INFO"
+  
+  # Analysis
+  MAX_CANDLES: "1000"
+  PARALLEL_PROCESSING: "True"
+  MAX_WORKERS: "10"
+
+# Secrets (use external secret management in production)
+secrets:
+  SECRET_KEY: "CHANGE-THIS-IN-PRODUCTION"
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRATION_MINUTES: "30"
+
+# Redis dependency
+redis:
+  enabled: true
+  auth:
+    password: "secure-password"
+  master:
+    persistence:
+      size: 10Gi
+  replica:
+    replicaCount: 2
+
+# Service Discovery
+serviceDiscovery:
+  enabled: false
+  type: "eureka"  # or "consul"
+  server: "http://eureka:8761/eureka"
+
+# Event Messaging
+messaging:
+  enabled: false
+  type: "kafka"  # or "rabbitmq"
+  kafka:
+    bootstrapServers: "kafka:9092"
+  rabbitmq:
+    url: "amqp://guest:guest@rabbitmq:5672/"

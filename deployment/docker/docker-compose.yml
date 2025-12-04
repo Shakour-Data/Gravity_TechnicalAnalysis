@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bedaan4d_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Bedaan4D
+      POSTGRES_DB: bedaan4d_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bedaan4d_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: bedaan4d_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bedaan4d_network
+
+  gravity-login:
+    build:
+      context: E:/Shakour/GravityProjects/GravityLogin
+      dockerfile: Dockerfile
+    container_name: gravity_login
+    environment:
+      - PORT=8001
+      - DATABASE_URL=postgresql://postgres:Bedaan4D@postgres:5432/bedaan4d_db
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bedaan4d_network
+    restart: unless-stopped
+
+  gravity-tse:
+    build:
+      context: E:/Shakour/GravityProjects/GravityTSE/GravityTSE/tse-microservice
+      dockerfile: Dockerfile
+    container_name: gravity_tse
+    environment:
+      - PORT=8002
+    ports:
+      - "8002:8002"
+    networks:
+      - bedaan4d_network
+    restart: unless-stopped
+
+  gravity-tech-analysis:
+    build:
+      context: E:/Shakour/GravityProjects/GravityTechAnalysis/Gravity_TechAnalysis
+      dockerfile: Dockerfile
+    container_name: gravity_tech_analysis
+    environment:
+      - PORT=8003
+    ports:
+      - "8003:8003"
+    networks:
+      - bedaan4d_network
+    restart: unless-stopped
+
+networks:
+  bedaan4d_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

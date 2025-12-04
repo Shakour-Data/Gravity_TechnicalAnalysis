@@ -1,0 +1,221 @@
+---
+# Prometheus ServiceMonitor for automatic metrics discovery
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: technical-analysis-metrics
+  namespace: tech-analysis-prod
+  labels:
+    app: technical-analysis
+    team: gravity-tech
+spec:
+  selector:
+    matchLabels:
+      app: technical-analysis
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      
+---
+# Prometheus PrometheusRule for alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: technical-analysis-alerts
+  namespace: tech-analysis-prod
+  labels:
+    app: technical-analysis
+    team: gravity-tech
+spec:
+  groups:
+    - name: technical-analysis.rules
+      interval: 30s
+      rules:
+        # High Error Rate Alert
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{status=~"5.."}[5m])) by (namespace, pod)
+              /
+              sum(rate(http_requests_total[5m])) by (namespace, pod)
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+            component: api
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.pod }}"
+            
+        # High Response Time Alert
+        - alert: HighResponseTime
+          expr: |
+            histogram_quantile(0.95, 
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (le, namespace, pod)
+            ) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+            component: api
+          annotations:
+            summary: "High response time detected"
+            description: "95th percentile response time is {{ $value }}s for {{ $labels.pod }}"
+            
+        # Pod Down Alert
+        - alert: PodDown
+          expr: |
+            up{job="technical-analysis"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: infrastructure
+          annotations:
+            summary: "Pod is down"
+            description: "{{ $labels.pod }} has been down for more than 2 minutes"
+            
+        # High CPU Usage Alert
+        - alert: HighCPUUsage
+          expr: |
+            rate(container_cpu_usage_seconds_total{pod=~"technical-analysis-.*"}[5m]) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            component: infrastructure
+          annotations:
+            summary: "High CPU usage"
+            description: "CPU usage is {{ $value | humanizePercentage }} for {{ $labels.pod }}"
+            
+        # High Memory Usage Alert
+        - alert: HighMemoryUsage
+          expr: |
+            container_memory_usage_bytes{pod=~"technical-analysis-.*"} 
+            / 
+            container_spec_memory_limit_bytes{pod=~"technical-analysis-.*"} > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            component: infrastructure
+          annotations:
+            summary: "High memory usage"
+            description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.pod }}"
+            
+        # Low Cache Hit Rate Alert
+        - alert: LowCacheHitRate
+          expr: |
+            (
+              sum(rate(cache_hits_total[5m])) by (namespace)
+              /
+              sum(rate(cache_requests_total[5m])) by (namespace)
+            ) < 0.5
+          for: 15m
+          labels:
+            severity: warning
+            component: cache
+          annotations:
+            summary: "Low cache hit rate"
+            description: "Cache hit rate is {{ $value | humanizePercentage }}"
+            
+        # ML Model Inference Slow Alert
+        - alert: SlowMLInference
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(ml_prediction_duration_seconds_bucket[5m])) by (le)
+            ) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+            component: ml
+          annotations:
+            summary: "ML inference is slow"
+            description: "95th percentile ML inference time is {{ $value }}s"
+            
+        # Pattern Detection Errors Alert
+        - alert: PatternDetectionErrors
+          expr: |
+            sum(rate(pattern_detection_errors_total[5m])) by (namespace) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: patterns
+          annotations:
+            summary: "Pattern detection errors"
+            description: "Pattern detection error rate: {{ $value }} errors/sec"
+
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: technical-analysis-dashboard
+  namespace: tech-analysis-prod
+  labels:
+    grafana_dashboard: "1"
+data:
+  technical-analysis-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Technical Analysis API - v1.1.0",
+        "tags": ["technical-analysis", "api", "ml"],
+        "timezone": "utc",
+        "panels": [
+          {
+            "title": "Request Rate",
+            "targets": [{
+              "expr": "sum(rate(http_requests_total[5m])) by (method, endpoint)"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Response Time (P95)",
+            "targets": [{
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Error Rate",
+            "targets": [{
+              "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "ML Prediction Latency",
+            "targets": [{
+              "expr": "histogram_quantile(0.95, sum(rate(ml_prediction_duration_seconds_bucket[5m])) by (le))"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Pattern Detection Count",
+            "targets": [{
+              "expr": "sum(rate(patterns_detected_total[5m])) by (pattern_type)"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Cache Hit Rate",
+            "targets": [{
+              "expr": "sum(rate(cache_hits_total[5m])) / sum(rate(cache_requests_total[5m]))"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "CPU Usage",
+            "targets": [{
+              "expr": "rate(container_cpu_usage_seconds_total{pod=~\"technical-analysis-.*\"}[5m])"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [{
+              "expr": "container_memory_usage_bytes{pod=~\"technical-analysis-.*\"}"
+            }],
+            "type": "graph"
+          }
+        ]
+      }
+    }
