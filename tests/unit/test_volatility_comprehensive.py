@@ -18,8 +18,8 @@ Current: 10.45% → Target: 90%+
 import pytest
 import numpy as np
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength, IndicatorCategory
-from src.core.indicators.volatility import VolatilityIndicators
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength, IndicatorCategory
+from gravity_tech.core.indicators.volatility import VolatilityIndicators
 
 
 def generate_test_candles(count: int = 50, base_price: float = 100.0, volatility: float = 0.02) -> list[Candle]:
@@ -861,3 +861,4 @@ class TestSignalBranches:
         
         result = VolatilityIndicators.chaikin_volatility(candles, period=10, roc_period=10)
         assert hasattr(result, 'value')
+
