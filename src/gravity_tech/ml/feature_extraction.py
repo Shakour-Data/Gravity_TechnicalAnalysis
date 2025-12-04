@@ -374,7 +374,7 @@ class FeatureExtractor:
 
 # Example usage
 if __name__ == "__main__":
-    from ml.data_connector import DataConnector
+    from gravity_tech.ml.data_connector import DataConnector
     from datetime import datetime, timedelta
     
     print("🔧 Testing Feature Extraction...")
