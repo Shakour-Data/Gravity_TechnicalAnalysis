@@ -12,7 +12,7 @@ import numpy as np
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from src.core.indicators.momentum import tsi, schaff_trend_cycle, connors_rsi
+from gravity_tech.core.indicators.momentum import tsi, schaff_trend_cycle, connors_rsi
 
 
 class MomentumValidation:
@@ -206,6 +206,20 @@ class MomentumValidation:
         print("=" * 70)
 
 
-if __name__ == "__main__":
-    validator = MomentumValidation()
-    validator.generate_report()
+
+# Pytest-compatible test class
+import pytest
+
+class TestMomentumIndicators:
+    def setup_class(self):
+        self.validator = MomentumValidation()
+
+    def test_tsi(self):
+        assert self.validator.validate_tsi() is True
+
+    def test_stc(self):
+        assert self.validator.validate_stc() is True
+
+    def test_crsi(self):
+        assert self.validator.validate_crsi() is True
+
