@@ -12,7 +12,7 @@ License: MIT
 import numpy as np
 import pytest
 
-from src.core.indicators.momentum import tsi, schaff_trend_cycle, connors_rsi
+from gravity_tech.core.indicators.momentum import tsi, schaff_trend_cycle, connors_rsi
 
 
 @pytest.fixture
@@ -58,3 +58,4 @@ def test_connors_rsi_values(uptrend_prices, downtrend_prices):
     # Uptrend should yield higher CRSI than downtrend
     assert np.nanmean(cr_up['values']) > np.nanmean(cr_down['values'])
     assert 0 <= cr_up['confidence'] <= 1
+
