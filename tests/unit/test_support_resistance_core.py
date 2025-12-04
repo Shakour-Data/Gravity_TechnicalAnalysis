@@ -9,8 +9,8 @@ Version: 1.1.0
 """
 
 import pytest
-from src.core.domain.entities import CoreSignalStrength as SignalStrength
-from src.core.indicators.support_resistance import SupportResistanceIndicators
+from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
+from gravity_tech.core.indicators.support_resistance import SupportResistanceIndicators
 
 
 class TestPivotPoints:
@@ -158,3 +158,4 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
