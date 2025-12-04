@@ -1,8 +1,17 @@
+# ==============================================================================
+# Gravity Technical Analysis - .gitignore
+# ==============================================================================
+
+# ==============================================================================
+# Python
+# ==============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Build artifacts
 build/
 develop-eggs/
 dist/
@@ -15,74 +24,411 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual environments
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+docs/.doctrees/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# ==============================================================================
+# Virtual Environments
+# ==============================================================================
 venv/
 ENV/
 env/
 .venv/
-*.pyc
+.env/
+env.bak/
+venv.bak/
+pythonenv*
 
-# IDE
+# ==============================================================================
+# IDEs and Editors
+# ==============================================================================
+# VSCode
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
 .idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+*.swn
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ==============================================================================
+# Environment Variables & Secrets
+# ==============================================================================
+.env
+.env.*
+!.env.example
+.envrc
+*.secret
+*.key
+*.pem
+secrets/
+credentials/
+
+# ==============================================================================
+# Operating System
+# ==============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ==============================================================================
+# Logs and Temporary Files
+# ==============================================================================
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
 *.swp
 *.swo
 *~
 
-# Environment variables
-.env
-.env.local
+# ==============================================================================
+# Database Files
+# ==============================================================================
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-*.cover
+# PostgreSQL
+*.pgsql
 
-# Logs
-*.log
-logs/
+# MySQL
+*.sql
+!**/schema.sql
+!**/migrations/*.sql
 
-# OS
-.DS_Store
-Thumbs.db
+# Database backups
+database/backups/
+*.dump
+*.backup.sql
 
-# Redis
-dump.rdb
+# Local development databases
+tool_performance.db
+tool_performance.json
+historical_data.db
 
-# Machine Learning Models (use Git LFS or artifact storage)
+# ==============================================================================
+# Data Files
+# ==============================================================================
+data/raw/
+data/processed/
+data/external/
+data/interim/
+data/cache/
+*.csv
+*.parquet
+*.feather
+!data/.gitkeep
+!examples/data/*.csv
+
+# ==============================================================================
+# Machine Learning
+# ==============================================================================
+# Trained models
 ml_models/*.pkl
 ml_models/*.h5
 ml_models/*.onnx
 ml_models/*.pt
 ml_models/*.pth
+ml_models/*.joblib
+ml_models/*.model
+!ml_models/.gitkeep
 
-# Database files (local development only)
-data/
-*.db
-*.sqlite
-*.sqlite3
-tool_performance.db
-tool_performance.json
+# Training artifacts
+experiments/
+mlruns/
+wandb/
+tensorboard_logs/
+checkpoints/
 
-# Temporary and cache files
-.pytest_cache/
-.coverage
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Model weights
+*.weights
+*.ckpt
+*.safetensors
 
-# Development reports and logs
+# ==============================================================================
+# Docker & Kubernetes
+# ==============================================================================
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Kubernetes secrets
+k8s/secrets/
+*.kubeconfig
+
+# ==============================================================================
+# Cloud & CI/CD
+# ==============================================================================
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+.terraformrc
+
+# AWS
+.aws/
+
+# Google Cloud
+.gcloud/
+
+# GitHub Actions
+.github/workflows/*.secrets
+
+# ==============================================================================
+# Caching
+# ==============================================================================
+# Redis
+dump.rdb
+appendonly.aof
+
+# Memcached
+*.memcached
+
+# General cache
+.cache/
+cache/
+*.cache
+
+# ==============================================================================
+# Development & Reports
+# ==============================================================================
+# Development reports
 DAY_*.md
 CODE_REVIEW_*.md
 CLEANUP_REPORT.md
 *_REPORT.md
+PROGRESS_*.md
 
 # Deprecated files
 deprecated/
-coverage.xml
+old/
+archive/
+backup/
+_backup/
+
+# Benchmarks
+benchmark_results/
+profiling/
+*.prof
+
+# ==============================================================================
+# Documentation Build
+# ==============================================================================
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# ==============================================================================
+# Package Management
+# ==============================================================================
+# npm (if using any Node.js tools)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Composer (if using any PHP tools)
+vendor/
+composer.lock
+
+# ==============================================================================
+# Miscellaneous
+# ==============================================================================
+# Compressed files (except release archives)
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+!releases/*.zip
+!releases/*.tar.gz
+
+# Media files (unless needed)
+*.mp4
+*.mp3
+*.avi
+
+# Large files (use Git LFS)
+*.bin
+*.dat
+
+# ==============================================================================
+# Project Specific
+# ==============================================================================
+# HTML coverage reports
+htmlcov/
+
+# Alembic temporary files
+alembic/versions/__pycache__/
+
+# Scripts output
+scripts/output/
+
+# Examples output
+examples/output/
