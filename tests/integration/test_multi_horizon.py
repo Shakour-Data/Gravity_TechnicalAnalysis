@@ -23,7 +23,7 @@ from typing import List
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.core.domain.entities import Candle
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.train_multi_horizon import train_multi_horizon_system, load_trained_model, create_realistic_market_data
 from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
 from gravity_tech.ml.multi_horizon_analysis import MultiHorizonTrendAnalyzer
@@ -50,7 +50,7 @@ def test_training():
     return result
 
 
-def test_analysis(result):
+def _test_analysis(result):
     """
     Test 2: Analysis with trained model.
     """
@@ -113,7 +113,7 @@ def test_analysis(result):
     }
 
 
-def test_pattern_detection(analyses):
+def _test_pattern_detection(analyses):
     """
     Test 3: Pattern detection.
     """
@@ -143,7 +143,7 @@ def test_pattern_detection(analyses):
     print("\n✅ TEST 3 PASSED - Pattern detection working")
 
 
-def test_recommendations(analyses):
+def _test_recommendations(analyses):
     """
     Test 4: Recommendations.
     """
@@ -297,5 +297,37 @@ def run_all_tests():
         traceback.print_exc()
 
 
-if __name__ == "__main__":
-    run_all_tests()
+
+import pytest
+
+@pytest.mark.integration
+def test_run_all_tests():
+    """
+    Run all tests sequentially for pytest compatibility.
+    """
+    print("\n" + "🚀"*35)
+    print("MULTI-HORIZON SYSTEM - FULL TEST SUITE")
+    print("="*35)
+    try:
+        # Test 1: Training
+        result = test_training()
+        # Test 2: Analysis
+        analyses = _test_analysis(result)
+        # Test 3: Pattern detection
+        _test_pattern_detection(analyses)
+        # Test 4: Recommendations
+        _test_recommendations(analyses)
+        # Test 5: Save/Load
+        test_save_and_load()
+        # Final report
+        generate_report(result, analyses)
+        print("\n" + "="*70)
+        print("🎉 ALL TESTS PASSED!")
+        print("="*70)
+    except Exception as e:
+        print("\n" + "="*70)
+        print(f"❌ TEST FAILED: {e}")
+        print("="*70)
+        import traceback
+        traceback.print_exc()
+
