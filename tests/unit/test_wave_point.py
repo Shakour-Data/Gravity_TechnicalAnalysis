@@ -11,7 +11,7 @@ Tests cover:
 
 import pytest
 from datetime import datetime
-from src.core.domain.entities.wave_point import WavePoint
+from gravity_tech.core.domain.entities.wave_point import WavePoint
 
 
 class TestWavePoint:
@@ -192,3 +192,4 @@ class TestWavePoint:
         deep_copied = copy.deepcopy(valid_wave_point_peak)
         assert deep_copied == valid_wave_point_peak
         assert deep_copied is not valid_wave_point_peak
+
