@@ -123,3 +123,4 @@ print("\n" + "="*70)
 print("✅ Market Phase Analysis is working correctly!")
 print("✅ All analyses comply with Dow Theory principles")
 print("="*70)
+
