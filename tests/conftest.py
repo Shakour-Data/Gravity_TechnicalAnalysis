@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 import pytest
 import sqlite3
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import numpy as np
@@ -24,13 +25,52 @@ sys.path.insert(0, str(project_root))
 
 from gravity_tech.core.domain.entities import Candle
 
+# ============================================================================
+# مسیر پایگاه داده بازار ایران (TSE)
+# Iranian Stock Market (TSE) Database Path
+# ============================================================================
+TSE_DB_PATH = r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
+
 
 @pytest.fixture(scope="session")
 def tse_db_connection():
     """Session-scoped fixture to provide TSE database connection."""
+    # ابتدا سعی کنید از پایگاه داده واقعی بازار ایران استفاده کنید
+    if os.path.exists(TSE_DB_PATH):
+        try:
+            conn = sqlite3.connect(TSE_DB_PATH)
+            conn.row_factory = sqlite3.Row
+            print(f"✅ اتصال به پایگاه داده TSE برقرار شد: {TSE_DB_PATH}")
+            yield conn
+            conn.close()
+            return
+        except Exception as e:
+            print(f"⚠️ خطا در اتصال به TSE: {e}")
+    
+    # اگر پایگاه داده واقعی وجود نداشت، یک پایگاه داده موقت بسازید
+    print(f"⚠️ پایگاه داده واقعی TSE یافت نشد: {TSE_DB_PATH}")
+    print("📦 یک پایگاه داده موقت ایجاد شود...")
+    
     db_path = project_root / "data" / "tse_data.db"
+    os.makedirs(db_path.parent, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
+    
+    # جدول ایجاد کنید اگر وجود نداشت
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS price_data (
+            id INTEGER PRIMARY KEY,
+            symbol TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            open REAL NOT NULL,
+            high REAL NOT NULL,
+            low REAL NOT NULL,
+            close REAL NOT NULL,
+            volume REAL NOT NULL
+        )
+    """)
+    conn.commit()
+    
     yield conn
     conn.close()
 
@@ -57,6 +97,127 @@ def sample_candles():
             volume=1000 + (i * 10)
         ))
 
+    return candles
+
+
+# ============================================================================
+# تابع بارگذاری داده‌های واقعی TSE
+# Real TSE Data Loading Functions
+# ============================================================================
+
+def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> List[Candle]:
+    """
+    از پایگاه داده‌های واقعی بازار ایران (TSE) داده بارگذاری کنید
+    Load real Iranian stock market (TSE) data from SQLite database
+    
+    Args:
+        symbol: نماد سهام (مثال: TOTAL, PETROFF, IRANINOIL)
+        limit: تعداد کندل‌ها
+        
+    Returns:
+        لیست اشیاء Candle با داده‌های واقعی
+    """
+    candles = []
+    
+    if not os.path.exists(TSE_DB_PATH):
+        return None
+    
+    try:
+        conn = sqlite3.connect(TSE_DB_PATH)
+        cursor = conn.cursor()
+        
+        query = """
+        SELECT timestamp, open, high, low, close, volume 
+        FROM price_data 
+        WHERE symbol = ? 
+        ORDER BY timestamp ASC 
+        LIMIT ?
+        """
+        
+        cursor.execute(query, (symbol, limit))
+        rows = cursor.fetchall()
+        
+        if not rows:
+            conn.close()
+            return None
+        
+        for row in rows:
+            timestamp_val, open_val, high_val, low_val, close_val, volume_val = row
+            
+            if isinstance(timestamp_val, str):
+                try:
+                    dt = datetime.fromisoformat(timestamp_val)
+                except:
+                    dt = datetime.strptime(timestamp_val, "%Y-%m-%d")
+            else:
+                dt = datetime.fromtimestamp(timestamp_val)
+            
+            candle = Candle(
+                timestamp=dt,
+                open=float(open_val),
+                high=float(high_val),
+                low=float(low_val),
+                close=float(close_val),
+                volume=float(volume_val)
+            )
+            candles.append(candle)
+        
+        conn.close()
+        return candles
+        
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری داده‌های TSE: {str(e)}")
+        return None
+
+
+def generate_tse_like_data(symbol: str = "TOTAL", limit: int = 200) -> List[Candle]:
+    """
+    داده‌های شبه‌سازی شده واقع‌گرایانه برای بازار ایران
+    Generate realistic simulated data similar to TSE market patterns
+    
+    Args:
+        symbol: نماد سهام
+        limit: تعداد کندل‌ها
+        
+    Returns:
+        لیست اشیاء Candle با داده‌های شبه‌سازی شده
+    """
+    candles = []
+    base_time = datetime(2024, 1, 1)
+    
+    # داده‌های ایرانی معمولاً در رنج خاصی هستند
+    base_price = 10000  # قیمت پایه تریال
+    volatility = 0.02  # نوسان 2%
+    
+    np.random.seed(42)
+    price = base_price
+    
+    for i in range(limit):
+        # شبیه‌سازی قیمت با تصادفی‌بودن و ترند
+        trend = i * 0.5  # ترند آهسته
+        random_change = np.random.normal(0, price * volatility)
+        
+        price = price + trend + random_change
+        
+        # باز، بالا، پایین بر اساس بسته‌شدن
+        open_price = price + np.random.normal(0, price * volatility)
+        close_price = price
+        high_price = max(open_price, close_price) + abs(np.random.normal(0, price * volatility))
+        low_price = min(open_price, close_price) - abs(np.random.normal(0, price * volatility))
+        
+        # حجم معمولی برای بازار ایران
+        volume = np.random.uniform(100000, 5000000)
+        
+        candle = Candle(
+            timestamp=base_time + timedelta(days=i),
+            open=float(max(open_price, 1)),
+            high=float(max(high_price, 1)),
+            low=float(max(low_price, 1)),
+            close=float(max(close_price, 1)),
+            volume=float(volume)
+        )
+        candles.append(candle)
+    
     return candles
 
 
@@ -198,6 +359,102 @@ def tse_sample_candles(tse_db_connection) -> List[Candle]:
         ))
 
     return candles
+
+
+# ============================================================================
+# Fixtures برای داده‌های واقعی و شبه‌سازی‌شده TSE
+# Fixtures for Real and Simulated TSE Data
+# ============================================================================
+
+@pytest.fixture(scope="session")
+def tse_candles_total() -> List[Candle]:
+    """
+    داده‌های TSE برای نماد TOTAL (پتروشیمی ایران)
+    TSE data for TOTAL symbol - Real or Generated
+    """
+    real_data = load_tse_real_data(symbol="TOTAL", limit=300)
+    if real_data:
+        print(f"✅ {len(real_data)} کندل واقعی از TSE بارگذاری شد برای TOTAL")
+        return real_data
+    else:
+        print("⚠️ داده‌های واقعی TSE یافت نشد، داده‌های شبه‌سازی شده استفاده می‌شوند...")
+        return generate_tse_like_data(symbol="TOTAL", limit=300)
+
+
+@pytest.fixture(scope="session")
+def tse_candles_petroff() -> List[Candle]:
+    """
+    داده‌های TSE برای نماد PETROFF (پالایش نفت ایران)
+    TSE data for PETROFF symbol - Real or Generated
+    """
+    real_data = load_tse_real_data(symbol="PETROFF", limit=300)
+    if real_data:
+        print(f"✅ {len(real_data)} کندل واقعی از TSE بارگذاری شد برای PETROFF")
+        return real_data
+    else:
+        print("⚠️ داده‌های واقعی TSE یافت نشد، داده‌های شبه‌سازی شده استفاده می‌شوند...")
+        return generate_tse_like_data(symbol="PETROFF", limit=300)
+
+
+@pytest.fixture(scope="session")
+def tse_candles_iraninoil() -> List[Candle]:
+    """
+    داده‌های TSE برای نماد IRANINOIL (نفت ایران)
+    TSE data for IRANINOIL symbol - Real or Generated
+    """
+    real_data = load_tse_real_data(symbol="IRANINOIL", limit=300)
+    if real_data:
+        print(f"✅ {len(real_data)} کندل واقعی از TSE بارگذاری شد برای IRANINOIL")
+        return real_data
+    else:
+        print("⚠️ داده‌های واقعی TSE یافت نشد، داده‌های شبه‌سازی شده استفاده می‌شوند...")
+        return generate_tse_like_data(symbol="IRANINOIL", limit=300)
+
+
+@pytest.fixture
+def tse_candles_short() -> List[Candle]:
+    """
+    کندل‌های کوتاه‌مدت TSE برای تست‌های سریع
+    Short-term TSE candles for quick tests (60 candles)
+    """
+    return generate_tse_like_data(symbol="TOTAL", limit=60)
+
+
+@pytest.fixture
+def tse_candles_long() -> List[Candle]:
+    """
+    کندل‌های بلند‌مدت TSE برای تست‌های جامع
+    Long-term TSE candles for comprehensive tests (500 candles)
+    """
+    return generate_tse_like_data(symbol="TOTAL", limit=500)
+
+
+@pytest.fixture
+def tse_multiple_symbols() -> Dict[str, List[Candle]]:
+    """
+    داده‌های TSE برای نمادهای مختلف
+    TSE data for multiple symbols
+    """
+    symbols = ["TOTAL", "PETROFF", "IRANINOIL"]
+    result = {}
+    
+    for symbol in symbols:
+        real_data = load_tse_real_data(symbol=symbol, limit=200)
+        if real_data:
+            result[symbol] = real_data
+        else:
+            result[symbol] = generate_tse_like_data(symbol=symbol, limit=200)
+    
+    return result
+
+
+@pytest.fixture
+def tse_candles_realistic() -> List[Candle]:
+    """
+    داده‌های شبه‌سازی شده واقع‌گرایانه برای تست‌های یکنواخت
+    Realistic simulated data for consistent testing
+    """
+    return generate_tse_like_data(symbol="TOTAL", limit=300)
 
 
 @pytest.fixture
