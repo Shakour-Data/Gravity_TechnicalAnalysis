@@ -14,7 +14,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from src.core.indicators.momentum import (
+from gravity_tech.core.indicators.momentum import (
     MomentumIndicators,
     _ema,
     _rsi_from_changes,
@@ -22,7 +22,7 @@ from src.core.indicators.momentum import (
     schaff_trend_cycle,
     connors_rsi
 )
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     Candle,
     IndicatorResult,
     CoreSignalStrength as SignalStrength,
@@ -588,3 +588,4 @@ class TestMomentumIndicators:
         result = connors_rsi(constant_prices)
         # سیگنال معتبر (مثلاً 'SELL' یا 'BUY' یا 'HOLD') قابل قبول است
         assert result["signal"] in ["SELL", "BUY", "HOLD", None]
+
