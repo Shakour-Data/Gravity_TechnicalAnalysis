@@ -6,9 +6,9 @@ Tests PatternResult dataclass creation, validation, and properties.
 
 import pytest
 from datetime import datetime, timedelta
-from src.core.domain.entities.pattern_result import PatternResult
-from src.core.domain.entities.pattern_type import PatternType
-from src.core.domain.entities.signal_strength import SignalStrength
+from gravity_tech.core.domain.entities.pattern_result import PatternResult
+from gravity_tech.core.domain.entities.pattern_type import PatternType
+from gravity_tech.core.domain.entities.signal_strength import SignalStrength
 
 
 class TestPatternResultCreation:
@@ -454,3 +454,4 @@ class TestPatternResultEdgeCases:
             description=long_desc
         )
         assert result.description == long_desc
+
