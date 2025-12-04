@@ -5,7 +5,7 @@ Tests IndicatorCategory enum values and behavior.
 """
 
 import pytest
-from src.core.domain.entities.indicator_category import IndicatorCategory
+from gravity_tech.core.domain.entities.indicator_category import IndicatorCategory
 
 
 class TestIndicatorCategory:
@@ -79,3 +79,4 @@ class TestIndicatorCategory:
 
         category_dict = {IndicatorCategory.TREND: "trend_value"}
         assert category_dict[IndicatorCategory.TREND] == "trend_value"
+
