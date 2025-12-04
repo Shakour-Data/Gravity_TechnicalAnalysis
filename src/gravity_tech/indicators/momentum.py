@@ -403,6 +403,42 @@ class MomentumIndicators:
         )
     
     @staticmethod
+    def momentum(candles: List[Candle], period: int = 10) -> IndicatorResult:
+        """
+        Momentum Indicator
+        
+        Args:
+            candles: List of candles
+            period: Momentum period
+            
+        Returns:
+            IndicatorResult with signal
+        """
+        if len(candles) < period + 1:
+            raise ValueError(f"Need at least {period + 1} candles for momentum calculation")
+        
+        closes = pd.Series([c.close for c in candles])
+        momentum = closes - closes.shift(period)
+        momentum_current = momentum.iloc[-1]
+        
+        # Signal based on momentum value
+        if momentum_current > 0:
+            signal = SignalStrength.BULLISH
+            confidence = min(0.9, 0.5 + (momentum_current / closes.iloc[-1]) * 10)
+        else:
+            signal = SignalStrength.BEARISH
+            confidence = min(0.9, 0.5 + (abs(momentum_current) / closes.iloc[-1]) * 10)
+        
+        return IndicatorResult(
+            indicator_name=f"Momentum({period})",
+            category=IndicatorCategory.MOMENTUM,
+            signal=signal,
+            value=float(momentum_current),
+            confidence=confidence,
+            description=f"مومنتوم: {momentum_current:.4f}"
+        )
+    
+    @staticmethod
     def calculate_all(candles: List[Candle]) -> List[IndicatorResult]:
         """
         Calculate all momentum indicators
