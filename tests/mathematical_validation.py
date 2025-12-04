@@ -475,6 +475,27 @@ class MathematicalValidator:
         return results
 
 
-if __name__ == "__main__":
-    validator = MathematicalValidator()
-    results = validator.generate_validation_report()
+
+# Pytest-compatible test class
+import pytest
+
+class TestMathematicalValidation:
+    def setup_class(self):
+        self.validator = MathematicalValidator()
+
+    def test_donchian_channels(self):
+        result = self.validator.validate_donchian_channels()
+        assert result["status"] == "✅ PASS"
+
+    def test_aroon(self):
+        result = self.validator.validate_aroon()
+        assert result["status"] == "✅ PASS"
+
+    def test_vortex_indicator(self):
+        result = self.validator.validate_vortex_indicator()
+        assert result["status"] == "✅ PASS"
+
+    def test_mcginley_dynamic(self):
+        result = self.validator.validate_mcginley_dynamic()
+        assert result["status"] == "✅ PASS"
+
