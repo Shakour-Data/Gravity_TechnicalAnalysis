@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 import structlog
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 from gravity_tech.database.historical_manager import HistoricalScoreManager
 from gravity_tech.services.cache_service import cache_manager
@@ -37,8 +38,8 @@ class HistoricalAnalysisRequest(BaseModel):
     """درخواست تحلیل historical"""
     symbol: str = Field(..., description="نماد معاملاتی")
     timeframe: str = Field(..., description="تایم‌فریم")
-    start_date: Optional[datetime] = Field(None, description="تاریخ شروع")
-    end_date: Optional[datetime] = Field(None, description="تاریخ پایان")
+    start_date: Optional[datetime] = Field(default=None, description="تاریخ شروع")
+    end_date: Optional[datetime] = Field(default=None, description="تاریخ پایان")
     limit: int = Field(100, description="حداکثر تعداد نتایج", ge=1, le=1000)
 
 
@@ -77,8 +78,15 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
     Returns: لیست تحلیل‌های historical با امتیازات
     """
     try:
-        manager = HistoricalScoreManager()
-        
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database configuration missing"
+            )
+
+        manager = HistoricalScoreManager(database_url)
+
         # تنظیم تاریخ‌ها اگر مشخص نشده
         end_date = request.end_date or datetime.utcnow()
         start_date = request.start_date or (end_date - timedelta(days=30))
@@ -135,8 +143,15 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
 async def get_available_symbols():
     """دریافت لیست نمادهای موجود در دیتابیس historical"""
     try:
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database configuration missing"
+            )
+
         loop = asyncio.get_event_loop()
-        manager = HistoricalScoreManager()
+        manager = HistoricalScoreManager(database_url)
         symbols = await loop.run_in_executor(executor, lambda: manager.get_available_symbols())
         return {"symbols": symbols}
     
@@ -156,11 +171,18 @@ async def get_available_symbols():
 async def get_available_timeframes(symbol: Optional[str] = None):
     """دریافت لیست تایم‌فریم‌های موجود"""
     try:
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database configuration missing"
+            )
+
         loop = asyncio.get_event_loop()
-        manager = HistoricalScoreManager()
+        manager = HistoricalScoreManager(database_url)
         timeframes = await loop.run_in_executor(executor, lambda: manager.get_available_timeframes(symbol))
         return {"timeframes": timeframes}
-    
+
     except Exception as e:
         logger.error("get_timeframes_error", error=str(e))
         raise HTTPException(
@@ -177,8 +199,15 @@ async def get_available_timeframes(symbol: Optional[str] = None):
 async def get_symbol_stats(symbol: str, timeframe: Optional[str] = None):
     """دریافت آمار historical برای یک نماد"""
     try:
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database configuration missing"
+            )
+
         loop = asyncio.get_event_loop()
-        manager = HistoricalScoreManager()
+        manager = HistoricalScoreManager(database_url)
         stats = await loop.run_in_executor(executor, lambda: manager.get_symbol_statistics(symbol, timeframe))
         return stats
     
@@ -198,19 +227,26 @@ async def get_symbol_stats(symbol: str, timeframe: Optional[str] = None):
 async def cleanup_old_data(days: int = Query(90, description="تعداد روز برای نگهداری داده‌ها")):
     """پاک کردن داده‌های قدیمی برای مدیریت فضای دیتابیس"""
     try:
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database configuration missing"
+            )
+
         loop = asyncio.get_event_loop()
-        manager = HistoricalScoreManager()
+        manager = HistoricalScoreManager(database_url)
+
+        deleted_count = await loop.run_in_executor(executor, lambda: manager.cleanup_old_data(days))
+
         cutoff_date = datetime.utcnow() - timedelta(days=days)
-        
-        deleted_count = await loop.run_in_executor(executor, lambda: manager.cleanup_old_data(cutoff_date))
-        
         logger.info("historical_data_cleaned", deleted_count=deleted_count, cutoff_date=cutoff_date)
-        
+
         return {
             "message": f"Cleaned up {deleted_count} old records",
             "cutoff_date": cutoff_date.isoformat()
         }
-    
+
     except Exception as e:
         logger.error("cleanup_error", error=str(e))
         raise HTTPException(
