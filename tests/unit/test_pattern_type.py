@@ -5,7 +5,7 @@ Tests PatternType enum values and behavior.
 """
 
 import pytest
-from src.core.domain.entities.pattern_type import PatternType
+from gravity_tech.core.domain.entities.pattern_type import PatternType
 
 
 class TestPatternType:
@@ -65,3 +65,4 @@ class TestPatternType:
 
         type_dict = {PatternType.CLASSICAL: "classical_value"}
         assert type_dict[PatternType.CLASSICAL] == "classical_value"
+
