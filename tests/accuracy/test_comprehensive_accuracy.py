@@ -6,8 +6,9 @@ Date: 2024
 Version: 1.0
 License: MIT
 """
+import pytest
 from datetime import datetime
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     IndicatorResult,
     IndicatorCategory,
     CoreSignalStrength as SignalStrength
@@ -27,6 +28,90 @@ def create_indicator(name: str, category: IndicatorCategory,
     )
 
 
+@pytest.mark.parametrize("title,indicators", [
+    ("Ideal conditions - Strong and confident signal", {
+        'trend': [
+            create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
+            create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
+        ],
+        'momentum': [
+            create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
+            create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
+        ],
+        'cycle': [
+            create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.9),
+        ],
+        'volume': [
+            create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.BULLISH, 0.9),
+        ]
+    }),
+    ("Uncertainty - Accurate indicators with different signals", {
+        'trend': [
+            create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
+            create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.9),
+        ],
+        'momentum': [
+            create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
+            create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BEARISH, 0.9),
+        ],
+        'cycle': [
+            create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.NEUTRAL, 0.9),
+        ],
+        'volume': [
+            create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.NEUTRAL, 0.9),
+        ]
+    }),
+    ("Rely on trend - Other indicators uncertain", {
+        'trend': [
+            create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
+            create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
+            create_indicator("MACD", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
+        ],
+        'momentum': [
+            create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.NEUTRAL, 0.3),
+            create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BEARISH, 0.2),
+        ],
+        'cycle': [
+            create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.NEUTRAL, 0.3),
+        ],
+        'volume': [
+            create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.NEUTRAL, 0.4),
+        ]
+    }),
+    ("Possible trend change - Momentum and cycle giving change signals", {
+        'trend': [
+            create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.4),
+            create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.3),
+        ],
+        'momentum': [
+            create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.95),
+            create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
+        ],
+        'cycle': [
+            create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.9),
+            create_indicator("Phase", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.95),
+        ],
+        'volume': [
+            create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.BULLISH, 0.8),
+        ]
+    }),
+    ("Uncertain market - All indicators uncertain", {
+        'trend': [
+            create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.3),
+            create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.3),
+        ],
+        'momentum': [
+            create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.3),
+            create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.3),
+        ],
+        'cycle': [
+            create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.3),
+        ],
+        'volume': [
+            create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.BULLISH, 0.3),
+        ]
+    }),
+])
 def test_scenario(title: str, indicators: dict):
     """Test a specific scenario"""
     print(f"\n{'='*70}")
@@ -73,133 +158,3 @@ def test_scenario(title: str, indicators: dict):
     
     return analysis
 
-
-if __name__ == "__main__":
-    print("=" * 70)
-    print("🧪 Comprehensive Test: Impact of Accuracy on Decision Making")
-    print("=" * 70)
-    
-    # Scenario 1: All high confidence, all bullish
-    print("\n" + "▼" * 70)
-    print("Scenario 1: All bullish, all with high accuracy")
-    test_scenario(
-        "Ideal conditions - Strong and confident signal",
-        {
-            'trend': [
-                create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
-                create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
-            ],
-            'momentum': [
-                create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
-                create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
-            ],
-            'cycle': [
-                create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.9),
-            ],
-            'volume': [
-                create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.BULLISH, 0.9),
-            ]
-        }
-    )
-    
-    # Scenario 2: All high confidence, mixed signals
-    print("\n" + "▼" * 70)
-    print("Scenario 2: Conflicting signals, all with high accuracy")
-    test_scenario(
-        "Uncertainty - Accurate indicators with different signals",
-        {
-            'trend': [
-                create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.9),
-                create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.9),
-            ],
-            'momentum': [
-                create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
-                create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BEARISH, 0.9),
-            ],
-            'cycle': [
-                create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.NEUTRAL, 0.9),
-            ],
-            'volume': [
-                create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.NEUTRAL, 0.9),
-            ]
-        }
-    )
-    
-    # Scenario 3: Trend high confidence, others low
-    print("\n" + "▼" * 70)
-    print("Scenario 3: Only trend is reliable")
-    test_scenario(
-        "Rely on trend - Other indicators uncertain",
-        {
-            'trend': [
-                create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
-                create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
-                create_indicator("MACD", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.95),
-            ],
-            'momentum': [
-                create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.NEUTRAL, 0.3),
-                create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BEARISH, 0.2),
-            ],
-            'cycle': [
-                create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.NEUTRAL, 0.3),
-            ],
-            'volume': [
-                create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.NEUTRAL, 0.4),
-            ]
-        }
-    )
-    
-    # Scenario 4: Momentum and Cycle high, Trend low
-    print("\n" + "▼" * 70)
-    print("Scenario 4: Momentum and cycle strong, trend weak")
-    test_scenario(
-        "Possible trend change - Momentum and cycle giving change signals",
-        {
-            'trend': [
-                create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.4),
-                create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BEARISH, 0.3),
-            ],
-            'momentum': [
-                create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.95),
-                create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.9),
-            ],
-            'cycle': [
-                create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.9),
-                create_indicator("Phase", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.95),
-            ],
-            'volume': [
-                create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.BULLISH, 0.8),
-            ]
-        }
-    )
-    
-    # Scenario 5: All low confidence
-    print("\n" + "▼" * 70)
-    print("Scenario 5: All low accuracy")
-    test_scenario(
-        "Uncertain market - All indicators uncertain",
-        {
-            'trend': [
-                create_indicator("SMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.3),
-                create_indicator("EMA", IndicatorCategory.TREND, SignalStrength.BULLISH, 0.3),
-            ],
-            'momentum': [
-                create_indicator("RSI", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.3),
-                create_indicator("Stoch", IndicatorCategory.MOMENTUM, SignalStrength.BULLISH, 0.3),
-            ],
-            'cycle': [
-                create_indicator("Sine", IndicatorCategory.CYCLE, SignalStrength.BULLISH, 0.3),
-            ],
-            'volume': [
-                create_indicator("OBV", IndicatorCategory.VOLUME, SignalStrength.BULLISH, 0.3),
-            ]
-        }
-    )
-    
-    print(f"\n{'='*70}")
-    print("💡 Summary:")
-    print("  1. High accuracy + agreement → high confidence")
-    print("  2. High accuracy + disagreement → medium confidence")
-    print("  3. Low accuracy → low confidence (even with agreement)")
-    print("  4. Categories with higher accuracy have more weight in decision")
-    print("="*70)
