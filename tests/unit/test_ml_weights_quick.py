@@ -87,3 +87,4 @@ print("   - Feature extractor: ", "Working ✓" if X_ind is not None else "Needs
 print("   - ML models: Ready for full training")
 print("\n💡 Next step: Run full pipeline with more data:")
 print("   python ml/train_pipeline.py --symbol BTCUSDT --days 730")
+
