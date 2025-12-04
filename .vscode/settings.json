@@ -13,7 +13,6 @@
   "python.testing.unittestEnabled": false,
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": true,
-  "python.analysis.diagnosticMode": "workspace",
   "files.exclude": {
     "**/__pycache__": true,
     "**/*.pyc": true,
