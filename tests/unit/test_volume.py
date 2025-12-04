@@ -15,10 +15,10 @@ import pytest
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from src.core.indicators.volume import (
+from gravity_tech.core.indicators.volume import (
     VolumeIndicators
 )
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     Candle,
     IndicatorResult,
     CoreSignalStrength as SignalStrength,
@@ -489,3 +489,4 @@ class TestVolumeIndicators:
 
         result_ad = VolumeIndicators.ad_line(divergence_candles)
         assert isinstance(result_ad, IndicatorResult)
+
