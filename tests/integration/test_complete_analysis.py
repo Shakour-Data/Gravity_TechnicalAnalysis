@@ -3,7 +3,7 @@ Simple test for complete analysis with Market Phase
 """
 import asyncio
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.models.schemas import AnalysisRequest
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
 import numpy as np
@@ -53,3 +53,4 @@ async def test_complete_analysis():
 
 if __name__ == "__main__":
     asyncio.run(test_complete_analysis())
+
