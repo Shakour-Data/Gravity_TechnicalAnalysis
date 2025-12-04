@@ -13,18 +13,15 @@ Version: 1.0.0
 License: MIT
 """
 
+import logging
+import multiprocessing
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Optional, Tuple, Any, Callable
-from datetime import datetime, timedelta
-import logging
-from concurrent.futures import ProcessPoolExecutor
-import multiprocessing
-import sys
-import os
-
-# Add src to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from gravity_tech.models.schemas import Candle
 
@@ -37,9 +34,9 @@ class MonteCarloResult:
 
     def __init__(self, num_simulations: int, success_rate: float, average_return: float,
                  median_return: float, std_return: float, max_return: float, min_return: float,
-                 confidence_interval_95: Tuple[float, float], sharpe_ratio: float,
+                 confidence_interval_95: tuple[float, float], sharpe_ratio: float,
                  max_drawdown_avg: float, win_rate: float, profit_factor: float,
-                 simulation_results: List[Dict[str, Any]], description: str):
+                 simulation_results: list[dict[str, Any]], description: str):
         self.num_simulations = num_simulations
         self.success_rate = success_rate
         self.average_return = average_return
@@ -65,8 +62,8 @@ class MonteCarloBacktester:
         self.random_seed = 42
         np.random.seed(self.random_seed)
 
-    def run_monte_carlo_analysis(self, historical_data: List[Candle],
-                                strategy_function: Callable[[List[Candle], float, float], Any],
+    def run_monte_carlo_analysis(self, historical_data: list[Candle],
+                                strategy_function: Callable[[list[Candle], float, float], Any],
                                 initial_capital: float = 10000.0,
                                 commission: float = 0.001) -> MonteCarloResult:
         """
@@ -137,8 +134,8 @@ class MonteCarloBacktester:
             description=f"Monte Carlo analysis with {len(simulation_results)} successful simulations"
         )
 
-    def _run_single_simulation(self, df: pd.DataFrame, strategy_function: Callable[[List[Candle], float, float], Any],
-                             initial_capital: float, commission: float, sim_id: int) -> Dict[str, Any]:
+    def _run_single_simulation(self, df: pd.DataFrame, strategy_function: Callable[[list[Candle], float, float], Any],
+                             initial_capital: float, commission: float, sim_id: int) -> dict[str, Any]:
         """Run a single Monte Carlo simulation"""
         try:
             # Create bootstrapped sample (sample with replacement)
@@ -185,11 +182,10 @@ class MonteCarloBacktester:
                 'trades': []
             }
 
-    def _analyze_simulation_results(self, results: List[Dict[str, Any]],
-                                  initial_capital: float) -> Dict[str, Any]:
+    def _analyze_simulation_results(self, results: list[dict[str, Any]],
+                                  initial_capital: float) -> dict[str, Any]:
         """Analyze Monte Carlo simulation results"""
         returns = [r['total_return'] for r in results]
-        final_capitals = [r['final_capital'] for r in results]
 
         # Basic statistics
         average_return = np.mean(returns)
@@ -258,7 +254,7 @@ class MonteCarloBacktester:
             'profit_factor': profit_factor
         }
 
-    def _candles_to_dataframe(self, candles: List[Candle]) -> pd.DataFrame:
+    def _candles_to_dataframe(self, candles: list[Candle]) -> pd.DataFrame:
         """Convert list of candles to DataFrame"""
         data = {
             'timestamp': [c.timestamp for c in candles],
@@ -272,7 +268,7 @@ class MonteCarloBacktester:
         df.set_index('timestamp', inplace=True)
         return df
 
-    def _dataframe_to_candles(self, df: pd.DataFrame) -> List[Candle]:
+    def _dataframe_to_candles(self, df: pd.DataFrame) -> list[Candle]:
         """Convert DataFrame back to list of candles"""
         candles = []
         for idx, row in df.iterrows():
@@ -295,7 +291,7 @@ class MonteCarloBacktester:
             candles.append(candle)
         return candles
 
-    def generate_probability_distribution(self, results: MonteCarloResult) -> Dict[str, Any]:
+    def generate_probability_distribution(self, results: MonteCarloResult) -> dict[str, Any]:
         """
         Generate probability distribution analysis
 
@@ -365,7 +361,7 @@ def create_monte_carlo_backtester(num_simulations: int = 1000) -> MonteCarloBack
     return MonteCarloBacktester(num_simulations=num_simulations)
 
 
-def run_monte_carlo_backtest(historical_data: List[Candle], strategy_function: Callable[[List[Candle], float, float], Any],
+def run_monte_carlo_backtest(historical_data: list[Candle], strategy_function: Callable[[list[Candle], float, float], Any],
                            num_simulations: int = 1000) -> MonteCarloResult:
     """
     Convenience function to run Monte Carlo backtest
