@@ -262,19 +262,19 @@ class CombinedTrendMomentumAnalyzer:
                 score = analysis.combined_score_3d
                 conf = analysis.confidence_3d
                 action = analysis.action_3d
-                t_score = analysis.trend_analysis.trend_3d.score
+                t_score = analysis.trend_analysis.score_3d.score
                 m_score = analysis.momentum_analysis.momentum_3d.score
             elif horizon == '7d':
                 score = analysis.combined_score_7d
                 conf = analysis.confidence_7d
                 action = analysis.action_7d
-                t_score = analysis.trend_analysis.trend_7d.score
+                t_score = analysis.trend_analysis.score_7d.score
                 m_score = analysis.momentum_analysis.momentum_7d.score
             else:
                 score = analysis.combined_score_30d
                 conf = analysis.confidence_30d
                 action = analysis.action_30d
-                t_score = analysis.trend_analysis.trend_30d.score
+                t_score = analysis.trend_analysis.score_30d.score
                 m_score = analysis.momentum_analysis.momentum_30d.score
             
             print(f"\n{horizon.upper()}:")
