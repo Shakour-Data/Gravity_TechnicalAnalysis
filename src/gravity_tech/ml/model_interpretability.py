@@ -359,7 +359,7 @@ def demo_shap_analysis():
     print("=" * 80)
     
     # Load model and generate test data
-    from ml.advanced_pattern_training import AdvancedPatternTrainer
+    from gravity_tech.ml.advanced_pattern_training import AdvancedPatternTrainer
     
     trainer = AdvancedPatternTrainer()
     X, y_type, y_success = trainer.generate_enhanced_training_data(n_samples=500)
