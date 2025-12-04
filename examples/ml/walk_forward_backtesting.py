@@ -14,14 +14,17 @@ Version: 1.0.0
 License: MIT
 """
 
+import logging
+from collections.abc import Callable
+from typing import Any, NamedTuple
+
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Optional, Tuple, Any, Callable
-from datetime import datetime, timedelta
+
 from gravity_tech.models.schemas import Candle
-# from gravity_tech.models.schemas import Trade  # Uncomment if Trade exists
-# If Trade does not exist, define a placeholder below:
-from typing import NamedTuple
+
+logger = logging.getLogger(__name__)
+
 
 class Trade(NamedTuple):
     entry_time: Any
@@ -55,9 +58,6 @@ class WalkForwardResult(NamedTuple):
     parameter_stability: float
     walk_forward_results: list
     description: str
-import logging
-from concurrent.futures import ProcessPoolExecutor
-import multiprocessing
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,9 @@ class WalkForwardBacktester:
         self.testing_window = testing_window
         self.step_size = step_size
 
-    def run_walk_forward_analysis(self, historical_data: List[Candle],
+    def run_walk_forward_analysis(self, historical_data: list[Candle],
                                  strategy_optimizer: Callable,
-                                 parameter_ranges: Dict[str, List[Any]],
+                                 parameter_ranges: dict[str, list[Any]],
                                  initial_capital: float = 10000.0,
                                  commission: float = 0.001) -> WalkForwardResult:
         """
@@ -162,7 +162,7 @@ class WalkForwardBacktester:
             description=f"Walk-forward analysis with {len(walk_forward_results)} windows"
         )
 
-    def _generate_walk_forward_windows(self, data_length: int) -> List[Tuple[int, int, int, int]]:
+    def _generate_walk_forward_windows(self, data_length: int) -> list[tuple[int, int, int, int]]:
         """Generate walk-forward window indices"""
         windows = []
 
@@ -182,7 +182,7 @@ class WalkForwardBacktester:
 
         return windows
 
-    def _run_strategy_with_params(self, candles: List[Candle], params: Dict[str, Any],
+    def _run_strategy_with_params(self, candles: list[Candle], params: dict[str, Any],
                                  initial_capital: float, commission: float) -> BacktestResult:
         """Run strategy with specific parameters"""
         # This is a placeholder - in practice, you'd implement your specific strategy
@@ -299,7 +299,7 @@ class WalkForwardBacktester:
                 trades=[]
             )
 
-    def _analyze_walk_forward_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_walk_forward_results(self, results: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze walk-forward results"""
         oos_returns = [r['out_of_sample_return'] for r in results]
 
@@ -352,7 +352,7 @@ class WalkForwardBacktester:
             'parameter_stability': parameter_stability
         }
 
-    def _calculate_sma(self, data: List[float], period: int) -> List[float]:
+    def _calculate_sma(self, data: list[float], period: int) -> list[float]:
         """Calculate Simple Moving Average"""
         sma = []
         for i in range(len(data)):
@@ -362,7 +362,7 @@ class WalkForwardBacktester:
                 sma.append(np.mean(data[i-period+1:i+1]))
         return sma
 
-    def _candles_to_dataframe(self, candles: List[Candle]) -> pd.DataFrame:
+    def _candles_to_dataframe(self, candles: list[Candle]) -> pd.DataFrame:
         """Convert list of candles to DataFrame"""
         data = {
             'timestamp': [c.timestamp for c in candles],
@@ -376,7 +376,7 @@ class WalkForwardBacktester:
         df.set_index('timestamp', inplace=True)
         return df
 
-    def _dataframe_to_candles(self, df: pd.DataFrame) -> List[Candle]:
+    def _dataframe_to_candles(self, df: pd.DataFrame) -> list[Candle]:
         """Convert DataFrame back to list of candles"""
         candles = []
         for idx, row in df.iterrows():
@@ -410,9 +410,9 @@ def create_walk_forward_backtester(optimization_window: int = 252,
     )
 
 
-def run_walk_forward_backtest(historical_data: List[Candle],
+def run_walk_forward_backtest(historical_data: list[Candle],
                              strategy_optimizer: Callable,
-                             parameter_ranges: Dict[str, List[Any]],
+                             parameter_ranges: dict[str, list[Any]],
                              optimization_window: int = 252) -> WalkForwardResult:
     """
     Convenience function to run walk-forward backtest
