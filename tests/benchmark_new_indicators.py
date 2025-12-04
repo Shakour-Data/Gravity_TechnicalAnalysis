@@ -123,3 +123,4 @@ def benchmark_new_indicators():
 
 if __name__ == "__main__":
     benchmark_new_indicators()
+
