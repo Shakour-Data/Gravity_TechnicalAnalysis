@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    "ms-pytest.pytest",
+    "charliermarsh.ruff",
+    "ms-vscode.makefile-tools",
+    "eamodio.gitlens",
+    "GitHub.copilot",
+    "ms-vscode.remote-explorer"
+  ]
+}
