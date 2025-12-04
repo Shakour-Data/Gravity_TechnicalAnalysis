@@ -8,7 +8,7 @@ Covers validation, properties, and true_range calculations.
 import pytest
 import numpy as np
 from datetime import datetime
-from src.core.domain.entities.candle import Candle, CandleType
+from gravity_tech.core.domain.entities.candle import Candle, CandleType
 
 
 class TestCandleCreation:
@@ -337,3 +337,4 @@ class TestCandleTypeEnum:
         assert str(CandleType.BULLISH) == "BULLISH"
         assert str(CandleType.BEARISH) == "BEARISH"
         assert str(CandleType.DOJI) == "DOJI"
+
