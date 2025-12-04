@@ -333,7 +333,7 @@ class FiveDimensionalDecisionMatrix:
         این متد از ml/volume_dimension_matrix.py استفاده می‌کند
         """
         try:
-            from ml.volume_dimension_matrix import VolumeDimensionMatrix
+            from gravity_tech.ml.volume_dimension_matrix import VolumeDimensionMatrix
             
             vol_matrix = VolumeDimensionMatrix(self.candles)
             
@@ -374,7 +374,7 @@ class FiveDimensionalDecisionMatrix:
     
     def _get_confidence_multiplier(self, interaction_type) -> float:
         """محاسبه ضریب confidence بر اساس نوع interaction"""
-        from ml.volume_dimension_matrix import InteractionType
+        from gravity_tech.ml.volume_dimension_matrix import InteractionType
         
         multipliers = {
             InteractionType.STRONG_CONFIRM: 1.15,
