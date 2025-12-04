@@ -21,7 +21,7 @@ from typing import List
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from gravity_tech.models.schemas import Candle
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
@@ -63,22 +63,32 @@ def create_realistic_market_data(
         # قیمت close
         close_price = current_price + trend_component + np.random.normal(0, current_price * volatility)
         
-        # high و low
-        daily_range = abs(np.random.normal(0, current_price * volatility * 1.5))
-        high = close_price + daily_range * np.random.uniform(0.3, 0.7)
-        low = close_price - daily_range * np.random.uniform(0.3, 0.7)
-        
         # open
         if i > 0:
             open_price = candles[-1].close + np.random.normal(0, current_price * volatility * 0.5)
         else:
             open_price = current_price
         
+        # high و low باید حداقل max(open, close) و max(open, close) را پوشش دهند
+        body_high = max(open_price, close_price)
+        body_low = min(open_price, close_price)
+        
+        # اضافه کردن نوسان به high و low
+        daily_range = abs(np.random.normal(0, current_price * volatility * 1.5))
+        high_add = daily_range * np.random.uniform(0.1, 0.9)
+        low_sub = daily_range * np.random.uniform(0.1, 0.9)
+        
+        high = max(body_high, body_high + high_add)
+        low = min(body_low, body_low - low_sub)
+        
+        # اطمینان از اینکه low <= min(open, close) و high >= max(open, close)
+        # این همیشه برقرار است با max و min بالا
+        
         # volume
         volume = abs(np.random.normal(1000000, 200000))
         
         candle = Candle(
-            timestamp=(base_time + timedelta(days=i)).isoformat(),
+            timestamp=base_time + timedelta(days=i),
             open=max(0, open_price),
             high=max(0, high),
             low=max(0, low),
