@@ -15,12 +15,6 @@ Author: Gravity Tech Team
 Date: November 14, 2025
 Version: 1.0.0
 License: MIT
-"""
-  - Confidence: [0.0, 1.0]
-
-Display for API:
-  - Score: [-100, +100]
-  - Confidence: [0, 100]
 
 Usage:
 ------
