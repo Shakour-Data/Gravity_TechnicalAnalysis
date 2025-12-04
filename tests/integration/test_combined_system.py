@@ -13,9 +13,12 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+from pathlib import Path
+import pytest
 
 # Add project path
-sys.path.insert(0, os.path.abspath('.'))
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / 'src'))
 
 from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
 from gravity_tech.ml.multi_horizon_momentum_features import MultiHorizonMomentumFeatureExtractor
@@ -23,6 +26,59 @@ from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 from gravity_tech.ml.multi_horizon_analysis import MultiHorizonAnalyzer
 from gravity_tech.ml.multi_horizon_momentum_analysis import MultiHorizonMomentumAnalyzer
 from gravity_tech.ml.combined_trend_momentum_analysis import CombinedTrendMomentumAnalyzer
+from gravity_tech.core.domain.entities import Candle
+
+
+@pytest.fixture(scope="module")
+def candles():
+    """Fixture to provide candle data for tests."""
+    # Create data
+    df = create_realistic_market_data(num_samples=1500, trend='uptrend')
+    
+    # Convert DataFrame to Candle objects
+    candle_objects = []
+    for _, row in df.iterrows():
+        candle = Candle(
+            timestamp=row['timestamp'],
+            open=row['open'],
+            high=row['high'],
+            low=row['low'],
+            close=row['close'],
+            volume=row['volume']
+        )
+        candle_objects.append(candle)
+    
+    return candle_objects
+
+
+@pytest.fixture(scope="module")
+def trained_models(candles):
+    """Fixture to provide trained models for combined system test."""
+    # Extract trend features
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d', '7d', '30d'])
+    X_trend, Y_trend = trend_extractor.extract_training_dataset(candles)
+    
+    # Training trend model
+    trend_learner = MultiHorizonWeightLearner(
+        horizons=['3d', '7d', '30d'],
+        test_size=0.2,
+        random_state=42
+    )
+    trend_learner.train(X_trend, Y_trend, verbose=False)
+    
+    # Extract momentum features
+    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d', '7d', '30d'])
+    X_momentum, Y_momentum = momentum_extractor.extract_training_dataset(candles)
+    
+    # Training momentum model
+    momentum_learner = MultiHorizonWeightLearner(
+        horizons=['3d', '7d', '30d'],
+        test_size=0.2,
+        random_state=42
+    )
+    momentum_learner.train(X_momentum, Y_momentum, verbose=False)
+    
+    return trend_learner, momentum_learner
 
 
 def create_realistic_market_data(
@@ -66,22 +122,34 @@ def create_realistic_market_data(
         'close': prices
     })
     
-    df['high'] = df['close'] * (1 + np.abs(np.random.normal(0, 0.005, len(df))))
-    df['low'] = df['close'] * (1 - np.abs(np.random.normal(0, 0.005, len(df))))
     df['open'] = df['close'].shift(1).fillna(df['close'].iloc[0])
+    
+    # Generate high/low that properly bracket open/close
+    open_prices = df['open'].values
+    close_prices = df['close'].values
+    
+    body_highs = np.maximum(open_prices, close_prices)
+    body_lows = np.minimum(open_prices, close_prices)
+    
+    # Add some wick above and below the body (0.5% of close price)
+    wick_ranges = np.abs(close_prices) * 0.005
+    wick_above = np.random.uniform(0, wick_ranges, len(df))
+    wick_below = np.random.uniform(0, wick_ranges, len(df))
+    
+    df['high'] = body_highs + wick_above
+    df['low'] = body_lows - wick_below
+    
     df['volume'] = volumes
     
     return df
 
 
-def test_trend_system():
+def test_trend_system(candles):
     """Test trend system."""
     print("\n" + "="*80)
     print("🔵 TESTING TREND SYSTEM")
     print("="*80)
     
-    # Create data
-    candles = create_realistic_market_data(num_samples=1500, trend='uptrend')
     print(f"\n✅ Generated {len(candles)} candles")
     
     # Extract features
@@ -104,9 +172,9 @@ def test_trend_system():
     trend_analysis = trend_analyzer.analyze(latest_features)
     
     print("\n📊 Trend Analysis Results:")
-    print(f"  3d Score: {trend_analysis.trend_3d.score:+.3f} ({trend_analysis.trend_3d.confidence:.0%})")
-    print(f"  7d Score: {trend_analysis.trend_7d.score:+.3f} ({trend_analysis.trend_7d.confidence:.0%})")
-    print(f"  30d Score: {trend_analysis.trend_30d.score:+.3f} ({trend_analysis.trend_30d.confidence:.0%})")
+    print(f"  3d Score: {trend_analysis.score_3d.score:+.3f} ({trend_analysis.score_3d.confidence:.0%})")
+    print(f"  7d Score: {trend_analysis.score_7d.score:+.3f} ({trend_analysis.score_7d.confidence:.0%})")
+    print(f"  30d Score: {trend_analysis.score_30d.score:+.3f} ({trend_analysis.score_30d.confidence:.0%})")
     
     return trend_learner, trend_analyzer, candles
 
@@ -144,15 +212,13 @@ def test_momentum_system(candles):
     return momentum_learner, momentum_analyzer
 
 
-def test_combined_system(
-    trend_learner,
-    momentum_learner,
-    candles
-):
+def test_combined_system(trained_models, candles):
     """Test combined system."""
     print("\n" + "="*80)
     print("🟣 TESTING COMBINED SYSTEM")
     print("="*80)
+    
+    trend_learner, momentum_learner = trained_models
     
     # Create analyzers
     trend_analyzer = MultiHorizonAnalyzer(trend_learner)
@@ -203,7 +269,18 @@ def test_different_scenarios():
         print("="*80)
         
         # Create data
-        candles = create_realistic_market_data(num_samples=1500, trend=trend_type)
+        df = create_realistic_market_data(num_samples=1500, trend=trend_type)
+        candles = []
+        for _, row in df.iterrows():
+            candle = Candle(
+                timestamp=row['timestamp'],
+                open=row['open'],
+                high=row['high'],
+                low=row['low'],
+                close=row['close'],
+                volume=row['volume']
+            )
+            candles.append(candle)
         
         # Training
         print("\n🔄 Training models...")
@@ -241,22 +318,36 @@ def test_different_scenarios():
         print(f"  30d Combined:    {combined_analysis.combined_score_30d:+.3f}")
 
 
-def main():
-    """Main test function."""
+def test_full_integration():
+    """Test full integration (equivalent to main function)."""
     print("\n" + "🚀"*40)
     print("COMPLETE MULTI-HORIZON SYSTEM TEST")
     print("="*40)
     
     try:
+        # Create data
+        df = create_realistic_market_data(num_samples=1500, trend='uptrend')
+        candles = []
+        for _, row in df.iterrows():
+            candle = Candle(
+                timestamp=row['timestamp'],
+                open=row['open'],
+                high=row['high'],
+                low=row['low'],
+                close=row['close'],
+                volume=row['volume']
+            )
+            candles.append(candle)
+        
         # Test trend system
-        trend_learner, trend_analyzer, candles = test_trend_system()
+        trend_learner, trend_analyzer, _ = test_trend_system(candles)
         
         # Test momentum system
         momentum_learner, momentum_analyzer = test_momentum_system(candles)
         
         # Test combined system
         combined_analyzer, combined_analysis = test_combined_system(
-            trend_learner, momentum_learner, candles
+            (trend_learner, momentum_learner), candles
         )
         
         # Test different scenarios
@@ -273,5 +364,11 @@ def main():
         traceback.print_exc()
 
 
+def main():
+    """Main test function."""
+    test_full_integration()
+
+
 if __name__ == '__main__':
     main()
+
