@@ -16,8 +16,8 @@ Volume Indicators (6 main):
 import pytest
 import numpy as np
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength, IndicatorCategory
-from src.core.indicators.volume import VolumeIndicators
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength, IndicatorCategory
+from gravity_tech.core.indicators.volume import VolumeIndicators
 
 
 def generate_volume_candles(count: int = 50, base_price: float = 100.0, trend: str = "neutral") -> list[Candle]:
@@ -581,3 +581,4 @@ class TestEdgeCases:
         
         assert result_obv.value < 0
         assert result_pvt.value < 0
+
