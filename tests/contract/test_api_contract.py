@@ -9,7 +9,7 @@ import pytest
 
 # Try to import pact, skip all tests if not available
 try:
-    from pact import Consumer, Provider, Like, EachLike, Term
+    from pact import Pact
     PACT_AVAILABLE = True
 except ImportError:
     PACT_AVAILABLE = False
@@ -285,3 +285,4 @@ class TestServiceDiscoveryContract:
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
+
