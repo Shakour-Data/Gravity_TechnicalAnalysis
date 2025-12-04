@@ -460,8 +460,8 @@ class IndicatorWeightLearner:
 
 # Example usage and testing
 if __name__ == "__main__":
-    from ml.data_connector import DataConnector
-    from ml.feature_extraction import FeatureExtractor
+    from gravity_tech.ml.data_connector import DataConnector
+    from gravity_tech.ml.feature_extraction import FeatureExtractor
     from datetime import datetime, timedelta
     
     print("=" * 70)
