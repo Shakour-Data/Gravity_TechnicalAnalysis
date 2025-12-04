@@ -1,0 +1,31 @@
+{
+  "test_date": "2025-12-04T01:51:33.482722",
+  "symbol": "BTCUSDT",
+  "training_samples": 295,
+  "horizons": [
+    3,
+    7,
+    30
+  ],
+  "level1_results": {
+    "pattern": "MIXED_SIGNALS",
+    "pattern_confidence": 0.37421895417412715,
+    "scores": {
+      "3d": 0.14339300147922407,
+      "7d": 0.14644140016575963,
+      "30d": 1.0
+    },
+    "confidences": {
+      "3d": 0.2600825223425414,
+      "7d": 0.3970701266901847,
+      "30d": 0.46550421348965526
+    },
+    "combined_score": 0.4996591131655446,
+    "combined_confidence": 0.37421895417412715
+  },
+  "recommendations": {
+    "3d": "⚠️ UNCERTAIN - Low confidence (26%)",
+    "7d": "➡️ HOLD - 7d neutral",
+    "30d": "📈 BUY - 30d bullish (confidence: 47%)"
+  }
+}
