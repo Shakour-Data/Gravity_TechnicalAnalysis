@@ -10,8 +10,8 @@ Coverage Target: 90%+
 
 import pytest
 import numpy as np
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
-from src.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
+from gravity_tech.core.indicators.momentum import MomentumIndicators
 
 
 @pytest.fixture
@@ -538,7 +538,7 @@ class TestAdvancedMomentum:
     def test_tsi_basic(self, uptrend_candles):
         """Test True Strength Index basic calculation"""
         # TSI is a helper function, test via module
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         prices = np.array([c.close for c in uptrend_candles])
         result = tsi(prices, r=25, s=13)
         
@@ -549,7 +549,7 @@ class TestAdvancedMomentum:
     
     def test_tsi_uptrend(self, uptrend_candles):
         """Test TSI in uptrend produces positive values"""
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         prices = np.array([c.close for c in uptrend_candles])
         result = tsi(prices, r=25, s=13)
         
@@ -559,7 +559,7 @@ class TestAdvancedMomentum:
     
     def test_tsi_downtrend(self, downtrend_candles):
         """Test TSI in downtrend produces negative values"""
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         prices = np.array([c.close for c in downtrend_candles])
         result = tsi(prices, r=25, s=13)
         
@@ -569,7 +569,7 @@ class TestAdvancedMomentum:
     
     def test_tsi_insufficient_data(self):
         """Test TSI with insufficient data raises error"""
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         prices = np.array([100, 101, 102])
         
         with pytest.raises(ValueError, match="insufficient data"):
@@ -577,7 +577,7 @@ class TestAdvancedMomentum:
     
     def test_schaff_trend_cycle_basic(self, uptrend_candles):
         """Test Schaff Trend Cycle basic calculation"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         prices = np.array([c.close for c in uptrend_candles])
         result = schaff_trend_cycle(prices, fast=12, slow=26, cycle=10)
         
@@ -588,7 +588,7 @@ class TestAdvancedMomentum:
     
     def test_schaff_uptrend(self, uptrend_candles):
         """Test Schaff in uptrend (>50)"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         prices = np.array([c.close for c in uptrend_candles])
         result = schaff_trend_cycle(prices)
         
@@ -598,7 +598,7 @@ class TestAdvancedMomentum:
     
     def test_schaff_downtrend(self, downtrend_candles):
         """Test Schaff in downtrend (<50)"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         prices = np.array([c.close for c in downtrend_candles])
         result = schaff_trend_cycle(prices)
         
@@ -608,7 +608,7 @@ class TestAdvancedMomentum:
     
     def test_schaff_insufficient_data(self):
         """Test Schaff with insufficient data"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         prices = np.array([100, 101, 102, 103])
         
         with pytest.raises(ValueError, match="insufficient data"):
@@ -616,7 +616,7 @@ class TestAdvancedMomentum:
     
     def test_connors_rsi_basic(self, uptrend_candles):
         """Test Connors RSI basic calculation"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([c.close for c in uptrend_candles])
         result = connors_rsi(prices, rsi_period=3, streak_period=2, roc_period=100)
         
@@ -627,7 +627,7 @@ class TestAdvancedMomentum:
     
     def test_connors_rsi_uptrend(self, uptrend_candles):
         """Test Connors RSI in uptrend (>50)"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([c.close for c in uptrend_candles])
         result = connors_rsi(prices)
         
@@ -637,7 +637,7 @@ class TestAdvancedMomentum:
     
     def test_connors_rsi_downtrend(self, downtrend_candles):
         """Test Connors RSI in downtrend (<50)"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([c.close for c in downtrend_candles])
         result = connors_rsi(prices)
         
@@ -647,7 +647,7 @@ class TestAdvancedMomentum:
     
     def test_connors_rsi_insufficient_data(self):
         """Test Connors RSI with insufficient data"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([100, 101, 102])
         
         with pytest.raises(ValueError, match="insufficient data"):
@@ -655,7 +655,7 @@ class TestAdvancedMomentum:
     
     def test_ema_helper(self):
         """Test _ema helper function"""
-        from src.core.indicators.momentum import _ema
+        from gravity_tech.core.indicators.momentum import _ema
         values = np.array([100, 102, 101, 103, 105, 104])
         result = _ema(values, period=3)
         
@@ -665,7 +665,7 @@ class TestAdvancedMomentum:
     
     def test_rsi_from_changes_helper(self):
         """Test _rsi_from_changes helper function"""
-        from src.core.indicators.momentum import _rsi_from_changes
+        from gravity_tech.core.indicators.momentum import _rsi_from_changes
         changes = np.array([1, -1, 2, -0.5, 1.5, -0.8])
         result = _rsi_from_changes(changes, period=3)
         
@@ -976,7 +976,7 @@ class TestConnorsRSIEdgeCases:
     
     def test_connors_rsi_flat_streak(self):
         """Test Connors RSI with flat prices (streak=0)"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([100.0] * 50)  # All same price
         result = connors_rsi(prices, rsi_period=3, streak_period=2, roc_period=100)
         
@@ -986,7 +986,7 @@ class TestConnorsRSIEdgeCases:
     
     def test_connors_rsi_zero_prev_price(self):
         """Test Connors RSI with zero previous price in ROC calculation"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([0.0] + [100.0 + i for i in range(120)])
         result = connors_rsi(prices, rsi_period=3, streak_period=2, roc_period=100)
         
@@ -995,7 +995,7 @@ class TestConnorsRSIEdgeCases:
     
     def test_connors_rsi_negative_streak(self):
         """Test Connors RSI with negative streak (consecutive downs)"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = np.array([200 - i * 1.5 for i in range(50)])
         result = connors_rsi(prices, rsi_period=3, streak_period=2, roc_period=100)
         
@@ -1005,7 +1005,7 @@ class TestConnorsRSIEdgeCases:
     
     def test_connors_rsi_mixed_streaks(self):
         """Test Connors RSI with mixed up/down streaks"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         prices = []
         price = 100
         for i in range(100):
@@ -1025,7 +1025,7 @@ class TestSchaffEdgeCases:
     
     def test_schaff_empty_window(self):
         """Test Schaff with minimum data"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         # Just enough data
         prices = np.array([100 + i * 0.5 for i in range(40)])
         result = schaff_trend_cycle(prices, fast=12, slow=26, cycle=10)
@@ -1034,7 +1034,7 @@ class TestSchaffEdgeCases:
     
     def test_schaff_flat_macd(self):
         """Test Schaff with flat MACD (zero range)"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         # Create data that produces near-zero MACD
         prices = np.array([100.0 + np.sin(i * 0.1) * 0.01 for i in range(50)])
         result = schaff_trend_cycle(prices, fast=12, slow=26, cycle=10)
@@ -1044,7 +1044,7 @@ class TestSchaffEdgeCases:
     
     def test_schaff_exact_50_signal(self):
         """Test Schaff when exactly at 50 (neutral)"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         # Engineer data to produce ~50 STC
         prices = np.array([100 + i * 0.2 if i < 30 else 106 - (i - 30) * 0.2 for i in range(50)])
         result = schaff_trend_cycle(prices)
@@ -1058,7 +1058,7 @@ class TestTSIEdgeCases:
     
     def test_tsi_zero_denominator(self):
         """Test TSI with zero momentum (zero delta)"""
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         prices = np.array([100.0] * 50)  # Flat prices
         result = tsi(prices, r=25, s=13)
         
@@ -1067,7 +1067,7 @@ class TestTSIEdgeCases:
     
     def test_tsi_exact_zero(self):
         """Test TSI when exactly at zero"""
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         # Oscillating around same level
         prices = np.array([100 + (-1)**i * 0.5 for i in range(50)])
         result = tsi(prices, r=25, s=13)
@@ -1121,7 +1121,7 @@ class TestFinalCoverageBoosters:
     
     def test_schaff_exact_neutral_signal(self):
         """Test Schaff when result is exactly 50"""
-        from src.core.indicators.momentum import schaff_trend_cycle
+        from gravity_tech.core.indicators.momentum import schaff_trend_cycle
         # Create perfectly balanced data
         prices = np.array([100.0] * 50)
         result = schaff_trend_cycle(prices, fast=12, slow=26, cycle=10)
@@ -1134,7 +1134,7 @@ class TestFinalCoverageBoosters:
     
     def test_tsi_exact_neutral_signal(self):
         """Test TSI when result is exactly 0"""
-        from src.core.indicators.momentum import tsi
+        from gravity_tech.core.indicators.momentum import tsi
         # Create perfectly balanced data
         prices = np.array([100 + (-1)**i * (i % 3) for i in range(50)])
         result = tsi(prices, r=25, s=13)
@@ -1147,7 +1147,7 @@ class TestFinalCoverageBoosters:
     
     def test_connors_rsi_exact_neutral(self):
         """Test Connors RSI when exactly 50"""
-        from src.core.indicators.momentum import connors_rsi
+        from gravity_tech.core.indicators.momentum import connors_rsi
         # Balanced data
         prices = np.array([100 + np.sin(i * 0.5) * 10 for i in range(50)])
         result = connors_rsi(prices, rsi_period=3, streak_period=2, roc_period=100)
@@ -1216,3 +1216,4 @@ class TestFinalCoverageBoosters:
             
             result = MomentumIndicators.rsi(candles, period=14)
             assert result.value is not None, desc
+
