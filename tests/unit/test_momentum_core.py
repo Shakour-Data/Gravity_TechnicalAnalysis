@@ -9,8 +9,8 @@ Version: 1.0.0
 """
 
 import pytest
-from src.core.domain.entities import CoreSignalStrength as SignalStrength
-from src.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
+from gravity_tech.core.indicators.momentum import MomentumIndicators
 
 
 class TestRSI:
@@ -171,3 +171,4 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
