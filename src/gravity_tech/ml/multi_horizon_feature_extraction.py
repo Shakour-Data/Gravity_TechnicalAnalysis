@@ -12,7 +12,7 @@ import pandas as pd
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 
-from gravity_tech.models.schemas import Candle, IndicatorResult
+from gravity_tech.core.domain.entities import Candle, IndicatorResult
 from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.elliott_wave import ElliottWaveAnalyzer
@@ -219,14 +219,23 @@ class MultiHorizonFeatureExtractor:
                 'return_30d': 0.152   # 15.2%
             }
         """
-        current_price = candles[current_idx].close
+        # Validate current candle
+        current_candle = candles[current_idx]
+        if not isinstance(current_candle, Candle):
+            raise TypeError(f"Expected Candle at index {current_idx}, got {type(current_candle)}")
+        
+        current_price = current_candle.close
         returns = {}
         
         for horizon in self.horizons:
             future_idx = current_idx + horizon
             
             if future_idx < len(candles):
-                future_price = candles[future_idx].close
+                future_candle = candles[future_idx]
+                # Validate future candle
+                if not isinstance(future_candle, Candle):
+                    raise TypeError(f"Expected Candle at index {future_idx}, got {type(future_candle)}")
+                future_price = future_candle.close
                 return_pct = (future_price - current_price) / current_price
                 returns[f'return_{horizon}d'] = return_pct
             else:
