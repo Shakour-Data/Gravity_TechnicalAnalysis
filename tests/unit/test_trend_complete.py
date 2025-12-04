@@ -10,8 +10,8 @@ Coverage Target: 90%+
 
 import pytest
 import numpy as np
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
-from src.core.indicators.trend import TrendIndicators
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
+from gravity_tech.core.indicators.trend import TrendIndicators
 
 
 @pytest.fixture
@@ -815,3 +815,4 @@ class TestMissingBranches:
         assert any("SMA" in name for name in indicator_names)
         assert any("EMA" in name for name in indicator_names)
         assert any("MACD" in name for name in indicator_names)
+
