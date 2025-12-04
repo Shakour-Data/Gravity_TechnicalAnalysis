@@ -10,8 +10,8 @@ Coverage Target: 90%+
 
 import pytest
 import numpy as np
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength, IndicatorCategory
-from src.core.indicators.cycle import CycleIndicators
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength, IndicatorCategory
+from gravity_tech.core.indicators.cycle import CycleIndicators
 
 
 @pytest.fixture
@@ -368,3 +368,4 @@ class TestSignalGeneration:
         
         result = CycleIndicators.sine_wave(candles)
         assert result.signal is not None
+
