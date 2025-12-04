@@ -10,8 +10,8 @@ Version: 1.0.0
 
 import pytest
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
-from src.core.patterns.candlestick import CandlestickPatterns
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
+from gravity_tech.core.patterns.candlestick import CandlestickPatterns
 
 
 class TestDoji:
@@ -266,3 +266,4 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
