@@ -11,8 +11,8 @@ Version: 1.0.0
 import pytest
 import numpy as np
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle, SignalStrength
-from src.core.indicators.volume import VolumeIndicators
+from gravity_tech.core.domain.entities import Candle, SignalStrength
+from gravity_tech.core.indicators.volume import VolumeIndicators
 
 
 class TestOnBalanceVolume:
@@ -338,3 +338,4 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
