@@ -22,7 +22,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.core.indicators.volume_day3 import (
+from gravity_tech.core.indicators.volume_day3 import (
     volume_weighted_macd,
     ease_of_movement,
     force_index
@@ -413,5 +413,23 @@ def main():
     return 0 if all_approved else 1
 
 
-if __name__ == "__main__":
-    exit(main())
+
+# Pytest-compatible test class
+import pytest
+
+class TestVolumeIndicators:
+    def setup_class(self):
+        self.validator = VolumeIndicatorValidation()
+
+    def test_volume_weighted_macd(self):
+        self.validator.validate_volume_weighted_macd()
+        assert self.validator.results[-1][1] == "APPROVED"
+
+    def test_ease_of_movement(self):
+        self.validator.validate_ease_of_movement()
+        assert self.validator.results[-1][1] == "APPROVED"
+
+    def test_force_index(self):
+        self.validator.validate_force_index()
+        assert self.validator.results[-1][1] == "APPROVED"
+
