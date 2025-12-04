@@ -150,7 +150,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
     """
     try:
         from patterns.harmonic import HarmonicPatternDetector
-        from ml.pattern_features import PatternFeatureExtractor
+        from gravity_tech.ml.pattern_features import PatternFeatureExtractor
         import time
         
         start_time = time.time()
@@ -178,7 +178,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
         # Apply ML scoring if enabled
         if request.use_ml:
             try:
-                from ml.pattern_classifier import PatternClassifier
+                from gravity_tech.ml.pattern_classifier import PatternClassifier
                 import pickle
                 from pathlib import Path
                 
