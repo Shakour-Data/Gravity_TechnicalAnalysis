@@ -6,7 +6,7 @@ Test Classical Pattern Recognition
 
 import numpy as np
 from datetime import datetime, timedelta
-from src.core.domain.entities import Candle
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.patterns.classical import ClassicalPatterns
 
 
@@ -447,3 +447,4 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("✅ همه تست‌ها کامل شد")
     print("="*60)
+
