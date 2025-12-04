@@ -14,6 +14,7 @@ from datetime import datetime
 
 from gravity_tech.models.schemas import Candle
 from gravity_tech.indicators.momentum import MomentumIndicators
+from gravity_tech.indicators.volume import VolumeIndicators
 from gravity_tech.patterns.divergence import DivergenceDetector
 
 
@@ -168,9 +169,9 @@ class MultiHorizonMomentumFeatureExtractor:
                 elif indicator == 'momentum':
                     result = MomentumIndicators.momentum(candles, period=10)
                 elif indicator == 'obv':
-                    result = MomentumIndicators.obv(candles)
+                    result = VolumeIndicators.obv(candles)
                 else:  # cmf
-                    result = MomentumIndicators.cmf(candles, period=20)
+                    result = VolumeIndicators.cmf(candles, period=20)
                 
                 features[f'{indicator}_signal'] = result.signal.get_score() / 2.0
                 features[f'{indicator}_confidence'] = result.confidence
