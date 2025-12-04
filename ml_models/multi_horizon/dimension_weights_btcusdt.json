@@ -22,74 +22,74 @@
     "3d": {
       "horizon": "3d",
       "weights": {
-        "dim1_indicators_score": 0.22207267833109018,
-        "dim1_indicators_confidence": 0.11305518169582772,
-        "dim1_indicators_weighted": 0.15343203230148048,
-        "dim2_candlestick_score": 0.033647375504710635,
-        "dim2_candlestick_confidence": 0.09421265141318977,
-        "dim2_candlestick_weighted": 0.004037685060565276,
-        "dim3_elliott_score": 0.008075370121130552,
-        "dim3_elliott_confidence": 0.11574697173620457,
-        "dim3_elliott_weighted": 0.11978465679676985,
-        "dim4_classical_score": 0.008075370121130552,
-        "dim4_classical_confidence": 0.12113055181695828,
-        "dim4_classical_weighted": 0.006729475100942127
+        "dim1_indicators_score": 0.17220543806646527,
+        "dim1_indicators_confidence": 0.29154078549848944,
+        "dim1_indicators_weighted": 0.1268882175226586,
+        "dim2_candlestick_score": 0.0,
+        "dim2_candlestick_confidence": 0.028700906344410877,
+        "dim2_candlestick_weighted": 0.0,
+        "dim3_elliott_score": 0.01661631419939577,
+        "dim3_elliott_confidence": 0.09969788519637462,
+        "dim3_elliott_weighted": 0.08610271903323263,
+        "dim4_classical_score": 0.03323262839879154,
+        "dim4_classical_confidence": 0.11178247734138973,
+        "dim4_classical_weighted": 0.03323262839879154
       },
       "metrics": {
-        "r2_train": 0.49757408879798026,
-        "r2_test": 0.07748084405114386,
-        "mae_train": 0.022006180168008156,
-        "mae_test": 0.03542474667092417
+        "r2_train": 0.5120670468556809,
+        "r2_test": 0.164086412399985,
+        "mae_train": 0.025133468782574973,
+        "mae_test": 0.03489823727847602
       },
-      "confidence": 0.3021989416588289
+      "confidence": 0.4250262655245509
     },
     "7d": {
       "horizon": "7d",
       "weights": {
-        "dim1_indicators_score": 0.18783068783068782,
-        "dim1_indicators_confidence": 0.1917989417989418,
-        "dim1_indicators_weighted": 0.12566137566137567,
-        "dim2_candlestick_score": 0.021164021164021163,
-        "dim2_candlestick_confidence": 0.03306878306878307,
-        "dim2_candlestick_weighted": 0.0026455026455026454,
-        "dim3_elliott_score": 0.006613756613756613,
-        "dim3_elliott_confidence": 0.11772486772486772,
-        "dim3_elliott_weighted": 0.18253968253968253,
-        "dim4_classical_score": 0.05952380952380952,
-        "dim4_classical_confidence": 0.06746031746031746,
-        "dim4_classical_weighted": 0.003968253968253968
+        "dim1_indicators_score": 0.21068702290076335,
+        "dim1_indicators_confidence": 0.28091603053435116,
+        "dim1_indicators_weighted": 0.11603053435114503,
+        "dim2_candlestick_score": 0.004580152671755725,
+        "dim2_candlestick_confidence": 0.010687022900763359,
+        "dim2_candlestick_weighted": 0.0015267175572519084,
+        "dim3_elliott_score": 0.03816793893129771,
+        "dim3_elliott_confidence": 0.1267175572519084,
+        "dim3_elliott_weighted": 0.08549618320610687,
+        "dim4_classical_score": 0.007633587786259542,
+        "dim4_classical_confidence": 0.09770992366412214,
+        "dim4_classical_weighted": 0.01984732824427481
       },
       "metrics": {
-        "r2_train": 0.6445761860351347,
-        "r2_test": 0.44364906335590903,
-        "mae_train": 0.026804767265148976,
-        "mae_test": 0.03592437584391188
+        "r2_train": 0.6178645027577883,
+        "r2_test": 0.31990965270854,
+        "mae_train": 0.0360612085831707,
+        "mae_test": 0.05289840563465709
       },
-      "confidence": 0.8133355611665369
+      "confidence": 0.5891782968879846
     },
     "30d": {
       "horizon": "30d",
       "weights": {
-        "dim1_indicators_score": 0.17956204379562044,
-        "dim1_indicators_confidence": 0.07883211678832117,
-        "dim1_indicators_weighted": 0.13284671532846715,
-        "dim2_candlestick_score": 0.01167883211678832,
-        "dim2_candlestick_confidence": 0.030656934306569343,
-        "dim2_candlestick_weighted": 0.00291970802919708,
-        "dim3_elliott_score": 0.04525547445255475,
-        "dim3_elliott_confidence": 0.24525547445255474,
-        "dim3_elliott_weighted": 0.18248175182481752,
-        "dim4_classical_score": 0.02335766423357664,
-        "dim4_classical_confidence": 0.05693430656934306,
-        "dim4_classical_weighted": 0.010218978102189781
+        "dim1_indicators_score": 0.12367021276595745,
+        "dim1_indicators_confidence": 0.24867021276595744,
+        "dim1_indicators_weighted": 0.12632978723404256,
+        "dim2_candlestick_score": 0.006648936170212766,
+        "dim2_candlestick_confidence": 0.010638297872340425,
+        "dim2_candlestick_weighted": 0.0026595744680851063,
+        "dim3_elliott_score": 0.010638297872340425,
+        "dim3_elliott_confidence": 0.22872340425531915,
+        "dim3_elliott_weighted": 0.11303191489361702,
+        "dim4_classical_score": 0.0598404255319149,
+        "dim4_classical_confidence": 0.06382978723404255,
+        "dim4_classical_weighted": 0.005319148936170213
       },
       "metrics": {
-        "r2_train": 0.813368123485047,
-        "r2_test": 0.7443147736541199,
-        "mae_train": 0.046461168206469936,
-        "mae_test": 0.058693861974564755
+        "r2_train": 0.8272810262273573,
+        "r2_test": 0.7361124896207374,
+        "mae_train": 0.05372106207435573,
+        "mae_test": 0.07209989748461842
       },
-      "confidence": 0.8239184140763057
+      "confidence": 0.7837003075461447
     }
   }
 }
