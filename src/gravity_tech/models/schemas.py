@@ -7,7 +7,7 @@ All models have been migrated to: src.core.domain.entities
 
 Please update your imports:
 OLD: from models.schemas import Candle, SignalStrength, IndicatorResult
-NEW: from src.core.domain.entities import Candle, CoreSignalStrength, IndicatorResult
+NEW: from gravity_tech.core.domain.entities import Candle, CoreSignalStrength, IndicatorResult
 
 This backward compatibility layer will be removed in Phase 2.2 (Day 3).
 ===============================================================================
@@ -25,7 +25,7 @@ warnings.warn(
 
 # BACKWARD COMPATIBILITY LAYER (Phase 2.1)
 # Import core entities from new location and re-export with aliases
-from src.core.domain.entities import (
+from gravity_tech.core.domain.entities import (
     Candle,
     CoreSignalStrength as SignalStrength,  # Alias for backward compatibility
     IndicatorCategory,
@@ -34,10 +34,25 @@ from src.core.domain.entities import (
     PatternResult,
     WavePoint,
     ElliottWaveResult,
+    FibonacciLevel,
+    FibonacciResult,
 )
 
-# Note: ChartAnalysisResult, MarketPhaseResult, TechnicalAnalysisResult 
-# are Pydantic models defined below (API layer models, not migrated)
+# NEW imports (Phase 2.1 - Task 1.4 - Real-time entities)
+from gravity_tech.core.domain.entities import (
+    SubscriptionType,
+    WebSocketMessage,
+    SSEMessage,
+    MarketData,
+)
+
+# NEW imports (Phase 2.1 - Task 1.5 - ML entities)
+from gravity_tech.core.domain.entities import (
+    LSTMResult,
+    PredictionResult,
+    PredictionSignal,
+    TransformerResult,
+)
 
 __all__ = [
     "Candle",
@@ -48,6 +63,16 @@ __all__ = [
     "PatternResult",
     "WavePoint",
     "ElliottWaveResult",
+    "FibonacciLevel",
+    "FibonacciResult",
+    "SubscriptionType",
+    "WebSocketMessage",
+    "SSEMessage",
+    "MarketData",
+    "LSTMResult",
+    "PredictionResult",
+    "PredictionSignal",
+    "TransformerResult",
     "ChartAnalysisResult",      # Pydantic model (defined below)
     "MarketPhaseResult",        # Pydantic model (defined below)
     "TechnicalAnalysisResult",  # Pydantic model (defined below)
