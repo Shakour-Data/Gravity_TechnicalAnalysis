@@ -1,11 +1,5 @@
 {
-  "folder": "${workspaceFolder}",
-  "settings": {
-    "python.testing.pytestEnabled": true,
-    "python.testing.pytestArgs": [
-      "tests"
-    ]
-  },
+  "version": "2.0.0",
   "tasks": [
     {
       "label": "Run TSE Tests",
@@ -19,7 +13,7 @@
         "--tb=short"
       ],
       "problemMatcher": [
-        "$pytest"
+        "$python"
       ],
       "presentation": {
         "reveal": "always",
@@ -44,7 +38,7 @@
         "--cov-report=html"
       ],
       "problemMatcher": [
-        "$pytest"
+        "$python"
       ],
       "presentation": {
         "reveal": "always",
@@ -67,7 +61,7 @@
         "--ignore=tests/archived"
       ],
       "problemMatcher": [
-        "$pytest"
+        "$python"
       ],
       "presentation": {
         "reveal": "always",
@@ -89,7 +83,7 @@
         "-v"
       ],
       "problemMatcher": [
-        "$pytest"
+        "$python"
       ],
       "presentation": {
         "reveal": "always",
@@ -111,7 +105,7 @@
         "-v"
       ],
       "problemMatcher": [
-        "$pytest"
+        "$python"
       ],
       "presentation": {
         "reveal": "always",
