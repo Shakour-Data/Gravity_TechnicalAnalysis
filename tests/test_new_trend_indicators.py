@@ -16,8 +16,8 @@ Created: November 7, 2025
 
 import pytest
 import numpy as np
-from src.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
-from src.core.indicators.trend import TrendIndicators
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
+from gravity_tech.core.indicators.trend import TrendIndicators
 
 
 @pytest.fixture
@@ -325,3 +325,4 @@ class TestNewIndicatorsIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+
