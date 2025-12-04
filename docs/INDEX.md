@@ -1,279 +1,274 @@
-# 📚 فهرست کامل مستندات
-## Documentation Index
+# 📚 Complete Documentation Index
 
-<div dir="rtl">
+## Quick Start
 
-## 🎯 شروع سریع
+### For Newcomers
+1. **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
+2. **[README.md](../README.md)** - Project overview
+3. **[STRUCTURE.md](../STRUCTURE.md)** - Structure and architecture
 
-### برای تازه‌واردان
-1. **[QUICKSTART.md](QUICKSTART.md)** - شروع کار در 5 دقیقه
-2. **[README.md](../README.md)** - معرفی کلی پروژه
-3. **[STRUCTURE.md](../STRUCTURE.md)** - ساختار و معماری
-
-### برای توسعه‌دهندگان
-1. **[CONTRIBUTING.md](../CONTRIBUTING.md)** - راهنمای مشارکت
-2. **[guides/TREND_ANALYSIS_SUMMARY.md](guides/TREND_ANALYSIS_SUMMARY.md)** - خلاصه سریع
+### For Developers
+1. **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution guide
+2. **[guides/TREND_ANALYSIS_SUMMARY.md](guides/TREND_ANALYSIS_SUMMARY.md)** - Quick summary
 
 ---
 
-## 📖 راهنماهای جامع (Comprehensive Guides)
+## 📖 Comprehensive Guides
 
-### 🔵 ابعاد پایه (Base Dimensions)
+### 🔵 Base Dimensions
 
-| # | راهنما | توضیحات | اندیکاتورها |
-|---|--------|---------|-------------|
-| 1 | **[TREND_ANALYSIS_GUIDE.md](guides/TREND_ANALYSIS_GUIDE.md)** | تحلیل روند کامل | 10 اندیکاتور |
-| 2 | **[MOMENTUM_ANALYSIS_GUIDE.md](guides/MOMENTUM_ANALYSIS_GUIDE.md)** | تحلیل مومنتوم | 8 اندیکاتور |
-| 3 | **[VOLATILITY_ANALYSIS_GUIDE.md](guides/VOLATILITY_ANALYSIS_GUIDE.md)** | تحلیل نوسان | 8 اندیکاتور |
-| 4 | **[CYCLE_ANALYSIS_GUIDE.md](guides/CYCLE_ANALYSIS_GUIDE.md)** | تحلیل چرخه | 7 اندیکاتور + 4 فاز |
-| 5 | **[SUPPORT_RESISTANCE_GUIDE.md](guides/SUPPORT_RESISTANCE_GUIDE.md)** | حمایت/مقاومت | 6 روش |
+| # | Guide | Description | Indicators |
+|---|-------|-------------|------------|
+| 1 | **[TREND_ANALYSIS_GUIDE.md](guides/TREND_ANALYSIS_GUIDE.md)** | Complete trend analysis | 10 indicators |
+| 2 | **[MOMENTUM_ANALYSIS_GUIDE.md](guides/MOMENTUM_ANALYSIS_GUIDE.md)** | Momentum analysis | 8 indicators |
+| 3 | **[VOLATILITY_ANALYSIS_GUIDE.md](guides/VOLATILITY_ANALYSIS_GUIDE.md)** | Volatility analysis | 8 indicators |
+| 4 | **[CYCLE_ANALYSIS_GUIDE.md](guides/CYCLE_ANALYSIS_GUIDE.md)** | Cycle analysis | 7 indicators + 4 phases |
+| 5 | **[SUPPORT_RESISTANCE_GUIDE.md](guides/SUPPORT_RESISTANCE_GUIDE.md)** | Support/Resistance | 6 methods |
 
-### 🟢 سیستم‌های پیشرفته
+### 🟢 Advanced Systems
 
-| # | راهنما | توضیحات | ویژگی |
-|---|--------|---------|--------|
-| 6 | **[VOLUME_MATRIX_GUIDE.md](guides/VOLUME_MATRIX_GUIDE.md)** | ماتریس حجم-ابعاد | 5 تعامل |
-| 7 | **[FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)** | 5D Decision Matrix | 9 سطح سیگنال + 5 سطح ریسک |
+| # | Guide | Description | Feature |
+|---|-------|-------------|---------|
+| 6 | **[VOLUME_MATRIX_GUIDE.md](guides/VOLUME_MATRIX_GUIDE.md)** | Volume-Dimension Matrix | 5 interactions |
+| 7 | **[FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)** | 5D Decision Matrix | 9 signal levels + 5 risk levels |
 
-### 🟡 راهنماهای تکمیلی
+### 🟡 Supplementary Guides
 
-| # | فایل | موضوع |
+| # | File | Topic |
 |---|------|-------|
-| 8 | **[TREND_ANALYSIS_SUMMARY.md](guides/TREND_ANALYSIS_SUMMARY.md)** | خلاصه + سوالات متداول |
-| 9 | **[DOW_THEORY.md](guides/DOW_THEORY.md)** | نظریه داو |
-| 10 | **[HISTORICAL_SYSTEM_GUIDE.md](guides/HISTORICAL_SYSTEM_GUIDE.md)** | سیستم تاریخی |
-| 11 | **[SCORING_SYSTEM_GUIDE.md](guides/SCORING_SYSTEM_GUIDE.md)** | سیستم امتیازدهی |
+| 8 | **[TREND_ANALYSIS_SUMMARY.md](guides/TREND_ANALYSIS_SUMMARY.md)** | Summary + FAQ |
+| 9 | **[DOW_THEORY.md](guides/DOW_THEORY.md)** | Dow Theory |
+| 10 | **[HISTORICAL_SYSTEM_GUIDE.md](guides/HISTORICAL_SYSTEM_GUIDE.md)** | Historical system |
+| 11 | **[SCORING_SYSTEM_GUIDE.md](guides/SCORING_SYSTEM_GUIDE.md)** | Scoring system |
 
 ---
 
-## 🏗️ معماری و طراحی (Architecture)
+## 🏗️ Architecture & Design
 
-| # | فایل | موضوع |
+| # | File | Topic |
 |---|------|-------|
-| 1 | **[SIGNAL_CALCULATION.md](architecture/SIGNAL_CALCULATION.md)** | نحوه محاسبه سیگنال نهایی |
-| 2 | **[ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)** | یادگیری وزن‌های بهینه با ML |
-| 3 | **[ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)** | ویژگی‌های ML |
-| 4 | **[MOMENTUM_ANALYSIS_PLAN.md](architecture/MOMENTUM_ANALYSIS_PLAN.md)** | طرح تحلیل مومنتوم |
+| 1 | **[SIGNAL_CALCULATION.md](architecture/SIGNAL_CALCULATION.md)** | Final signal calculation |
+| 2 | **[ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)** | ML optimal weights learning |
+| 3 | **[ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)** | ML features |
+| 4 | **[MOMENTUM_ANALYSIS_PLAN.md](architecture/MOMENTUM_ANALYSIS_PLAN.md)** | Momentum analysis plan |
 
 ---
 
-## 📊 خلاصه پروژه
+## 📊 Project Summary
 
-**[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - اطلاعات جامع شامل:
-- ساختار کامل فایل‌ها
-- معماری 3 لایه
-- آمار پروژه (15,000 خط کد، 6,500 خط مستندات)
-- نحوه استفاده
-- کاربردها
-- توسعه‌های آینده
-
----
-
-## 🔄 تاریخچه تغییرات (Changelogs)
-
-| فایل | توضیحات |
-|------|---------|
-| **[CHANGELOG_ACCURACY.md](CHANGELOG_ACCURACY.md)** | تغییرات سیستم دقت |
-| **[CHANGELOG_CLASSICAL_PATTERNS.md](CHANGELOG_CLASSICAL_PATTERNS.md)** | تغییرات الگوهای کلاسیک |
-| **[API_SCORE_RANGE_CHANGE.md](API_SCORE_RANGE_CHANGE.md)** | تغییرات API |
-| **[TREND_VS_MOMENTUM.md](TREND_VS_MOMENTUM.md)** | مقایسه روند و مومنتوم |
+**[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Comprehensive information including:
+- Complete file structure
+- 3-layer architecture
+- Project stats (15,000 lines of code, 6,500 lines of documentation)
+- Usage instructions
+- Applications
+- Future developments
 
 ---
 
-## 💡 مثال‌ها (Examples)
+## 🔄 Change History (Changelogs)
 
-### مثال‌های ساده
-مسیر: `examples/basic/`
+| File | Description |
+|------|-------------|
+| **[CHANGELOG_ACCURACY.md](CHANGELOG_ACCURACY.md)** | Accuracy system changes |
+| **[CHANGELOG_CLASSICAL_PATTERNS.md](CHANGELOG_CLASSICAL_PATTERNS.md)** | Classical patterns changes |
+| **[API_SCORE_RANGE_CHANGE.md](API_SCORE_RANGE_CHANGE.md)** | API changes |
+| **[TREND_VS_MOMENTUM.md](TREND_VS_MOMENTUM.md)** | Trend vs Momentum comparison |
 
-| فایل | موضوع |
+---
+
+## 💡 Examples
+
+### Basic Examples
+Path: `examples/basic/`
+
+| File | Topic |
 |------|-------|
-| `example.py` | مثال اصلی ساده |
-| `example_api_response.py` | نمونه پاسخ API |
-| `example_separate_analysis.py` | تحلیل جداگانه هر بُعد |
-| `example_trend_vs_momentum.py` | مقایسه روند و مومنتوم |
-| `example_volatility_analysis.py` | تحلیل نوسان |
+| `example.py` | Main simple example |
+| `example_api_response.py` | API response sample |
+| `example_separate_analysis.py` | Separate analysis per dimension |
+| `example_trend_vs_momentum.py` | Trend vs Momentum comparison |
+| `example_volatility_analysis.py` | Volatility analysis |
 
-### مثال‌های پیشرفته
-مسیر: `examples/advanced/`
+### Advanced Examples
+Path: `examples/advanced/`
 
-| فایل | موضوع |
+| File | Topic |
 |------|-------|
-| `example_5d_decision_matrix.py` | 5D Matrix با 3 سناریو |
-| `example_comprehensive_analysis.py` | تحلیل جامع |
-| `example_complete_analysis.py` | تحلیل کامل |
-| `example_scoring_system.py` | سیستم امتیازدهی |
-| `example_historical_system.py` | سیستم تاریخی |
+| `example_5d_decision_matrix.py` | 5D Matrix with 3 scenarios |
+| `example_comprehensive_analysis.py` | Comprehensive analysis |
+| `example_complete_analysis.py` | Complete analysis |
+| `example_scoring_system.py` | Scoring system |
+| `example_historical_system.py` | Historical system |
 
 ---
 
-## 🤖 یادگیری ماشین (ML)
+## 🤖 Machine Learning (ML)
 
-### اسکریپت‌های آموزش
-مسیر: `scripts/training/`
+### Training Scripts
+Path: `scripts/training/`
 
-- `train_ml.py` - آموزش مدل اصلی
-- `train_*.py` - آموزش مدل‌های مختلف
+- `train_ml.py` - Main model training
+- `train_*.py` - Various model training
 
-### راهنماهای ML
-- **[ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)** - وزن‌دهی ML
-- **[ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)** - استخراج ویژگی
+### ML Guides
+- **[ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)** - ML weighting
+- **[ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)** - Feature extraction
 
 ---
 
-## 🔧 ابزارها (Tools)
+## 🔧 Tools
 
 ### Visualization
-مسیر: `scripts/visualization/`
+Path: `scripts/visualization/`
 
-- `visualize_trend_analysis.py` - تصویرسازی تحلیل روند
+- `visualize_trend_analysis.py` - Trend analysis visualization
 
-### تست‌ها
-مسیر: `tests/`
+### Tests
+Path: `tests/`
 
 ```
 tests/
-├── unit/           تست‌های واحد
-├── integration/    تست‌های یکپارچه
-└── accuracy/       تست‌های دقت
+├── unit/           Unit tests
+├── integration/    Integration tests
+└── accuracy/       Accuracy tests
 ```
 
 ---
 
-## 📋 مسیرهای یادگیری پیشنهادی
+## 📋 Recommended Learning Paths
 
-### 🟢 مبتدی (Beginner)
+### 🟢 Beginner
 
-1. **شروع**
+1. **Start**
    - [README.md](../README.md)
    - [QUICKSTART.md](QUICKSTART.md)
    - [STRUCTURE.md](../STRUCTURE.md)
 
-2. **اولین تحلیل**
+2. **First Analysis**
    - [guides/TREND_ANALYSIS_SUMMARY.md](guides/TREND_ANALYSIS_SUMMARY.md)
    - `examples/basic/example.py`
 
-3. **تمرین**
-   - اجرای مثال‌های basic
-   - تست با داده‌های مختلف
+3. **Practice**
+   - Run basic examples
+   - Test with different data
 
-### 🟡 متوسط (Intermediate)
+### 🟡 Intermediate
 
-1. **یادگیری ابعاد**
-   - همه راهنماهای guides/ (5 راهنما)
-   - درک هر بُعد تحلیلی
+1. **Learn Dimensions**
+   - All guides/ (5 guides)
+   - Understand each analytical dimension
 
-2. **ترکیب ابعاد**
+2. **Combine Dimensions**
    - [SIGNAL_CALCULATION.md](architecture/SIGNAL_CALCULATION.md)
-   - مثال‌های comprehensive
+   - Comprehensive examples
 
-3. **تمرین پیشرفته**
-   - اجرای مثال‌های advanced
-   - پیاده‌سازی استراتژی معاملاتی
+3. **Advanced Practice**
+   - Run advanced examples
+   - Implement trading strategies
 
-### 🔴 پیشرفته (Advanced)
+### 🔴 Advanced
 
-1. **سیستم‌های پیچیده**
+1. **Complex Systems**
    - [VOLUME_MATRIX_GUIDE.md](guides/VOLUME_MATRIX_GUIDE.md)
    - [FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)
 
-2. **یادگیری ماشین**
+2. **Machine Learning**
    - [ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)
    - [ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)
-   - اسکریپت‌های training
+   - Training scripts
 
-3. **مشارکت**
+3. **Contribution**
    - [CONTRIBUTING.md](../CONTRIBUTING.md)
-   - توسعه ویژگی جدید
-   - بهینه‌سازی
+   - Develop new features
+   - Optimization
 
-### 🟣 حرفه‌ای (Expert)
+### 🟣 Expert
 
-1. **کد سورس**
-   - مطالعه کد 15,000 خطی
-   - درک معماری عمیق
+1. **Source Code**
+   - Study 15,000 lines of code
+   - Deep architectural understanding
 
-2. **توسعه سیستم**
-   - افزودن dimension جدید
-   - بهینه‌سازی ML
+2. **System Development**
+   - Add new dimension
+   - ML optimization
    - Backtesting
 
-3. **تولید محتوا**
-   - نوشتن مستندات
-   - ایجاد tutorial
-   - ارائه و آموزش
+3. **Content Creation**
+   - Write documentation
+   - Create tutorials
+   - Present and teach
 
 ---
 
-## 🔍 جستجوی سریع
+## 🔍 Quick Search
 
-### موضوع: اندیکاتورها
+### Topic: Indicators
 - **Trend**: [TREND_ANALYSIS_GUIDE.md](guides/TREND_ANALYSIS_GUIDE.md) → SMA, EMA, MACD, ADX, ...
 - **Momentum**: [MOMENTUM_ANALYSIS_GUIDE.md](guides/MOMENTUM_ANALYSIS_GUIDE.md) → RSI, Stochastic, MFI, ...
 - **Volatility**: [VOLATILITY_ANALYSIS_GUIDE.md](guides/VOLATILITY_ANALYSIS_GUIDE.md) → BB, ATR, Keltner, ...
-- **Cycle**: [CYCLE_ANALYSIS_GUIDE.md](guides/CYCLE_ANALYSIS_GUIDE.md) → 4 فاز بازار
+- **Cycle**: [CYCLE_ANALYSIS_GUIDE.md](guides/CYCLE_ANALYSIS_GUIDE.md) → 4 market phases
 - **S/R**: [SUPPORT_RESISTANCE_GUIDE.md](guides/SUPPORT_RESISTANCE_GUIDE.md) → Pivot, Fibonacci, ...
 
-### موضوع: سیگنال
-- **محاسبه**: [SIGNAL_CALCULATION.md](architecture/SIGNAL_CALCULATION.md)
-- **9 سطح**: [FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)
-- **امتیازدهی**: [SCORING_SYSTEM_GUIDE.md](guides/SCORING_SYSTEM_GUIDE.md)
+### Topic: Signals
+- **Calculation**: [SIGNAL_CALCULATION.md](architecture/SIGNAL_CALCULATION.md)
+- **9 Levels**: [FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)
+- **Scoring**: [SCORING_SYSTEM_GUIDE.md](guides/SCORING_SYSTEM_GUIDE.md)
 
-### موضوع: ریسک
-- **5 سطح ریسک**: [FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)
-- **مدیریت ریسک**: راهنماهای مختلف
+### Topic: Risk
+- **5 Risk Levels**: [FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)
+- **Risk Management**: Various guides
 
-### موضوع: حجم
+### Topic: Volume
 - **Volume Matrix**: [VOLUME_MATRIX_GUIDE.md](guides/VOLUME_MATRIX_GUIDE.md)
-- **5 تعامل**: همان فایل
+- **5 Interactions**: Same file
 
-### موضوع: ML
-- **وزن‌ها**: [ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)
-- **ویژگی‌ها**: [ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)
+### Topic: ML
+- **Weights**: [ML_WEIGHTS.md](architecture/ML_WEIGHTS.md)
+- **Features**: [ML_FEATURES_GUIDE.md](architecture/ML_FEATURES_GUIDE.md)
 
 ---
 
-## ❓ سوالات متداول
+## ❓ Frequently Asked Questions
 
-**Q: از کجا شروع کنم؟**  
+**Q: Where do I start?**  
 A: [QUICKSTART.md](QUICKSTART.md)
 
-**Q: چطور مثال اجرا کنم؟**  
+**Q: How to run examples?**  
 A: `python examples/basic/example.py`
 
-**Q: راهنمای کامل روند کجاست؟**  
+**Q: Where is the complete trend guide?**  
 A: [guides/TREND_ANALYSIS_GUIDE.md](guides/TREND_ANALYSIS_GUIDE.md)
 
-**Q: 5D Decision Matrix چیست؟**  
+**Q: What is 5D Decision Matrix?**  
 A: [guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md](guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md)
 
-**Q: چطور مشارکت کنم؟**  
+**Q: How to contribute?**  
 A: [CONTRIBUTING.md](../CONTRIBUTING.md)
 
-**Q: ساختار پروژه چیست؟**  
+**Q: What is the project structure?**  
 A: [STRUCTURE.md](../STRUCTURE.md)
 
 ---
 
-## 📞 پشتیبانی
+## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/YOUR_REPO/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/YOUR_REPO/discussions)
 
 ---
 
-## 📊 آمار مستندات
+## 📊 Documentation Stats
 
-- **راهنماهای جامع**: 11 فایل
-- **معماری**: 4 فایل
-- **Changelog**: 4 فایل
-- **مثال‌ها**: 10+ فایل
-- **کل مستندات**: 6,500+ خط
-- **زبان**: فارسی
+- **Comprehensive Guides**: 11 files
+- **Architecture**: 4 files
+- **Changelog**: 4 files
+- **Examples**: 10+ files
+- **Total Documentation**: 6,500+ lines
+- **Language**: English
 
 ---
 
-**به‌روزرسانی**: فروردین 1403  
-**نسخه**: 1.0.0  
-**وضعیت**: ✅ Production Ready
-
-</div>
+**Updated**: April 2024  
+**Version**: 1.0.0  
+**Status**: ✅ Production Ready
