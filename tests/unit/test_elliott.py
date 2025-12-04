@@ -2,7 +2,7 @@
 Simple test for Elliott Wave analysis
 """
 from datetime import datetime, timedelta, timezone
-from src.core.domain.entities import Candle
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.patterns.elliott_wave import analyze_elliott_waves
 
 # Generate sample candles with wave pattern
@@ -48,3 +48,4 @@ else:
     print("\n⚠️ No Elliott Wave pattern detected (this is normal for simple test data)")
 
 print("\n✅ Elliott Wave module is working correctly!")
+
