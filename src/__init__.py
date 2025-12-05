@@ -9,5 +9,5 @@ Clean Architecture implementation with 5 layers:
 5. Shared - Common utilities
 """
 
-__version__ = "1.1.0"
+__version__ = "1.3.3"
 __all__ = []

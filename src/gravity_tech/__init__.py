@@ -9,7 +9,7 @@ Version: 1.0.0
 License: MIT
 """
 
-__version__ = "1.0.0"
+__version__ = "1.3.3"
 __author__ = "Shakour Alishahi"
 __email__ = "shakour@gravity.ai"
 
