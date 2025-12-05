@@ -12,7 +12,6 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -35,50 +34,50 @@ class MarketData:
     price: Decimal
     """Current price"""
 
-    open_price: Optional[Decimal] = None
+    open_price: Decimal | None = None
     """Opening price for current period"""
 
-    high_price: Optional[Decimal] = None
+    high_price: Decimal | None = None
     """Highest price for current period"""
 
-    low_price: Optional[Decimal] = None
+    low_price: Decimal | None = None
     """Lowest price for current period"""
 
     # Volume data
-    volume: Optional[Decimal] = None
+    volume: Decimal | None = None
     """Trading volume"""
 
-    quote_volume: Optional[Decimal] = None
+    quote_volume: Decimal | None = None
     """Quote asset volume"""
 
     # Market statistics
-    price_change: Optional[Decimal] = None
+    price_change: Decimal | None = None
     """Price change from previous period"""
 
-    price_change_percent: Optional[Decimal] = None
+    price_change_percent: Decimal | None = None
     """Price change percentage"""
 
-    weighted_avg_price: Optional[Decimal] = None
+    weighted_avg_price: Decimal | None = None
     """Volume weighted average price"""
 
     # Order book data (optional)
-    bid_price: Optional[Decimal] = None
+    bid_price: Decimal | None = None
     """Best bid price"""
 
-    bid_quantity: Optional[Decimal] = None
+    bid_quantity: Decimal | None = None
     """Best bid quantity"""
 
-    ask_price: Optional[Decimal] = None
+    ask_price: Decimal | None = None
     """Best ask price"""
 
-    ask_quantity: Optional[Decimal] = None
+    ask_quantity: Decimal | None = None
     """Best ask quantity"""
 
     # Additional metadata
-    source: Optional[str] = None
+    source: str | None = None
     """Data source identifier"""
 
-    sequence_number: Optional[int] = None
+    sequence_number: int | None = None
     """Sequence number for ordering"""
 
     @classmethod
@@ -91,7 +90,7 @@ class MarketData:
         low_price: Decimal,
         close_price: Decimal,
         volume: Decimal,
-        source: Optional[str] = None
+        source: str | None = None
     ) -> 'MarketData':
         """
         Create MarketData from candle/OHLCV data.
@@ -126,8 +125,8 @@ class MarketData:
         symbol: str,
         timestamp: datetime,
         price: Decimal,
-        volume: Optional[Decimal] = None,
-        source: Optional[str] = None
+        volume: Decimal | None = None,
+        source: str | None = None
     ) -> 'MarketData':
         """
         Create MarketData from tick price data.
@@ -224,9 +223,9 @@ class MarketData:
             )
 
         except KeyError as e:
-            raise ValueError(f"Missing required field: {e}")
+            raise ValueError(f"Missing required field: {e}") from e
         except Exception as e:
-            raise ValueError(f"Invalid market data format: {e}")
+            raise ValueError(f"Invalid market data format: {e}") from e
 
     @property
     def is_complete_candle(self) -> bool:
@@ -238,21 +237,21 @@ class MarketData:
         ])
 
     @property
-    def price_range(self) -> Optional[Decimal]:
+    def price_range(self) -> Decimal | None:
         """Calculate price range (high - low)."""
         if self.high_price is not None and self.low_price is not None:
             return self.high_price - self.low_price
         return None
 
     @property
-    def midpoint_price(self) -> Optional[Decimal]:
+    def midpoint_price(self) -> Decimal | None:
         """Calculate midpoint price ((high + low) / 2)."""
         if self.high_price is not None and self.low_price is not None:
             return (self.high_price + self.low_price) / 2
         return None
 
     @property
-    def spread(self) -> Optional[Decimal]:
+    def spread(self) -> Decimal | None:
         """Calculate bid-ask spread."""
         if self.ask_price is not None and self.bid_price is not None:
             return self.ask_price - self.bid_price

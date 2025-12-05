@@ -13,18 +13,20 @@ Version: 1.0.0
 License: MIT
 """
 
+import logging
+from typing import Any
+
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from typing import List, Optional, Tuple, Dict, Any
-from gravity_tech.models.schemas import Candle, LSTMResult, PredictionResult
 from gravity_tech.core.domain.entities import PredictionSignal
+from gravity_tech.models.schemas import (
+    Candle,
+    PredictionResult,
+)
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-import logging
+from torch.utils.data import DataLoader, Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,7 @@ class LSTMModel(nn.Module):
     """LSTM Neural Network for time series prediction"""
 
     def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int, dropout: float = 0.2):
-        super(LSTMModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
@@ -86,7 +88,7 @@ class LSTMPredictor:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.input_size = None
 
-    def prepare_data(self, candles: List[Candle], features: Optional[List[str]] = None) -> Tuple[np.ndarray, MinMaxScaler]:
+    def prepare_data(self, candles: list[Candle], features: list[str] | None = None) -> tuple[np.ndarray, MinMaxScaler]:
         """
         Prepare candle data for LSTM training
 
@@ -123,8 +125,8 @@ class LSTMPredictor:
 
         return scaled_data, self.scaler
 
-    def train(self, candles: List[Candle], target_feature: str = 'close',
-              validation_split: float = 0.2) -> Dict[str, Any]:
+    def train(self, candles: list[Candle], target_feature: str = 'close',
+              validation_split: float = 0.2) -> dict[str, Any]:
         """
         Train LSTM model
 
@@ -229,7 +231,7 @@ class LSTMPredictor:
             'epochs_trained': len(train_losses)
         }
 
-    def predict(self, candles: List[Candle], steps_ahead: int = 1) -> PredictionResult:
+    def predict(self, candles: list[Candle], steps_ahead: int = 1) -> PredictionResult:
         """
         Make predictions using trained model
 
@@ -299,7 +301,7 @@ class LSTMPredictor:
             metadata={'steps_ahead': steps_ahead, 'volatility': float(volatility)}
         )
 
-    def predict_volatility(self, candles: List[Candle], window: int = 20) -> float:
+    def predict_volatility(self, candles: list[Candle], window: int = 20) -> float:
         """
         Predict future volatility using LSTM
 
@@ -355,7 +357,7 @@ def create_lstm_predictor(seq_length: int = 60, hidden_size: int = 64) -> LSTMPr
     return LSTMPredictor(seq_length=seq_length, hidden_size=hidden_size)
 
 
-def train_lstm_model(candles: List[Candle], target_feature: str = 'close') -> LSTMPredictor:
+def train_lstm_model(candles: list[Candle], target_feature: str = 'close') -> LSTMPredictor:
     """
     Convenience function to train LSTM model
 
@@ -369,3 +371,4 @@ def train_lstm_model(candles: List[Candle], target_feature: str = 'close') -> LS
     predictor = LSTMPredictor()
     predictor.train(candles, target_feature)
     return predictor
+

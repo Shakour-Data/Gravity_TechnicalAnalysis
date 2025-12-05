@@ -12,14 +12,15 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 ================================================================================
 """
 
+import logging
+import multiprocessing as mp
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any, Optional, Tuple, Callable
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,9 @@ class MonteCarloResult:
     min_return: float
     sharpe_ratio_avg: float
     max_drawdown_avg: float
-    confidence_intervals: Dict[str, Tuple[float, float]]
-    return_distribution: List[float]
-    simulation_details: List[Dict[str, Any]]
+    confidence_intervals: dict[str, tuple[float, float]]
+    return_distribution: list[float]
+    simulation_details: list[dict[str, Any]]
 
 
 @dataclass
@@ -58,7 +59,7 @@ class MonteCarloBacktester:
         historical_data: pd.DataFrame,
         num_simulations: int = 1000,
         test_window_days: int = 252,  # 1 year
-        confidence_levels: Optional[List[float]] = None
+        confidence_levels: list[float] | None = None
     ):
         """
         Initialize Monte Carlo backtester.
@@ -93,7 +94,7 @@ class MonteCarloBacktester:
     def run_monte_carlo_analysis(
         self,
         parallel: bool = True,
-        max_workers: Optional[int] = None
+        max_workers: int | None = None
     ) -> MonteCarloResult:
         """
         Run Monte Carlo analysis.
@@ -112,7 +113,7 @@ class MonteCarloBacktester:
         else:
             return self._run_sequential_simulations()
 
-    def _run_parallel_simulations(self, max_workers: Optional[int]) -> MonteCarloResult:
+    def _run_parallel_simulations(self, max_workers: int | None) -> MonteCarloResult:
         """Run simulations in parallel."""
         workers = max_workers or min(mp.cpu_count(), self.num_simulations // 10)
 
@@ -144,7 +145,7 @@ class MonteCarloBacktester:
 
         return self._analyze_simulation_results(results)
 
-    def _run_single_simulation(self, simulation_id: int) -> Dict[str, Any]:
+    def _run_single_simulation(self, simulation_id: int) -> dict[str, Any]:
         """
         Run a single Monte Carlo simulation.
 
@@ -258,9 +259,9 @@ class MonteCarloBacktester:
 
     def _calculate_performance_metrics(
         self,
-        strategy_result: Dict[str, Any],
+        strategy_result: dict[str, Any],
         data: pd.DataFrame
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate performance metrics for a strategy result.
 
@@ -313,9 +314,9 @@ class MonteCarloBacktester:
 
     def _calculate_strategy_returns(
         self,
-        trades_signals: List[Dict[str, Any]],
+        trades_signals: list[dict[str, Any]],
         data: pd.DataFrame
-    ) -> List[float]:
+    ) -> list[float]:
         """
         Calculate strategy returns from trades/signals.
 
@@ -355,7 +356,7 @@ class MonteCarloBacktester:
 
         return returns
 
-    def _calculate_sharpe_ratio(self, returns: List[float], risk_free_rate: float = 0.02) -> float:
+    def _calculate_sharpe_ratio(self, returns: list[float], risk_free_rate: float = 0.02) -> float:
         """Calculate Sharpe ratio."""
         if not returns:
             return 0.0
@@ -368,7 +369,7 @@ class MonteCarloBacktester:
 
         return excess_returns.mean() / excess_returns.std() * np.sqrt(252)
 
-    def _calculate_max_drawdown(self, returns: List[float]) -> float:
+    def _calculate_max_drawdown(self, returns: list[float]) -> float:
         """Calculate maximum drawdown."""
         if not returns:
             return 0.0
@@ -379,7 +380,7 @@ class MonteCarloBacktester:
 
         return abs(drawdowns.min())
 
-    def _calculate_win_rate(self, returns: List[float]) -> float:
+    def _calculate_win_rate(self, returns: list[float]) -> float:
         """Calculate win rate."""
         if not returns:
             return 0.0
@@ -387,7 +388,7 @@ class MonteCarloBacktester:
         winning_trades = sum(1 for r in returns if r > 0)
         return winning_trades / len(returns)
 
-    def _calculate_profit_factor(self, returns: List[float]) -> float:
+    def _calculate_profit_factor(self, returns: list[float]) -> float:
         """Calculate profit factor."""
         if not returns:
             return 0.0
@@ -400,7 +401,7 @@ class MonteCarloBacktester:
 
         return gross_profit / gross_loss
 
-    def _analyze_simulation_results(self, results: List[Dict[str, Any]]) -> MonteCarloResult:
+    def _analyze_simulation_results(self, results: list[dict[str, Any]]) -> MonteCarloResult:
         """
         Analyze results from all simulations.
 

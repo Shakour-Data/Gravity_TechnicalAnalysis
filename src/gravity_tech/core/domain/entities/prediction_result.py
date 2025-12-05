@@ -10,9 +10,9 @@ Version: 1.0.0
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class PredictionSignal(str, Enum):
@@ -38,18 +38,18 @@ class PredictionResult:
         description: Human-readable description
     """
 
-    predictions: List[float]
+    predictions: list[float]
     confidence: float
     signal: PredictionSignal
     model_type: str
     prediction_timestamp: datetime
-    input_features: Optional[Dict[str, Any]]
-    metadata: Optional[Dict[str, Any]]
+    input_features: dict[str, Any] | None
+    metadata: dict[str, Any] | None
     description: str
 
     def __post_init__(self):
         """Validate prediction result data"""
-        if not isinstance(self.confidence, (int, float)) or not (0.0 <= self.confidence <= 1.0):
+        if not isinstance(self.confidence, int | float) or not (0.0 <= self.confidence <= 1.0):
             raise ValueError("confidence must be a float between 0.0 and 1.0")
 
         if not self.predictions:
@@ -58,7 +58,7 @@ class PredictionResult:
         if not isinstance(self.signal, PredictionSignal):
             raise ValueError("signal must be a PredictionSignal enum value")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation"""
         return {
             "predictions": self.predictions,
@@ -72,7 +72,7 @@ class PredictionResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PredictionResult':
+    def from_dict(cls, data: dict[str, Any]) -> 'PredictionResult':
         """Create from dictionary representation"""
         return cls(
             predictions=data["predictions"],
@@ -84,6 +84,7 @@ class PredictionResult:
             metadata=data.get("metadata"),
             description=data["description"]
         )
+
 
     def get_primary_prediction(self) -> float:
         """Get the primary (first) prediction value"""

@@ -31,19 +31,19 @@ display_confidence = confidence_to_display(internal_confidence)  # → 85
 ```
 """
 
-from typing import Union
+# All Union types have been updated to PEP 604 syntax (X | Y)
 
 
 def score_to_display(score: float) -> int:
     """
     Convert score from range [-1, +1] to [-100, +100].
-    
+
     Args:
         score: Internal score between -1 and +1
-        
+
     Returns:
         Display score between -100 and +100 (integer)
-        
+
     Examples:
         >>> score_to_display(1.0)
         100
@@ -58,24 +58,22 @@ def score_to_display(score: float) -> int:
     """
     # Limit to [-1, +1]
     score = max(-1.0, min(1.0, score))
-    
+
     # Convert to [-100, +100]
     display_score = score * 100
-    
+
     # Round to integer
     return int(round(display_score))
-
-
 def confidence_to_display(confidence: float) -> int:
     """
     Convert confidence from range [0, 1] to [0, 100].
-    
+
     Args:
         confidence: Internal confidence between 0 and 1
-        
+
     Returns:
         Display confidence between 0 and 100 (integer)
-        
+
     Examples:
         >>> confidence_to_display(1.0)
         100
@@ -88,27 +86,25 @@ def confidence_to_display(confidence: float) -> int:
     """
     # Limit to [0, 1]
     confidence = max(0.0, min(1.0, confidence))
-    
+
     # Convert to [0, 100]
     display_confidence = confidence * 100
-    
+
     # Round to integer
     return int(round(display_confidence))
-
-
-def display_to_score(display_score: Union[int, float]) -> float:
+def display_to_score(display_score: int | float) -> float:
     """
     Convert display score from [-100, +100] to [-1, +1].
-    
+
     This function is for when we need reverse conversion
     (e.g., receiving input from user).
-    
+
     Args:
         display_score: Display score between -100 and +100
-        
+
     Returns:
         Internal score between -1 and +1
-        
+
     Examples:
         >>> display_to_score(100)
         1.0
@@ -121,21 +117,19 @@ def display_to_score(display_score: Union[int, float]) -> float:
     """
     # Limit to [-100, +100]
     display_score = max(-100, min(100, display_score))
-    
+
     # Convert to [-1, +1]
     return display_score / 100.0
-
-
-def display_to_confidence(display_confidence: Union[int, float]) -> float:
+def display_to_confidence(display_confidence: int | float) -> float:
     """
     Convert display confidence from [0, 100] to [0, 1].
-    
+
     Args:
         display_confidence: Display confidence between 0 and 100
-        
+
     Returns:
         Internal confidence between 0 and 1
-        
+
     Examples:
         >>> display_to_confidence(100)
         1.0
@@ -146,22 +140,20 @@ def display_to_confidence(display_confidence: Union[int, float]) -> float:
     """
     # Limit to [0, 100]
     display_confidence = max(0, min(100, display_confidence))
-    
+
     # Convert to [0, 1]
     return display_confidence / 100.0
-
-
 def get_signal_label(score: float, use_persian: bool = False) -> str:
     """
     Convert score to signal label.
-    
+
     Args:
         score: Score between -1 and +1
         use_persian: Use Persian labels
-        
+
     Returns:
         Signal label
-        
+
     Examples:
         >>> get_signal_label(0.95)
         'VERY_BULLISH'
@@ -198,19 +190,17 @@ def get_signal_label(score: float, use_persian: bool = False) -> str:
             return "BEARISH"
         else:
             return "VERY_BEARISH"
-
-
 def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
     """
     Convert confidence to quality label.
-    
+
     Args:
         confidence: Confidence between 0 and 1
         use_persian: Use Persian labels
-        
+
     Returns:
         Quality label
-        
+
     Examples:
         >>> get_confidence_label(0.95)
         'EXCELLENT'
@@ -243,8 +233,6 @@ def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
             return "LOW"
         else:
             return "VERY_LOW"
-
-
 # ═══════════════════════════════════════════════════════════════════
 # Usage Examples
 # ═══════════════════════════════════════════════════════════════════
@@ -253,7 +241,6 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Display Formatters - Test Examples")
     print("=" * 60)
-    
     # Test score conversion
     print("\n📊 Score Conversion [-1, +1] → [-100, +100]:")
     print("-" * 60)
@@ -263,7 +250,6 @@ if __name__ == "__main__":
         label_en = get_signal_label(score)
         label_fa = get_signal_label(score, use_persian=True)
         print(f"  {score:+5.2f} → {display:+4d}  [{label_en:15s}]  [{label_fa}]")
-    
     # Test confidence conversion
     print("\n🎯 Confidence Conversion [0, 1] → [0, 100]:")
     print("-" * 60)
@@ -273,7 +259,6 @@ if __name__ == "__main__":
         label_en = get_confidence_label(conf)
         label_fa = get_confidence_label(conf, use_persian=True)
         print(f"  {conf:4.2f} → {display:3d}%  [{label_en:10s}]  [{label_fa}]")
-    
     # Test reverse conversion
     print("\n🔄 Reverse Conversion:")
     print("-" * 60)
@@ -282,7 +267,6 @@ if __name__ == "__main__":
     print(f"    0 → {display_to_score(0):.2f}")
     print(f"  -50 → {display_to_score(-50):.2f}")
     print(f" -100 → {display_to_score(-100):.2f}")
-    
     print("\n" + "=" * 60)
     print("✅ All tests completed successfully!")
     print("=" * 60)

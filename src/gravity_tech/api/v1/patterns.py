@@ -30,12 +30,12 @@ Provides RESTful endpoints for:
 - Real-time pattern monitoring
 """
 
-from fastapi import APIRouter, HTTPException, status, Query
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from datetime import datetime
+
 import numpy as np
 import structlog
-from datetime import datetime
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
 
@@ -60,8 +60,8 @@ class PatternDetectionRequest(BaseModel):
     """Request for pattern detection"""
     symbol: str = Field(..., description="Trading pair symbol (e.g., BTCUSDT)")
     timeframe: str = Field(..., description="Timeframe (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)")
-    candles: List[CandleData] = Field(..., min_items=50, description="OHLCV candle data (minimum 50)")
-    pattern_types: Optional[List[str]] = Field(
+    candles: list[CandleData] = Field(..., min_items=50, description="OHLCV candle data (minimum 50)")  # type: ignore[call-overload]
+    pattern_types: list[str] | None = Field(
         default=None,
         description="Specific patterns to detect (if None, detect all). Options: gartley, butterfly, bat, crab"
     )
@@ -82,12 +82,12 @@ class PatternResult(BaseModel):
     """Detected pattern result"""
     pattern_type: str = Field(..., description="Pattern type (gartley, butterfly, bat, crab)")
     direction: str = Field(..., description="bullish or bearish")
-    points: Dict[str, PatternPoint] = Field(..., description="Pattern points (X, A, B, C, D)")
-    ratios: Dict[str, float] = Field(..., description="Fibonacci ratios")
+    points: dict[str, PatternPoint] = Field(..., description="Pattern points (X, A, B, C, D)")
+    ratios: dict[str, float] = Field(..., description="Fibonacci ratios")
     completion_price: float = Field(..., description="Pattern completion price (D point)")
-    confidence: Optional[float] = Field(None, description="ML confidence score (0-1)")
-    targets: Optional[Dict[str, float]] = Field(None, description="Price targets")
-    stop_loss: Optional[float] = Field(None, description="Suggested stop-loss")
+    confidence: float | None = Field(None, description="ML confidence score (0-1)")
+    targets: dict[str, float] | None = Field(None, description="Price targets")
+    stop_loss: float | None = Field(None, description="Suggested stop-loss")
     detected_at: str = Field(..., description="Detection timestamp")
 
 
@@ -96,7 +96,7 @@ class PatternDetectionResponse(BaseModel):
     symbol: str
     timeframe: str
     patterns_found: int = Field(..., description="Number of patterns detected")
-    patterns: List[PatternResult] = Field(..., description="Detected patterns")
+    patterns: list[PatternResult] = Field(..., description="Detected patterns")
     analysis_time_ms: float = Field(..., description="Analysis duration in milliseconds")
     ml_enabled: bool = Field(..., description="Whether ML scoring was used")
 
@@ -104,9 +104,9 @@ class PatternDetectionResponse(BaseModel):
 class PatternStatsResponse(BaseModel):
     """Pattern statistics response"""
     total_patterns: int
-    by_type: Dict[str, int]
-    by_direction: Dict[str, int]
-    average_confidence: Optional[float]
+    by_type: dict[str, int]
+    by_direction: dict[str, int]
+    average_confidence: float | None
     high_confidence_patterns: int
 
 
@@ -123,19 +123,19 @@ class PatternStatsResponse(BaseModel):
 async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionResponse:
     """
     Detect harmonic patterns in price data
-    
+
     **Supported Patterns:**
     - **Gartley**: Classic harmonic pattern with 0.618 retracement
     - **Butterfly**: Extended pattern with 1.27-1.618 projection
     - **Bat**: Pattern with 0.886 XA retracement
     - **Crab**: Extreme pattern with 1.618 projection
-    
+
     **ML Confidence Scoring:**
     - Uses trained XGBoost classifier
     - Analyzes 21 pattern features
     - Returns confidence score (0-1)
     - Filters patterns below min_confidence
-    
+
     **Example Request:**
     ```json
     {
@@ -149,58 +149,59 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
     ```
     """
     try:
-        from patterns.harmonic import HarmonicPatternDetector
-        from gravity_tech.ml.pattern_features import PatternFeatureExtractor
         import time
-        
+
+        from gravity_tech.ml.pattern_features import PatternFeatureExtractor
+        from gravity_tech.patterns.harmonic import HarmonicPatternDetector
+
         start_time = time.time()
-        
+
         # Initialize detector
         detector = HarmonicPatternDetector(tolerance=request.tolerance)
-        
+
         # Prepare data
         highs = np.array([c.high for c in request.candles])
         lows = np.array([c.low for c in request.candles])
         closes = np.array([c.close for c in request.candles])
         volumes = np.array([c.volume for c in request.candles])
         timestamps = np.array([c.timestamp for c in request.candles])
-        
+
         # Detect patterns
         detected_patterns = detector.detect_patterns(highs, lows, closes)
-        
+
         # Filter by pattern type if specified
         if request.pattern_types:
             detected_patterns = [
-                p for p in detected_patterns 
+                p for p in detected_patterns
                 if p.pattern_type in request.pattern_types
             ]
-        
+
         # Apply ML scoring if enabled
         if request.use_ml:
             try:
-                from gravity_tech.ml.pattern_classifier import PatternClassifier
                 import pickle
                 from pathlib import Path
-                
+
+
                 # Load ML model
                 model_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
                 if not model_path.exists():
                     model_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
-                
+
                 if model_path.exists():
                     with open(model_path, 'rb') as f:
                         classifier = pickle.load(f)
-                    
+
                     extractor = PatternFeatureExtractor()
                     filtered_patterns = []
-                    
+
                     for pattern in detected_patterns:
                         # Extract features
                         features = extractor.extract_features(
                             pattern, highs, lows, closes, volumes
                         )
                         feature_array = extractor.features_to_array(features)
-                        
+
                         # Get ML prediction
                         if hasattr(classifier, 'predict_single'):
                             prediction = classifier.predict_single(feature_array)
@@ -209,23 +210,23 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                             # sklearn model
                             probas = classifier.predict_proba(feature_array.reshape(1, -1))[0]
                             confidence = float(np.max(probas))
-                        
+
                         # Filter by confidence
                         if confidence >= request.min_confidence:
                             pattern.confidence = confidence
                             filtered_patterns.append(pattern)
-                    
+
                     detected_patterns = filtered_patterns
-                    logger.info("ml_scoring_applied", 
-                               patterns_before=len(detected_patterns), 
+                    logger.info("ml_scoring_applied",
+                               patterns_before=len(detected_patterns),
                                patterns_after=len(filtered_patterns))
                 else:
                     logger.warning("ml_model_not_found", path=str(model_path))
-                    
+
             except Exception as e:
                 logger.warning("ml_scoring_failed", error=str(e))
                 # Continue without ML scoring
-        
+
         # Format response
         patterns_list = []
         for pattern in detected_patterns:
@@ -238,7 +239,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                     price=point.price,
                     timestamp=int(timestamps[point.index])
                 )
-            
+
             # Calculate targets and stop-loss
             d_price = pattern.points['D'].price
             if pattern.direction == 'bullish':
@@ -249,10 +250,10 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 target1 = d_price * 0.97
                 target2 = d_price * 0.95
                 stop_loss = d_price * 1.02
-            
+
             pattern_result = PatternResult(
-                pattern_type=pattern.pattern_type,
-                direction=pattern.direction,
+                pattern_type=pattern.pattern_type.value if hasattr(pattern.pattern_type, 'value') else str(pattern.pattern_type),
+                direction=pattern.direction.value if hasattr(pattern.direction, 'value') else str(pattern.direction),
                 points=points_dict,
                 ratios=pattern.ratios,
                 completion_price=d_price,
@@ -262,9 +263,9 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 detected_at=datetime.utcnow().isoformat()
             )
             patterns_list.append(pattern_result)
-        
+
         analysis_time = (time.time() - start_time) * 1000  # Convert to ms
-        
+
         response = PatternDetectionResponse(
             symbol=request.symbol,
             timeframe=request.timeframe,
@@ -273,21 +274,21 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
             analysis_time_ms=round(analysis_time, 2),
             ml_enabled=request.use_ml
         )
-        
+
         logger.info("patterns_detected",
                    symbol=request.symbol,
                    timeframe=request.timeframe,
                    patterns_found=len(patterns_list),
                    analysis_time_ms=round(analysis_time, 2))
-        
+
         return response
-        
+
     except Exception as e:
         logger.error("pattern_detection_error", error=str(e), symbol=request.symbol)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Pattern detection failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.get(
@@ -298,7 +299,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
 async def list_pattern_types():
     """
     List all available harmonic pattern types
-    
+
     Returns pattern types with descriptions and characteristics
     """
     return {
@@ -365,14 +366,14 @@ async def list_pattern_types():
 async def pattern_service_health():
     """Check pattern detection service health"""
     from pathlib import Path
-    
+
     # Check if ML models are available
     model_v2_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
     model_v1_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
-    
+
     ml_available = model_v2_path.exists() or model_v1_path.exists()
     ml_model_version = "v2" if model_v2_path.exists() else ("v1" if model_v1_path.exists() else None)
-    
+
     return {
         "status": "healthy",
         "service": "pattern-detection",

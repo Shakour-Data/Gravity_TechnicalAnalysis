@@ -11,7 +11,8 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
+
 from .subscription_type import SubscriptionType
 
 
@@ -28,36 +29,36 @@ class SSEMessage:
     event_type: str
     """SSE event type (e.g., 'data', 'error', 'ping', 'system')"""
 
-    subscription_type: Optional[SubscriptionType]
+    subscription_type: SubscriptionType | None
     """Type of subscription this message relates to (None for system messages)"""
 
-    client_id: Optional[str]
+    client_id: str | None
     """Client identifier (None for broadcast messages)"""
 
     timestamp: datetime
     """Message creation timestamp"""
 
     # Message content
-    data: Dict[str, Any]
+    data: dict[str, Any]
     """Message payload data"""
 
     # Optional fields
-    event_id: Optional[str] = None
+    event_id: str | None = None
     """SSE event ID for client-side tracking"""
 
-    retry: Optional[int] = None
+    retry: int | None = None
     """SSE retry delay in milliseconds"""
 
-    error_message: Optional[str] = None
+    error_message: str | None = None
     """Error message if event_type is 'error'"""
 
     @classmethod
     def create_data_event(
         cls,
         subscription_type: SubscriptionType,
-        data: Dict[str, Any],
-        client_id: Optional[str] = None,
-        event_id: Optional[str] = None
+        data: dict[str, Any],
+        client_id: str | None = None,
+        event_id: str | None = None
     ) -> 'SSEMessage':
         """
         Create a data event.
@@ -84,8 +85,8 @@ class SSEMessage:
     def create_error_event(
         cls,
         error_message: str,
-        client_id: Optional[str] = None,
-        event_id: Optional[str] = None
+        client_id: str | None = None,
+        event_id: str | None = None
     ) -> 'SSEMessage':
         """
         Create an error event.
@@ -128,8 +129,8 @@ class SSEMessage:
     def create_system_event(
         cls,
         system_event: str,
-        data: Dict[str, Any],
-        event_id: Optional[str] = None
+        data: dict[str, Any],
+        event_id: str | None = None
     ) -> 'SSEMessage':
         """
         Create a system event (status, alerts, etc.).
@@ -181,7 +182,7 @@ class SSEMessage:
 
         return "\n".join(lines)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert message to dictionary for JSON serialization.
 
@@ -212,7 +213,7 @@ class SSEMessage:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SSEMessage':
+    def from_dict(cls, data: dict[str, Any]) -> 'SSEMessage':
         """
         Create message from dictionary (JSON deserialization).
 
@@ -241,9 +242,9 @@ class SSEMessage:
                 error_message=data.get("error_message")
             )
         except KeyError as e:
-            raise ValueError(f"Missing required field: {e}")
+            raise ValueError(f"Missing required field: {e}") from e
         except ValueError as e:
-            raise ValueError(f"Invalid message format: {e}")
+            raise ValueError(f"Invalid message format: {e}") from e
 
     @property
     def is_data_event(self) -> bool:

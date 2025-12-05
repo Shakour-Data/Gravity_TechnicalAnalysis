@@ -14,15 +14,21 @@ License: MIT
 """
 
 import asyncio
-import json
 import logging
-from typing import Dict, List, Set, Optional, Any
+import random
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
+
 from fastapi import WebSocket, WebSocketDisconnect
-from gravity_tech.core.domain.entities import Candle, WebSocketMessage, SubscriptionType, MarketData
-from gravity_tech.core.indicators.trend import TrendIndicators
+from gravity_tech.core.domain.entities import (
+    Candle,
+    MarketData,
+    SubscriptionType,
+    WebSocketMessage,
+)
 from gravity_tech.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.indicators.trend import TrendIndicators
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +37,9 @@ class ConnectionManager:
     """Manages WebSocket connections and subscriptions"""
 
     def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}
-        self.subscriptions: Dict[str, Set[SubscriptionType]] = {}
-        self.client_data: Dict[str, Dict[str, Any]] = {}
+        self.active_connections: dict[str, WebSocket] = {}
+        self.subscriptions: dict[str, set[SubscriptionType]] = {}
+        self.client_data: dict[str, dict[str, Any]] = {}
 
     async def connect(self, websocket: WebSocket, client_id: str) -> None:
         """Accept and register a new WebSocket connection"""
@@ -71,7 +77,7 @@ class ConnectionManager:
             logger.info(f"Client {client_id} unsubscribed from {subscription_type}")
 
     async def broadcast_to_subscribers(self, subscription_type: SubscriptionType,
-                                     message: Dict[str, Any]) -> None:
+                                     message: dict[str, Any]) -> None:
         """Broadcast message to all subscribers of a type"""
         disconnected_clients = []
 
@@ -87,7 +93,7 @@ class ConnectionManager:
         for client_id in disconnected_clients:
             self.disconnect(client_id)
 
-    async def send_personal_message(self, client_id: str, message: Dict[str, Any]) -> None:
+    async def send_personal_message(self, client_id: str, message: dict[str, Any]) -> None:
         """Send message to specific client"""
         if client_id in self.active_connections:
             websocket = self.active_connections[client_id]
@@ -95,7 +101,7 @@ class ConnectionManager:
             self.client_data[client_id]['last_activity'] = datetime.utcnow()
             self.client_data[client_id]['message_count'] += 1
 
-    def get_connection_stats(self) -> Dict[str, Any]:
+    def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics"""
         return {
             'total_connections': len(self.active_connections),
@@ -114,7 +120,7 @@ class WebSocketHandler:
         self.connection_manager = ConnectionManager()
         self.trend_indicators = TrendIndicators()
         self.momentum_indicators = MomentumIndicators()
-        self.market_data_buffer: Dict[str, List[Candle]] = {}
+        self.market_data_buffer: dict[str, list[Candle]] = {}
         self.is_streaming = False
 
     async def handle_connection(self, websocket: WebSocket, client_id: str) -> None:
@@ -249,7 +255,7 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"Error processing candle for {symbol}: {e}")
 
-    async def _calculate_indicators(self, candles: List[Candle]) -> Dict[str, Any]:
+    async def _calculate_indicators(self, candles: list[Candle]) -> dict[str, Any]:
         """Calculate technical indicators for broadcasting"""
         try:
             indicators = {}
@@ -285,7 +291,7 @@ class WebSocketHandler:
             logger.error(f"Error calculating indicators: {e}")
             return {}
 
-    async def _detect_patterns(self, candles: List[Candle]) -> List[Dict[str, Any]]:
+    async def _detect_patterns(self, candles: list[Candle]) -> list[dict[str, Any]]:
         """Detect chart patterns for broadcasting"""
         try:
             patterns = []
@@ -333,8 +339,6 @@ class WebSocketHandler:
     def _simulate_new_candle(self, symbol: str) -> Candle:
         """Simulate new candle data (for testing)"""
         # This is a placeholder - in production, you'd get real market data
-        import random
-        from datetime import datetime, timedelta
 
         # Get last candle or create initial one
         if self.market_data_buffer[symbol]:
@@ -363,7 +367,7 @@ class WebSocketHandler:
             volume=volume
         )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get WebSocket handler statistics"""
         return {
             'connections': self.connection_manager.get_connection_stats(),

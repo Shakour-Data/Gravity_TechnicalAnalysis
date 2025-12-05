@@ -1,8 +1,16 @@
-# Tests Directory - Complete Reference Guide
+# Test Suite - Complete Documentation
 
-## 📂 Overview
+## 📊 نمای کلی (Overview)
 
-This directory contains the complete test suite for the Gravity Technical Analysis project, organized into **12 logical categories** with **84 test files** containing **302+ test cases**.
+ساختار تست‌های جامع برای دستیابی به **70%+** پوشش تمام ماژول‌های پروژه.
+
+- ✅ **40+ فایل تست**
+- ✅ **300+ متد تست**  
+- ✅ **10,000+ خط کد تست**
+- ✅ **بدون Mock Tests**
+- ✅ **فقط داده‌های واقعی TSE**
+
+## 🎯 ساختار سازماندهی شده
 
 ## 🎯 Quick Navigation
 

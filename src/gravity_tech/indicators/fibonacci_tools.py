@@ -14,11 +14,10 @@ Version: 1.0.0
 License: MIT
 """
 
+from typing import Any
+
 import numpy as np
-import pandas as pd
-from typing import List, Optional, Tuple, Dict, Any
-from gravity_tech.models.schemas import Candle, FibonacciResult, FibonacciLevel, SignalStrength
-from datetime import datetime
+from gravity_tech.models.schemas import Candle, FibonacciLevel, FibonacciResult, SignalStrength
 
 
 class FibonacciTools:
@@ -33,7 +32,7 @@ class FibonacciTools:
     }
 
     @staticmethod
-    def calculate_retracements(high: float, low: float) -> Dict[str, float]:
+    def calculate_retracements(high: float, low: float) -> dict[str, float]:
         """
         Calculate Fibonacci retracement levels
 
@@ -54,7 +53,7 @@ class FibonacciTools:
         return retracements
 
     @staticmethod
-    def calculate_extensions(high: float, low: float, direction: str = "up") -> Dict[str, float]:
+    def calculate_extensions(high: float, low: float, direction: str = "up") -> dict[str, float]:
         """
         Calculate Fibonacci extension levels
 
@@ -79,7 +78,7 @@ class FibonacciTools:
         return extensions
 
     @staticmethod
-    def calculate_arcs(center: float, radius: float, angle_range: Tuple[float, float] = (0, 180)) -> Dict[str, float]:
+    def calculate_arcs(center: float, radius: float, angle_range: tuple[float, float] = (0, 180)) -> dict[str, float]:
         """
         Calculate Fibonacci arc levels
 
@@ -92,7 +91,6 @@ class FibonacciTools:
             Dictionary of arc levels
         """
         arcs = {}
-        angles_rad = np.radians(np.linspace(angle_range[0], angle_range[1], 50))
 
         for ratio in FibonacciTools.FIBONACCI_RATIOS['arc']:
             angle = np.arccos(1 - 2 * ratio)  # Convert ratio to angle
@@ -102,7 +100,7 @@ class FibonacciTools:
         return arcs
 
     @staticmethod
-    def calculate_fan_lines(start_point: Tuple[float, float], end_point: Tuple[float, float]) -> Dict[str, Tuple[float, float]]:
+    def calculate_fan_lines(start_point: tuple[float, float], end_point: tuple[float, float]) -> dict[str, tuple[float, float]]:
         """
         Calculate Fibonacci fan lines
 
@@ -117,7 +115,6 @@ class FibonacciTools:
         x2, y2 = end_point
 
         slope = (y2 - y1) / (x2 - x1) if x2 != x1 else float('inf')
-        intercept = y1 - slope * x1 if slope != float('inf') else 0
 
         fans = {}
 
@@ -133,7 +130,7 @@ class FibonacciTools:
         return fans
 
     @staticmethod
-    def find_fibonacci_levels(candles: List[Candle], lookback: int = 50) -> List[FibonacciLevel]:
+    def find_fibonacci_levels(candles: list[Candle], lookback: int = 50) -> list[FibonacciLevel]:
         """
         Automatically detect significant Fibonacci levels from price action
 
@@ -195,7 +192,7 @@ class FibonacciTools:
         return levels
 
     @staticmethod
-    def analyze_fibonacci_confluence(candles: List[Candle], current_price: float) -> Optional[FibonacciResult]:
+    def analyze_fibonacci_confluence(candles: list[Candle], current_price: float) -> FibonacciResult | None:
         """
         Analyze Fibonacci confluence zones
 
@@ -268,7 +265,7 @@ class FibonacciTools:
         return None
 
     @staticmethod
-    def golden_ratio_analysis(candles: List[Candle]) -> Dict[str, Any]:
+    def golden_ratio_analysis(candles: list[Candle]) -> dict[str, Any]:
         """
         Analyze price action using golden ratio relationships
 
@@ -308,7 +305,7 @@ class FibonacciTools:
         return analysis
 
 
-def analyze_fibonacci_levels(candles: List[Candle], current_price: Optional[float] = None) -> Optional[FibonacciResult]:
+def analyze_fibonacci_levels(candles: list[Candle], current_price: float | None = None) -> FibonacciResult | None:
     """
     Convenience function for Fibonacci analysis
 
@@ -328,7 +325,7 @@ def analyze_fibonacci_levels(candles: List[Candle], current_price: Optional[floa
     return FibonacciTools.analyze_fibonacci_confluence(candles, current_price)
 
 
-def get_fibonacci_retracements(high: float, low: float) -> Dict[str, float]:
+def get_fibonacci_retracements(high: float, low: float) -> dict[str, float]:
     """
     Get Fibonacci retracement levels
 
@@ -342,7 +339,7 @@ def get_fibonacci_retracements(high: float, low: float) -> Dict[str, float]:
     return FibonacciTools.calculate_retracements(high, low)
 
 
-def get_fibonacci_extensions(high: float, low: float, direction: str = "up") -> Dict[str, float]:
+def get_fibonacci_extensions(high: float, low: float, direction: str = "up") -> dict[str, float]:
     """
     Get Fibonacci extension levels
 

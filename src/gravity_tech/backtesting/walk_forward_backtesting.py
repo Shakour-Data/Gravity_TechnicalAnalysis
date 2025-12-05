@@ -12,13 +12,15 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 ================================================================================
 """
 
+import logging
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any, Optional, Tuple, Callable
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +34,9 @@ class WalkForwardWindow:
     in_sample_end: datetime
     out_sample_start: datetime
     out_sample_end: datetime
-    optimized_parameters: Dict[str, Any]
-    in_sample_performance: Dict[str, Any]
-    out_sample_performance: Dict[str, Any]
+    optimized_parameters: dict[str, Any]
+    in_sample_performance: dict[str, Any]
+    out_sample_performance: dict[str, Any]
     parameter_stability_score: float
 
 
@@ -48,8 +50,8 @@ class WalkForwardResult:
     out_sample_consistency: float
     parameter_stability: float
     overfitting_ratio: float
-    windows: List[WalkForwardWindow]
-    summary_stats: Dict[str, Any]
+    windows: list[WalkForwardWindow]
+    summary_stats: dict[str, Any]
 
 
 @dataclass
@@ -109,7 +111,7 @@ class WalkForwardBacktester:
     def run_walk_forward_analysis(
         self,
         parallel: bool = True,
-        max_workers: Optional[int] = None
+        max_workers: int | None = None
     ) -> WalkForwardResult:
         """
         Run complete walk-forward analysis.
@@ -139,7 +141,7 @@ class WalkForwardBacktester:
         # Analyze results
         return self._analyze_walk_forward_results(processed_windows)
 
-    def _generate_walk_forward_windows(self) -> List[Tuple[int, int, int, int]]:
+    def _generate_walk_forward_windows(self) -> list[tuple[int, int, int, int]]:
         """
         Generate walk-forward testing windows.
 
@@ -176,9 +178,9 @@ class WalkForwardBacktester:
 
     def _process_windows_parallel(
         self,
-        windows: List[Tuple[int, int, int, int]],
-        max_workers: Optional[int]
-    ) -> List[WalkForwardWindow]:
+        windows: list[tuple[int, int, int, int]],
+        max_workers: int | None
+    ) -> list[WalkForwardWindow]:
         """Process windows in parallel."""
         workers = max_workers or min(4, len(windows))  # Limit to 4 workers
 
@@ -200,8 +202,8 @@ class WalkForwardBacktester:
 
     def _process_windows_sequential(
         self,
-        windows: List[Tuple[int, int, int, int]]
-    ) -> List[WalkForwardWindow]:
+        windows: list[tuple[int, int, int, int]]
+    ) -> list[WalkForwardWindow]:
         """Process windows sequentially."""
         results = []
         for window in windows:
@@ -213,7 +215,7 @@ class WalkForwardBacktester:
 
         return results
 
-    def _process_single_window(self, window: Tuple[int, int, int, int]) -> WalkForwardWindow:
+    def _process_single_window(self, window: tuple[int, int, int, int]) -> WalkForwardWindow:
         """
         Process a single walk-forward window.
 
@@ -277,7 +279,7 @@ class WalkForwardBacktester:
 
     def _calculate_parameter_stability(
         self,
-        current_params: Dict[str, Any],
+        current_params: dict[str, Any],
         window_id: int
     ) -> float:
         """
@@ -297,7 +299,7 @@ class WalkForwardBacktester:
         # In practice, you'd track parameter changes across windows
         return np.random.uniform(0.5, 1.0)
 
-    def _analyze_walk_forward_results(self, windows: List[WalkForwardWindow]) -> WalkForwardResult:
+    def _analyze_walk_forward_results(self, windows: list[WalkForwardWindow]) -> WalkForwardResult:
         """
         Analyze results from all walk-forward windows.
 

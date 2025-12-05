@@ -20,7 +20,6 @@ from typing import Any, NamedTuple
 
 import numpy as np
 import pandas as pd
-
 from gravity_tech.models.schemas import Candle
 
 logger = logging.getLogger(__name__)

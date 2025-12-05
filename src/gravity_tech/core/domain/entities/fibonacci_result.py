@@ -11,9 +11,8 @@ License: MIT
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from .fibonacci_level import FibonacciLevel
+from typing import Any
+
 from .signal_strength import SignalStrength
 
 
@@ -30,9 +29,9 @@ class FibonacciResult:
         confidence: Confidence level (0.0 to 1.0)
         description: Human-readable analysis description
     """
-    retracement_levels: Dict[str, float]
-    extension_levels: Dict[str, float]
-    confluence_zones: List[Dict[str, Any]]
+    retracement_levels: dict[str, float]
+    extension_levels: dict[str, float]
+    confluence_zones: list[dict[str, Any]]
     signal: SignalStrength
     confidence: float
     description: str
@@ -54,7 +53,7 @@ class FibonacciResult:
             if ratio not in valid_extensions:
                 raise ValueError(f"Invalid extension ratio: {ratio}")
 
-    def get_nearest_level(self, current_price: float) -> Optional[Dict[str, Any]]:
+    def get_nearest_level(self, current_price: float) -> dict[str, Any] | None:
         """
         Find the nearest Fibonacci level to current price.
 
@@ -79,7 +78,7 @@ class FibonacciResult:
             'distance_percent': abs(all_levels[nearest_ratio] - current_price) / current_price
         }
 
-    def get_confluence_zones(self, tolerance: float = 0.01) -> List[Dict[str, Any]]:
+    def get_confluence_zones(self, tolerance: float = 0.01) -> list[dict[str, Any]]:
         """
         Get confluence zones where multiple levels cluster.
 
@@ -106,7 +105,7 @@ class FibonacciResult:
                 current_zone.append(level)
             else:
                 # Check if level is within tolerance of zone average
-                zone_avg = sum(l['price'] for l in current_zone) / len(current_zone)
+                zone_avg = sum(lvl['price'] for lvl in current_zone) / len(current_zone)
                 if abs(level['price'] - zone_avg) <= (zone_avg * tolerance):
                     current_zone.append(level)
                 else:
@@ -121,7 +120,7 @@ class FibonacciResult:
 
         # Don't forget the last zone
         if len(current_zone) > 1:
-            zone_avg = sum(l['price'] for l in current_zone) / len(current_zone)
+            zone_avg = sum(lvl['price'] for lvl in current_zone) / len(current_zone)
             zones.append({
                 'price': zone_avg,
                 'levels': current_zone,
@@ -141,7 +140,7 @@ class FibonacciResult:
         }
         return signal_map.get(self.signal, "Unknown signal")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             'retracement_levels': self.retracement_levels,

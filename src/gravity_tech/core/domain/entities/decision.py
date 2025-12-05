@@ -30,7 +30,7 @@ This is the output of the 5-dimensional decision matrix.
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 
 class DecisionType(Enum):
@@ -51,7 +51,7 @@ class ConfidenceLevel(Enum):
     MEDIUM = "MEDIUM"          # 60-75%
     LOW = "LOW"                # 40-60%
     VERY_LOW = "VERY_LOW"      # 0-40%
-    
+
     @classmethod
     def from_score(cls, score: float) -> "ConfidenceLevel":
         """Determine confidence level from score (0-1)"""
@@ -71,10 +71,10 @@ class ConfidenceLevel(Enum):
 class Decision:
     """
     Immutable Decision entity
-    
+
     Represents the final trading decision made by the system
     based on aggregation of all signals and multi-dimensional analysis.
-    
+
     Attributes:
         decision_type: Type of decision (STRONG_BUY, BUY, etc.)
         confidence: Confidence level (VERY_HIGH, HIGH, etc.)
@@ -93,21 +93,21 @@ class Decision:
     timestamp: datetime
     symbol: str
     timeframe: str
-    dimensions: Dict[str, float]
+    dimensions: dict[str, float]
     signals_count: int = 0
-    reasoning: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
-    
+    reasoning: str | None = None
+    metadata: dict[str, Any] | None = None
+
     def __post_init__(self):
         """Validate decision data"""
         if not 0 <= self.confidence_score <= 1:
             raise ValueError(f"Confidence score must be 0-1, got {self.confidence_score}")
-        
+
         required_dimensions = ["trend", "momentum", "volatility", "cycle", "volume"]
         for dim in required_dimensions:
             if dim not in self.dimensions:
                 raise ValueError(f"Missing required dimension: {dim}")
-    
+
     @property
     def is_buy_decision(self) -> bool:
         """Check if this is a buy decision"""
@@ -116,7 +116,7 @@ class Decision:
             DecisionType.BUY,
             DecisionType.WEAK_BUY
         ]
-    
+
     @property
     def is_sell_decision(self) -> bool:
         """Check if this is a sell decision"""
@@ -125,7 +125,7 @@ class Decision:
             DecisionType.SELL,
             DecisionType.WEAK_SELL
         ]
-    
+
     @property
     def is_high_confidence(self) -> bool:
         """Check if decision has high confidence"""
@@ -133,13 +133,13 @@ class Decision:
             ConfidenceLevel.VERY_HIGH,
             ConfidenceLevel.HIGH
         ]
-    
+
     @property
     def aggregate_dimension_score(self) -> float:
         """Calculate aggregate score from all dimensions"""
         return sum(self.dimensions.values()) / len(self.dimensions)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert decision to dictionary for serialization"""
         return {
             "decision_type": self.decision_type.value,

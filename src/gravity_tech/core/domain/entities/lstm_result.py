@@ -10,8 +10,8 @@ Version: 1.0.0
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -35,27 +35,27 @@ class LSTMResult:
 
     model_id: str
     training_accuracy: float
-    validation_accuracy: Optional[float]
-    test_accuracy: Optional[float]
-    loss_history: List[float]
+    validation_accuracy: float | None
+    test_accuracy: float | None
+    loss_history: list[float]
     epochs_trained: int
     training_time_seconds: float
-    model_parameters: Dict[str, Any]
-    feature_importance: Optional[Dict[str, float]]
+    model_parameters: dict[str, Any]
+    feature_importance: dict[str, float] | None
     created_at: datetime
     description: str
 
     def __post_init__(self):
         """Validate LSTM result data"""
-        if not isinstance(self.training_accuracy, (int, float)) or not (0.0 <= self.training_accuracy <= 1.0):
+        if not isinstance(self.training_accuracy, int | float) or not (0.0 <= self.training_accuracy <= 1.0):
             raise ValueError("training_accuracy must be a float between 0.0 and 1.0")
 
         if self.validation_accuracy is not None:
-            if not isinstance(self.validation_accuracy, (int, float)) or not (0.0 <= self.validation_accuracy <= 1.0):
+            if not isinstance(self.validation_accuracy, int | float) or not (0.0 <= self.validation_accuracy <= 1.0):
                 raise ValueError("validation_accuracy must be a float between 0.0 and 1.0")
 
         if self.test_accuracy is not None:
-            if not isinstance(self.test_accuracy, (int, float)) or not (0.0 <= self.test_accuracy <= 1.0):
+            if not isinstance(self.test_accuracy, int | float) or not (0.0 <= self.test_accuracy <= 1.0):
                 raise ValueError("test_accuracy must be a float between 0.0 and 1.0")
 
         if self.epochs_trained < 0:
@@ -64,7 +64,7 @@ class LSTMResult:
         if self.training_time_seconds < 0:
             raise ValueError("training_time_seconds must be non-negative")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation"""
         return {
             "model_id": self.model_id,
@@ -81,7 +81,7 @@ class LSTMResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LSTMResult':
+    def from_dict(cls, data: dict[str, Any]) -> 'LSTMResult':
         """Create from dictionary representation"""
         return cls(
             model_id=data["model_id"],
@@ -119,3 +119,4 @@ class LSTMResult:
         summary += f" ({self.epochs_trained} epochs, {self.training_time_seconds:.1f}s)"
 
         return summary
+

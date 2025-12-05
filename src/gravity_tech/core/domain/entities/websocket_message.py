@@ -11,7 +11,8 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
+
 from .subscription_type import SubscriptionType
 
 
@@ -28,37 +29,37 @@ class WebSocketMessage:
     message_type: str
     """Type of message (e.g., 'data', 'error', 'ping', 'pong')"""
 
-    subscription_type: Optional[SubscriptionType]
+    subscription_type: SubscriptionType | None
     """Type of subscription this message relates to (None for system messages)"""
 
-    client_id: Optional[str]
+    client_id: str | None
     """Client identifier (None for broadcast messages)"""
 
     timestamp: datetime
     """Message creation timestamp"""
 
     # Message content
-    data: Dict[str, Any]
+    data: dict[str, Any]
     """Message payload data"""
 
     # Optional fields
-    sequence_number: Optional[int] = None
+    sequence_number: int | None = None
     """Sequence number for ordered message delivery"""
 
-    correlation_id: Optional[str] = None
+    correlation_id: str | None = None
     """Correlation ID for request-response pairing"""
 
-    error_message: Optional[str] = None
+    error_message: str | None = None
     """Error message if message_type is 'error'"""
 
     @classmethod
     def create_data_message(
         cls,
         subscription_type: SubscriptionType,
-        data: Dict[str, Any],
-        client_id: Optional[str] = None,
-        sequence_number: Optional[int] = None,
-        correlation_id: Optional[str] = None
+        data: dict[str, Any],
+        client_id: str | None = None,
+        sequence_number: int | None = None,
+        correlation_id: str | None = None
     ) -> 'WebSocketMessage':
         """
         Create a data message.
@@ -87,8 +88,8 @@ class WebSocketMessage:
     def create_error_message(
         cls,
         error_message: str,
-        client_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        client_id: str | None = None,
+        correlation_id: str | None = None
     ) -> 'WebSocketMessage':
         """
         Create an error message.
@@ -147,7 +148,7 @@ class WebSocketMessage:
     def create_system_message(
         cls,
         system_event: str,
-        data: Dict[str, Any]
+        data: dict[str, Any]
     ) -> 'WebSocketMessage':
         """
         Create a system message (status, alerts, etc.).
@@ -167,7 +168,7 @@ class WebSocketMessage:
             data={"event": system_event, **data}
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert message to dictionary for JSON serialization.
 
@@ -198,7 +199,7 @@ class WebSocketMessage:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'WebSocketMessage':
+    def from_dict(cls, data: dict[str, Any]) -> 'WebSocketMessage':
         """
         Create message from dictionary (JSON deserialization).
 
@@ -227,9 +228,9 @@ class WebSocketMessage:
                 error_message=data.get("error_message")
             )
         except KeyError as e:
-            raise ValueError(f"Missing required field: {e}")
+            raise ValueError(f"Missing required field: {e}") from e
         except ValueError as e:
-            raise ValueError(f"Invalid message format: {e}")
+            raise ValueError(f"Invalid message format: {e}") from e
 
     @property
     def is_data_message(self) -> bool:

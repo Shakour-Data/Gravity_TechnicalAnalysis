@@ -15,12 +15,14 @@ Version: 1.0.0
 License: MIT
 """
 
+import json
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any
+
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
-from typing import List, Dict, Optional, Tuple, Any, Sequence
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-import json
 
 
 @dataclass
@@ -32,7 +34,7 @@ class HistoricalScoreEntry:
     symbol: str
     timestamp: datetime
     timeframe: str
-    
+
     # امتیازهای کلی
     trend_score: float
     trend_confidence: float
@@ -40,33 +42,33 @@ class HistoricalScoreEntry:
     momentum_confidence: float
     combined_score: float
     combined_confidence: float
-    
+
     # وزن‌ها
     trend_weight: float
     momentum_weight: float
-    
+
     # سیگنال‌ها
     trend_signal: str
     momentum_signal: str
     combined_signal: str
-    
+
     # توصیه
     recommendation: str
     action: str
-    
+
     # قیمت
     price_at_analysis: float
-    
+
     # اختیاری
-    id: Optional[int] = None
-    created_at: Optional[datetime] = None
+    id: int | None = None
+    created_at: datetime | None = None
 
 
 class HistoricalScoreManager:
     """
     مدیریت ذخیره و بازیابی امتیازهای تاریخی
     """
-    
+
     def __init__(self, connection_string: str):
         """
         Args:
@@ -74,41 +76,41 @@ class HistoricalScoreManager:
         """
         self.connection_string = connection_string
         self._connection = None
-    
+
     def connect(self):
         """اتصال به دیتابیس"""
         if self._connection is None or self._connection.closed:
             self._connection = psycopg2.connect(self.connection_string)
         return self._connection
-    
+
     def close(self):
         """بستن اتصال"""
         if self._connection and not self._connection.closed:
             self._connection.close()
-    
+
     def __enter__(self):
         self.connect()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-    
+
     # ═══════════════════════════════════════════════════════════════════
     # ذخیره امتیازها (Save)
     # ═══════════════════════════════════════════════════════════════════
-    
+
     def save_score(
         self,
         score_entry: HistoricalScoreEntry,
-        horizon_scores: Optional[List[Dict]] = None,
-        indicator_scores: Optional[List[Dict]] = None,
-        patterns: Optional[List[Dict]] = None,
-        volume_analysis: Optional[Dict] = None,
-        price_targets: Optional[List[Dict]] = None
+        horizon_scores: list[dict] | None = None,
+        indicator_scores: list[dict] | None = None,
+        patterns: list[dict] | None = None,
+        volume_analysis: dict | None = None,
+        price_targets: list[dict] | None = None
     ) -> int:
         """
         ذخیره کامل یک تحلیل
-        
+
         Args:
             score_entry: امتیازهای اصلی
             horizon_scores: لیست امتیازهای multi-horizon
@@ -116,7 +118,7 @@ class HistoricalScoreManager:
             patterns: لیست الگوهای تشخیص داده شده
             volume_analysis: تحلیل حجم
             price_targets: اهداف قیمتی
-            
+
         Returns:
             score_id: شناسه رکورد ذخیره شده
         """
@@ -160,40 +162,40 @@ class HistoricalScoreManager:
             if score_id_row is None:
                 raise Exception("Failed to insert score entry")
             score_id = score_id_row['id']
-            
+
             # 2. ذخیره horizon scores
             if horizon_scores:
                 self._save_horizon_scores(cursor, score_id, horizon_scores)
-            
+
             # 3. ذخیره indicator scores
             if indicator_scores:
                 self._save_indicator_scores(cursor, score_id, indicator_scores)
-            
+
             # 4. ذخیره patterns
             if patterns:
                 self._save_patterns(cursor, score_id, patterns)
-            
+
             # 5. ذخیره volume analysis
             if volume_analysis:
                 self._save_volume_analysis(cursor, score_id, volume_analysis)
-            
+
             # 6. ذخیره price targets
             if price_targets:
                 self._save_price_targets(cursor, score_id, price_targets)
-            
+
             # 7. به‌روزرسانی metadata
             self._update_metadata(cursor, score_entry.symbol, score_entry.timeframe, score_id)
-            
+
             conn.commit()
             return score_id
-            
+
         except Exception as e:
             conn.rollback()
-            raise Exception(f"Error saving score: {str(e)}")
+            raise Exception(f"Error saving score: {str(e)}") from e
         finally:
             cursor.close()
-    
-    def _save_horizon_scores(self, cursor, score_id: int, horizon_scores: List[Dict]):
+
+    def _save_horizon_scores(self, cursor, score_id: int, horizon_scores: list[dict]):
         """ذخیره امتیازهای multi-horizon"""
         data = [
             (
@@ -206,20 +208,20 @@ class HistoricalScoreManager:
             )
             for h in horizon_scores
         ]
-        
+
         execute_values(
             cursor,
             """
-            INSERT INTO historical_horizon_scores 
+            INSERT INTO historical_horizon_scores
                 (score_id, horizon, analysis_type, score, confidence, signal)
             VALUES %s
-            ON CONFLICT (score_id, horizon, analysis_type) 
+            ON CONFLICT (score_id, horizon, analysis_type)
             DO UPDATE SET score = EXCLUDED.score, confidence = EXCLUDED.confidence
             """,
             data
         )
-    
-    def _save_indicator_scores(self, cursor, score_id: int, indicator_scores: List[Dict]):
+
+    def _save_indicator_scores(self, cursor, score_id: int, indicator_scores: list[dict]):
         """ذخیره امتیازهای تک تک اندیکاتورها"""
         data = [
             (
@@ -234,19 +236,19 @@ class HistoricalScoreManager:
             )
             for ind in indicator_scores
         ]
-        
+
         execute_values(
             cursor,
             """
-            INSERT INTO historical_indicator_scores 
+            INSERT INTO historical_indicator_scores
                 (score_id, indicator_name, indicator_category, indicator_params,
                  score, confidence, signal, raw_value)
             VALUES %s
             """,
             data
         )
-    
-    def _save_patterns(self, cursor, score_id: int, patterns: List[Dict]):
+
+    def _save_patterns(self, cursor, score_id: int, patterns: list[dict]):
         """ذخیره الگوهای تشخیص داده شده"""
         data = [
             (
@@ -263,37 +265,37 @@ class HistoricalScoreManager:
             )
             for p in patterns
         ]
-        
+
         execute_values(
             cursor,
             """
-            INSERT INTO historical_patterns 
+            INSERT INTO historical_patterns
                 (score_id, pattern_type, pattern_name, score, confidence, signal,
                  description, candle_indices, price_levels, projected_target)
             VALUES %s
             """,
             data
         )
-    
-    def _save_volume_analysis(self, cursor, score_id: int, volume: Dict):
+
+    def _save_volume_analysis(self, cursor, score_id: int, volume: dict):
         """ذخیره تحلیل حجم"""
         cursor.execute("""
-            INSERT INTO historical_volume_analysis 
-                (score_id, volume_score, volume_confidence, avg_volume, 
+            INSERT INTO historical_volume_analysis
+                (score_id, volume_score, volume_confidence, avg_volume,
                  current_volume, volume_ratio, confirms_trend)
-            VALUES 
+            VALUES
                 (%(score_id)s, %(volume_score)s, %(volume_confidence)s, %(avg_volume)s,
                  %(current_volume)s, %(volume_ratio)s, %(confirms_trend)s)
-            ON CONFLICT (score_id) 
-            DO UPDATE SET 
+            ON CONFLICT (score_id)
+            DO UPDATE SET
                 volume_score = EXCLUDED.volume_score,
                 volume_confidence = EXCLUDED.volume_confidence
         """, {
             'score_id': score_id,
             **volume
         })
-    
-    def _save_price_targets(self, cursor, score_id: int, targets: List[Dict]):
+
+    def _save_price_targets(self, cursor, score_id: int, targets: list[dict]):
         """ذخیره اهداف قیمتی"""
         data = [
             (
@@ -306,17 +308,17 @@ class HistoricalScoreManager:
             )
             for t in targets
         ]
-        
+
         execute_values(
             cursor,
             """
-            INSERT INTO historical_price_targets 
+            INSERT INTO historical_price_targets
                 (score_id, target_type, target_price, stop_loss, expected_timeframe, confidence)
             VALUES %s
             """,
             data
         )
-    
+
     def _update_metadata(self, cursor, symbol: str, timeframe: str, score_id: int):
         """به‌روزرسانی metadata"""
         cursor.execute("""
@@ -329,12 +331,12 @@ class HistoricalScoreManager:
                 total_analyses = analysis_metadata.total_analyses + 1,
                 updated_at = NOW()
         """, {'symbol': symbol, 'timeframe': timeframe, 'score_id': score_id})
-    
+
     # ═══════════════════════════════════════════════════════════════════
     # بازیابی امتیازها (Retrieve)
     # ═══════════════════════════════════════════════════════════════════
-    
-    def get_latest_score(self, symbol: str, timeframe: str = '1h') -> Optional[Dict]:
+
+    def get_latest_score(self, symbol: str, timeframe: str = '1h') -> dict | None:
         """
         دریافت آخرین امتیاز یک symbol
 
@@ -354,13 +356,13 @@ class HistoricalScoreManager:
             return row if row else None
         finally:
             cursor.close()
-    
+
     def get_score_at_date(
         self,
         symbol: str,
         date: datetime,
         timeframe: str = '1h'
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         دریافت امتیاز در یک تاریخ خاص (آخرین تحلیل قبل از آن تاریخ)
         """
@@ -376,14 +378,14 @@ class HistoricalScoreManager:
             return result['score_data'] if result else None
         finally:
             cursor.close()
-    
+
     def get_score_timeseries(
         self,
         symbol: str,
         from_date: datetime,
         to_date: datetime,
         timeframe: str = '1h'
-    ) -> Sequence[Dict[str, Any]]:
+    ) -> Sequence[dict[str, Any]]:
         """
         دریافت سری زمانی امتیازها (برای نمودار)
 
@@ -401,8 +403,8 @@ class HistoricalScoreManager:
             return cursor.fetchall()
         finally:
             cursor.close()
-    
-    def get_score_with_details(self, score_id: int) -> Optional[Dict]:
+
+    def get_score_with_details(self, score_id: int) -> dict | None:
         """
         دریافت کامل یک تحلیل با تمام جزئیات
         (horizons, indicators, patterns, volume)
@@ -452,16 +454,16 @@ class HistoricalScoreManager:
 
         finally:
             cursor.close()
-    
+
     # ═══════════════════════════════════════════════════════════════════
     # آمار و تحلیل (Statistics)
     # ═══════════════════════════════════════════════════════════════════
-    
+
     def get_indicator_performance(
         self,
         symbol: str,
         days: int = 30
-    ) -> Sequence[Dict[str, Any]]:
+    ) -> Sequence[dict[str, Any]]:
         """
         عملکرد اندیکاتورها در X روز گذشته
         """
@@ -490,12 +492,12 @@ class HistoricalScoreManager:
             return cursor.fetchall()
         finally:
             cursor.close()
-    
+
     def get_pattern_success_rate(
         self,
-        pattern_name: Optional[str] = None,
+        pattern_name: str | None = None,
         days: int = 90
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         نرخ موفقیت الگوها
         """
@@ -504,7 +506,7 @@ class HistoricalScoreManager:
 
         try:
             where_clause = "WHERE hp.detected_at > NOW() - INTERVAL '%s days'"
-            params: List[Any] = [days]
+            params: list[Any] = [days]
 
             if pattern_name:
                 where_clause += " AND hp.pattern_name = %s"
@@ -529,11 +531,11 @@ class HistoricalScoreManager:
             return [dict(row) for row in rows]
         finally:
             cursor.close()
-    
+
     # ═══════════════════════════════════════════════════════════════════
     # Cleanup
     # ═══════════════════════════════════════════════════════════════════
-    
+
     def cleanup_old_data(self, days_to_keep: int = 365) -> int:
         """
         حذف داده‌های قدیمی‌تر از X روز
@@ -560,7 +562,7 @@ class HistoricalScoreManager:
         start_date: datetime,
         end_date: datetime,
         limit: int = 100
-    ) -> List[HistoricalScoreEntry]:
+    ) -> list[HistoricalScoreEntry]:
         """
         دریافت امتیازهای یک نماد و تایم‌فریم در بازه زمانی مشخص
         """
@@ -577,7 +579,7 @@ class HistoricalScoreManager:
             """, (symbol, timeframe, start_date, end_date, limit))
 
             rows = cursor.fetchall()
-            results = []  # type: List[HistoricalScoreEntry]
+            results: list[HistoricalScoreEntry] = []
 
             for row in rows:
                 entry = HistoricalScoreEntry(
@@ -607,7 +609,7 @@ class HistoricalScoreManager:
         finally:
             cursor.close()
 
-    def get_available_symbols(self) -> List[str]:
+    def get_available_symbols(self) -> list[str]:
         """
         دریافت لیست نمادهای موجود در دیتابیس
         """
@@ -625,7 +627,7 @@ class HistoricalScoreManager:
         finally:
             cursor.close()
 
-    def get_available_timeframes(self, symbol: Optional[str] = None) -> List[str]:
+    def get_available_timeframes(self, symbol: str | None = None) -> list[str]:
         """
         دریافت لیست تایم‌فریم‌های موجود
         """
@@ -650,7 +652,7 @@ class HistoricalScoreManager:
         finally:
             cursor.close()
 
-    def get_symbol_statistics(self, symbol: str, timeframe: Optional[str] = None) -> Dict:
+    def get_symbol_statistics(self, symbol: str, timeframe: str | None = None) -> dict:
         """
         دریافت آمار یک نماد
         """
@@ -701,7 +703,7 @@ if __name__ == "__main__":
     manager = HistoricalScoreManager(
         "postgresql://user:pass@localhost:5432/trading_db"
     )
-    
+
     # مثال ذخیره
     score_entry = HistoricalScoreEntry(
         symbol="BTCUSDT",
@@ -722,17 +724,17 @@ if __name__ == "__main__":
         action="ACCUMULATE",
         price_at_analysis=50000.00
     )
-    
+
     horizon_scores = [
         {'horizon': '3d', 'analysis_type': 'TREND', 'score': 0.85, 'confidence': 0.82, 'signal': 'VERY_BULLISH'},
         {'horizon': '7d', 'analysis_type': 'TREND', 'score': 0.75, 'confidence': 0.78, 'signal': 'BULLISH'},
         {'horizon': '30d', 'analysis_type': 'TREND', 'score': 0.60, 'confidence': 0.75, 'signal': 'BULLISH'}
     ]
-    
+
     with manager:
         score_id = manager.save_score(score_entry, horizon_scores=horizon_scores)
         print(f"✅ Saved score with ID: {score_id}")
-        
+
         # بازیابی
         latest = manager.get_latest_score("BTCUSDT", "1h")
         print(f"📊 Latest score: {latest}")

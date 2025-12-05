@@ -16,14 +16,15 @@ License: MIT
 import asyncio
 import json
 import logging
-from typing import Dict, List, Set, Optional, Any, AsyncGenerator
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
+
 from fastapi import Request
-from fastapi.responses import StreamingResponse
+from gravity_tech.core.indicators import MomentumIndicators, TrendIndicators
+from gravity_tech.models.schemas import Candle, MarketData, SubscriptionType
 from sse_starlette.sse import EventSourceResponse
-from gravity_tech.models.schemas import Candle, SSEMessage, SubscriptionType, MarketData
-from gravity_tech.core.indicators import TrendIndicators, MomentumIndicators
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,10 @@ class SSEConnectionManager:
     """Manages SSE connections and subscriptions"""
 
     def __init__(self):
-        self.active_connections: Dict[str, asyncio.Queue] = {}
-        self.subscriptions: Dict[str, Set[SubscriptionType]] = {}
-        self.client_data: Dict[str, Dict[str, Any]] = {}
-        self.broadcast_queues: Dict[SubscriptionType, asyncio.Queue] = {}
+        self.active_connections: dict[str, asyncio.Queue] = {}
+        self.subscriptions: dict[str, set[SubscriptionType]] = {}
+        self.client_data: dict[str, dict[str, Any]] = {}
+        self.broadcast_queues: dict[SubscriptionType, asyncio.Queue] = {}
 
         # Initialize broadcast queues for each subscription type
         for sub_type in SubscriptionType:
@@ -78,12 +79,12 @@ class SSEConnectionManager:
             logger.info(f"SSE Client {client_id} unsubscribed from {subscription_type}")
 
     async def broadcast_to_subscribers(self, subscription_type: SubscriptionType,
-                                     message: Dict[str, Any]) -> None:
+                                     message: dict[str, Any]) -> None:
         """Broadcast message to all subscribers of a type"""
         # Put message in broadcast queue
         await self.broadcast_queues[subscription_type].put(message)
 
-    async def send_personal_message(self, client_id: str, message: Dict[str, Any]) -> None:
+    async def send_personal_message(self, client_id: str, message: dict[str, Any]) -> None:
         """Send message to specific client"""
         if client_id in self.active_connections:
             queue = self.active_connections[client_id]
@@ -91,7 +92,7 @@ class SSEConnectionManager:
             self.client_data[client_id]['last_activity'] = datetime.utcnow()
             self.client_data[client_id]['message_count'] += 1
 
-    def get_connection_stats(self) -> Dict[str, Any]:
+    def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics"""
         return {
             'total_connections': len(self.active_connections),
@@ -110,12 +111,12 @@ class SSEHandler:
         self.connection_manager = SSEConnectionManager()
         self.trend_indicators = TrendIndicators()
         self.momentum_indicators = MomentumIndicators()
-        self.market_data_buffer: Dict[str, List[Candle]] = {}
+        self.market_data_buffer: dict[str, list[Candle]] = {}
         self.is_streaming = False
         self.broadcast_task = None
 
     async def handle_connection(self, request: Request, client_id: str,
-                              subscriptions: List[SubscriptionType]) -> AsyncGenerator[str, None]:
+                              subscriptions: list[SubscriptionType]) -> AsyncGenerator[str, None]:
         """Handle individual SSE connection"""
         queue = await self.connection_manager.connect(client_id)
 
@@ -149,7 +150,7 @@ class SSEHandler:
 
                     yield self._format_sse_message(message)
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Send heartbeat
                     yield self._format_sse_message({
                         "type": "heartbeat",
@@ -260,7 +261,7 @@ class SSEHandler:
         except Exception as e:
             logger.error(f"Error processing candle for {symbol}: {e}")
 
-    async def _calculate_indicators(self, candles: List[Candle]) -> Dict[str, Any]:
+    async def _calculate_indicators(self, candles: list[Candle]) -> dict[str, Any]:
         """Calculate technical indicators for broadcasting"""
         try:
             indicators = {}
@@ -305,7 +306,7 @@ class SSEHandler:
             logger.error(f"Error calculating indicators: {e}")
             return {}
 
-    def _calculate_simple_rsi(self, prices: List[float], period: int = 14) -> float:
+    def _calculate_simple_rsi(self, prices: list[float], period: int = 14) -> float:
         """Simple RSI calculation for SSE"""
         if len(prices) < period + 1:
             return 50.0
@@ -333,7 +334,7 @@ class SSEHandler:
 
         return rsi
 
-    async def _detect_patterns(self, candles: List[Candle]) -> List[Dict[str, Any]]:
+    async def _detect_patterns(self, candles: list[Candle]) -> list[dict[str, Any]]:
         """Detect chart patterns for broadcasting"""
         try:
             patterns = []
@@ -378,11 +379,11 @@ class SSEHandler:
             volume=volume
         )
 
-    def _format_sse_message(self, data: Dict[str, Any]) -> str:
+    def _format_sse_message(self, data: dict[str, Any]) -> str:
         """Format data as SSE message"""
         return f"data: {json.dumps(data)}\n\n"
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get SSE handler statistics"""
         return {
             'connections': self.connection_manager.get_connection_stats(),
@@ -397,7 +398,7 @@ sse_handler = SSEHandler()
 
 
 async def handle_sse_connection(request: Request, client_id: str,
-                              subscriptions: List[str]) -> EventSourceResponse:
+                              subscriptions: list[str]) -> EventSourceResponse:
     """FastAPI endpoint handler for SSE connections"""
     # Convert string subscriptions to enum
     sub_types = []

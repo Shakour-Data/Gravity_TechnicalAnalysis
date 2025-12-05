@@ -39,7 +39,7 @@ class CandleType(Enum):
     BULLISH = "BULLISH"      # Close > Open (green/white)
     BEARISH = "BEARISH"      # Close < Open (red/black)
     DOJI = "DOJI"            # Close ≈ Open (indecision)
-    
+
     def __str__(self) -> str:
         return self.value
 
@@ -48,10 +48,10 @@ class CandleType(Enum):
 class Candle:
     """
     Immutable Candle entity
-    
+
     Represents a single price bar with OHLCV data.
     All financial calculations are based on this entity.
-    
+
     Attributes:
         timestamp: Candle timestamp (opening time)
         open: Opening price
@@ -70,7 +70,7 @@ class Candle:
     volume: float
     symbol: str = "UNKNOWN"
     timeframe: str = "1h"
-    
+
     def __post_init__(self):
         """Validate candle data"""
         # Allow gap cases where the body (open-close) lies outside the
@@ -104,7 +104,7 @@ class Candle:
                 raise ValueError(f"Low ({self.low}) must be <= min(open, close)")
         if self.volume < 0:
             raise ValueError(f"Volume ({self.volume}) cannot be negative")
-    
+
     @property
     def candle_type(self) -> CandleType:
         """Determine candle type based on open/close relationship"""
@@ -112,42 +112,42 @@ class Candle:
         if abs(self.close - self.open) <= body_threshold:
             return CandleType.DOJI
         return CandleType.BULLISH if self.close > self.open else CandleType.BEARISH
-    
+
     @property
     def body_size(self) -> float:
         """Size of the candle body (absolute)"""
         return abs(self.close - self.open)
-    
+
     @property
     def upper_shadow(self) -> float:
         """Size of upper shadow/wick"""
         return self.high - max(self.open, self.close)
-    
+
     @property
     def lower_shadow(self) -> float:
         """Size of lower shadow/wick"""
         return min(self.open, self.close) - self.low
-    
+
     @property
     def total_range(self) -> float:
         """Total range from high to low"""
         return self.high - self.low
-    
+
     @property
     def body_percent(self) -> float:
         """Body size as percentage of total range"""
         return (self.body_size / self.total_range * 100) if self.total_range > 0 else 0
-    
+
     @property
     def is_bullish(self) -> bool:
         """Check if candle is bullish"""
         return self.close > self.open
-    
+
     @property
     def is_bearish(self) -> bool:
         """Check if candle is bearish"""
         return self.close < self.open
-    
+
     def is_doji(self, threshold: float = 0.1) -> bool:
         """Check if candle is a doji (small body)"""
         return self.candle_type == CandleType.DOJI
@@ -162,31 +162,31 @@ class Candle:
         from dataclasses import replace
 
         return replace(self, **changes)
-    
+
     @property
     def typical_price(self) -> float:
         """
         Calculate typical price: (H + L + C) / 3
-        
+
         Used in many indicators like Volume Weighted indicators.
         """
         return (self.high + self.low + self.close) / 3
-    
+
     def true_range(self, previous_candle: Optional['Candle'] = None) -> float:
         """
         Calculate True Range for ATR
-        
+
         True Range is the greatest of:
         - Current High minus current Low
         - Absolute value of current High minus previous Close
         - Absolute value of current Low minus previous Close
-        
+
         Args:
             previous_candle: Previous candle for TR calculation (optional)
-            
+
         Returns:
             True Range value
-            
+
         Example:
             >>> current = Candle(...)
             >>> previous = Candle(...)
@@ -194,7 +194,7 @@ class Candle:
         """
         if previous_candle is None:
             return self.high - self.low
-        
+
         return max(
             self.high - self.low,
             abs(self.high - previous_candle.close),

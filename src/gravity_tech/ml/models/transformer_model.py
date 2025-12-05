@@ -13,19 +13,18 @@ Version: 1.0.0
 License: MIT
 """
 
+import logging
+import math
+from typing import Any
+
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from typing import List, Optional, Tuple, Dict, Any
-from gravity_tech.models.schemas import Candle, TransformerResult, PredictionResult
 from gravity_tech.core.domain.entities import PredictionSignal
+from gravity_tech.models.schemas import Candle, PredictionResult
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-import math
-import logging
+from torch.utils.data import DataLoader, Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class PositionalEncoding(nn.Module):
     """Positional encoding for Transformer"""
 
     def __init__(self, d_model: int, max_len: int = 5000):
-        super(PositionalEncoding, self).__init__()
+        super().__init__()  # type: ignore
 
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
@@ -56,7 +55,7 @@ class TransformerModel(nn.Module):
 
     def __init__(self, input_size: int, d_model: int, nhead: int, num_layers: int,
                  dim_feedforward: int, output_size: int, dropout: float = 0.1):
-        super(TransformerModel, self).__init__()
+        super().__init__()
 
         self.input_size = input_size
         self.d_model = d_model
@@ -138,7 +137,7 @@ class TransformerPredictor:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.input_size = None
 
-    def prepare_data(self, candles: List[Candle], features: Optional[List[str]] = None) -> Tuple[np.ndarray, MinMaxScaler]:
+    def prepare_data(self, candles: list[Candle], features: list[str] | None = None) -> tuple[np.ndarray, MinMaxScaler]:
         """
         Prepare candle data for Transformer training
 
@@ -175,8 +174,8 @@ class TransformerPredictor:
 
         return scaled_data, self.scaler
 
-    def train(self, candles: List[Candle], target_feature: str = 'close',
-              validation_split: float = 0.2) -> Dict[str, Any]:
+    def train(self, candles: list[Candle], target_feature: str = 'close',
+              validation_split: float = 0.2) -> dict[str, Any]:
         """
         Train Transformer model
 
@@ -290,7 +289,7 @@ class TransformerPredictor:
             'epochs_trained': len(train_losses)
         }
 
-    def predict(self, candles: List[Candle], steps_ahead: int = 1) -> PredictionResult:
+    def predict(self, candles: list[Candle], steps_ahead: int = 1) -> PredictionResult:
         """
         Make predictions using trained model
 
@@ -360,7 +359,7 @@ class TransformerPredictor:
             metadata={'steps_ahead': steps_ahead, 'volatility': float(volatility)}
         )
 
-    def get_attention_weights(self, candles: List[Candle]) -> Optional[np.ndarray]:
+    def get_attention_weights(self, candles: list[Candle]) -> np.ndarray | None:
         """
         Get attention weights for interpretability
 
@@ -376,7 +375,7 @@ class TransformerPredictor:
         # This is a simplified version - in practice, you'd need to modify the model
         # to return attention weights
         data, _ = self.prepare_data(candles[-self.seq_length:])
-        input_seq = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(self.device)
+        _ = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(self.device)
 
         self.model.eval()
 
@@ -401,7 +400,7 @@ def create_transformer_predictor(seq_length: int = 60, d_model: int = 64) -> Tra
     return TransformerPredictor(seq_length=seq_length, d_model=d_model)
 
 
-def train_transformer_model(candles: List[Candle], target_feature: str = 'close') -> TransformerPredictor:
+def train_transformer_model(candles: list[Candle], target_feature: str = 'close') -> TransformerPredictor:
     """
     Convenience function to train Transformer model
 

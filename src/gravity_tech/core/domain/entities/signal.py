@@ -30,7 +30,7 @@ Signals are intermediate outputs that feed into the decision-making process.
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any
 
 
 class SignalType(Enum):
@@ -50,11 +50,11 @@ class SignalStrength(Enum):
     SLIGHTLY_BEARISH = 1  # Weak sell signal
     BEARISH = 0           # Strong sell signal
     VERY_BEARISH = -1     # Very strong sell signal
-    
+
     def to_numeric(self) -> int:
         """Convert to numeric score for aggregation"""
         return self.value
-    
+
     @classmethod
     def from_numeric(cls, value: int) -> "SignalStrength":
         """Create from numeric score"""
@@ -74,10 +74,10 @@ class SignalStrength(Enum):
 class Signal:
     """
     Immutable Signal entity
-    
+
     Represents a trading signal from an indicator or pattern.
     Multiple signals are aggregated to make final trading decisions.
-    
+
     Attributes:
         signal_type: Type of signal (BUY/SELL/HOLD/NEUTRAL)
         strength: Strength of the signal
@@ -92,24 +92,24 @@ class Signal:
     strength: SignalStrength
     source: str
     timestamp: datetime
-    value: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
+    value: float | None = None
+    metadata: dict[str, Any] | None = None
     timeframe: str = "1h"
     symbol: str = "UNKNOWN"
-    
+
     @property
     def numeric_strength(self) -> int:
         """Get numeric strength value"""
         return self.strength.to_numeric()
-    
+
     def is_buy_signal(self) -> bool:
         """Check if this is a buy signal"""
         return self.signal_type == SignalType.BUY
-    
+
     def is_sell_signal(self) -> bool:
         """Check if this is a sell signal"""
         return self.signal_type == SignalType.SELL
-    
+
     def is_strong(self) -> bool:
         """Check if signal is strong (not NEUTRAL/SLIGHTLY_*)"""
         return self.strength in [
@@ -118,8 +118,8 @@ class Signal:
             SignalStrength.BEARISH,
             SignalStrength.VERY_BEARISH
         ]
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert signal to dictionary for serialization"""
         return {
             "signal_type": self.signal_type.value,

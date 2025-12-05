@@ -21,32 +21,25 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.3)
 ================================================================================
 """
 
-# Existing exports (Phase 2)
 from .candle import Candle, CandleType
-from .signal import Signal, SignalType, SignalStrength as OldSignalStrength
-from .decision import Decision, DecisionType, ConfidenceLevel
-
-# NEW exports (Phase 2.1 - Task 1.3)
-from .signal_strength import SignalStrength as CoreSignalStrength
-from .indicator_category import IndicatorCategory
-from .indicator_result import IndicatorResult
-from .pattern_type import PatternType
-from .pattern_result import PatternResult
-from .wave_point import WavePoint
+from .decision import ConfidenceLevel, Decision, DecisionType
 from .elliott_wave_result import ElliottWaveResult
 from .fibonacci_level import FibonacciLevel
 from .fibonacci_result import FibonacciResult
-
-# NEW exports (Phase 2.1 - Task 1.4 - Real-time entities)
-from .subscription_type import SubscriptionType
-from .websocket_message import WebSocketMessage
-from .sse_message import SSEMessage
-from .market_data import MarketData
-
-# NEW exports (Phase 2.1 - Task 1.5 - ML entities)
+from .indicator_category import IndicatorCategory
+from .indicator_result import IndicatorResult
 from .lstm_result import LSTMResult
+from .market_data import MarketData
+from .pattern_result import PatternResult
+from .pattern_type import PatternType
 from .prediction_result import PredictionResult, PredictionSignal
+from .signal import Signal, SignalType
+from .signal_strength import SignalStrength as CoreSignalStrength
+from .sse_message import SSEMessage
+from .subscription_type import SubscriptionType
 from .transformer_result import TransformerResult
+from .wave_point import WavePoint
+from .websocket_message import WebSocketMessage
 
 # Note: CoreSignalStrength (7-level) from signal_strength.py is the new standard
 # OldSignalStrength (3-level) from signal.py is kept for legacy Signal class
@@ -63,7 +56,7 @@ __all__ = [
     "Decision",
     "DecisionType",
     "ConfidenceLevel",
-    
+
     # NEW (Phase 2.1)
     "CoreSignalStrength",  # From signal_strength.py (new, with Persian labels, 7 levels)
     "SignalStrength",      # Alias for backward compatibility
@@ -75,13 +68,13 @@ __all__ = [
     "ElliottWaveResult",
     "FibonacciLevel",
     "FibonacciResult",
-    
+
     # NEW (Phase 2.1 - Task 1.4 - Real-time entities)
     "SubscriptionType",
     "WebSocketMessage",
     "SSEMessage",
     "MarketData",
-    
+
     # NEW (Phase 2.1 - Task 1.5 - ML entities)
     "LSTMResult",
     "PredictionResult",

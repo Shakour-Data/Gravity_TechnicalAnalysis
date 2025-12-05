@@ -15,10 +15,9 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.3)
 """
 
 import math
-from typing import List, Dict, Optional, Tuple, Any
-from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import dataclass
-from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from gravity_tech.core.domain.entities import FibonacciLevel, FibonacciResult
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
@@ -49,8 +48,8 @@ class FibonacciTools:
         self,
         high: Decimal,
         low: Decimal,
-        ratios: Optional[List[float]] = None
-    ) -> List[FibonacciLevel]:
+        ratios: list[float] | None = None
+    ) -> list[FibonacciLevel]:
         """
         Calculate Fibonacci retracement levels.
 
@@ -88,8 +87,8 @@ class FibonacciTools:
         self,
         high: Decimal,
         low: Decimal,
-        ratios: Optional[List[float]] = None
-    ) -> List[FibonacciLevel]:
+        ratios: list[float] | None = None
+    ) -> list[FibonacciLevel]:
         """
         Calculate Fibonacci extension levels.
 
@@ -125,11 +124,11 @@ class FibonacciTools:
 
     def calculate_arcs(
         self,
-        center_point: Tuple[Decimal, int],
-        radius_point: Tuple[Decimal, int],
+        center_point: tuple[Decimal, int],
+        radius_point: tuple[Decimal, int],
         time_point: int,
-        ratios: Optional[List[float]] = None
-    ) -> List[FibonacciLevel]:
+        ratios: list[float] | None = None
+    ) -> list[FibonacciLevel]:
         """
         Calculate Fibonacci arc levels.
 
@@ -174,11 +173,11 @@ class FibonacciTools:
 
     def calculate_fans(
         self,
-        origin_point: Tuple[Decimal, int],
-        high_point: Tuple[Decimal, int],
+        origin_point: tuple[Decimal, int],
+        high_point: tuple[Decimal, int],
         time_point: int,
-        ratios: Optional[List[float]] = None
-    ) -> List[FibonacciLevel]:
+        ratios: list[float] | None = None
+    ) -> list[FibonacciLevel]:
         """
         Calculate Fibonacci fan lines.
 
@@ -223,8 +222,8 @@ class FibonacciTools:
         wave1_start: Decimal,
         wave1_end: Decimal,
         wave2_end: Decimal,
-        ratios: Optional[List[float]] = None
-    ) -> List[FibonacciLevel]:
+        ratios: list[float] | None = None
+    ) -> list[FibonacciLevel]:
         """
         Calculate Fibonacci projections (Wave 3 projections).
 
@@ -261,7 +260,7 @@ class FibonacciTools:
 
     def find_fibonacci_levels(
         self,
-        candles: List[Any],
+        candles: list[Any],
         lookback_periods: int = 100,
         min_swing_size: Decimal = Decimal('0.01')
     ) -> FibonacciResult:
@@ -336,7 +335,7 @@ class FibonacciTools:
         return FibonacciResult(
             retracement_levels=retracement_levels,
             extension_levels=extension_levels,
-            confluence_zones=[{"price": float(k), "levels": [l.description for l in v]} for k, v in confluence_zones.items()],
+            confluence_zones=[{"price": float(k), "levels": [lvl.description for lvl in v]} for k, v in confluence_zones.items()],
             signal=signal,
             confidence=confidence,
             description=description
@@ -344,9 +343,9 @@ class FibonacciTools:
 
     def analyze_fibonacci_confluence(
         self,
-        levels: List[FibonacciLevel],
+        levels: list[FibonacciLevel],
         tolerance: Decimal = Decimal('0.001')
-    ) -> Dict[Decimal, List[FibonacciLevel]]:
+    ) -> dict[Decimal, list[FibonacciLevel]]:
         """
         Analyze confluence between Fibonacci levels.
 
@@ -365,13 +364,13 @@ class FibonacciTools:
         for level in sorted_levels:
             # Find levels within tolerance
             nearby_levels = [
-                l for l in sorted_levels
-                if abs(l.price - level.price) <= tolerance
+                lvl for lvl in sorted_levels
+                if abs(lvl.price - level.price) <= tolerance
             ]
 
             if len(nearby_levels) > 1:
                 # Calculate average price for confluence zone
-                avg_price = sum(l.price for l in nearby_levels) / len(nearby_levels)
+                avg_price = sum(lvl.price for lvl in nearby_levels) / len(nearby_levels)
                 avg_price = Decimal(str(avg_price)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
                 if avg_price not in confluence_zones:
@@ -381,9 +380,9 @@ class FibonacciTools:
 
     def _find_swings(
         self,
-        candles: List[Any],
+        candles: list[Any],
         min_swing_size: Decimal
-    ) -> Tuple[List[Decimal], List[Decimal]]:
+    ) -> tuple[list[Decimal], list[Decimal]]:
         """
         Find swing highs and lows in candle data.
 
@@ -426,9 +425,9 @@ class FibonacciTools:
 
     def _remove_duplicate_levels(
         self,
-        levels: List[FibonacciLevel],
+        levels: list[FibonacciLevel],
         tolerance: Decimal = Decimal('0.01')
-    ) -> List[FibonacciLevel]:
+    ) -> list[FibonacciLevel]:
         """
         Remove duplicate levels within tolerance.
 
@@ -454,8 +453,8 @@ class FibonacciTools:
 
     def _calculate_confidence(
         self,
-        levels: List[FibonacciLevel],
-        candles: List[Any]
+        levels: list[FibonacciLevel],
+        candles: list[Any]
     ) -> float:
         """
         Calculate confidence score for Fibonacci analysis.
@@ -489,7 +488,7 @@ class FibonacciTools:
 
     def _determine_signal(
         self,
-        levels: List[FibonacciLevel],
+        levels: list[FibonacciLevel],
         current_price: float
     ) -> SignalStrength:
         """
@@ -506,8 +505,8 @@ class FibonacciTools:
             return SignalStrength.NEUTRAL
 
         # Find nearest support and resistance levels
-        support_levels = [l for l in levels if l.price <= current_price]
-        resistance_levels = [l for l in levels if l.price >= current_price]
+        support_levels = [lvl for lvl in levels if lvl.price <= current_price]
+        resistance_levels = [lvl for lvl in levels if lvl.price >= current_price]
 
         if not support_levels or not resistance_levels:
             return SignalStrength.NEUTRAL
