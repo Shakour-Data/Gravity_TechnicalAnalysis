@@ -17,6 +17,7 @@ License: MIT
 
 import numpy as np
 import pytest
+import torch
 
 
 class TestLSTMModel:
@@ -40,7 +41,7 @@ class TestLSTMModel:
             # Create dummy input
             batch_size = 32
             seq_length = 20
-            x = np.random.randn(batch_size, seq_length, 10)
+            x = torch.randn(batch_size, seq_length, 10)
 
             # Forward pass should not raise
             if hasattr(model, 'forward'):
@@ -62,7 +63,7 @@ class TestLSTMModel:
             )
 
             batch_size = 32
-            x = np.random.randn(batch_size, 20, input_size)
+            x = torch.randn(batch_size, 20, input_size)
 
             if hasattr(model, 'forward'):
                 output = model.forward(x)
@@ -79,9 +80,9 @@ class TestLSTMModel:
             model = LSTMModel(input_size=10, hidden_size=64, num_layers=2, output_size=5)
 
             sequences = [
-                np.random.randn(1, 10, 10),  # seq_len=10
-                np.random.randn(1, 20, 10),  # seq_len=20
-                np.random.randn(1, 30, 10),  # seq_len=30
+                torch.randn(1, 10, 10),  # seq_len=10
+                torch.randn(1, 20, 10),  # seq_len=20
+                torch.randn(1, 30, 10),  # seq_len=30
             ]
 
             for seq in sequences:
@@ -99,7 +100,7 @@ class TestLSTMModel:
 
             batches = [16, 32, 64, 128]
             for batch_size in batches:
-                x = np.random.randn(batch_size, 20, 10)
+                x = torch.randn(batch_size, 20, 10)
                 if hasattr(model, 'forward'):
                     output = model.forward(x)
                     if output is not None:
@@ -142,7 +143,7 @@ class TestTransformerModel:
 
             batch_size = 32
             seq_length = 20
-            x = np.random.randn(batch_size, seq_length, 10)
+            x = torch.randn(batch_size, seq_length, 10)
 
             if hasattr(model, 'forward'):
                 output = model.forward(x)
@@ -168,7 +169,7 @@ class TestTransformerModel:
                         output_size=5,
                         dim_feedforward=256
                     )
-                    x = np.random.randn(16, 20, 10)
+                    x = torch.randn(16, 20, 10)
 
                     if hasattr(model, 'forward'):
                         output = model.forward(x)
