@@ -1,7 +1,9 @@
-import sqlite3
 import logging
-from typing import List, Dict, Any, Optional
+import sqlite3
+from typing import Any, Optional
+
 import pandas as pd
+
 from src.config import TSE_DB_FILE
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ class TSEDatabaseConnector:
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
-    # Note: The database is assumed to be pre-built. 
+    # Note: The database is assumed to be pre-built.
     # The create_tables and insert methods are kept for reference or initialization if needed,
     # but the primary role of this class in this project is to READ data.
 
@@ -153,7 +155,7 @@ class TSEDatabaseConnector:
             UNIQUE(date)
         )
         """)
-        
+
         # Create Indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_data(ticker, date);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_price_date ON price_data(date);")
@@ -178,20 +180,20 @@ class TSEDatabaseConnector:
         conn.commit()
         conn.close()
 
-    def insert_price_data(self, records: List[Dict[str, Any]]):
+    def insert_price_data(self, records: list[dict[str, Any]]):
         """
         Inserts price data in bulk.
-        Expected keys in records: 'Date', 'J-Date', 'Adj Open', 'Adj High', 'Adj Low', 
+        Expected keys in records: 'Date', 'J-Date', 'Adj Open', 'Adj High', 'Adj Low',
         'Adj Close', 'Adj Final', 'Adj Volume', 'Ticker', 'CompanyID'
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         data_to_insert = []
         for r in records:
             if r.get('Ticker') == 'USD':
                 continue # Skip USD, handled in usd_prices
-            
+
             data_to_insert.append((
                 r.get('Date'),
                 r.get('J-Date'),
@@ -207,11 +209,11 @@ class TSEDatabaseConnector:
 
         cursor.executemany("""
             INSERT OR REPLACE INTO price_data (
-                date, j_date, adj_open, adj_high, adj_low, adj_close, 
+                date, j_date, adj_open, adj_high, adj_low, adj_close,
                 adj_final, adj_volume, ticker, company_id
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, data_to_insert)
-        
+
         conn.commit()
         conn.close()
 
@@ -223,17 +225,17 @@ class TSEDatabaseConnector:
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         # Ensure index info exists
         cursor.execute("INSERT OR IGNORE INTO indices_info (index_code, index_name_fa, index_type) VALUES (?, ?, 'market')", (index_code, index_name_fa))
-        
+
         data_to_insert = []
         for idx, row in df.iterrows():
             # Assuming df has 'Date' and 'J-Date' columns, or they are in the index
             # Adjust based on actual DataFrame structure passed
             date_val = row.get('Date') if 'Date' in row else (idx if isinstance(idx, str) else str(idx)) # Fallback
             j_date_val = row.get('J-Date', '')
-            
+
             data_to_insert.append((
                 index_code,
                 j_date_val,
@@ -249,56 +251,56 @@ class TSEDatabaseConnector:
                 index_code, j_date, date, open, high, low, close
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """, data_to_insert)
-        
+
         conn.commit()
         conn.close()
 
-    def insert_last_updates(self, updates: Dict[str, str]):
+    def insert_last_updates(self, updates: dict[str, str]):
         """
         Updates the last_updates table.
         updates: dict of {symbol: last_date}
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         data = [(k, v) for k, v in updates.items()]
-        
+
         cursor.executemany("""
             INSERT OR REPLACE INTO last_updates (symbol, last_date)
             VALUES (?, ?)
         """, data)
-        
+
         conn.commit()
         conn.close()
 
-    def fetch_price_data(self, ticker: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    def fetch_price_data(self, ticker: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> list[dict[str, Any]]:
         """
         Fetches price data for a given ticker.
         Returns a list of dictionaries compatible with Candle schema.
         """
         from datetime import datetime
-        
+
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+
         query = "SELECT date, adj_open, adj_high, adj_low, adj_close, adj_volume FROM price_data WHERE ticker = ?"
         params = [ticker]
-        
+
         if start_date:
             query += " AND date >= ?"
             params.append(start_date)
-        
+
         if end_date:
             query += " AND date <= ?"
             params.append(end_date)
-            
+
         query += " ORDER BY date ASC"
-        
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
-        
+
         candles = []
         for row in rows:
             try:
@@ -306,7 +308,7 @@ class TSEDatabaseConnector:
             except ValueError:
                 # Handle potential different date formats or errors
                 continue
-                
+
             candles.append({
                 "timestamp": dt,
                 "open": row["adj_open"],
@@ -315,43 +317,43 @@ class TSEDatabaseConnector:
                 "close": row["adj_close"],
                 "volume": row["adj_volume"]
             })
-            
+
         return candles
 
-    def fetch_market_index(self, index_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    def fetch_market_index(self, index_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> list[dict[str, Any]]:
         """
         Fetches market index data (e.g., CWI).
         """
         from datetime import datetime
-        
+
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+
         query = "SELECT date, open, high, low, close FROM market_indices WHERE index_code = ?"
         params = [index_code]
-        
+
         if start_date:
             query += " AND date >= ?"
             params.append(start_date)
-        
+
         if end_date:
             query += " AND date <= ?"
             params.append(end_date)
-            
+
         query += " ORDER BY date ASC"
-        
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
-        
+
         candles = []
         for row in rows:
             try:
                 dt = datetime.strptime(row["date"], "%Y-%m-%d")
             except ValueError:
                 continue
-                
+
             candles.append({
                 "timestamp": dt,
                 "open": row["open"],
@@ -360,7 +362,7 @@ class TSEDatabaseConnector:
                 "close": row["close"],
                 "volume": 0  # Indices often don't have volume in the same way, or it's not in this table
             })
-            
+
         return candles
 
 # Global instance for accessing the External TSE Database

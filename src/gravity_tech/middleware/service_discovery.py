@@ -11,6 +11,7 @@ License: MIT
 
 import asyncio
 from typing import Optional
+
 import structlog
 
 # Make py_eureka_client optional
@@ -37,37 +38,37 @@ logger = structlog.get_logger()
 class ServiceDiscovery:
     """
     مدیریت Service Discovery با Eureka یا Consul
-    
+
     قابلیت‌ها:
     - ثبت خودکار سرویس
     - به‌روزرسانی وضعیت سلامت
     - Heartbeat به Registry
     - De-registration هنگام shutdown
     """
-    
+
     def __init__(self):
         self.registry_type: Optional[str] = None
         self.consul_client: Optional[object] = None  # Made generic to avoid import issues
         self._heartbeat_task: Optional[asyncio.Task] = None
-    
+
     async def initialize(self):
         """راه‌اندازی اولیه Service Discovery"""
-        
+
         if not settings.eureka_enabled:
             logger.info("service_discovery_disabled")
             return
-        
+
         if not EUREKA_AVAILABLE:
-            logger.warning("eureka_client_not_installed", 
+            logger.warning("eureka_client_not_installed",
                           message="py_eureka_client is not installed. Service discovery disabled.")
             return
-        
+
         # تشخیص نوع registry
         if settings.eureka_server_url:
             await self._init_eureka()
         else:
             logger.warning("service_discovery_enabled_but_no_server_configured")
-    
+
     async def _init_eureka(self):
         """راه‌اندازی Eureka Client"""
         try:
@@ -91,7 +92,7 @@ class ServiceDiscovery:
                 renewal_interval_in_secs=30,
                 duration_in_secs=90,
             )
-            
+
             self.registry_type = "eureka"
             logger.info(
                 "eureka_client_initialized",
@@ -99,16 +100,16 @@ class ServiceDiscovery:
                 app=settings.app_name,
                 port=settings.port
             )
-            
+
         except Exception as e:
             logger.error("eureka_initialization_failed", error=str(e))
             raise
-    
+
     async def _init_consul(self, consul_host: str = "localhost", consul_port: int = 8500):
         """راه‌اندازی Consul Client"""
         try:
             self.consul_client = consul.aio.Consul(host=consul_host, port=consul_port)
-            
+
             # ثبت سرویس
             await self.consul_client.agent.service.register(
                 name=settings.app_name,
@@ -132,7 +133,7 @@ class ServiceDiscovery:
                     "environment": settings.environment,
                 }
             )
-            
+
             self.registry_type = "consul"
             logger.info(
                 "consul_client_initialized",
@@ -140,15 +141,15 @@ class ServiceDiscovery:
                 port=consul_port,
                 service=settings.app_name
             )
-            
+
         except Exception as e:
             logger.error("consul_initialization_failed", error=str(e))
             raise
-    
+
     async def update_status(self, status: str = "UP"):
         """
         به‌روزرسانی وضعیت سلامت سرویس
-        
+
         Args:
             status: وضعیت ("UP", "DOWN", "STARTING", "OUT_OF_SERVICE")
         """
@@ -156,7 +157,7 @@ class ServiceDiscovery:
             if self.registry_type == "eureka":
                 # Eureka به صورت خودکار با health check URL وضعیت را چک می‌کند
                 logger.debug("eureka_status_check_automatic")
-            
+
             elif self.registry_type == "consul" and self.consul_client:
                 # Consul هم به صورت خودکار check می‌کند
                 # اما می‌توانیم manual update هم بزنیم
@@ -167,33 +168,33 @@ class ServiceDiscovery:
                     interval="30s"
                 )
                 logger.debug("consul_health_check_registered")
-        
+
         except Exception as e:
             logger.error("status_update_failed", error=str(e), status=status)
-    
+
     async def deregister(self):
         """حذف سرویس از Registry (هنگام shutdown)"""
         try:
             if self.registry_type == "eureka":
                 eureka_client.stop()
                 logger.info("eureka_client_stopped")
-            
+
             elif self.registry_type == "consul" and self.consul_client:
                 await self.consul_client.agent.service.deregister(
                     service_id=f"{settings.app_name}-{settings.port}"
                 )
                 logger.info("consul_service_deregistered")
-        
+
         except Exception as e:
             logger.error("deregistration_failed", error=str(e))
-    
+
     async def discover_service(self, service_name: str) -> Optional[dict]:
         """
         کشف یک سرویس دیگر
-        
+
         Args:
             service_name: نام سرویس مورد نظر
-        
+
         Returns:
             اطلاعات سرویس (host, port, metadata) یا None
         """
@@ -209,14 +210,14 @@ class ServiceDiscovery:
                         "metadata": instance.metadata,
                         "status": instance.status
                     }
-            
+
             elif self.registry_type == "consul" and self.consul_client:
                 # دریافت اطلاعات از Consul
                 index, services = await self.consul_client.health.service(
                     service_name,
                     passing=True  # فقط سرویس‌های سالم
                 )
-                
+
                 if services and len(services) > 0:
                     service = services[0]
                     return {
@@ -225,10 +226,10 @@ class ServiceDiscovery:
                         "metadata": service["Service"]["Meta"],
                         "tags": service["Service"]["Tags"]
                     }
-            
+
             logger.warning("service_not_found", service=service_name)
             return None
-        
+
         except Exception as e:
             logger.error(
                 "service_discovery_failed",

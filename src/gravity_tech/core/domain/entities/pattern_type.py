@@ -33,6 +33,6 @@ class PatternType(str, Enum):
     """Chart pattern types"""
     CLASSICAL = "CLASSICAL"
     CANDLESTICK = "CANDLESTICK"
-    
+
     def __str__(self) -> str:
         return self.value

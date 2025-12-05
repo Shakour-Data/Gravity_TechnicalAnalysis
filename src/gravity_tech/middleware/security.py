@@ -11,15 +11,13 @@ License: MIT
 
 from fastapi import FastAPI
 from fastapi.security import HTTPBearer
-from gravity_tech.config.settings import settings
-
 
 security = HTTPBearer()
 
 
 def setup_security(app: FastAPI):
     """Configure security settings"""
-    
+
     # Add security headers middleware
     @app.middleware("http")
     async def add_security_headers(request, call_next):

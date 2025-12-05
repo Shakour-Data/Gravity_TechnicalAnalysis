@@ -17,10 +17,9 @@ from functools import wraps
 from typing import Any
 
 import structlog
+from gravity_tech.config.settings import settings
 from redis import asyncio as aioredis
 from redis.asyncio.connection import ConnectionPool
-
-from gravity_tech.config.settings import settings
 
 logger = structlog.get_logger()
 

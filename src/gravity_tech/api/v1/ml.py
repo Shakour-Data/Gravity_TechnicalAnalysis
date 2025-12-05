@@ -31,14 +31,14 @@ Provides RESTful endpoints for:
 - Model performance metrics
 """
 
-from fastapi import APIRouter, HTTPException, status, Query, Body
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+import pickle
+from pathlib import Path
+from typing import Any, Optional
+
 import numpy as np
 import structlog
-from datetime import datetime
-from pathlib import Path
-import pickle
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
 
@@ -81,21 +81,21 @@ class PredictionRequest(BaseModel):
 
 class BatchPredictionRequest(BaseModel):
     """Request for batch predictions"""
-    features_list: List[PatternFeatures] = Field(..., description="List of feature vectors")
+    features_list: list[PatternFeatures] = Field(..., description="List of feature vectors")
 
 
 class PredictionResponse(BaseModel):
     """ML prediction response"""
     predicted_pattern: str = Field(..., description="Predicted pattern type")
     confidence: float = Field(..., ge=0, le=1, description="Prediction confidence (0-1)")
-    probabilities: Dict[str, float] = Field(..., description="Probability for each pattern class")
+    probabilities: dict[str, float] = Field(..., description="Probability for each pattern class")
     model_version: str = Field(..., description="Model version used")
     inference_time_ms: float = Field(..., description="Inference time in milliseconds")
 
 
 class BatchPredictionResponse(BaseModel):
     """Batch prediction response"""
-    predictions: List[PredictionResponse]
+    predictions: list[PredictionResponse]
     total_predictions: int
     average_confidence: float
     total_inference_time_ms: float
@@ -109,17 +109,17 @@ class ModelInfoResponse(BaseModel):
     training_date: Optional[str]
     accuracy: Optional[float]
     features_count: int
-    supported_patterns: List[str]
-    hyperparameters: Optional[Dict[str, Any]]
+    supported_patterns: list[str]
+    hyperparameters: Optional[dict[str, Any]]
 
 
 class BacktestRequest(BaseModel):
     """Request for backtesting"""
-    highs: List[float] = Field(..., min_items=300, description="High prices (minimum 300 bars)")
-    lows: List[float] = Field(..., min_items=300, description="Low prices")
-    closes: List[float] = Field(..., min_items=300, description="Close prices")
-    volumes: List[float] = Field(..., min_items=300, description="Volume data")
-    dates: List[int] = Field(..., min_items=300, description="Timestamps")
+    highs: list[float] = Field(..., min_items=300, description="High prices (minimum 300 bars)")
+    lows: list[float] = Field(..., min_items=300, description="Low prices")
+    closes: list[float] = Field(..., min_items=300, description="Close prices")
+    volumes: list[float] = Field(..., min_items=300, description="Volume data")
+    dates: list[int] = Field(..., min_items=300, description="Timestamps")
     min_confidence: float = Field(default=0.6, ge=0, le=1, description="Minimum confidence for trades")
     window_size: int = Field(default=200, ge=100, le=500, description="Analysis window size")
     step_size: int = Field(default=50, ge=10, le=100, description="Window step size")
@@ -144,7 +144,7 @@ class BacktestResponse(BaseModel):
     """Backtesting response"""
     metrics: BacktestMetrics
     trade_count: int
-    backtest_period: Dict[str, str]
+    backtest_period: dict[str, str]
     analysis_time_ms: float
 
 
@@ -157,7 +157,7 @@ def load_ml_model():
     # Try advanced model first
     model_v2_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
     model_v1_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
-    
+
     if model_v2_path.exists():
         with open(model_v2_path, 'rb') as f:
             data = pickle.load(f)
@@ -185,19 +185,19 @@ def load_ml_model():
 async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
     """
     Classify a harmonic pattern using trained ML model
-    
+
     **Input Features (21 dimensions):**
     - Ratio accuracies (4): XAB, ABC, BCD, XAD
     - Geometry (6): symmetry, slope, 4 angles
     - Magnitude (5): duration + 4 leg magnitudes
     - Volume (3): at D, trend, confirmation
     - Technical indicators (3): RSI, MACD, momentum divergence
-    
+
     **Returns:**
     - Predicted pattern type (gartley, butterfly, bat, crab)
     - Confidence score (0-1)
     - Probability distribution across all classes
-    
+
     **Example:**
     ```json
     {
@@ -212,10 +212,10 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
     try:
         import time
         start_time = time.time()
-        
+
         # Load model
         model, version = load_ml_model()
-        
+
         # Prepare features
         feature_dict = request.features.dict()
         feature_array = np.array([
@@ -241,7 +241,7 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
             feature_dict['macd_at_d'],
             feature_dict['momentum_divergence']
         ])
-        
+
         # Make prediction
         if hasattr(model, 'predict_single'):
             # PatternClassifier
@@ -253,14 +253,14 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
             # sklearn model
             pred = model.predict(feature_array.reshape(1, -1))[0]
             probas = model.predict_proba(feature_array.reshape(1, -1))[0]
-            
+
             class_names = ['gartley', 'butterfly', 'bat', 'crab']
             predicted_class = class_names[pred]
             confidence = float(np.max(probas))
             probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
-        
+
         inference_time = (time.time() - start_time) * 1000
-        
+
         response = PredictionResponse(
             predicted_pattern=predicted_class,
             confidence=confidence,
@@ -268,14 +268,14 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
             model_version=version,
             inference_time_ms=round(inference_time, 2)
         )
-        
+
         logger.info("ml_prediction",
                    pattern=predicted_class,
                    confidence=confidence,
                    inference_time_ms=round(inference_time, 2))
-        
+
         return response
-        
+
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -298,12 +298,12 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
 async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
     """
     Classify multiple patterns in batch mode for improved efficiency
-    
+
     **Benefits:**
     - Reduced network overhead
     - Faster processing (batch inference)
     - Lower latency per prediction
-    
+
     **Use Cases:**
     - Historical pattern analysis
     - Multi-symbol scanning
@@ -312,16 +312,16 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
     try:
         import time
         start_time = time.time()
-        
+
         # Load model
         model, version = load_ml_model()
-        
+
         predictions = []
         confidences = []
-        
+
         for features in request.features_list:
             feature_start = time.time()
-            
+
             # Prepare features
             feature_dict = features.dict()
             feature_array = np.array([
@@ -347,7 +347,7 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
                 feature_dict['macd_at_d'],
                 feature_dict['momentum_divergence']
             ])
-            
+
             # Make prediction
             if hasattr(model, 'predict_single'):
                 prediction = model.predict_single(feature_array)
@@ -357,14 +357,14 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
             else:
                 pred = model.predict(feature_array.reshape(1, -1))[0]
                 probas = model.predict_proba(feature_array.reshape(1, -1))[0]
-                
+
                 class_names = ['gartley', 'butterfly', 'bat', 'crab']
                 predicted_class = class_names[pred]
                 confidence = float(np.max(probas))
                 probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
-            
+
             feature_inference_time = (time.time() - feature_start) * 1000
-            
+
             predictions.append(PredictionResponse(
                 predicted_pattern=predicted_class,
                 confidence=confidence,
@@ -373,24 +373,24 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
                 inference_time_ms=round(feature_inference_time, 2)
             ))
             confidences.append(confidence)
-        
+
         total_time = (time.time() - start_time) * 1000
         avg_confidence = float(np.mean(confidences))
-        
+
         response = BatchPredictionResponse(
             predictions=predictions,
             total_predictions=len(predictions),
             average_confidence=round(avg_confidence, 4),
             total_inference_time_ms=round(total_time, 2)
         )
-        
+
         logger.info("batch_prediction",
                    count=len(predictions),
                    avg_confidence=avg_confidence,
                    total_time_ms=round(total_time, 2))
-        
+
         return response
-        
+
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -413,7 +413,7 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
 async def get_model_info() -> ModelInfoResponse:
     """
     Get comprehensive information about the loaded ML model
-    
+
     **Includes:**
     - Model version and type
     - Training accuracy
@@ -423,10 +423,10 @@ async def get_model_info() -> ModelInfoResponse:
     """
     try:
         model, version = load_ml_model()
-        
+
         # Get model type
         model_type = type(model).__name__
-        
+
         # Default info
         info = ModelInfoResponse(
             model_name=f"Pattern Classifier {version}",
@@ -438,7 +438,7 @@ async def get_model_info() -> ModelInfoResponse:
             supported_patterns=["gartley", "butterfly", "bat", "crab"],
             hyperparameters=None
         )
-        
+
         # Try to get additional info from model
         if version == "v2":
             info.accuracy = 0.6495  # From Day 5 training
@@ -448,11 +448,11 @@ async def get_model_info() -> ModelInfoResponse:
         elif version == "v1":
             info.accuracy = 0.4825  # From Day 4 training
             info.training_date = "2025-11-11"
-        
+
         logger.info("model_info_retrieved", version=version, model_type=model_type)
-        
+
         return info
-        
+
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -475,7 +475,7 @@ async def ml_service_health():
     """Check ML service health"""
     try:
         model, version = load_ml_model()
-        
+
         return {
             "status": "healthy",
             "service": "ml-prediction",

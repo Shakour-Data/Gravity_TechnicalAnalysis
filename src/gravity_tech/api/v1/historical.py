@@ -10,17 +10,16 @@ Version: 1.0.0
 License: MIT
 """
 
-from fastapi import APIRouter, HTTPException, status, Query
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-from pydantic import BaseModel, Field
-import structlog
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import os
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from typing import Optional
 
+import structlog
+from fastapi import APIRouter, HTTPException, Query, status
 from gravity_tech.database.historical_manager import HistoricalScoreManager
-from gravity_tech.services.cache_service import cache_manager
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
 
@@ -61,20 +60,20 @@ class HistoricalScoreSummary(BaseModel):
 
 @router.post(
     "/analyze",
-    response_model=List[HistoricalScoreSummary],
+    response_model=list[HistoricalScoreSummary],
     summary="Historical Analysis Query",
     description="دریافت تحلیل‌های historical از دیتابیس"
 )
 async def get_historical_analysis(request: HistoricalAnalysisRequest):
     """
     دریافت تحلیل‌های historical برای یک نماد و تایم‌فریم
-    
+
     - **symbol**: نماد معاملاتی (مثل BTCUSDT)
     - **timeframe**: تایم‌فریم (مثل 1h, 1d)
     - **start_date**: تاریخ شروع (اختیاری)
     - **end_date**: تاریخ پایان (اختیاری)
     - **limit**: حداکثر تعداد نتایج (1-1000)
-    
+
     Returns: لیست تحلیل‌های historical با امتیازات
     """
     try:
@@ -90,7 +89,7 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
         # تنظیم تاریخ‌ها اگر مشخص نشده
         end_date = request.end_date or datetime.utcnow()
         start_date = request.start_date or (end_date - timedelta(days=30))
-        
+
         # اجرای synchronous database query در thread pool
         loop = asyncio.get_event_loop()
         entries = await loop.run_in_executor(
@@ -103,7 +102,7 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
                 limit=request.limit
             )
         )
-        
+
         # تبدیل به response model
         results = []
         for entry in entries:
@@ -117,16 +116,16 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
                 trend_score=entry.trend_score,
                 momentum_score=entry.momentum_score
             ))
-        
+
         logger.info(
             "historical_analysis_retrieved",
             symbol=request.symbol,
             timeframe=request.timeframe,
             count=len(results)
         )
-        
+
         return results
-    
+
     except Exception as e:
         logger.error("historical_analysis_error", error=str(e))
         raise HTTPException(
@@ -154,7 +153,7 @@ async def get_available_symbols():
         manager = HistoricalScoreManager(database_url)
         symbols = await loop.run_in_executor(executor, lambda: manager.get_available_symbols())
         return {"symbols": symbols}
-    
+
     except Exception as e:
         logger.error("get_symbols_error", error=str(e))
         raise HTTPException(
@@ -210,7 +209,7 @@ async def get_symbol_stats(symbol: str, timeframe: Optional[str] = None):
         manager = HistoricalScoreManager(database_url)
         stats = await loop.run_in_executor(executor, lambda: manager.get_symbol_statistics(symbol, timeframe))
         return stats
-    
+
     except Exception as e:
         logger.error("get_stats_error", symbol=symbol, error=str(e))
         raise HTTPException(

@@ -39,21 +39,21 @@ class SignalStrength(str, Enum):
     BEARISH_BROKEN = "نزولی شکسته شده"
     BEARISH = "نزولی"
     VERY_BEARISH = "بسیار نزولی"
-    
+
     @staticmethod
     def from_value(value: float) -> 'SignalStrength':
         """
         Convert numeric value (-1 to 1) to SignalStrength
-        
+
         Args:
             value: Normalized value between -1 and 1
                    -1.0 = VERY_BEARISH
                     0.0 = NEUTRAL
                    +1.0 = VERY_BULLISH
-            
+
         Returns:
             Corresponding SignalStrength enum value
-            
+
         Example:
             >>> SignalStrength.from_value(0.85)
             SignalStrength.VERY_BULLISH
@@ -74,14 +74,14 @@ class SignalStrength(str, Enum):
             return SignalStrength.BEARISH
         else:
             return SignalStrength.VERY_BEARISH
-    
+
     def get_score(self) -> float:
         """
         Get numeric score for this signal strength
-        
+
         Returns:
             Float score between -2.0 and +2.0
-            
+
         Example:
             >>> SignalStrength.VERY_BULLISH.get_score()
             2.0

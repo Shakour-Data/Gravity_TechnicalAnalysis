@@ -29,16 +29,17 @@ Used by all 60+ indicators in the system.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict
-from .signal_strength import SignalStrength
+from typing import Optional
+
 from .indicator_category import IndicatorCategory
+from .signal_strength import SignalStrength
 
 
 @dataclass(frozen=True)
 class IndicatorResult:
     """
     Immutable indicator calculation result
-    
+
     Attributes:
         indicator_name: Name of the indicator (e.g., "RSI", "MACD", "Bollinger Bands")
         category: Indicator category (TREND, MOMENTUM, etc.)
@@ -54,11 +55,11 @@ class IndicatorResult:
     category: IndicatorCategory
     signal: SignalStrength
     value: float
-    additional_values: Optional[Dict[str, float]] = None
+    additional_values: Optional[dict[str, float]] = None
     confidence: float = 0.75
     description: Optional[str] = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    
+
     def __post_init__(self):
         """Validate indicator result data"""
         if not 0.0 <= self.confidence <= 1.0:

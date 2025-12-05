@@ -9,15 +9,14 @@ Multi-Horizon Cycle Analysis System
 با پیش‌بینی فاز و دوره سیکل
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, Optional, List
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
-from gravity_tech.models.schemas import SignalStrength, Candle
-from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner, HorizonWeights
+import numpy as np
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor
+from gravity_tech.ml.multi_horizon_weights import HorizonWeights, MultiHorizonWeightLearner
+from gravity_tech.models.schemas import Candle, SignalStrength
 
 
 @dataclass
@@ -29,11 +28,11 @@ class CycleScore:
     signal: SignalStrength
     phase: float  # [0, 360] degrees
     cycle_period: float  # تعداد کندل‌های یک سیکل کامل
-    
+
     def get_phase_name(self) -> str:
         """
         نام فاز سیکل
-        
+
         Returns:
             - ACCUMULATION (0-90°): کف سیکل، فاز خرید
             - MARKUP (90-180°): صعود سیکلی
@@ -48,7 +47,7 @@ class CycleScore:
             return "DISTRIBUTION"
         else:
             return "MARKDOWN"
-    
+
     def get_position_in_phase(self) -> str:
         """موقعیت دقیق در فاز"""
         phase_mod = self.phase % 90
@@ -58,7 +57,7 @@ class CycleScore:
             return "MID"
         else:
             return "LATE"
-    
+
     def get_cycle_speed(self) -> str:
         """سرعت سیکل بر اساس دوره"""
         if self.cycle_period < 12:
@@ -77,28 +76,28 @@ class CycleScore:
 class MultiHorizonCycleAnalysis:
     """نتیجه تحلیل سیکل چند افقی"""
     timestamp: str
-    
+
     # امتیازهای سیکل
     cycle_3d: CycleScore
     cycle_7d: CycleScore
     cycle_30d: CycleScore
-    
+
     # امتیاز ترکیبی
     combined_cycle: float
     combined_confidence: float
-    
+
     # فاز غالب
     dominant_phase: str  # ACCUMULATION, MARKUP, DISTRIBUTION, MARKDOWN
-    
+
     # توصیه‌ها
     recommendation_3d: str
     recommendation_7d: str
     recommendation_30d: str
-    
+
     # تشخیص alignment
     cycle_alignment: str  # ALIGNED (همه هم‌جهت), MIXED, CONFLICTING
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             'timestamp': self.timestamp,
             'cycle_scores': {
@@ -150,13 +149,13 @@ class MultiHorizonCycleAnalysis:
 class MultiHorizonCycleAnalyzer:
     """
     تحلیل‌گر سیکل چند افقی
-    
+
     محاسبه امتیاز سیکل برای 3 افق زمانی:
     - کوتاه‌مدت (3 روز)
     - میان‌مدت (7 روز)
     - بلندمدت (30 روز)
     """
-    
+
     def __init__(
         self,
         lookback_period: int = 100,
@@ -164,7 +163,7 @@ class MultiHorizonCycleAnalyzer:
     ):
         """
         Initialize analyzer
-        
+
         Args:
             lookback_period: تعداد کندل‌های گذشته
             weights_path: مسیر فایل وزن‌های آموزش دیده (اختیاری)
@@ -173,18 +172,18 @@ class MultiHorizonCycleAnalyzer:
         self.feature_extractor = MultiHorizonCycleFeatureExtractor(
             lookback_period=lookback_period
         )
-        
+
         # بارگذاری وزن‌ها
         if weights_path:
             self.weight_learner = MultiHorizonWeightLearner.load(weights_path)
         else:
             # وزن‌های پیش‌فرض
             self.weight_learner = self._create_default_weights()
-    
+
     def _create_default_weights(self) -> MultiHorizonWeightLearner:
         """وزن‌های پیش‌فرض برای اندیکاتورهای سیکل"""
         learner = MultiHorizonWeightLearner()
-        
+
         # وزن‌های پیش‌فرض برای هر اندیکاتور
         default_indicator_weights = {
             'dpo': 0.12,
@@ -195,7 +194,7 @@ class MultiHorizonCycleAnalyzer:
             'hilbert_transform': 0.16,
             'market_cycle_model': 0.14
         }
-        
+
         # وزن‌های یکسان برای همه افق‌ها
         for horizon in ['3d', '7d', '30d']:
             learner.weights[horizon] = HorizonWeights(
@@ -203,32 +202,32 @@ class MultiHorizonCycleAnalyzer:
                 indicator_weights=default_indicator_weights.copy(),
                 feature_importance={}
             )
-        
+
         return learner
-    
-    def analyze(self, candles: List[Candle]) -> MultiHorizonCycleAnalysis:
+
+    def analyze(self, candles: list[Candle]) -> MultiHorizonCycleAnalysis:
         """
         تحلیل سیکل برای همه افق‌ها
-        
+
         Args:
             candles: لیست کندل‌ها
-        
+
         Returns:
             نتیجه تحلیل سیکل چند افقی
         """
         if len(candles) < self.lookback_period:
             return self._get_neutral_analysis()
-        
+
         # استخراج ویژگی‌ها
         features = self.feature_extractor.extract_cycle_features(
             candles[-self.lookback_period:]
         )
-        
+
         # محاسبه امتیاز برای هر افق
         cycle_3d = self._calculate_horizon_score(features, '3d')
         cycle_7d = self._calculate_horizon_score(features, '7d')
         cycle_30d = self._calculate_horizon_score(features, '30d')
-        
+
         # امتیاز ترکیبی (weighted average)
         combined_cycle = (
             cycle_3d.score * cycle_3d.confidence * 0.3 +
@@ -239,24 +238,24 @@ class MultiHorizonCycleAnalyzer:
             cycle_7d.confidence * 0.4 +
             cycle_30d.confidence * 0.3
         )
-        
+
         combined_confidence = (
             cycle_3d.confidence * 0.3 +
             cycle_7d.confidence * 0.4 +
             cycle_30d.confidence * 0.3
         )
-        
+
         # تشخیص فاز غالب
         dominant_phase = self._determine_dominant_phase([cycle_3d, cycle_7d, cycle_30d])
-        
+
         # بررسی alignment
         alignment = self._check_alignment([cycle_3d, cycle_7d, cycle_30d])
-        
+
         # توصیه‌ها
         rec_3d = self._generate_recommendation(cycle_3d)
         rec_7d = self._generate_recommendation(cycle_7d)
         rec_30d = self._generate_recommendation(cycle_30d)
-        
+
         return MultiHorizonCycleAnalysis(
             timestamp=datetime.now().isoformat(),
             cycle_3d=cycle_3d,
@@ -270,17 +269,17 @@ class MultiHorizonCycleAnalyzer:
             recommendation_30d=rec_30d,
             cycle_alignment=alignment
         )
-    
+
     def _calculate_horizon_score(
         self,
-        features: Dict[str, float],
+        features: dict[str, float],
         horizon: str
     ) -> CycleScore:
         """محاسبه امتیاز سیکل برای یک افق"""
         weights = self.weight_learner.weights.get(horizon)
         if not weights:
             weights = self.weight_learner.weights['7d']  # fallback
-        
+
         # اندیکاتورهای سیکل
         indicators = [
             'dpo',
@@ -291,34 +290,34 @@ class MultiHorizonCycleAnalyzer:
             'hilbert_transform',
             'market_cycle_model'
         ]
-        
+
         # محاسبه weighted score
         total_score = 0.0
         total_confidence = 0.0
-        
+
         for indicator in indicators:
             weight = weights.indicator_weights.get(indicator, 1.0 / len(indicators))
             signal = features.get(f"{indicator}_signal", 0.0)
             confidence = features.get(f"{indicator}_confidence", 0.5)
-            
+
             total_score += signal * confidence * weight
             total_confidence += confidence * weight
-        
+
         # Normalize
         if total_confidence > 0:
             score = total_score / total_confidence
         else:
             score = 0.0
-        
+
         score = np.clip(score, -1, 1)
-        
+
         # محاسبه confidence کلی
         confidences = [
             features.get(f"{ind}_confidence", 0.5)
             for ind in indicators
         ]
         avg_confidence = np.mean(confidences)
-        
+
         # Signal strength
         if score > 0.6:
             signal = SignalStrength.VERY_BULLISH
@@ -330,11 +329,11 @@ class MultiHorizonCycleAnalyzer:
             signal = SignalStrength.BEARISH
         else:
             signal = SignalStrength.NEUTRAL
-        
+
         # فاز و دوره سیکل
         phase = features.get('cycle_avg_phase', 0.0)
         cycle_period = features.get('cycle_avg_period', 20.0)
-        
+
         return CycleScore(
             horizon=horizon,
             score=score,
@@ -343,8 +342,8 @@ class MultiHorizonCycleAnalyzer:
             phase=phase,
             cycle_period=cycle_period
         )
-    
-    def _determine_dominant_phase(self, scores: List[CycleScore]) -> str:
+
+    def _determine_dominant_phase(self, scores: list[CycleScore]) -> str:
         """تشخیص فاز غالب بر اساس confidence"""
         phase_votes = {}
         for score in scores:
@@ -352,14 +351,14 @@ class MultiHorizonCycleAnalyzer:
             if phase_name not in phase_votes:
                 phase_votes[phase_name] = 0.0
             phase_votes[phase_name] += score.confidence
-        
+
         return max(phase_votes.items(), key=lambda x: x[1])[0]
-    
-    def _check_alignment(self, scores: List[CycleScore]) -> str:
+
+    def _check_alignment(self, scores: list[CycleScore]) -> str:
         """بررسی هم‌جهتی سیکل‌ها"""
         phases = [s.get_phase_name() for s in scores]
         signals = [s.score for s in scores]
-        
+
         # بررسی فاز
         if len(set(phases)) == 1:
             phase_aligned = True
@@ -367,28 +366,28 @@ class MultiHorizonCycleAnalyzer:
             phase_aligned = False
         else:
             phase_aligned = False
-        
+
         # بررسی سیگنال
         bullish_count = sum(1 for s in signals if s > 0.2)
         bearish_count = sum(1 for s in signals if s < -0.2)
-        
+
         if bullish_count == 3 or bearish_count == 3:
             signal_aligned = True
         else:
             signal_aligned = False
-        
+
         if phase_aligned and signal_aligned:
             return "ALIGNED"
         elif phase_aligned or signal_aligned:
             return "MIXED"
         else:
             return "CONFLICTING"
-    
+
     def _generate_recommendation(self, score: CycleScore) -> str:
         """تولید توصیه بر اساس امتیاز سیکل"""
         phase_name = score.get_phase_name()
         position = score.get_position_in_phase()
-        
+
         if phase_name == "ACCUMULATION":
             if position == "EARLY":
                 return "فرصت خرید عالی - کف سیکل"
@@ -396,7 +395,7 @@ class MultiHorizonCycleAnalyzer:
                 return "خرید توصیه می‌شود - فاز انباشت"
             else:
                 return "آماده شروع صعود - آخرین فرصت خرید"
-        
+
         elif phase_name == "MARKUP":
             if position == "EARLY":
                 return "نگهداری - شروع صعود سیکلی"
@@ -404,7 +403,7 @@ class MultiHorizonCycleAnalyzer:
                 return "نگهداری قوی - قوی‌ترین فاز سیکل"
             else:
                 return "نگهداری با احتیاط - نزدیک سقف"
-        
+
         elif phase_name == "DISTRIBUTION":
             if position == "EARLY":
                 return "کاهش پوزیشن - شروع توزیع"
@@ -412,7 +411,7 @@ class MultiHorizonCycleAnalyzer:
                 return "فروش توصیه می‌شود - فاز توزیع"
             else:
                 return "فروش - آماده نزول"
-        
+
         else:  # MARKDOWN
             if position == "EARLY":
                 return "اجتناب از خرید - شروع نزول"
@@ -420,7 +419,7 @@ class MultiHorizonCycleAnalyzer:
                 return "صبر برای کف - فاز نزولی"
             else:
                 return "آماده ورود - نزدیک کف سیکل"
-    
+
     def _get_neutral_analysis(self) -> MultiHorizonCycleAnalysis:
         """تحلیل خنثی در صورت عدم وجود داده کافی"""
         neutral_score = CycleScore(
@@ -431,7 +430,7 @@ class MultiHorizonCycleAnalyzer:
             phase=0.0,
             cycle_period=20.0
         )
-        
+
         return MultiHorizonCycleAnalysis(
             timestamp=datetime.now().isoformat(),
             cycle_3d=neutral_score,
@@ -453,11 +452,11 @@ class MultiHorizonCycleAnalyzer:
 
 if __name__ == "__main__":
     from utils.sample_data import generate_sample_candles
-    
+
     print("=" * 70)
     print("Multi-Horizon Cycle Analysis")
     print("=" * 70)
-    
+
     # تولید داده نمونه
     candles = generate_sample_candles(
         count=150,
@@ -465,21 +464,21 @@ if __name__ == "__main__":
         volatility=0.02,
         trend='sideways'  # سیکل بهتر در رنج دیده می‌شود
     )
-    
+
     # ایجاد analyzer
     analyzer = MultiHorizonCycleAnalyzer(lookback_period=100)
-    
+
     # تحلیل
     print("\n🔄 در حال تحلیل سیکل...")
     analysis = analyzer.analyze(candles)
-    
+
     # نمایش نتایج
     print("\n" + "=" * 70)
     print("نتایج تحلیل سیکل")
     print("=" * 70)
-    
+
     print(f"\n⏰ زمان: {analysis.timestamp}")
-    
+
     # امتیازهای هر افق
     for horizon_name, cycle_score in [
         ('3 روزه', analysis.cycle_3d),
@@ -494,27 +493,27 @@ if __name__ == "__main__":
         print(f"  موقعیت در فاز: {cycle_score.get_position_in_phase()}")
         print(f"  دوره سیکل: {cycle_score.cycle_period:.1f} کندل")
         print(f"  سرعت سیکل: {cycle_score.get_cycle_speed()}")
-    
+
     # امتیاز ترکیبی
-    print(f"\n📈 امتیاز ترکیبی:")
+    print("\n📈 امتیاز ترکیبی:")
     print(f"  سیکل: {analysis.combined_cycle:.3f}")
     print(f"  اعتماد: {analysis.combined_confidence:.2%}")
     print(f"  فاز غالب: {analysis.dominant_phase}")
     print(f"  هم‌جهتی: {analysis.cycle_alignment}")
-    
+
     # توصیه‌ها
-    print(f"\n💡 توصیه‌ها:")
+    print("\n💡 توصیه‌ها:")
     print(f"  3 روزه: {analysis.recommendation_3d}")
     print(f"  7 روزه: {analysis.recommendation_7d}")
     print(f"  30 روزه: {analysis.recommendation_30d}")
-    
+
     # JSON output
     print("\n" + "=" * 70)
     print("خروجی JSON:")
     print("=" * 70)
     import json
     print(json.dumps(analysis.to_dict(), indent=2, ensure_ascii=False))
-    
+
     print("\n" + "=" * 70)
     print("✅ تحلیل سیکل با موفقیت انجام شد!")
     print("=" * 70)

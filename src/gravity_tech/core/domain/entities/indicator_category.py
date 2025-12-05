@@ -37,6 +37,6 @@ class IndicatorCategory(str, Enum):
     VOLUME = "VOLUME"
     VOLATILITY = "VOLATILITY"
     SUPPORT_RESISTANCE = "SUPPORT_RESISTANCE"
-    
+
     def __str__(self) -> str:
         return self.value

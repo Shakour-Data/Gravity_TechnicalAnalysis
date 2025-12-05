@@ -10,4 +10,4 @@ License: MIT
 """
 
 # Proxy to new location
-from gravity_tech.core.indicators.volatility import VolatilityIndicators
+from gravity_tech.core.indicators.volatility import VolatilityIndicators  # noqa: F401

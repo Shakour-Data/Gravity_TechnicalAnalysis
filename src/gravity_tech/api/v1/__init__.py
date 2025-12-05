@@ -9,13 +9,19 @@ Version: 1.0.0
 License: MIT
 """
 
-from fastapi import APIRouter, HTTPException, status
-from typing import List
-from gravity_tech.models.schemas import AnalysisRequest, TechnicalAnalysisResult, IndicatorResult, Candle
-from gravity_tech.services.analysis_service import TechnicalAnalysisService
-from src.database import tse_data_source
 from datetime import datetime, timedelta
+
 import structlog
+from fastapi import APIRouter, HTTPException, status
+from gravity_tech.models.schemas import (
+    AnalysisRequest,
+    Candle,
+    IndicatorResult,
+    TechnicalAnalysisResult,
+)
+from gravity_tech.services.analysis_service import TechnicalAnalysisService
+
+from src.database import tse_data_source
 
 logger = structlog.get_logger()
 
@@ -39,30 +45,30 @@ async def analyze_historical(
     # Calculate start date
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
-    
+
     # Fetch data
     raw_candles = tse_data_source.fetch_price_data(
-        symbol, 
+        symbol,
         start_date=start_date.strftime("%Y-%m-%d"),
         end_date=end_date.strftime("%Y-%m-%d")
     )
-    
+
     if not raw_candles:
         raise HTTPException(status_code=404, detail=f"No data found for symbol {symbol}")
-        
+
     # Convert to Candle objects
     candles = [Candle(symbol=symbol, timeframe=timeframe, **c) for c in raw_candles]
-    
+
     if len(candles) < 50:
         raise HTTPException(status_code=400, detail="Insufficient data for analysis (min 50 candles)")
-        
+
     # Create request
     request = AnalysisRequest(
         symbol=symbol,
         timeframe=timeframe,
         candles=candles
     )
-    
+
     # Analyze
     return await TechnicalAnalysisService.analyze(request)
 
@@ -76,12 +82,12 @@ async def analyze_historical(
 async def analyze_complete(request: AnalysisRequest) -> TechnicalAnalysisResult:
     """
     Perform complete technical analysis
-    
+
     - **symbol**: Trading pair symbol (e.g., BTCUSDT)
     - **timeframe**: Candle timeframe (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)
     - **candles**: Array of OHLCV candles (minimum 50 required)
     - **indicators**: Optional list of specific indicators (if not provided, all will be calculated)
-    
+
     Returns comprehensive analysis including:
     - Trend indicators (SMA, EMA, MACD, ADX, etc.)
     - Momentum indicators (RSI, Stochastic, CCI, etc.)
@@ -104,24 +110,24 @@ async def analyze_complete(request: AnalysisRequest) -> TechnicalAnalysisResult:
 
 @router.post(
     "/analyze/indicators",
-    response_model=List[IndicatorResult],
+    response_model=list[IndicatorResult],
     summary="Specific Indicators Analysis",
     description="Calculate specific indicators only"
 )
 async def analyze_specific_indicators(
     symbol: str,
     timeframe: str,
-    candles: List[dict],
-    indicator_names: List[str]
-) -> List[IndicatorResult]:
+    candles: list[dict],
+    indicator_names: list[str]
+) -> list[IndicatorResult]:
     """
     Calculate specific indicators
-    
+
     - **symbol**: Trading pair symbol
     - **timeframe**: Timeframe
     - **candles**: OHLCV candle data
     - **indicator_names**: List of indicator names to calculate
-    
+
     Available indicators:
     - Trend: sma, ema, macd, adx
     - Momentum: rsi, stochastic, cci
@@ -132,7 +138,7 @@ async def analyze_specific_indicators(
     try:
         from models.schemas import Candle
         candle_objects = [Candle(**c) for c in candles]
-        
+
         results = await TechnicalAnalysisService.analyze_specific_indicators(
             candle_objects,
             indicator_names
@@ -157,7 +163,7 @@ async def list_indicators():
     """
     return {
         "trend_indicators": [
-            "SMA", "EMA", "WMA", "DEMA", "TEMA", "MACD", "ADX", 
+            "SMA", "EMA", "WMA", "DEMA", "TEMA", "MACD", "ADX",
             "Parabolic SAR", "Supertrend", "Ichimoku"
         ],
         "momentum_indicators": [
@@ -165,14 +171,14 @@ async def list_indicators():
             "Ultimate Oscillator", "TSI", "KST", "PMO"
         ],
         "cycle_indicators": [
-            "Sine Wave", "Hilbert Transform - Dominant Cycle", 
+            "Sine Wave", "Hilbert Transform - Dominant Cycle",
             "Detrended Price Oscillator (DPO)", "Schaff Trend Cycle (STC)",
             "Market Facilitation Index", "Cycle Period", "Phase Change Index",
             "Trend vs Cycle Identifier", "Autocorrelation Periodogram",
             "Cycle Phase Index"
         ],
         "volume_indicators": [
-            "OBV", "CMF", "VWAP", "A/D Line", "Volume Profile", 
+            "OBV", "CMF", "VWAP", "A/D Line", "Volume Profile",
             "PVT", "EMV", "VPT", "Volume Oscillator", "VWMA"
         ],
         "volatility_indicators": [

@@ -40,16 +40,12 @@ Cycle Analysis helps identify:
 - Cycle turning points
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
-from dataclasses import dataclass
-from gravity_tech.core.domain.entities import (
-    Candle,
-    IndicatorResult,
-    CoreSignalStrength as SignalStrength,
-    IndicatorCategory
-)
+from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult
+from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 
 
 @dataclass(frozen=True)
@@ -67,19 +63,19 @@ class CycleResult:
 
 class CycleIndicators:
     """Cycle indicators calculator"""
-    
+
     @staticmethod
-    def dpo(candles: List[Candle], period: int = 20) -> CycleResult:
+    def dpo(candles: list[Candle], period: int = 20) -> CycleResult:
         if not candles or len(candles) < period or period <= 0:
             raise ValueError("Not enough candles or invalid period for DPO")
         """
         Detrended Price Oscillator (DPO)
-        
+
         Removes trend to isolate cyclical components.
-        
+
         Formula:
         DPO = Close - SMA(Close, period)[period/2 + 1 candles ago]
-        
+
         Interpretation:
         - DPO > 0: Price above cycle center (overbought in cycle)
         - DPO < 0: Price below cycle center (oversold in cycle)
@@ -90,14 +86,14 @@ class CycleIndicators:
         dpo_values = closes - sma.shift(shift)
         current_dpo = dpo_values.iloc[-1] if len(dpo_values) > 0 else 0
         current_price = closes[-1]
-        
+
         dpo_pct = (current_dpo / current_price) * 100
         normalized = np.clip(dpo_pct / 5.0, -1, 1)
-        
+
         valid_dpo = dpo_values.dropna()
         cycle_period = CycleIndicators._estimate_cycle_period(valid_dpo.values)
         phase = CycleIndicators._calculate_phase_from_oscillator(valid_dpo.values)
-        
+
         if current_dpo > current_price * 0.03:
             signal = SignalStrength.VERY_BEARISH
             confidence = 0.8
@@ -118,7 +114,7 @@ class CycleIndicators:
             signal = SignalStrength.NEUTRAL
             confidence = 0.6
             description = "نزدیک مرکز سیکل"
-        
+
         return CycleResult(
             indicator_name=f"DPO({period})",
             value=current_dpo,
@@ -129,25 +125,25 @@ class CycleIndicators:
             confidence=confidence,
             description=f"DPO={current_dpo:.2f} - Phase={phase:.0f}° - {description}"
         )
-    
+
     @staticmethod
-    def ehlers_cycle_period(candles: List[Candle], smooth_period: int = 5) -> CycleResult:
+    def ehlers_cycle_period(candles: list[Candle], smooth_period: int = 5) -> CycleResult:
         if not candles or len(candles) < smooth_period or smooth_period <= 0:
             raise ValueError("Not enough candles or invalid smooth_period for Ehlers Cycle Period")
         """Ehler's Cycle Period Detector using Hilbert Transform"""
         closes = np.array([c.close for c in candles])
         smooth = pd.Series(closes).rolling(window=smooth_period).mean().bfill()
-        
+
         in_phase = np.zeros(len(smooth))
         quadrature = np.zeros(len(smooth))
-        
+
         for i in range(6, len(smooth)):
             in_phase[i] = smooth.iloc[i] - smooth.iloc[i-4]
             quadrature[i] = (smooth.iloc[i-2] - smooth.iloc[i-6]) / 2
-        
+
         phase_values = np.arctan2(quadrature, in_phase) * 180 / np.pi
         phase_values[phase_values < 0] += 360
-        
+
         phase_delta = np.diff(phase_values)
         cycle_period = 20
         if len(phase_delta) > 0:
@@ -155,11 +151,11 @@ class CycleIndicators:
             if avg_phase_change > 0:
                 cycle_period = int(360 / avg_phase_change)
                 cycle_period = np.clip(cycle_period, 10, 50)
-        
+
         current_phase = phase_values[-1]
         normalized = (30 - cycle_period) / 20
         normalized = np.clip(normalized, -1, 1)
-        
+
         if cycle_period < 12:
             signal = SignalStrength.VERY_BULLISH
             confidence = 0.75
@@ -180,7 +176,7 @@ class CycleIndicators:
             signal = SignalStrength.NEUTRAL
             confidence = 0.65
             description = "سیکل عادی"
-        
+
         return CycleResult(
             indicator_name=f"Ehlers Cycle Period({smooth_period})",
             value=float(cycle_period),
@@ -191,9 +187,9 @@ class CycleIndicators:
             confidence=confidence,
             description=f"Cycle={cycle_period} candles - {description}"
         )
-    
+
     @staticmethod
-    def dominant_cycle(candles: List[Candle], min_period: int = 8, max_period: int = 50) -> CycleResult:
+    def dominant_cycle(candles: list[Candle], min_period: int = 8, max_period: int = 50) -> CycleResult:
         if not candles or len(candles) < min_period * 2 or min_period <= 0 or max_period <= 0:
             raise ValueError("Not enough candles or invalid period for Dominant Cycle")
         """Dominant Cycle using Autocorrelation"""
@@ -201,21 +197,21 @@ class CycleIndicators:
         prices = pd.Series(closes)
         detrended = prices - prices.rolling(window=20, center=True).mean()
         detrended = detrended.fillna(0)
-        
+
         best_period = 20
         best_correlation = 0
-        
+
         for period in range(min_period, min(max_period, len(closes) // 2)):
             if len(detrended) > period:
                 correlation = detrended.autocorr(lag=period)
                 if not np.isnan(correlation) and abs(correlation) > abs(best_correlation):
                     best_correlation = correlation
                     best_period = period
-        
+
         position_in_cycle = len(closes) % best_period
         phase = (position_in_cycle / best_period) * 360
         normalized = best_correlation
-        
+
         if 315 <= phase or phase < 45:
             signal = SignalStrength.VERY_BULLISH
             confidence = 0.85
@@ -236,7 +232,7 @@ class CycleIndicators:
             signal = SignalStrength.NEUTRAL
             confidence = 0.6
             description = "وسط سیکل"
-        
+
         return CycleResult(
             indicator_name=f"Dominant Cycle({min_period},{max_period})",
             value=float(best_period),
@@ -247,10 +243,10 @@ class CycleIndicators:
             confidence=confidence,
             description=f"Cycle={best_period}d - Phase={phase:.0f}° - {description}"
         )
-    
+
     @staticmethod
     @staticmethod
-    def schaff_trend_cycle(candles: List[Candle], fast: int = 23, slow: int = 50, cycle: int = 10) -> IndicatorResult:
+    def schaff_trend_cycle(candles: list[Candle], fast: int = 23, slow: int = 50, cycle: int = 10) -> IndicatorResult:
         if not candles or len(candles) < max(fast, slow, cycle) or fast <= 0 or slow <= 0 or cycle <= 0:
             raise ValueError("Not enough candles or invalid period for Schaff Trend Cycle")
         """Schaff Trend Cycle (STC) - Returns IndicatorResult for backward compatibility"""
@@ -258,20 +254,20 @@ class CycleIndicators:
         ema_fast = pd.Series(closes).ewm(span=fast, adjust=False).mean()
         ema_slow = pd.Series(closes).ewm(span=slow, adjust=False).mean()
         macd = ema_fast - ema_slow
-        
+
         def stochastic(series, period):
             lowest = series.rolling(window=period).min()
             highest = series.rolling(window=period).max()
             stoch = 100 * (series - lowest) / (highest - lowest + 1e-10)
             return stoch
-        
+
         stoch1 = stochastic(macd, cycle)
         stoch1_smooth = stoch1.ewm(span=3, adjust=False).mean()
         stoch2 = stochastic(stoch1_smooth, cycle)
         stc = stoch2.ewm(span=3, adjust=False).mean()
-        
+
         current_stc = stc.iloc[-1]
-        
+
         if current_stc > 85:
             signal = SignalStrength.VERY_BEARISH
             confidence = 0.9
@@ -292,7 +288,7 @@ class CycleIndicators:
             signal = SignalStrength.NEUTRAL
             confidence = 0.65
             description = "وسط محدوده"
-        
+
         return IndicatorResult(
             indicator_name=f"STC({fast},{slow},{cycle})",
             category=IndicatorCategory.CYCLE,
@@ -302,9 +298,9 @@ class CycleIndicators:
             description=f"STC={current_stc:.1f} - {description}",
             additional_values={}
         )
-    
+
     @staticmethod
-    def phase_accumulation(candles: List[Candle], period: int = 14) -> CycleResult:
+    def phase_accumulation(candles: list[Candle], period: int = 14) -> CycleResult:
         if not candles or len(candles) < period or period <= 0:
             raise ValueError("Not enough candles or invalid period for Phase Accumulation")
         """Phase Accumulation Indicator"""
@@ -314,17 +310,17 @@ class CycleIndicators:
         smooth_returns = pd.Series(returns).rolling(window=period).mean().fillna(0)
         phase_changes = smooth_returns * 180
         accumulated_phase = np.cumsum(phase_changes)
-        
+
         # pandas Series requires .iloc for position-based indexing
         current_phase_raw = accumulated_phase.iloc[-1]
         current_phase = current_phase_raw % 360
         if current_phase < 0:
             current_phase += 360
-        
+
         normalized = np.sin(np.radians(current_phase))
         full_rotations = abs(current_phase_raw) // 360
         cycle_period = len(closes) // int(full_rotations) if full_rotations > 0 else period * 2
-        
+
         if current_phase < 45 or current_phase >= 315:
             signal = SignalStrength.VERY_BULLISH
             confidence = 0.8
@@ -345,7 +341,7 @@ class CycleIndicators:
             signal = SignalStrength.NEUTRAL
             confidence = 0.6
             description = "انتقال فاز"
-        
+
         return CycleResult(
             indicator_name=f"Hilbert Transform Phase({period})",
             value=current_phase,
@@ -356,43 +352,43 @@ class CycleIndicators:
             confidence=confidence,
             description=f"Phase={current_phase:.0f}° - {description}"
         )
-    
+
     @staticmethod
-    def hilbert_transform_phase(candles: List[Candle], period: int = 7) -> CycleResult:
+    def hilbert_transform_phase(candles: list[Candle], period: int = 7) -> CycleResult:
         if not candles or len(candles) < period or period <= 0:
             raise ValueError("Not enough candles or invalid period for Hilbert Transform Phase")
         """Hilbert Transform for Phase Detection"""
         closes = np.array([c.close for c in candles])
         smooth = pd.Series(closes).rolling(window=period).mean().bfill()
-        
+
         detrender = np.zeros(len(smooth))
         for i in range(period, len(smooth)):
-            detrender[i] = (0.0962 * smooth.iloc[i] + 
-                           0.5769 * smooth.iloc[i-2] - 
-                           0.5769 * smooth.iloc[i-4] - 
+            detrender[i] = (0.0962 * smooth.iloc[i] +
+                           0.5769 * smooth.iloc[i-2] -
+                           0.5769 * smooth.iloc[i-4] -
                            0.0962 * smooth.iloc[i-6])
-        
+
         in_phase = np.zeros(len(detrender))
         quadrature = np.zeros(len(detrender))
-        
+
         for i in range(6, len(detrender)):
             in_phase[i] = 1.25 * (detrender[i-4] - 0.5 * detrender[i-6])
             quadrature[i] = detrender[i-2] - 0.5 * detrender[i-4]
-        
+
         i_smooth = pd.Series(in_phase).ewm(span=3).mean()
         q_smooth = pd.Series(quadrature).ewm(span=3).mean()
         phase = np.arctan2(q_smooth, i_smooth) * 180 / np.pi
         phase[phase < 0] += 360
-        
+
         current_phase = phase.iloc[-1]
         phase_delta = phase.diff().fillna(0)
         phase_delta[phase_delta < 0] += 360
         avg_phase_change = phase_delta.tail(10).mean()
         inst_period = 360 / avg_phase_change if avg_phase_change > 0 else 15
         inst_period = np.clip(inst_period, 6, 50)
-        
+
         normalized = np.sin(np.radians(current_phase))
-        
+
         if current_phase < 30 or current_phase >= 330:
             signal = SignalStrength.VERY_BULLISH
             confidence = 0.85
@@ -413,7 +409,7 @@ class CycleIndicators:
             signal = SignalStrength.NEUTRAL
             confidence = 0.65
             description = "انتقال"
-        
+
         return CycleResult(
             indicator_name=f"Hilbert Transform Phase({period})",
             value=current_phase,
@@ -424,32 +420,32 @@ class CycleIndicators:
             confidence=confidence,
             description=f"Hilbert Phase={current_phase:.0f}° - {description}"
         )
-    
+
     @staticmethod
-    def market_cycle_model(candles: List[Candle], lookback: int = 50) -> CycleResult:
+    def market_cycle_model(candles: list[Candle], lookback: int = 50) -> CycleResult:
         if not candles or lookback <= 0:
             raise ValueError("Not enough candles or invalid lookback for Market Cycle Model")
         """4-Phase Market Cycle Model"""
         if len(candles) < lookback:
             lookback = len(candles)
-        
+
         recent_candles = candles[-lookback:]
         closes = np.array([c.close for c in recent_candles])
         volumes = np.array([c.volume for c in recent_candles])
-        
+
         sma_short = pd.Series(closes).rolling(window=10).mean()
         sma_long = pd.Series(closes).rolling(window=30).mean()
         trend = sma_short.iloc[-1] - sma_long.iloc[-1]
-        
+
         returns = np.diff(closes) / closes[:-1]
         volatility = np.std(returns) if len(returns) > 0 else 0
-        
+
         avg_volume = np.mean(volumes)
         recent_volume = np.mean(volumes[-10:])
         volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1
-        
+
         price_range = (np.max(closes) - np.min(closes)) / np.mean(closes)
-        
+
         if trend > 0 and volume_ratio > 1.1 and volatility < 0.02:
             phase = 135
             phase_name = "Markup"
@@ -487,10 +483,10 @@ class CycleIndicators:
                 signal = SignalStrength.BEARISH
             confidence = 0.65
             description = "فاز انتقالی"
-        
+
         normalized = np.sin(np.radians(phase))
         cycle_period = 40
-        
+
         return CycleResult(
             indicator_name=f"Market Cycle Model({lookback})",
             value=phase,
@@ -501,24 +497,24 @@ class CycleIndicators:
             confidence=confidence,
             description=f"{phase_name} ({phase:.0f}°) - {description}"
         )
-    
+
     @staticmethod
-    def sine_wave(candles: List[Candle], period: int = 20) -> IndicatorResult:
+    def sine_wave(candles: list[Candle], period: int = 20) -> IndicatorResult:
         if not candles or len(candles) < period or period <= 0:
             raise ValueError("Not enough candles or invalid period for Sine Wave")
         """
         Sine Wave Indicator using Hilbert Transform
-        
+
         Uses exponential smoothing and normalization to create a sine wave
         representation of price movement for cycle analysis.
-        
+
         Args:
             candles: List of price candles
             period: Period for smoothing calculation
-            
+
         Returns:
             IndicatorResult with sine wave value [-1, +1]
-        
+
         Interpretation:
         - Value > 0.7: Strong uptrend in cycle (VERY_BULLISH)
         - Value > 0.3: Moderate uptrend (BULLISH)
@@ -528,15 +524,15 @@ class CycleIndicators:
         - Value < 0: Weak downtrend (BEARISH_BROKEN)
         """
         closes = np.array([c.close for c in candles])
-        
+
         # Simple sine wave approximation using EWM smoothing
         prices = pd.Series(closes)
         smoothed = prices.ewm(span=period).mean()
-        
+
         # Calculate sine and lead sine
         sine_values = []
         lead_sine_values = []
-        
+
         for i in range(len(smoothed)):
             if i < period:
                 sine_values.append(0)
@@ -551,10 +547,10 @@ class CycleIndicators:
                 sine_values.append(normalized)
                 # Lead sine (phase shifted)
                 lead_sine_values.append(normalized * 0.9)  # Simplified lead
-        
+
         sine_current = sine_values[-1] if sine_values else 0.0
         lead_sine_current = lead_sine_values[-1] if lead_sine_values else 0.0
-        
+
         # Signal based on sine wave crossing
         if sine_current > 0.7:
             signal = SignalStrength.VERY_BULLISH
@@ -577,7 +573,7 @@ class CycleIndicators:
         else:
             signal = SignalStrength.NEUTRAL
             confidence = 0.5
-        
+
         return IndicatorResult(
             indicator_name=f"Sine Wave({period})",
             category=IndicatorCategory.CYCLE,
@@ -589,52 +585,52 @@ class CycleIndicators:
                 "lead_sine": float(lead_sine_current)
             }
         )
-    
+
     @staticmethod
     def _estimate_cycle_period(oscillator: np.ndarray, min_period: int = 8) -> int:
         """Estimate cycle period from peaks"""
         if len(oscillator) < min_period * 2:
             return 20
-        
+
         peaks = []
         for i in range(1, len(oscillator) - 1):
             if oscillator[i] > oscillator[i-1] and oscillator[i] > oscillator[i+1]:
                 peaks.append(i)
-        
+
         if len(peaks) > 1:
             distances = np.diff(peaks)
             avg_distance = np.median(distances)
             return int(avg_distance) if avg_distance >= min_period else 20
-        
+
         return 20
-    
+
     @staticmethod
     def _calculate_phase_from_oscillator(oscillator: np.ndarray) -> float:
         """Calculate phase from oscillator position"""
         if len(oscillator) < 10:
             return 0.0
-        
+
         recent = oscillator[-10:]
         current = oscillator[-1]
         osc_min = np.min(recent)
         osc_max = np.max(recent)
         osc_range = osc_max - osc_min
-        
+
         if osc_range == 0:
             return 0.0
-        
+
         normalized = (current - osc_min) / osc_range
         is_rising = oscillator[-1] > oscillator[-2]
-        
+
         if is_rising:
             phase = normalized * 180
         else:
             phase = 180 + normalized * 180
-        
+
         return phase
-    
+
     @staticmethod
-    def calculate_all(candles: List[Candle]) -> List[IndicatorResult]:
+    def calculate_all(candles: list[Candle]) -> list[IndicatorResult]:
         """Calculate all cycle indicators - Returns list of IndicatorResult for analysis service"""
         cycle_results = {
             'dpo': CycleIndicators.dpo(candles),
@@ -644,7 +640,7 @@ class CycleIndicators:
             'hilbert_transform': CycleIndicators.hilbert_transform_phase(candles),
             'market_cycle_model': CycleIndicators.market_cycle_model(candles),
         }
-        
+
         # Convert CycleResult to IndicatorResult
         results = [
             convert_cycle_to_indicator_result(cycle_results['dpo'], "DPO"),
@@ -657,12 +653,12 @@ class CycleIndicators:
             CycleIndicators.sine_wave(candles),
             CycleIndicators.schaff_trend_cycle(candles),
         ]
-        
+
         return results
-    
+
     # Backward compatibility aliases
     @staticmethod
-    def detrended_price_oscillator(candles: List[Candle], period: int = 20) -> IndicatorResult:
+    def detrended_price_oscillator(candles: list[Candle], period: int = 20) -> IndicatorResult:
         """Backward compatible alias for dpo() - returns IndicatorResult instead of CycleResult"""
         cycle_result = CycleIndicators.dpo(candles, period)
         return convert_cycle_to_indicator_result(cycle_result, f"DPO({period})")

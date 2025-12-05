@@ -13,12 +13,12 @@ Subpackages:
 from .entities import (
     Candle,
     CandleType,
-    Signal,
-    SignalType,
-    Decision,
-    DecisionType,
     ConfidenceLevel,
     CoreSignalStrength,
+    Decision,
+    DecisionType,
+    Signal,
+    SignalType,
 )
 
 __all__ = [

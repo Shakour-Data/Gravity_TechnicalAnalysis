@@ -27,7 +27,8 @@ Represents complete Elliott Wave pattern analysis including all wave points.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
+
 from .signal_strength import SignalStrength
 from .wave_point import WavePoint
 
@@ -36,7 +37,7 @@ from .wave_point import WavePoint
 class ElliottWaveResult:
     """
     Immutable Elliott Wave analysis result
-    
+
     Attributes:
         wave_pattern: "IMPULSIVE" (5 waves) or "CORRECTIVE" (3 waves)
         current_wave: Current wave number being formed
@@ -48,12 +49,12 @@ class ElliottWaveResult:
     """
     wave_pattern: str  # "IMPULSIVE" or "CORRECTIVE"
     current_wave: int
-    waves: List[WavePoint]
+    waves: list[WavePoint]
     signal: SignalStrength
     confidence: float
     description: str
     projected_target: Optional[float] = None
-    
+
     def __post_init__(self):
         """Validate Elliott Wave result data"""
         if not 0.0 <= self.confidence <= 1.0:

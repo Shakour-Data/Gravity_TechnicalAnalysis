@@ -12,11 +12,12 @@ Version: 1.0.0
 License: MIT
 """
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field, validator
 
 # TODO: Import from actual modules when integrated
 # from ml.ml_tool_recommender import DynamicToolRecommender, MarketContext
@@ -93,7 +94,7 @@ class ToolRecommendationRequest(BaseModel):
         le=50,
         description="تعداد ابزارهای پیشنهادی"
     )
-    
+
     @validator('timeframe')
     def validate_timeframe(cls, v):
         valid = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d", "1w"]
@@ -106,7 +107,7 @@ class CustomAnalysisRequest(BaseModel):
     """درخواست تحلیل با ابزارهای دلخواه"""
     symbol: str = Field(..., description="نماد دارایی")
     timeframe: str = Field(default="1d", description="بازه زمانی")
-    selected_tools: List[str] = Field(
+    selected_tools: list[str] = Field(
         ...,
         min_items=1,
         max_items=30,
@@ -125,7 +126,7 @@ class CustomAnalysisRequest(BaseModel):
 
 class ToolFilterRequest(BaseModel):
     """فیلتر ابزارها"""
-    categories: Optional[List[ToolCategory]] = Field(
+    categories: Optional[list[ToolCategory]] = Field(
         default=None,
         description="فیلتر بر اساس دسته"
     )
@@ -152,9 +153,9 @@ class ToolInfo(BaseModel):
     name: str
     category: ToolCategory
     description: str
-    parameters: Dict[str, Any]
-    best_for: List[str]
-    timeframes: List[str]
+    parameters: dict[str, Any]
+    best_for: list[str]
+    timeframes: list[str]
     historical_accuracy: Optional[float] = None
 
 
@@ -167,7 +168,7 @@ class ToolRecommendation(BaseModel):
     historical_accuracy: str = Field(..., description="دقت تاریخی")
     reason: str = Field(..., description="دلیل پیشنهاد")
     priority: ToolPriority
-    best_for: List[str]
+    best_for: list[str]
 
 
 class MarketContextInfo(BaseModel):
@@ -180,8 +181,8 @@ class MarketContextInfo(BaseModel):
 
 class DynamicStrategy(BaseModel):
     """استراتژی پیشنهادی"""
-    primary_tools: List[str]
-    supporting_tools: List[str]
+    primary_tools: list[str]
+    supporting_tools: list[str]
     confidence: float
     based_on: str
     regime: str
@@ -193,12 +194,12 @@ class ToolRecommendationResponse(BaseModel):
     symbol: str
     market_context: MarketContextInfo
     analysis_goal: str
-    recommendations: Dict[str, List[ToolRecommendation]] = Field(
+    recommendations: dict[str, list[ToolRecommendation]] = Field(
         ...,
         description="دسته‌بندی شده: must_use, recommended, optional, avoid"
     )
     dynamic_strategy: DynamicStrategy
-    ml_metadata: Dict[str, Any]
+    ml_metadata: dict[str, Any]
     timestamp: datetime
 
 
@@ -206,28 +207,28 @@ class CustomAnalysisResponse(BaseModel):
     """پاسخ تحلیل با ابزارهای دلخواه"""
     symbol: str
     timeframe: str
-    selected_tools: List[str]
-    tool_results: Dict[str, Any] = Field(
+    selected_tools: list[str]
+    tool_results: dict[str, Any] = Field(
         ...,
         description="نتایج هر ابزار"
     )
-    ml_scoring: Optional[Dict[str, Any]] = Field(
+    ml_scoring: Optional[dict[str, Any]] = Field(
         default=None,
         description="امتیازدهی ML (اگر فعال باشد)"
     )
-    patterns_detected: Optional[List[Dict[str, Any]]] = Field(
+    patterns_detected: Optional[list[dict[str, Any]]] = Field(
         default=None,
         description="الگوهای شناسایی شده"
     )
-    summary: Dict[str, Any]
+    summary: dict[str, Any]
     timestamp: datetime
 
 
 class ToolListResponse(BaseModel):
     """لیست ابزارها"""
     total_tools: int
-    categories: Dict[ToolCategory, int]
-    tools: List[ToolInfo]
+    categories: dict[ToolCategory, int]
+    tools: list[ToolInfo]
     timestamp: datetime
 
 
@@ -247,17 +248,17 @@ async def list_tools(
 ):
     """
     GET /api/v1/tools/
-    
+
     لیست تمام ابزارهای موجود با امکان فیلتر
-    
+
     مثال:
     - GET /api/v1/tools/ → همه ابزارها
     - GET /api/v1/tools/?category=trend_indicators → فقط اندیکاتورهای ترند
     - GET /api/v1/tools/?min_accuracy=0.75 → ابزارهای با دقت بالا
     """
-    
+
     # TODO: Implement with actual tool registry
-    
+
     # فعلاً داده شبیه‌سازی شده
     sample_tools = [
         ToolInfo(
@@ -299,29 +300,29 @@ async def list_tools(
             historical_accuracy=0.82
         )
     ]
-    
+
     # Apply filters
     filtered_tools = sample_tools
-    
+
     if category:
         filtered_tools = [t for t in filtered_tools if t.category == category]
-    
+
     if timeframe:
         filtered_tools = [t for t in filtered_tools if timeframe in t.timeframes]
-    
+
     if min_accuracy is not None:
         filtered_tools = [
-            t for t in filtered_tools 
+            t for t in filtered_tools
             if t.historical_accuracy and t.historical_accuracy >= min_accuracy
         ]
-    
+
     filtered_tools = filtered_tools[:limit]
-    
+
     # Count by category
     category_counts = {}
     for tool in sample_tools:
         category_counts[tool.category] = category_counts.get(tool.category, 0) + 1
-    
+
     return ToolListResponse(
         total_tools=len(sample_tools),
         categories=category_counts,
@@ -339,13 +340,13 @@ async def list_tools(
 async def recommend_tools(request: ToolRecommendationRequest):
     """
     POST /api/v1/tools/recommend
-    
+
     پیشنهاد پویای ابزارها بر اساس:
     - وزن‌های ML
     - رژیم بازار
     - عملکرد تاریخی
     - سبک معامله‌گری
-    
+
     مثال Request Body:
     {
         "symbol": "BTCUSDT",
@@ -355,9 +356,9 @@ async def recommend_tools(request: ToolRecommendationRequest):
         "top_n": 15
     }
     """
-    
+
     # TODO: Integrate with actual DynamicToolRecommender
-    
+
     # فعلاً پاسخ شبیه‌سازی شده
     return ToolRecommendationResponse(
         symbol=request.symbol,
@@ -458,9 +459,9 @@ async def recommend_tools(request: ToolRecommendationRequest):
 async def analyze_with_custom_tools(request: CustomAnalysisRequest):
     """
     POST /api/v1/tools/analyze/custom
-    
+
     اجرای تحلیل تکنیکال با ابزارهای انتخاب شده توسط کاربر
-    
+
     مثال Request Body:
     {
         "symbol": "BTCUSDT",
@@ -470,12 +471,12 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
         "include_patterns": true
     }
     """
-    
+
     # TODO: Implement actual analysis with selected tools
-    
+
     # فعلاً پاسخ شبیه‌سازی شده
     tool_results = {}
-    
+
     for tool in request.selected_tools:
         if tool == "MACD":
             tool_results["MACD"] = {
@@ -500,7 +501,7 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
                 "trend_strength": "strong",
                 "direction": "bullish"
             }
-    
+
     ml_scoring = None
     if request.include_ml_scoring:
         ml_scoring = {
@@ -511,7 +512,7 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
             "signal": "buy",
             "confidence": 0.78
         }
-    
+
     patterns = None
     if request.include_patterns:
         patterns = [
@@ -522,7 +523,7 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
                 "significance": "high"
             }
         ]
-    
+
     return CustomAnalysisResponse(
         symbol=request.symbol,
         timeframe=request.timeframe,
@@ -550,12 +551,12 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
 async def list_categories():
     """
     GET /api/v1/tools/categories
-    
+
     لیست دسته‌بندی ابزارها
     """
-    
+
     # TODO: Get from actual tool registry
-    
+
     categories = {
         "trend_indicators": {
             "count": 10,
@@ -608,9 +609,9 @@ async def list_categories():
             "examples": ["RSI_Divergence", "MACD_Divergence"]
         }
     }
-    
+
     total = sum(cat["count"] for cat in categories.values())
-    
+
     return {
         "total_tools": total,
         "total_categories": len(categories),
@@ -628,15 +629,15 @@ async def list_categories():
 async def get_tool_info(tool_name: str):
     """
     GET /api/v1/tools/tool/{tool_name}
-    
+
     اطلاعات کامل یک ابزار
-    
+
     مثال:
     - GET /api/v1/tools/tool/MACD
     """
-    
+
     # TODO: Get from tool registry
-    
+
     # فعلاً داده شبیه‌سازی شده
     if tool_name.upper() == "MACD":
         return ToolInfo(
@@ -658,7 +659,7 @@ async def get_tool_info(tool_name: str):
             timeframes=["15m", "30m", "1h", "4h", "1d"],
             historical_accuracy=0.79
         )
-    
+
     raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
 
 

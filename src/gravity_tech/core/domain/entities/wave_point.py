@@ -34,9 +34,9 @@ from datetime import datetime
 class WavePoint:
     """
     Immutable Elliott Wave point
-    
+
     Represents a peak or trough in Elliott Wave pattern identification.
-    
+
     Attributes:
         wave_number: Wave number in the sequence (1-5 for impulse, A-C for correction)
         price: Price level at this wave point
@@ -47,7 +47,7 @@ class WavePoint:
     price: float
     timestamp: datetime
     wave_type: str  # "PEAK" or "TROUGH"
-    
+
     def __post_init__(self):
         """Validate wave point data"""
         if self.wave_type not in ["PEAK", "TROUGH"]:

@@ -11,24 +11,24 @@ Version: 1.0.0
 License: MIT
 """
 
-from typing import Dict, List, Any
-from dataclasses import asdict
+from typing import Any
+
 from gravity_tech.utils.display_formatters import (
-    score_to_display,
     confidence_to_display,
+    get_confidence_label,
     get_signal_label,
-    get_confidence_label
+    score_to_display,
 )
 
 
-def format_horizon_score(horizon_score, use_persian: bool = False) -> Dict[str, Any]:
+def format_horizon_score(horizon_score, use_persian: bool = False) -> dict[str, Any]:
     """
     فرمت کردن یک HorizonScore برای API
-    
+
     Args:
         horizon_score: شیء HorizonScore (از trend یا momentum)
         use_persian: استفاده از برچسب‌های فارسی
-        
+
     Returns:
         دیکشنری فرمت شده برای API
     """
@@ -47,25 +47,25 @@ def format_trend_response(
     analysis_result,
     use_persian: bool = False,
     include_raw: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     فرمت کردن نتیجه تحلیل روند برای API
-    
+
     Args:
         analysis_result: نتیجه از MultiHorizonTrendAnalyzer.analyze()
         use_persian: استفاده از برچسب‌های فارسی
         include_raw: شامل کردن مقادیر خام [-1,+1] برای debugging
-        
+
     Returns:
         دیکشنری JSON-ready برای API response
-        
+
     Example:
         ```python
         from gravity_tech.ml.multi_horizon_analysis import MultiHorizonTrendAnalyzer
-        
+
         analyzer = MultiHorizonTrendAnalyzer.load("models/trend")
         result = analyzer.analyze(trend_features)
-        
+
         api_response = format_trend_response(result, use_persian=False)
         # → {
         #     "analysis_type": "TREND",
@@ -87,7 +87,7 @@ def format_trend_response(
         "analysis_type": "TREND" if not use_persian else "روند",
         "horizons": {}
     }
-    
+
     # فرمت کردن هر horizon
     for horizon_score in analysis_result:
         horizon_key = f"{horizon_score.horizon}d"
@@ -95,18 +95,18 @@ def format_trend_response(
             horizon_score,
             use_persian
         )
-    
+
     # محاسبه overall (میانگین وزن‌دار)
     if len(analysis_result) > 0:
         total_weighted_score = sum(
             hs.score * hs.confidence for hs in analysis_result
         )
         total_confidence = sum(hs.confidence for hs in analysis_result)
-        
+
         if total_confidence > 0:
             overall_score = total_weighted_score / total_confidence
             overall_confidence = total_confidence / len(analysis_result)
-            
+
             response["overall"] = {
                 "score": score_to_display(overall_score),
                 "confidence": confidence_to_display(overall_confidence),
@@ -114,11 +114,11 @@ def format_trend_response(
                 "confidence_quality": get_confidence_label(overall_confidence, use_persian),
                 "recommendation": _get_recommendation(overall_score, use_persian)
             }
-            
+
             if include_raw:
                 response["overall"]["raw_score"] = round(overall_score, 3)
                 response["overall"]["raw_confidence"] = round(overall_confidence, 3)
-    
+
     return response
 
 
@@ -126,15 +126,15 @@ def format_momentum_response(
     analysis_result,
     use_persian: bool = False,
     include_raw: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     فرمت کردن نتیجه تحلیل مومنتوم برای API
-    
+
     Args:
         analysis_result: نتیجه از MultiHorizonMomentumAnalyzer.analyze()
         use_persian: استفاده از برچسب‌های فارسی
         include_raw: شامل کردن مقادیر خام
-        
+
     Returns:
         دیکشنری JSON-ready برای API response
     """
@@ -142,7 +142,7 @@ def format_momentum_response(
         "analysis_type": "MOMENTUM" if not use_persian else "مومنتوم",
         "horizons": {}
     }
-    
+
     # فرمت کردن هر horizon
     for momentum_score in analysis_result:
         horizon_key = f"{momentum_score.horizon}d"
@@ -153,22 +153,22 @@ def format_momentum_response(
             "signal": get_signal_label(momentum_score.score, use_persian),
             "confidence_quality": get_confidence_label(momentum_score.confidence, use_persian)
         }
-        
+
         if include_raw:
             response["horizons"][horizon_key]["raw_score"] = round(momentum_score.score, 3)
             response["horizons"][horizon_key]["raw_confidence"] = round(momentum_score.confidence, 3)
-    
+
     # محاسبه overall
     if len(analysis_result) > 0:
         total_weighted_score = sum(
             ms.score * ms.confidence for ms in analysis_result
         )
         total_confidence = sum(ms.confidence for ms in analysis_result)
-        
+
         if total_confidence > 0:
             overall_score = total_weighted_score / total_confidence
             overall_confidence = total_confidence / len(analysis_result)
-            
+
             response["overall"] = {
                 "score": score_to_display(overall_score),
                 "confidence": confidence_to_display(overall_confidence),
@@ -176,11 +176,11 @@ def format_momentum_response(
                 "confidence_quality": get_confidence_label(overall_confidence, use_persian),
                 "recommendation": _get_momentum_recommendation(overall_score, use_persian)
             }
-            
+
             if include_raw:
                 response["overall"]["raw_score"] = round(overall_score, 3)
                 response["overall"]["raw_confidence"] = round(overall_confidence, 3)
-    
+
     return response
 
 
@@ -191,10 +191,10 @@ def format_combined_response(
     momentum_weight: float = 0.5,
     use_persian: bool = False,
     include_raw: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     فرمت کردن نتیجه ترکیبی روند + مومنتوم برای API
-    
+
     Args:
         trend_result: نتیجه تحلیل روند
         momentum_result: نتیجه تحلیل مومنتوم
@@ -202,10 +202,10 @@ def format_combined_response(
         momentum_weight: وزن مومنتوم (پیش‌فرض: 0.5)
         use_persian: استفاده از برچسب‌های فارسی
         include_raw: شامل کردن مقادیر خام
-        
+
     Returns:
         دیکشنری JSON-ready برای API response
-        
+
     Example:
         ```python
         combined = format_combined_response(
@@ -234,19 +234,19 @@ def format_combined_response(
         "trend": format_trend_response(trend_result, use_persian, include_raw),
         "momentum": format_momentum_response(momentum_result, use_persian, include_raw)
     }
-    
+
     # محاسبه combined score
     if "overall" in response["trend"] and "overall" in response["momentum"]:
         trend_score = response["trend"]["overall"]["score"] / 100.0  # بازگشت به [-1,+1]
         momentum_score = response["momentum"]["overall"]["score"] / 100.0
-        
+
         trend_conf = response["trend"]["overall"]["confidence"] / 100.0
         momentum_conf = response["momentum"]["overall"]["confidence"] / 100.0
-        
+
         # Combined score (وزن‌دار)
         combined_score = (trend_score * trend_weight) + (momentum_score * momentum_weight)
         combined_confidence = (trend_conf * trend_weight) + (momentum_conf * momentum_weight)
-        
+
         response["combined"] = {
             "score": score_to_display(combined_score),
             "confidence": confidence_to_display(combined_confidence),
@@ -263,11 +263,11 @@ def format_combined_response(
                 "momentum": momentum_weight
             }
         }
-        
+
         if include_raw:
             response["combined"]["raw_score"] = round(combined_score, 3)
             response["combined"]["raw_confidence"] = round(combined_confidence, 3)
-    
+
     return response
 
 
@@ -400,12 +400,13 @@ def _get_combined_action(
 
 if __name__ == "__main__":
     import json
+
     from models.schemas import HorizonScore, SignalStrength
-    
+
     print("=" * 70)
     print("API Response Formatters - Test Examples")
     print("=" * 70)
-    
+
     # ساخت نتایج نمونه
     trend_scores = [
         HorizonScore(
@@ -427,7 +428,7 @@ if __name__ == "__main__":
             signal=SignalStrength.BULLISH
         )
     ]
-    
+
     momentum_scores = [
         HorizonScore(
             horizon=3,
@@ -448,17 +449,17 @@ if __name__ == "__main__":
             signal=SignalStrength.BULLISH
         )
     ]
-    
+
     print("\n📊 TREND Analysis Response (English):")
     print("-" * 70)
     trend_response = format_trend_response(trend_scores, use_persian=False)
     print(json.dumps(trend_response, indent=2, ensure_ascii=False))
-    
+
     print("\n📈 MOMENTUM Analysis Response (English):")
     print("-" * 70)
     momentum_response = format_momentum_response(momentum_scores, use_persian=False)
     print(json.dumps(momentum_response, indent=2, ensure_ascii=False))
-    
+
     print("\n🔄 COMBINED Analysis Response (English):")
     print("-" * 70)
     combined_response = format_combined_response(
@@ -469,7 +470,7 @@ if __name__ == "__main__":
         use_persian=False
     )
     print(json.dumps(combined_response, indent=2, ensure_ascii=False))
-    
+
     print("\n" + "=" * 70)
     print("✅ All formatter tests completed!")
     print("=" * 70)

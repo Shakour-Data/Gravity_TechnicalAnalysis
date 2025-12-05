@@ -29,15 +29,16 @@ Represents the result of chart pattern detection (classical or candlestick).
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
-from .signal_strength import SignalStrength
+
 from .pattern_type import PatternType
+from .signal_strength import SignalStrength
 
 
 @dataclass(frozen=True)
 class PatternResult:
     """
     Immutable pattern recognition result
-    
+
     Attributes:
         pattern_name: Name of the pattern (e.g., "Head and Shoulders", "Doji")
         pattern_type: CLASSICAL or CANDLESTICK
@@ -58,7 +59,7 @@ class PatternResult:
     description: str
     price_target: Optional[float] = None
     stop_loss: Optional[float] = None
-    
+
     def __post_init__(self):
         """Validate pattern result data"""
         if not 0.0 <= self.confidence <= 1.0:

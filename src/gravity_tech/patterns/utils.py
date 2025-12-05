@@ -9,9 +9,7 @@ Version: 1.0.0
 License: MIT
 """
 
-from typing import Any, Dict, List, Optional
-
-import numpy as np
+from typing import Optional
 
 
 def calculate_pattern_strength(
@@ -103,7 +101,7 @@ def get_pattern_hierarchy(pattern_name: str) -> Optional[int]:
     return hierarchy.get(pattern_name.upper())
 
 
-def validate_harmonic_ratios(ratios: List[float]) -> Optional[bool]:
+def validate_harmonic_ratios(ratios: list[float]) -> Optional[bool]:
     """
     Validate harmonic ratios against Fibonacci levels.
 
@@ -128,7 +126,7 @@ def validate_harmonic_ratios(ratios: List[float]) -> Optional[bool]:
     return True
 
 
-def detect_pattern_multiframe(candles: List, timeframe: str) -> Optional[Dict]:
+def detect_pattern_multiframe(candles: list, timeframe: str) -> Optional[dict]:
     """
     Detect patterns across multiple timeframes.
 
@@ -143,7 +141,7 @@ def detect_pattern_multiframe(candles: List, timeframe: str) -> Optional[Dict]:
     return None
 
 
-def detect_pattern(candles: List) -> Optional[Dict]:
+def detect_pattern(candles: list) -> Optional[dict]:
     """
     General pattern detection.
 
@@ -157,7 +155,7 @@ def detect_pattern(candles: List) -> Optional[Dict]:
     return None
 
 
-def detect_all_patterns(candles: List) -> List[Dict]:
+def detect_all_patterns(candles: list) -> list[dict]:
     """
     Detect all patterns in candles.
 
@@ -171,7 +169,7 @@ def detect_all_patterns(candles: List) -> List[Dict]:
     return []
 
 
-def detect_rare_patterns(candles: List) -> Optional[List]:
+def detect_rare_patterns(candles: list) -> Optional[list]:
     """
     Detect rare harmonic patterns.
 

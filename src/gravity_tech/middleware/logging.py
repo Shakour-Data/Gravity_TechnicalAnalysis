@@ -9,14 +9,15 @@ Version: 1.0.0
 License: MIT
 """
 
-import structlog
 import logging
 import sys
+
+import structlog
 
 
 def setup_logging():
     """Configure structured logging"""
-    
+
     # Configure structlog
     structlog.configure(
         processors=[
@@ -34,7 +35,7 @@ def setup_logging():
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard logging
     logging.basicConfig(
         format="%(message)s",

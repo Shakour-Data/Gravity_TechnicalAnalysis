@@ -9,9 +9,10 @@ Version: 1.0.0
 License: MIT
 """
 
-from prometheus_client import Counter, Histogram, Gauge, Info
 import time
 from typing import Optional
+
+from prometheus_client import Counter, Gauge, Histogram, Info
 
 # Request metrics
 REQUEST_COUNT = Counter(
@@ -125,56 +126,56 @@ class MetricsCollector:
     """
     Centralized metrics collection and reporting
     """
-    
+
     def __init__(self):
         self.start_time = time.time()
-    
+
     def record_request(self, method: str, endpoint: str, status_code: int, duration: float):
         """Record HTTP request metrics"""
         REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code=status_code).inc()
         REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(duration)
-    
+
     def record_analysis(self, analysis_type: str, symbol: str, timeframe: str, duration: float, error: Optional[str] = None):
         """Record analysis metrics"""
         ANALYSIS_COUNT.labels(analysis_type=analysis_type, symbol=symbol, timeframe=timeframe).inc()
         ANALYSIS_DURATION.labels(analysis_type=analysis_type).observe(duration)
-        
+
         if error:
             ANALYSIS_ERRORS.labels(analysis_type=analysis_type, error_type=error).inc()
-    
+
     def record_cache_operation(self, cache_type: str, hit: bool):
         """Record cache operation metrics"""
         if hit:
             CACHE_HITS.labels(cache_type=cache_type).inc()
         else:
             CACHE_MISSES.labels(cache_type=cache_type).inc()
-    
+
     def record_db_operation(self, db_type: str, query_type: str, duration: float, error: Optional[str] = None):
         """Record database operation metrics"""
         DB_QUERY_DURATION.labels(query_type=query_type).observe(duration)
-        
+
         if error:
             DB_ERRORS.labels(db_type=db_type, error_type=error).inc()
-    
+
     def record_ml_prediction(self, model_type: str, duration: float):
         """Record ML prediction metrics"""
         ML_PREDICTIONS.labels(model_type=model_type).inc()
         ML_PREDICTION_DURATION.labels(model_type=model_type).observe(duration)
-    
+
     def update_system_metrics(self):
         """Update system resource metrics"""
         import psutil
-        
+
         try:
             memory = psutil.virtual_memory()
             MEMORY_USAGE.set(memory.used)
-            
+
             cpu = psutil.cpu_percent(interval=1)
             CPU_USAGE.set(cpu)
         except ImportError:
             # psutil not available
             pass
-    
+
     def set_service_info(self, version: str, environment: str):
         """Set service information"""
         SERVICE_INFO.info({

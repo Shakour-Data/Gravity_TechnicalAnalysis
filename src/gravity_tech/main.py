@@ -41,20 +41,22 @@ Author: Gravity Tech Analysis Team
 Version: 1.0.0
 """
 
+import time
+
+import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from prometheus_client import make_asgi_app
-import structlog
-import time
-
-from gravity_tech.config.settings import settings
 from gravity_tech.api.v1 import router as api_v1_router
-from gravity_tech.middleware.logging import setup_logging
-from gravity_tech.middleware.security import setup_security
-from gravity_tech.middleware.service_discovery import startup_service_discovery, shutdown_service_discovery
+from gravity_tech.config.settings import settings
 from gravity_tech.middleware.events import event_publisher
+from gravity_tech.middleware.logging import setup_logging
+from gravity_tech.middleware.service_discovery import (
+    shutdown_service_discovery,
+    startup_service_discovery,
+)
 from gravity_tech.services.cache_service import cache_manager
+from prometheus_client import make_asgi_app
 
 # Setup structured logging
 setup_logging()
@@ -150,16 +152,16 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     """Log all incoming requests with timing"""
     start_time = time.time()
-    
+
     logger.info(
         "request_started",
         method=request.method,
         path=request.url.path,
         client=request.client.host if request.client else None
     )
-    
+
     response = await call_next(request)
-    
+
     duration = time.time() - start_time
     logger.info(
         "request_completed",
@@ -168,7 +170,7 @@ async def log_requests(request: Request, call_next):
         status_code=response.status_code,
         duration=f"{duration:.3f}s"
     )
-    
+
     return response
 
 
@@ -176,8 +178,9 @@ async def log_requests(request: Request, call_next):
 app.include_router(api_v1_router, prefix="/api/v1")
 
 # Include Pattern Recognition & ML routers (Day 6)
-from gravity_tech.api.v1.patterns import router as patterns_router
 from gravity_tech.api.v1.ml import router as ml_router
+from gravity_tech.api.v1.patterns import router as patterns_router
+
 app.include_router(patterns_router, prefix="/api/v1")
 app.include_router(ml_router, prefix="/api/v1")
 
@@ -192,14 +195,14 @@ if settings.metrics_enabled:
 async def startup_event():
     """راه‌اندازی اولیه سرویس"""
     logger.info("application_startup", version=settings.app_version)
-    
+
     # راه‌اندازی Redis Cache
     await cache_manager.initialize()
-    
+
     # راه‌اندازی Service Discovery
     if settings.eureka_enabled:
         await startup_service_discovery()
-    
+
     # راه‌اندازی Event Publisher (اختیاری)
     try:
         if hasattr(settings, 'kafka_enabled') and settings.kafka_enabled:
@@ -208,7 +211,7 @@ async def startup_event():
             await event_publisher.initialize(broker_type="rabbitmq")
     except Exception as e:
         logger.warning("event_publisher_initialization_failed", error=str(e))
-    
+
     logger.info("application_ready")
 
 
@@ -217,15 +220,15 @@ async def startup_event():
 async def shutdown_event():
     """خاموش کردن سرویس"""
     logger.info("application_shutdown")
-    
+
     # بستن اتصالات
     await cache_manager.close()
     await event_publisher.close()
-    
+
     # حذف از Service Discovery
     if settings.eureka_enabled:
         await shutdown_service_discovery()
-    
+
     logger.info("application_stopped")
 
 
@@ -234,7 +237,7 @@ async def shutdown_event():
 async def health_check():
     """
     Basic health check - Always returns healthy if service is running
-    
+
     Use this for:
     - Kubernetes liveness probes
     - Load balancer health checks
@@ -252,12 +255,12 @@ async def health_check():
 async def readiness_check():
     """
     Readiness check - Validates all dependencies
-    
+
     Use this for:
     - Kubernetes readiness probes
     - Rolling deployment validation
     - Traffic routing decisions
-    
+
     Returns:
     - 200 OK: Service is ready to accept traffic
     - 503 Service Unavailable: Service is not ready (dependencies down)
@@ -268,13 +271,13 @@ async def readiness_check():
         "version": settings.app_version,
         "checks": {}
     }
-    
+
     # Check Redis connection if enabled
     if settings.cache_enabled:
         try:
             redis_healthy = await cache_manager.health_check()
             health_status["checks"]["redis"] = "healthy" if redis_healthy else "unhealthy"
-            
+
             if not redis_healthy:
                 health_status["status"] = "not_ready"
                 return JSONResponse(
@@ -290,7 +293,7 @@ async def readiness_check():
             )
     else:
         health_status["checks"]["redis"] = "disabled"
-    
+
     # Check Service Discovery if enabled
     if settings.eureka_enabled:
         try:
@@ -299,7 +302,7 @@ async def readiness_check():
             health_status["checks"]["service_discovery"] = f"degraded: {str(e)}"
     else:
         health_status["checks"]["service_discovery"] = "disabled"
-    
+
     return health_status
 
 
@@ -307,7 +310,7 @@ async def readiness_check():
 async def liveness_check():
     """
     Liveness check - Kubernetes liveness probe
-    
+
     Returns:
     - 200 OK: Service is alive
     - 500: Service should be restarted
@@ -344,7 +347,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         path=request.url.path,
         method=request.method
     )
-    
+
     return JSONResponse(
         status_code=500,
         content={
@@ -356,7 +359,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host=settings.host,

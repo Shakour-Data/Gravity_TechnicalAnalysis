@@ -9,15 +9,13 @@ Version: 1.0.0
 License: MIT
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional
-from datetime import datetime
-import structlog
 
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query
 from gravity_tech.analysis.scenario_analysis import (
     ScenarioAnalyzer,
+    ScenarioResult,
     ThreeScenarioAnalysis,
-    ScenarioResult
 )
 from gravity_tech.clients.data_service_client import DataServiceClient
 from gravity_tech.config.settings import get_settings
@@ -54,22 +52,22 @@ async def analyze_scenarios(
 ):
     """
     تحلیل سه‌سناریویی (خوشبینانه، خنثی، بدبینانه)
-    
+
     این endpoint سه سناریو برای نماد محاسبه می‌کند:
     - **Optimistic (خوشبینانه):** احتمال 65-75%، هدف 3×ATR، ریسک 0.5×ATR
     - **Neutral (خنثی):** احتمال 45-55%، هدف 1.5×ATR، ریسک 1×ATR
     - **Pessimistic (بدبینانه):** احتمال 25-35%، هدف 0.5×ATR، ریسک 1.5×ATR
-    
+
     **بازدهی مورد انتظار:**
     ```
     E(Return) = P(opt) × R(opt) + P(neu) × R(neu) + P(pes) × R(pes)
     ```
-    
+
     **مثال:**
     ```
     GET /api/v1/scenarios/AAPL?timeframe=1d&lookback_days=365
     ```
-    
+
     **Response:**
     ```json
     {
@@ -102,15 +100,15 @@ async def analyze_scenarios(
       "sharpe_ratio": 1.81
     }
     ```
-    
+
     Args:
         symbol: نماد سهم (مثال: AAPL، فولاد، BTC-USD)
         timeframe: بازه زمانی (1m, 5m, 15m, 1h, 4h, 1d, 1w)
         lookback_days: تعداد روزهای گذشته برای تحلیل (30-1825)
-        
+
     Returns:
         ThreeScenarioAnalysis: تحلیل کامل سه سناریو با احتمالات و اهداف
-        
+
     Raises:
         404: اگر نماد پیدا نشود
         400: اگر پارامترها نامعتبر باشند
@@ -122,7 +120,7 @@ async def analyze_scenarios(
         timeframe=timeframe,
         lookback_days=lookback_days
     )
-    
+
     try:
         # تحلیل سناریوها (داده از Data Service دریافت می‌شود)
         analysis = await analyzer.analyze_from_service(
@@ -130,7 +128,7 @@ async def analyze_scenarios(
             timeframe=timeframe,
             lookback_days=lookback_days
         )
-        
+
         logger.info(
             "scenario_analysis_completed",
             symbol=symbol,
@@ -138,13 +136,13 @@ async def analyze_scenarios(
             sharpe_ratio=analysis.sharpe_ratio,
             recommended_scenario=analysis.recommended_scenario
         )
-        
+
         return analysis
-        
+
     except ValueError as e:
         logger.error("validation_error", symbol=symbol, error=str(e))
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     except Exception as e:
         logger.error(
             "scenario_analysis_error",
@@ -167,12 +165,12 @@ async def get_optimistic_scenario(
 ):
     """
     فقط سناریو خوشبینانه
-    
+
     Args:
         symbol: نماد
         timeframe: بازه زمانی
         lookback_days: روزهای گذشته
-        
+
     Returns:
         ScenarioResult: فقط سناریو optimistic
     """
@@ -189,12 +187,12 @@ async def get_neutral_scenario(
 ):
     """
     فقط سناریو خنثی
-    
+
     Args:
         symbol: نماد
         timeframe: بازه زمانی
         lookback_days: روزهای گذشته
-        
+
     Returns:
         ScenarioResult: فقط سناریو neutral
     """
@@ -211,12 +209,12 @@ async def get_pessimistic_scenario(
 ):
     """
     فقط سناریو بدبینانه
-    
+
     Args:
         symbol: نماد
         timeframe: بازه زمانی
         lookback_days: روزهای گذشته
-        
+
     Returns:
         ScenarioResult: فقط سناریو pessimistic
     """
