@@ -192,7 +192,7 @@ class TestTransformerModel:
                 dim_feedforward=256
             )
 
-            x = np.random.randn(32, 20, 10)
+            x = torch.randn(32, 20, 10)
 
             if hasattr(model, 'forward'):
                 output = model.forward(x)
@@ -362,16 +362,16 @@ class TestModelEvaluation:
         y_pred = np.array([0, 1, 1, 1, 0, 0, 1, 0])
 
         # Compute confusion matrix
-        tp = np.sum((y_true == 1) & (y_pred == 1))
-        tn = np.sum((y_true == 0) & (y_pred == 0))
-        fp = np.sum((y_true == 0) & (y_pred == 1))
-        fn = np.sum((y_true == 1) & (y_pred == 0))
+        tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+        tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+        fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+        fn = int(np.sum((y_true == 1) & (y_pred == 0)))
 
         assert tp + tn + fp + fn == len(y_true)
-        assert tp == 2
+        assert tp == 3
         assert tn == 3
         assert fp == 1
-        assert fn == 2
+        assert fn == 1
 
 
 class TestModelInference:
