@@ -11,7 +11,6 @@ License: MIT
 """
 
 import asyncio
-import json
 from datetime import datetime
 from typing import Any, Optional
 
@@ -33,7 +32,7 @@ class DataIngestorService:
 
     def __init__(self):
         self.consumer: Optional[EventConsumer] = None
-        self.historical_manager: Optional[HistoricalScoreManager] = None
+        self.database_url: Optional[str] = None
         self.running = False
 
     async def initialize(self):
@@ -53,7 +52,7 @@ class DataIngestorService:
                 await self.consumer.initialize(broker_type)
 
             # راه‌اندازی historical manager
-            self.historical_manager = HistoricalScoreManager()
+            self.database_url = settings.database_url
 
             logger.info("data_ingestor_service_initialized")
 
@@ -63,7 +62,7 @@ class DataIngestorService:
 
     async def start_consuming(self):
         """شروع مصرف eventها"""
-        if not self.historical_manager:
+        if not self.database_url:
             raise RuntimeError("Service not initialized")
 
         if not self.consumer:
@@ -116,10 +115,10 @@ class DataIngestorService:
             entry = self._convert_to_historical_entry(symbol, timeframe, results)
 
             # ذخیره در دیتابیس (synchronous operation in thread pool)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,  # Use default executor
-                lambda: self.historical_manager.save_score(entry)
+                lambda: self._persist_entry(entry)
             )
 
             logger.info(
@@ -168,11 +167,9 @@ class DataIngestorService:
         trend_weight = results.get("trend_weight", 0.5)
         momentum_weight = results.get("momentum_weight", 0.5)
 
-        # سایر فیلدها
-        volume_score = results.get("volume_score", 0.0)
-        volatility_score = results.get("volatility_score", 0.0)
-        cycle_score = results.get("cycle_score", 0.0)
-        support_resistance_score = results.get("support_resistance_score", 0.0)
+        price_at_analysis = results.get("price_at_analysis") or results.get("close") or 0.0
+        recommendation = results.get("recommendation") or ("BUY" if combined_score > 0 else "HOLD")
+        action = results.get("action") or "HOLD"
 
         return HistoricalScoreEntry(
             symbol=symbol,
@@ -189,12 +186,17 @@ class DataIngestorService:
             trend_signal=trend_signal,
             momentum_signal=momentum_signal,
             combined_signal=combined_signal,
-            volume_score=volume_score,
-            volatility_score=volatility_score,
-            cycle_score=cycle_score,
-            support_resistance_score=support_resistance_score,
-            raw_data=json.dumps(results)  # ذخیره کامل نتایج به صورت JSON
+            recommendation=recommendation,
+            action=action,
+            price_at_analysis=float(price_at_analysis)
         )
+
+    def _persist_entry(self, entry):
+        if not self.database_url:
+            return
+        manager = HistoricalScoreManager(self.database_url)
+        with manager:
+            manager.save_score(entry)
 
 
 # Global instance
