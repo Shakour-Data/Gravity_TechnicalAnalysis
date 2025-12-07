@@ -43,11 +43,12 @@ async def test_cycle_scoring():
     result = await TechnicalAnalysisService.analyze(request)
 
     print("\n📊 Overall Signals:")
-    print(f"  • Trend Signal: {result.overall_trend_signal.value}")
-    print(f"  • Momentum Signal: {result.overall_momentum_signal.value}")
-    print(f"  • Cycle Signal: {result.overall_cycle_signal.value}")
-    print(f"  • Overall Signal: {result.overall_signal.value}")
-    print(f"  • Confidence: {result.overall_confidence:.2%}")
+    print(f"  • Trend Signal: {result.overall_trend_signal.value if result.overall_trend_signal else 'None'}")
+    print(f"  • Momentum Signal: {result.overall_momentum_signal.value if result.overall_momentum_signal else 'None'}")
+    print(f"  • Cycle Signal: {result.overall_cycle_signal.value if result.overall_cycle_signal else 'None'}")
+    print(f"  • Overall Signal: {result.overall_signal.value if result.overall_signal else 'None'}")
+    confidence_str = f"{result.overall_confidence:.2%}" if result.overall_confidence is not None else "None"
+    print(f"  • Confidence: {confidence_str}")
 
     print("\n📐 Weighting Formula:")
     print("  Overall = (Trend × 30%) + (Momentum × 25%) + (Cycle × 25%)")
