@@ -24,17 +24,9 @@ Notes:               Loads all configuration from environment variables.
 
 Configuration management for Technical Analysis Microservice
 """
-from pathlib import Path
 from typing import Optional
 
-from pydantic import Field
 from pydantic_settings import BaseSettings
-
-DEFAULT_TSE_DB_PATHS = [
-    r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db",
-    str((Path(__file__).resolve().parents[3] / "GravityTseHisPrice" / "data" / "tse_data.db")),
-    str(Path.home() / "GravityTseHisPrice" / "data" / "tse_data.db"),
-]
 
 
 class Settings(BaseSettings):
@@ -90,23 +82,16 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost:5432/gravity_tech"
     database_pool_size: int = 10
     database_max_overflow: int = 20
-    sqlite_path: str = "data/gravity_tech.db"
-    json_storage_path: str = "data/gravity_tech.json"
 
     # Observability
     metrics_enabled: bool = True
     tracing_enabled: bool = True
     log_level: str = "INFO"
 
-    # External market data (TSE)
-    tse_db_path: Optional[str] = None
-    tse_db_fallback_paths: list[str] = Field(default_factory=lambda: DEFAULT_TSE_DB_PATHS.copy())
-
     # Analysis Configuration
     max_candles: int = 1000
     parallel_processing: bool = True
     max_workers: int = 10
-    use_fast_indicators: bool = True
 
 
 settings = Settings()
@@ -115,24 +100,3 @@ settings = Settings()
 def get_settings() -> Settings:
     """Get application settings (for dependency injection)."""
     return settings
-
-
-def resolve_tse_db_path() -> Optional[str]:
-    """
-    Resolve the TSE database path using the configured value
-    followed by well-known fallbacks.
-    """
-
-    candidates = []
-    if settings.tse_db_path:
-        candidates.append(settings.tse_db_path)
-    candidates.extend(settings.tse_db_fallback_paths)
-
-    for candidate in candidates:
-        if not candidate:
-            continue
-        path = Path(candidate)
-        if path.exists():
-            return str(path)
-
-    return None
