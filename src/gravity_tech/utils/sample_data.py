@@ -9,6 +9,7 @@ License: MIT
 Helper functions for generating sample data for testing and demo purposes.
 """
 
+import random
 from datetime import datetime, timedelta
 
 from gravity_tech.models.schemas import Candle
@@ -105,5 +106,93 @@ def generate_volatile_candles(num_candles: int = 100) -> list[Candle]:
         ))
 
         base_price = close_price
+
+    return candles
+
+
+def generate_uptrend_data(count: int = 50, start_price: float = 100.0) -> list[Candle]:
+    """
+    Generate sample candle data with upward trend.
+
+    Args:
+        count: Number of candles to generate
+        start_price: Starting price
+
+    Returns:
+        List of Candle objects with upward price movement
+    """
+    candles = []
+    current_price = start_price
+
+    for i in range(count):
+        # Upward trend with some volatility
+        price_change = random.uniform(0.5, 2.0)  # Positive change
+        volatility = random.uniform(0.1, 0.5)  # Some volatility
+
+        open_price = current_price
+        close_price = open_price + price_change
+
+        # Add some intraday volatility
+        high_price = close_price + random.uniform(0, volatility)
+        low_price = open_price - random.uniform(0, volatility * 0.5)
+
+        # Ensure OHLC relationships are valid
+        high_price = max(high_price, open_price, close_price)
+        low_price = min(low_price, open_price, close_price)
+
+        candles.append(Candle(
+            timestamp=datetime.now() + timedelta(minutes=i),
+            open=float(open_price),
+            high=float(high_price),
+            low=float(low_price),
+            close=float(close_price),
+            volume=float(random.uniform(1000, 10000))
+        ))
+
+        current_price = close_price
+
+    return candles
+
+
+def generate_downtrend_data(count: int = 50, start_price: float = 100.0) -> list[Candle]:
+    """
+    Generate sample candle data with downward trend.
+
+    Args:
+        count: Number of candles to generate
+        start_price: Starting price
+
+    Returns:
+        List of Candle objects with downward price movement
+    """
+    candles = []
+    current_price = start_price
+
+    for i in range(count):
+        # Downward trend with some volatility
+        price_change = random.uniform(0.5, 2.0)  # Positive change (will be subtracted)
+        volatility = random.uniform(0.1, 0.5)  # Some volatility
+
+        open_price = current_price
+        close_price = open_price - price_change  # Subtract for downtrend
+
+        # Add some intraday volatility
+        high_price = open_price + random.uniform(0, volatility * 0.5)
+        low_price = close_price - random.uniform(0, volatility)
+
+        # Ensure OHLC relationships are valid
+        high_price = max(high_price, open_price, close_price)
+        low_price = min(low_price, open_price, close_price)
+
+        candles.append(Candle(
+            timestamp=datetime.now() + timedelta(minutes=i),
+            open=float(open_price),
+            high=float(high_price),
+            low=float(low_price),
+            close=float(close_price),
+            volume=float(random.uniform(1000, 10000))
+        ))
+
+        current_price = close_price
 
     return candles
