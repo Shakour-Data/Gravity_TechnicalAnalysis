@@ -18,6 +18,5 @@
     "**/*.pyc": true,
     ".pytest_cache": true,
     "htmlcov": true
-  },
-  "gitflow.disableOnRepo": true
+  }
 }
