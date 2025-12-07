@@ -32,6 +32,7 @@ display_confidence = confidence_to_display(internal_confidence)  # → 85
 """
 
 # All Union types have been updated to PEP 604 syntax (X | Y)
+from datetime import datetime
 
 
 def score_to_display(score: float) -> int:
@@ -233,6 +234,118 @@ def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
             return "LOW"
         else:
             return "VERY_LOW"
+# ═══════════════════════════════════════════════════════════════════
+# Additional Formatting Functions
+# ═══════════════════════════════════════════════════════════════════
+
+def format_price(price: float | int, currency: str = "$", decimals: int = 2) -> str:
+    """
+    Format price with currency and proper decimal places.
+
+    Args:
+        price: Price value
+        currency: Currency symbol (default: $)
+        decimals: Decimal places (default: 2)
+
+    Returns:
+        Formatted price string
+
+    Examples:
+        >>> format_price(1234.56)
+        '$1,234.56'
+        >>> format_price(1000000, decimals=0)
+        '$1,000,000'
+    """
+    try:
+        # Format with commas for thousands
+        formatted = f"{price:,.{decimals}f}"
+        return f"{currency}{formatted}"
+    except (ValueError, TypeError):
+        return f"{currency}{price}"
+
+
+def format_percentage(value: float, decimals: int = 2, include_symbol: bool = True) -> str:
+    """
+    Format percentage value.
+
+    Args:
+        value: Percentage value (0.1234 = 12.34%)
+        decimals: Decimal places
+        include_symbol: Include % symbol
+
+    Returns:
+        Formatted percentage string
+
+    Examples:
+        >>> format_percentage(0.1234)
+        '12.34%'
+        >>> format_percentage(0.5, decimals=1)
+        '50.0%'
+    """
+    try:
+        percentage = value * 100
+        formatted = f"{percentage:.{decimals}f}"
+        return f"{formatted}%" if include_symbol else formatted
+    except (ValueError, TypeError):
+        return f"{value}%" if include_symbol else str(value)
+
+
+def format_volume(volume: int | float, abbreviate: bool = True) -> str:
+    """
+    Format volume with abbreviations for large numbers.
+
+    Args:
+        volume: Volume value
+        abbreviate: Use K, M, B abbreviations
+
+    Returns:
+        Formatted volume string
+
+    Examples:
+        >>> format_volume(1000000)
+        '1.00M'
+        >>> format_volume(1500)
+        '1.50K'
+    """
+    try:
+        if not abbreviate:
+            return f"{volume:,.0f}"
+
+        if volume >= 1_000_000_000:
+            return f"{volume / 1_000_000_000:.2f}B"
+        elif volume >= 1_000_000:
+            return f"{volume / 1_000_000:.2f}M"
+        elif volume >= 1_000:
+            return f"{volume / 1_000:.2f}K"
+        else:
+            return f"{volume:.0f}"
+    except (ValueError, TypeError):
+        return str(volume)
+
+
+def format_timestamp(timestamp: datetime, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
+    """
+    Format datetime timestamp.
+
+    Args:
+        timestamp: Datetime object
+        format_str: Format string (default: YYYY-MM-DD HH:MM:SS)
+
+    Returns:
+        Formatted timestamp string
+
+    Examples:
+        >>> from datetime import datetime
+        >>> dt = datetime(2025, 12, 5, 14, 30, 45)
+        >>> format_timestamp(dt)
+        '2025-12-05 14:30:45'
+    """
+    try:
+        return timestamp.strftime(format_str)
+    except (AttributeError, ValueError):
+        return str(timestamp)
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Usage Examples
 # ═══════════════════════════════════════════════════════════════════
