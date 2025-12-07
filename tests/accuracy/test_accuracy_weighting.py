@@ -8,12 +8,13 @@ License: MIT
 """
 import pytest
 from datetime import datetime
+from gravity_tech.core.contracts.analysis import TechnicalAnalysisResult
 from gravity_tech.core.domain.entities import (
-    IndicatorResult,
     IndicatorCategory,
+    IndicatorResult,
     CoreSignalStrength as SignalStrength,
 )
-from gravity_tech.models.schemas import TechnicalAnalysisResult
+from gravity_tech.services.signal_engine import compute_overall_signals
 
 
 def create_test_indicator(name: str, category: IndicatorCategory, 
@@ -65,7 +66,7 @@ def test_scenario(name: str, trend_conf: float, momentum_conf: float,
     )
     
     # Calculate signals
-    analysis.calculate_overall_signal()
+    compute_overall_signals(analysis)
     
     # Display results
     print(f"\nConfidence (Accuracy) per category:")
@@ -108,7 +109,7 @@ def test_scenario(name: str, trend_conf: float, momentum_conf: float,
     )
     
     # Calculate signals
-    analysis.calculate_overall_signal()
+    compute_overall_signals(analysis)
     
     # Display results
     print(f"\nConfidence (Accuracy) per category:")
