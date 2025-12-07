@@ -655,3 +655,54 @@ def data_loader(tse_db_connection):
     """Fixture to provide test data loader."""
     return TestDataLoader(tse_db_connection)
 
+
+@pytest.fixture
+async def mock_cache_manager(monkeypatch):
+    """Mock CacheManager for testing without Redis."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_cache = MagicMock()
+    mock_cache._is_available = True
+    mock_cache._cache_dict = {}
+
+    async def mock_set(key: str, value: str, ttl: int | None = None):
+        mock_cache._cache_dict[key] = value
+        return True
+
+    async def mock_get(key: str):
+        return mock_cache._cache_dict.get(key)
+
+    async def mock_delete(key: str):
+        mock_cache._cache_dict.pop(key, None)
+        return True
+
+    async def mock_exists(key: str):
+        return key in mock_cache._cache_dict
+
+    async def mock_clear():
+        mock_cache._cache_dict.clear()
+        return True
+
+    async def mock_initialize():
+        return None
+
+    async def mock_mset(mapping: dict):
+        for key, value in mapping.items():
+            mock_cache._cache_dict[key] = value
+        return True
+
+    async def mock_mget(keys: list):
+        return [mock_cache._cache_dict.get(key) for key in keys]
+
+    mock_cache.initialize = AsyncMock(side_effect=mock_initialize)
+    mock_cache.set = AsyncMock(side_effect=mock_set)
+    mock_cache.get = AsyncMock(side_effect=mock_get)
+    mock_cache.delete = AsyncMock(side_effect=mock_delete)
+    mock_cache.exists = AsyncMock(side_effect=mock_exists)
+    mock_cache.clear = AsyncMock(side_effect=mock_clear)
+    mock_cache.mset = AsyncMock(side_effect=mock_mset)
+    mock_cache.mget = AsyncMock(side_effect=mock_mget)
+
+    return mock_cache
+
+
