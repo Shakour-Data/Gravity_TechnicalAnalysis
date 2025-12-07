@@ -17,9 +17,9 @@ from typing import Any, Optional
 import numpy as np
 import structlog
 from gravity_tech.clients.data_service_client import CandleData, DataServiceClient
-from gravity_tech.core.indicators.momentum import MomentumIndicators
-from gravity_tech.core.indicators.trend import TrendIndicators
-from gravity_tech.core.indicators.volume import VolumeIndicators
+from gravity_tech.indicators.momentum import MomentumIndicators
+from gravity_tech.indicators.trend import TrendIndicators
+from gravity_tech.indicators.volume import VolumeIndicators
 from gravity_tech.models.schemas import Candle
 from gravity_tech.patterns.classical import detect_classical_patterns
 
