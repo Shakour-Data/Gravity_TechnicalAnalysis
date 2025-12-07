@@ -9,7 +9,7 @@ Multi-Horizon Feature Extraction for Volatility
 
 import numpy as np
 import pandas as pd
-from gravity_tech.indicators.volatility import VolatilityIndicators
+from gravity_tech.core.indicators.volatility import VolatilityIndicators
 from gravity_tech.models.schemas import Candle
 
 
