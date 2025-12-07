@@ -14,6 +14,7 @@ Multi-Horizon Support/Resistance Analysis با ML
 """
 
 import json
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -74,6 +75,30 @@ class SupportResistanceScore:
         else:
             return "WAIT"
 
+    @property
+    def accuracy(self) -> float:
+        """سازگاری با موتور تصمیم‌گیری"""
+        return self.confidence
+
+    @property
+    def nearest_level_type(self) -> str:
+        """
+        برچسب سطح غالب نزدیک.
+
+        Returns:
+            'support', 'resistance' یا 'level' در صورت عدم تشخیص.
+        """
+        signal = (self.signal or "").upper()
+        if "SUPPORT" in signal:
+            return "Support"
+        if "RESISTANCE" in signal:
+            return "Resistance"
+        if self.sr_position <= 0.5:
+            return "Support"
+        if self.sr_position > 0.5:
+            return "Resistance"
+        return "Level"
+
 
 @dataclass
 class MultiHorizonSupportResistanceAnalysis:
@@ -102,7 +127,7 @@ class MultiHorizonSupportResistanceAnalysis:
 class MultiHorizonSupportResistanceAnalyzer:
     """تحلیل‌گر ML-based Support & Resistance"""
 
-    def __init__(self, weights_path: Optional[str] = None):
+    def __init__(self, weights_path: Optional[str] = None, model_path: Optional[str] = None):
         """
         Initialize analyzer
 
@@ -111,6 +136,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         """
         self.feature_extractor = MultiHorizonSupportResistanceFeatureExtractor()
         self.weights = self._load_weights(weights_path)
+        self.model_state = self._load_model_state(model_path)
 
     def analyze(
         self,
@@ -204,7 +230,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         }
 
         # محاسبه اسکور وزن‌دار
-        score = self._calculate_weighted_score(horizon_features, weights)
+        score = self._predict_score(horizon, horizon_features, weights)
 
         # محاسبه confidence
         confidence = self._calculate_confidence(horizon_features)
@@ -249,6 +275,24 @@ class MultiHorizonSupportResistanceAnalyzer:
             signal=signal,
             recommendation=recommendation
         )
+
+    def _predict_score(
+        self,
+        horizon: str,
+        features: dict[str, float],
+        weights: dict[str, float],
+    ) -> float:
+        """Use a trained regression bundle when available."""
+        if self.model_state and horizon in self.model_state:
+            bundle = self.model_state[horizon]
+            feature_names = bundle.get('feature_names', [])
+            coef = bundle.get('weights', [])
+            intercept = bundle.get('intercept', 0.0)
+            total = intercept
+            for name, weight in zip(feature_names, coef):
+                total += features.get(name, 0.0) * weight
+            return float(np.clip(total, -1.0, 1.0))
+        return self._calculate_weighted_score(features, weights)
 
     def _calculate_weighted_score(
         self,
@@ -563,6 +607,13 @@ class MultiHorizonSupportResistanceAnalyzer:
                 'camarilla_signal': 0.15
             }
         }
+
+    def _load_model_state(self, model_path: Optional[str]) -> dict[str, dict[str, list[float]]]:
+        """Load pickled regression bundles if available."""
+        if model_path and Path(model_path).exists():
+            with open(model_path, 'rb') as fh:
+                return pickle.load(fh)
+        return {}
 
 
 # ═══════════════════════════════════════════════════════════════
