@@ -1,4 +1,3 @@
-
 """
 Database Manager with Auto-Setup and Fallback
 
@@ -18,31 +17,26 @@ Version: 1.0.0
 License: MIT
 """
 
-
-
-import json
-import logging
 import os
+import json
 import sqlite3
+from pathlib import Path
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
-from typing import Any
+import logging
 
 # Try to import PostgreSQL driver
 try:
     import psycopg2
-    from psycopg2 import pool as pg_pool
+    from psycopg2 import pool
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
     print("⚠️ psycopg2 not available. Will use SQLite fallback.")
 
 
-
 logger = logging.getLogger(__name__)
-
-__all__ = ["DatabaseManager", "DatabaseType"]
 
 
 class DatabaseType(str, Enum):
@@ -55,25 +49,25 @@ class DatabaseType(str, Enum):
 class DatabaseManager:
     """
     مدیریت دیتابیس با auto-setup و fallback
-
+    
     ویژگی‌ها:
     - خودکار ساخت schema
     - Fallback به SQLite یا JSON
     - Migration خودکار
     - Connection pooling
     """
-
+    
     def __init__(
         self,
-        db_type: DatabaseType | None = None,
-        connection_string: str | None = None,
-        sqlite_path: str | None = None,
-        json_path: str | None = None,
+        db_type: Optional[DatabaseType] = None,
+        connection_string: Optional[str] = None,
+        sqlite_path: Optional[str] = None,
+        json_path: Optional[str] = None,
         auto_setup: bool = True
     ):
         """
         Initialize Database Manager
-
+        
         Args:
             db_type: نوع دیتابیس (اگر None باشد، خودکار تشخیص می‌دهد)
             connection_string: رشته اتصال PostgreSQL
@@ -85,57 +79,57 @@ class DatabaseManager:
         self.connection_string = connection_string
         self.sqlite_path = sqlite_path or "data/tool_performance.db"
         self.json_path = json_path or "data/tool_performance.json"
-
+        
         self.connection_pool = None
         self.sqlite_connection = None
         self.json_data = {}
-
+        
         # Auto-detect database type
         if self.db_type is None:
             self.db_type = self._detect_database_type()
-
+        
         # Initialize database
         self._initialize_database()
-
+        
         # Auto-setup schema
         if auto_setup:
             self.setup_schema()
-
+        
         logger.info(f"✅ Database initialized: {self.db_type.value}")
-
+    
     def _detect_database_type(self) -> DatabaseType:
         """
         تشخیص خودکار نوع دیتابیس
-
+        
         اولویت:
         1. PostgreSQL (اگر psycopg2 و connection_string موجود باشد)
         2. SQLite (fallback)
         3. JSON file (fallback نهایی)
         """
-
+        
         # Check for PostgreSQL
         if POSTGRES_AVAILABLE and self.connection_string:
             try:
                 # Test connection
-                conn = psycopg2.connect(self.connection_string)  # type: ignore[possibly-unbound]
+                conn = psycopg2.connect(self.connection_string)
                 conn.close()
                 logger.info("✅ PostgreSQL detected and available")
                 return DatabaseType.POSTGRESQL
             except Exception as e:
                 logger.warning(f"⚠️ PostgreSQL connection failed: {e}")
-
+        
         # Check for environment variable
         postgres_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
         if POSTGRES_AVAILABLE and postgres_url:
             try:
-                conn = psycopg2.connect(postgres_url)  # type: ignore[possibly-unbound]
+                conn = psycopg2.connect(postgres_url)
                 conn.close()
                 self.connection_string = postgres_url
                 logger.info("✅ PostgreSQL from env variable")
                 return DatabaseType.POSTGRESQL
             except Exception as e:
                 logger.warning(f"⚠️ PostgreSQL from env failed: {e}")
-
+        
         # Fallback to SQLite
         try:
             # Create directory if needed
@@ -146,25 +140,25 @@ class DatabaseManager:
             return DatabaseType.SQLITE
         except Exception as e:
             logger.warning(f"⚠️ SQLite failed: {e}")
-
+        
         # Final fallback to JSON
         logger.info("✅ JSON file fallback activated")
         return DatabaseType.JSON_FILE
-
+    
     def _initialize_database(self):
         """راه‌اندازی اتصال دیتابیس"""
-
+        
         if self.db_type == DatabaseType.POSTGRESQL:
             self._initialize_postgresql()
         elif self.db_type == DatabaseType.SQLITE:
             self._initialize_sqlite()
         elif self.db_type == DatabaseType.JSON_FILE:
             self._initialize_json()
-
+    
     def _initialize_postgresql(self):
         """راه‌اندازی PostgreSQL با connection pool"""
         try:
-            self.connection_pool = pg_pool.SimpleConnectionPool(  # type: ignore[possibly-unbound]
+            self.connection_pool = psycopg2.pool.SimpleConnectionPool(
                 minconn=1,
                 maxconn=10,
                 dsn=self.connection_string
@@ -173,7 +167,7 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"❌ Failed to create PostgreSQL pool: {e}")
             raise
-
+    
     def _initialize_sqlite(self):
         """راه‌اندازی SQLite"""
         try:
@@ -187,14 +181,14 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"❌ Failed to initialize SQLite: {e}")
             raise
-
+    
     def _initialize_json(self):
         """راه‌اندازی JSON file storage"""
         try:
             Path(self.json_path).parent.mkdir(parents=True, exist_ok=True)
-
+            
             if Path(self.json_path).exists():
-                with open(self.json_path, encoding='utf-8') as f:
+                with open(self.json_path, 'r', encoding='utf-8') as f:
                     self.json_data = json.load(f)
             else:
                 self.json_data = {
@@ -204,19 +198,19 @@ class DatabaseManager:
                     "tool_recommendations_log": []
                 }
                 self._save_json()
-
+            
             logger.info(f"✅ JSON storage initialized: {self.json_path}")
         except Exception as e:
             logger.error(f"❌ Failed to initialize JSON: {e}")
             raise
-
+    
     def setup_schema(self):
         """
         ساخت خودکار schema دیتابیس
-
+        
         این متد schema را بر اساس نوع دیتابیس می‌سازد
         """
-
+        
         if self.db_type == DatabaseType.POSTGRESQL:
             self._setup_postgresql_schema()
         elif self.db_type == DatabaseType.SQLITE:
@@ -224,40 +218,38 @@ class DatabaseManager:
         elif self.db_type == DatabaseType.JSON_FILE:
             # JSON doesn't need schema
             logger.info("✅ JSON schema (structure) ready")
-
+    
     def _setup_postgresql_schema(self):
         """ساخت schema برای PostgreSQL"""
-
+        
         schema_file = Path(__file__).parent / "tool_performance_history.sql"
-
+        
         if not schema_file.exists():
             logger.warning(f"⚠️ Schema file not found: {schema_file}")
             return
-
+        
         try:
-            with open(schema_file, encoding='utf-8') as f:
+            with open(schema_file, 'r', encoding='utf-8') as f:
                 schema_sql = f.read()
-
-            if self.connection_pool is None:
-                raise RuntimeError("PostgreSQL connection pool is not initialized.")
+            
             conn = self.connection_pool.getconn()
             cursor = conn.cursor()
-
+            
             # Execute schema
             cursor.execute(schema_sql)
             conn.commit()
-
+            
             cursor.close()
             self.connection_pool.putconn(conn)
-
+            
             logger.info("✅ PostgreSQL schema created successfully")
         except Exception as e:
             logger.error(f"❌ Failed to create PostgreSQL schema: {e}")
             # Don't raise - schema might already exist
-
+    
     def _setup_sqlite_schema(self):
         """ساخت schema برای SQLite"""
-
+        
         # SQLite version of schema (simplified, no functions/triggers)
         schema = """
         -- Tool Performance History
@@ -265,199 +257,191 @@ class DatabaseManager:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tool_name TEXT NOT NULL,
             tool_category TEXT NOT NULL,
-
+            
             symbol TEXT NOT NULL,
             timeframe TEXT NOT NULL,
             market_regime TEXT NOT NULL,
             volatility_level REAL,
             trend_strength REAL,
             volume_profile TEXT,
-
+            
             prediction_type TEXT NOT NULL,
             prediction_value REAL,
             confidence_score REAL,
-
+            
             actual_result TEXT,
             actual_price_change REAL,
             success INTEGER,
             accuracy REAL,
-
+            
             prediction_timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             result_timestamp TEXT,
             evaluation_period_hours INTEGER,
-
+            
             metadata TEXT,
-
+            
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-
-        CREATE INDEX IF NOT EXISTS idx_tool_performance_tool_name
+        
+        CREATE INDEX IF NOT EXISTS idx_tool_performance_tool_name 
             ON tool_performance_history(tool_name);
-        CREATE INDEX IF NOT EXISTS idx_tool_performance_symbol
+        CREATE INDEX IF NOT EXISTS idx_tool_performance_symbol 
             ON tool_performance_history(symbol);
-        CREATE INDEX IF NOT EXISTS idx_tool_performance_regime
+        CREATE INDEX IF NOT EXISTS idx_tool_performance_regime 
             ON tool_performance_history(market_regime);
-
+        
         -- Tool Performance Stats
         CREATE TABLE IF NOT EXISTS tool_performance_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tool_name TEXT NOT NULL,
             tool_category TEXT NOT NULL,
-
+            
             market_regime TEXT,
             timeframe TEXT,
             period_start TEXT NOT NULL,
             period_end TEXT NOT NULL,
-
+            
             total_predictions INTEGER NOT NULL DEFAULT 0,
             correct_predictions INTEGER NOT NULL DEFAULT 0,
             accuracy REAL,
-
+            
             avg_confidence REAL,
             avg_actual_change REAL,
-
+            
             bullish_predictions INTEGER DEFAULT 0,
             bearish_predictions INTEGER DEFAULT 0,
             neutral_predictions INTEGER DEFAULT 0,
-
+            
             bullish_success_rate REAL,
             bearish_success_rate REAL,
             neutral_success_rate REAL,
-
+            
             best_accuracy REAL,
             worst_accuracy REAL,
             best_symbol TEXT,
             worst_symbol TEXT,
-
+            
             last_updated TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
+            
             UNIQUE(tool_name, market_regime, timeframe, period_start, period_end)
         );
-
+        
         -- ML Weights History
         CREATE TABLE IF NOT EXISTS ml_weights_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
+            
             model_name TEXT NOT NULL,
             model_version TEXT NOT NULL,
-
+            
             market_regime TEXT,
             timeframe TEXT,
-
+            
             weights TEXT NOT NULL,
-
+            
             training_accuracy REAL,
             validation_accuracy REAL,
             r2_score REAL,
             mae REAL,
-
+            
             training_samples INTEGER,
             training_date TEXT NOT NULL,
-
+            
             metadata TEXT,
-
+            
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-
-        CREATE INDEX IF NOT EXISTS idx_ml_weights_model
+        
+        CREATE INDEX IF NOT EXISTS idx_ml_weights_model 
             ON ml_weights_history(model_name, model_version);
-
+        
         -- Tool Recommendations Log
         CREATE TABLE IF NOT EXISTS tool_recommendations_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
+            
             request_id TEXT NOT NULL,
             user_id TEXT,
-
+            
             symbol TEXT NOT NULL,
             timeframe TEXT NOT NULL,
             analysis_goal TEXT,
             trading_style TEXT,
-
+            
             market_regime TEXT NOT NULL,
             volatility_level REAL,
             trend_strength REAL,
-
+            
             recommended_tools TEXT NOT NULL,
             ml_weights TEXT,
-
+            
             user_feedback TEXT,
             tools_actually_used TEXT,
             trade_result TEXT,
-
+            
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             feedback_at TEXT
         );
-
-        CREATE INDEX IF NOT EXISTS idx_recommendations_request
+        
+        CREATE INDEX IF NOT EXISTS idx_recommendations_request 
             ON tool_recommendations_log(request_id);
         """
-
+        
         try:
-            if self.sqlite_connection is None:
-                raise RuntimeError("SQLite connection is not initialized.")
             cursor = self.sqlite_connection.cursor()
             cursor.executescript(schema)
             self.sqlite_connection.commit()
             logger.info("✅ SQLite schema created successfully")
         except Exception as e:
             logger.error(f"❌ Failed to create SQLite schema: {e}")
-
+    
     def get_connection(self):
         """دریافت connection (برای PostgreSQL یا SQLite)"""
+        
         if self.db_type == DatabaseType.POSTGRESQL:
-            if self.connection_pool is not None:
-                return self.connection_pool.getconn()
-            else:
-                raise RuntimeError("PostgreSQL connection pool is not initialized.")
+            return self.connection_pool.getconn()
         elif self.db_type == DatabaseType.SQLITE:
-            if self.sqlite_connection is not None:
-                return self.sqlite_connection
-            else:
-                raise RuntimeError("SQLite connection is not initialized.")
+            return self.sqlite_connection
         else:
             raise ValueError(f"get_connection not supported for {self.db_type}")
-
-    def release_connection(self, conn: Any) -> None:
+    
+    def release_connection(self, conn):
         """آزاد کردن connection (فقط برای PostgreSQL)"""
+        
         if self.db_type == DatabaseType.POSTGRESQL:
-            if self.connection_pool is None:
-                raise RuntimeError("PostgreSQL connection pool is not initialized.")
             self.connection_pool.putconn(conn)
-
+    
     def execute_query(
         self,
         query: str,
-        params: tuple | None = None,
+        params: Optional[Tuple] = None,
         fetch: bool = False
-    ) -> list | None:
+    ) -> Optional[List]:
         """
         اجرای query با fallback
-
+        
         Args:
             query: SQL query
             params: پارامترهای query
             fetch: آیا نتیجه را برگرداند؟
-
+        
         Returns:
             نتیجه query (اگر fetch=True)
         """
-
+        
         if self.db_type == DatabaseType.JSON_FILE:
             # JSON doesn't support SQL queries
             logger.warning("⚠️ SQL query not supported for JSON storage")
             return None
-
+        
         try:
             conn = self.get_connection()
-            if conn is None:
-                raise RuntimeError("Database connection is not initialized.")
             cursor = conn.cursor()
+            
             if params:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
+            
             if fetch:
                 if self.db_type == DatabaseType.POSTGRESQL:
                     result = cursor.fetchall()
@@ -465,14 +449,18 @@ class DatabaseManager:
                     result = [dict(row) for row in cursor.fetchall()]
             else:
                 result = None
+            
             conn.commit()
             cursor.close()
+            
             self.release_connection(conn)
+            
             return result
+            
         except Exception as e:
             logger.error(f"❌ Query execution failed: {e}")
             raise
-
+    
     def record_tool_performance(
         self,
         tool_name: str,
@@ -482,25 +470,25 @@ class DatabaseManager:
         market_regime: str,
         prediction_type: str,
         confidence_score: float,
-        volatility_level: float | None = None,
-        trend_strength: float | None = None,
-        volume_profile: str | None = None,
-        metadata: dict | None = None
+        volatility_level: Optional[float] = None,
+        trend_strength: Optional[float] = None,
+        volume_profile: Optional[str] = None,
+        metadata: Optional[Dict] = None
     ) -> int:
         """
         ثبت عملکرد ابزار
-
+        
         Returns:
             ID رکورد ذخیره شده
         """
-
+        
         if self.db_type == DatabaseType.JSON_FILE:
             return self._record_tool_performance_json(
                 tool_name, tool_category, symbol, timeframe, market_regime,
                 prediction_type, confidence_score, volatility_level,
                 trend_strength, volume_profile, metadata
             )
-
+        
         query = """
         INSERT INTO tool_performance_history (
             tool_name, tool_category, symbol, timeframe, market_regime,
@@ -515,45 +503,42 @@ class DatabaseManager:
             prediction_type, confidence_score, metadata
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-
+        
         metadata_json = json.dumps(metadata) if metadata else None
-
+        
         params = (
             tool_name, tool_category, symbol, timeframe, market_regime,
             volatility_level, trend_strength, volume_profile,
             prediction_type, confidence_score, metadata_json
         )
-
+        
         try:
             conn = self.get_connection()
-            if conn is None:
-                raise RuntimeError("Database connection is not initialized.")
             cursor = conn.cursor()
             cursor.execute(query, params)
-
+            
             if self.db_type == DatabaseType.POSTGRESQL:
-                result = cursor.fetchone()
-                record_id: int = result[0] if result else 0
+                record_id = cursor.fetchone()[0]
             else:  # SQLite
-                record_id = int(cursor.lastrowid) if cursor.lastrowid else 0
-
+                record_id = cursor.lastrowid
+            
             conn.commit()
             cursor.close()
             self.release_connection(conn)
-
+            
             return record_id
-
+            
         except Exception as e:
             logger.error(f"❌ Failed to record performance: {e}")
             raise
-
+    
     def _record_tool_performance_json(
         self, tool_name, tool_category, symbol, timeframe, market_regime,
         prediction_type, confidence_score, volatility_level,
         trend_strength, volume_profile, metadata
     ) -> int:
         """ثبت عملکرد در JSON"""
-
+        
         record = {
             "id": len(self.json_data["tool_performance_history"]) + 1,
             "tool_name": tool_name,
@@ -570,35 +555,35 @@ class DatabaseManager:
             "prediction_timestamp": datetime.utcnow().isoformat(),
             "created_at": datetime.utcnow().isoformat()
         }
-
+        
         self.json_data["tool_performance_history"].append(record)
         self._save_json()
-
+        
         return record["id"]
-
+    
     def get_tool_accuracy(
         self,
         tool_name: str,
-        market_regime: str | None = None,
+        market_regime: Optional[str] = None,
         days: int = 30
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """
         دریافت دقت یک ابزار
-
+        
         Args:
             tool_name: نام ابزار
             market_regime: رژیم بازار (اختیاری)
             days: تعداد روزهای گذشته
-
+        
         Returns:
             دیکشنری شامل آمار دقت
         """
-
+        
         if self.db_type == DatabaseType.JSON_FILE:
             return self._get_tool_accuracy_json(tool_name, market_regime, days)
-
+        
         query = """
-        SELECT
+        SELECT 
             tool_name,
             market_regime,
             COUNT(*) as total_predictions,
@@ -612,7 +597,7 @@ class DatabaseManager:
           AND success IS NOT NULL
         GROUP BY tool_name, market_regime
         """ if self.db_type == DatabaseType.POSTGRESQL else """
-        SELECT
+        SELECT 
             tool_name,
             market_regime,
             COUNT(*) as total_predictions,
@@ -626,12 +611,12 @@ class DatabaseManager:
           AND success IS NOT NULL
         GROUP BY tool_name, market_regime
         """
-
+        
         params = (tool_name, market_regime, market_regime, days) if self.db_type == DatabaseType.POSTGRESQL \
                  else (tool_name, market_regime, market_regime, days)
-
+        
         results = self.execute_query(query, params, fetch=True)
-
+        
         if results:
             return dict(results[0]) if isinstance(results[0], sqlite3.Row) else {
                 "tool_name": results[0][0],
@@ -641,7 +626,7 @@ class DatabaseManager:
                 "accuracy": results[0][4],
                 "avg_confidence": results[0][5]
             }
-
+        
         return {
             "tool_name": tool_name,
             "market_regime": market_regime,
@@ -650,14 +635,14 @@ class DatabaseManager:
             "accuracy": 0.0,
             "avg_confidence": 0.0
         }
-
+    
     def _get_tool_accuracy_json(
-        self, tool_name: str, market_regime: str | None, days: int
-    ) -> dict[str, Any]:
+        self, tool_name: str, market_regime: Optional[str], days: int
+    ) -> Dict[str, Any]:
         """دریافت دقت از JSON"""
-
+        
         cutoff_date = datetime.utcnow() - timedelta(days=days)
-
+        
         records = [
             r for r in self.json_data["tool_performance_history"]
             if r["tool_name"] == tool_name
@@ -665,12 +650,12 @@ class DatabaseManager:
             and r.get("success") is not None
             and datetime.fromisoformat(r["prediction_timestamp"]) >= cutoff_date
         ]
-
+        
         total = len(records)
         correct = sum(1 for r in records if r.get("success"))
         accuracy = correct / total if total > 0 else 0.0
         avg_confidence = sum(r.get("confidence_score", 0) for r in records) / total if total > 0 else 0.0
-
+        
         return {
             "tool_name": tool_name,
             "market_regime": market_regime,
@@ -679,7 +664,7 @@ class DatabaseManager:
             "accuracy": accuracy,
             "avg_confidence": avg_confidence
         }
-
+    
     def _save_json(self):
         """ذخیره داده‌ها در JSON file"""
         try:
@@ -687,233 +672,43 @@ class DatabaseManager:
                 json.dump(self.json_data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"❌ Failed to save JSON: {e}")
-
-    def _check_database_exists(self) -> bool:
-        """بررسی وجود دیتابیس"""
-        if self.db_type == DatabaseType.SQLITE:
-            return Path(self.sqlite_path).exists()
-        elif self.db_type == DatabaseType.JSON_FILE:
-            return Path(self.json_path).exists()
-        elif self.db_type == DatabaseType.POSTGRESQL:
-            try:
-                conn = self.get_connection()
-                self.release_connection(conn)
-                return True
-            except Exception:
-                return False
-        return False
-
-    def setup_database(self):
-        """ساخت دیتابیس و جداول (alias for setup_schema)"""
-        self.setup_schema()
-
-    def get_database_info(self) -> dict[str, Any]:
-        """دریافت اطلاعات دیتابیس"""
-        if self.db_type is None:
-            return {}
-        info = {
-            "type": self.db_type.value,
-            "connected": self._check_database_exists()
-        }
-
-        if self.db_type == DatabaseType.SQLITE:
-            info["path"] = self.sqlite_path
-            if Path(self.sqlite_path).exists():
-                info["size"] = Path(self.sqlite_path).stat().st_size
-        elif self.db_type == DatabaseType.JSON_FILE:
-            info["path"] = self.json_path
-
-        return info
-
-    def get_tables(self) -> list[str]:
-        """دریافت لیست جداول"""
-        if self.db_type == DatabaseType.JSON_FILE:
-            return list(self.json_data.keys())
-
-        if self.db_type == DatabaseType.SQLITE:
-            query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        else:  # PostgreSQL
-            query = "SELECT tablename FROM pg_tables WHERE schemaname='public'"
-
-        try:
-            results = self.execute_query(query, fetch=True)
-            if results:
-                return [r["name" if self.db_type == DatabaseType.SQLITE else "tablename"] for r in results]
-        except Exception:
-            pass
-
-        return []
-
-    def get_table_schema(self, table_name: str) -> list[dict[str, Any]]:
-        """دریافت schema یک جدول"""
-        if self.db_type == DatabaseType.JSON_FILE:
-            return [{"name": "data", "type": "json"}]
-
-        if self.db_type == DatabaseType.SQLITE:
-            query = f"PRAGMA table_info({table_name})"
-            results = self.execute_query(query, fetch=True)
-            if results:
-                return [
-                    {
-                        "name": r["name"],
-                        "type": r["type"],
-                        "nullable": not r["notnull"],
-                        "default": r["dflt_value"]
-                    }
-                    for r in results
-                ]
-        else:  # PostgreSQL
-            query = """
-            SELECT column_name, data_type, is_nullable, column_default
-            FROM information_schema.columns
-            WHERE table_name = %s
-            ORDER BY ordinal_position
-            """
-            results = self.execute_query(query, (table_name,), fetch=True)
-            if results:
-                return [
-                    {
-                        "name": r["column_name"],
-                        "type": r["data_type"],
-                        "nullable": r["is_nullable"] == "YES",
-                        "default": r["column_default"]
-                    }
-                    for r in results
-                ]
-
-        return []
-
+    
     def close(self):
         """بستن اتصالات دیتابیس"""
-
+        
         if self.db_type == DatabaseType.POSTGRESQL and self.connection_pool:
             self.connection_pool.closeall()
             logger.info("✅ PostgreSQL connections closed")
-
+        
         elif self.db_type == DatabaseType.SQLITE and self.sqlite_connection:
             self.sqlite_connection.close()
             logger.info("✅ SQLite connection closed")
-
+        
         elif self.db_type == DatabaseType.JSON_FILE:
             self._save_json()
             logger.info("✅ JSON data saved")
-
+    
     def __enter__(self):
         """Context manager support"""
         return self
-
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager cleanup"""
         self.close()
-
-    def get_statistics(self) -> dict[str, int]:
-        """Get statistics about the database (row counts per table)"""
-        stats: dict[str, int] = {}
-        try:
-            tables = self.get_tables()
-            for table in tables:
-                query = f"SELECT COUNT(*) FROM {table}"
-                result = self.execute_query(query, fetch=True)
-                if result:
-                    # Handle both PostgreSQL and SQLite result formats
-                    if isinstance(result[0], dict):
-                        count = result[0].get('count', 0)
-                    else:
-                        count = result[0][0] if result[0] else 0
-                    stats[table] = int(count)
-        except Exception as e:
-            logger.warning(f"⚠️ Could not get statistics: {e}")
-        return stats
-
-    def reset_table(self, table_name: str) -> None:
-        """Delete all records from a table"""
-        try:
-            query = f"DELETE FROM {table_name}"
-            self.execute_query(query)
-            logger.info(f"✅ Table {table_name} reset successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to reset table {table_name}: {e}")
-            raise
-
-    def run_migrations(self) -> list[str]:
-        """Run any pending migrations (placeholder for future use)"""
-        migrations: list[str] = []
-        logger.info("✅ No pending migrations")
-        return migrations
-
-    def create_backup(self, tables: list[str] | None = None) -> dict[str, Any]:
-        """Create a backup of the database"""
-        backup_data: dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "database_type": self.db_type.value if self.db_type else None,
-            "data": {}
-        }
-
-        try:
-            table_list = tables if tables else self.get_tables()
-            for table in table_list:
-                query = f"SELECT * FROM {table}"
-                result = self.execute_query(query, fetch=True)
-                backup_data["data"][table] = result if result else []
-            logger.info("✅ Backup created successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to create backup: {e}")
-            raise
-
-        return backup_data
-
-    def restore_backup(self, backup_data: dict[str, Any]) -> dict[str, int]:
-        """Restore database from a backup"""
-        result: dict[str, int] = {}
-
-        try:
-            data = backup_data.get("data", {})
-            for table, records in data.items():
-                # Clear existing data
-                self.reset_table(table)
-                # Insert backup data
-                if records:
-                    self.bulk_insert(table, records)
-                result[table] = len(records)
-            logger.info("✅ Backup restored successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to restore backup: {e}")
-            raise
-
-        return result
-
-    def bulk_insert(self, table_name: str, records: list[dict[str, Any]]) -> None:
-        """Insert multiple records into a table"""
-        if not records:
-            return
-
-        try:
-            # This is a simplified implementation
-            # In production, you'd want to batch these inserts more efficiently
-            for record in records:
-                columns = ", ".join(record.keys())
-                placeholders = ", ".join(["?" if self.db_type == DatabaseType.SQLITE else "%s"]
-                                        * len(record))
-                query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-                self.execute_query(query, tuple(record.values()))
-            logger.info(f"✅ {len(records)} records inserted into {table_name}")
-        except Exception as e:
-            logger.error(f"❌ Failed to insert records: {e}")
-            raise
 
 
 # CLI tool for database setup
 def main():
     """
     ابزار خط فرمان برای setup دیتابیس
-
+    
     Usage:
         python database_manager.py
         python database_manager.py --type postgresql --connection "postgresql://..."
         python database_manager.py --type sqlite --path data/mydb.db
     """
     import argparse
-
+    
     parser = argparse.ArgumentParser(description="Database Setup Tool")
     parser.add_argument(
         "--type",
@@ -934,15 +729,15 @@ def main():
         default="data/tool_performance.json",
         help="مسیر فایل JSON"
     )
-
+    
     args = parser.parse_args()
-
+    
     print("=" * 70)
     print("🗄️  Database Setup Tool")
     print("=" * 70)
-
+    
     db_type = DatabaseType(args.type) if args.type else None
-
+    
     try:
         with DatabaseManager(
             db_type=db_type,
@@ -951,28 +746,26 @@ def main():
             json_path=args.json_path,
             auto_setup=True
         ) as db:
-            print("\n✅ Database setup complete!")
-            if db.db_type is not None:
-                print(f"   Type: {db.db_type.value}")
-
-                if db.db_type == DatabaseType.POSTGRESQL:
-                    print("   Connection: PostgreSQL")
-                elif db.db_type == DatabaseType.SQLITE:
-                    print(f"   Path: {db.sqlite_path}")
-                elif db.db_type == DatabaseType.JSON_FILE:
-                    print(f"   Path: {db.json_path}")
-
-            print("\n✅ Schema created successfully")
-            print("   Tables: tool_performance_history, tool_performance_stats,")
-            print("           ml_weights_history, tool_recommendations_log")
-
+            print(f"\n✅ Database setup complete!")
+            print(f"   Type: {db.db_type.value}")
+            
+            if db.db_type == DatabaseType.POSTGRESQL:
+                print(f"   Connection: PostgreSQL")
+            elif db.db_type == DatabaseType.SQLITE:
+                print(f"   Path: {db.sqlite_path}")
+            elif db.db_type == DatabaseType.JSON_FILE:
+                print(f"   Path: {db.json_path}")
+            
+            print(f"\n✅ Schema created successfully")
+            print(f"   Tables: tool_performance_history, tool_performance_stats,")
+            print(f"           ml_weights_history, tool_recommendations_log")
+    
     except Exception as e:
         print(f"\n❌ Setup failed: {e}")
         return 1
-
+    
     print("\n" + "=" * 70)
     return 0
-
 
 
 if __name__ == "__main__":
