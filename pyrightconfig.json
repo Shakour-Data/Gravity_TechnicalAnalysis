@@ -1,9 +1,7 @@
 {
   "include": [
     "src",
-    "tests",
-    "scripts",
-    "database"
+    "tests"
   ],
   "exclude": [
     "venv",
@@ -12,14 +10,14 @@
     "ml_models"
   ],
   "pythonVersion": "3.12",
-  "typeCheckingMode": "standard",
+  "typeCheckingMode": "basic",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
   "pythonPlatform": "Windows",
   "executionEnvironments": [
     {
       "root": ".",
-      "extraPaths": ["./src", "./database", "./scripts"]
+      "extraPaths": ["./src"]
     }
   ]
 }
