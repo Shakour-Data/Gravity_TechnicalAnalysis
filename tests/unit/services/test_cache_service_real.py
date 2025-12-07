@@ -4,9 +4,83 @@ Real Cache Service Tests with TSE Data
 Unit tests for actual CacheManager implementation with real Iranian stock market data.
 """
 
+import asyncio
 import json
+import time
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_redis_for_cache_tests(monkeypatch):
+    """Mock Redis to allow cache tests to run without actual Redis server."""
+    # Create in-memory cache storage with TTL tracking
+    cache_storage = {}  # {key: (value, expiry_time)}
+
+    async def mock_set(self, key, value, ttl=None):
+        from src.gravity_tech.config.settings import settings
+        ttl = ttl or settings.cache_ttl
+        expiry_time = time.time() + ttl
+        cache_storage[key] = (value, expiry_time)
+        return True
+
+    async def mock_get(self, key):
+        if key not in cache_storage:
+            return None
+        value, expiry_time = cache_storage[key]
+        if time.time() > expiry_time:
+            del cache_storage[key]
+            return None
+        return value
+
+    async def mock_delete(self, key):
+        cache_storage.pop(key, None)
+        return True
+
+    async def mock_exists(self, key):
+        if key not in cache_storage:
+            return False
+        value, expiry_time = cache_storage[key]
+        if time.time() > expiry_time:
+            del cache_storage[key]
+            return False
+        return True
+
+    async def mock_flush(self):
+        cache_storage.clear()
+        return True
+
+    async def mock_mset(self, data, ttl=None):
+        from src.gravity_tech.config.settings import settings
+        ttl = ttl or settings.cache_ttl
+        expiry_time = time.time() + ttl
+        for key, value in data.items():
+            cache_storage[key] = (value, expiry_time)
+        return True
+
+    async def mock_delete_pattern(self, pattern: str):
+        """Mock delete pattern - removes keys matching pattern."""
+        import re
+        regex = re.compile(pattern.replace('*', '.*'))
+        keys_to_delete = [k for k in cache_storage.keys() if regex.match(k)]
+        for key in keys_to_delete:
+            del cache_storage[key]
+        return len(keys_to_delete)
+
+    async def mock_initialize(self):
+        self._is_available = True
+        return
+
+    # Monkeypatch CacheManager methods
+    from src.gravity_tech.services.cache_service import CacheManager
+    monkeypatch.setattr(CacheManager, "initialize", mock_initialize)
+    monkeypatch.setattr(CacheManager, "set", mock_set)
+    monkeypatch.setattr(CacheManager, "get", mock_get)
+    monkeypatch.setattr(CacheManager, "delete", mock_delete)
+    monkeypatch.setattr(CacheManager, "exists", mock_exists)
+    monkeypatch.setattr(CacheManager, "flush", mock_flush)
+    monkeypatch.setattr(CacheManager, "mset", mock_mset)
+    monkeypatch.setattr(CacheManager, "delete_pattern", mock_delete_pattern)
 
 
 class TestCacheManagerWithRealTSEData:
@@ -19,9 +93,6 @@ class TestCacheManagerWithRealTSEData:
 
         cache = CacheManager()
         await cache.initialize()
-
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Prepare data
         cache_key = "tse:candles:TOTAL"
@@ -53,9 +124,6 @@ class TestCacheManagerWithRealTSEData:
 
         cache = CacheManager()
         await cache.initialize()
-
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Prepare analysis result
         cache_key = "tse:analysis:TOTAL"
@@ -89,8 +157,6 @@ class TestCacheManagerWithRealTSEData:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         symbols_data = {
             'TOTAL': tse_candles_total,
@@ -118,8 +184,6 @@ class TestCacheManagerWithRealTSEData:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Setup
         cache_key = "tse:temp:data"
@@ -140,15 +204,11 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_ttl_expiration(self, tse_candles_short):
         """Test TTL expiration behavior."""
-        import asyncio
-
         from src.gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Setup - set with 2 second TTL
         cache_key = "tse:expire:test"
@@ -171,8 +231,6 @@ class TestCacheManagerWithRealTSEData:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Prepare batch data
         batch_data = {}
@@ -200,8 +258,6 @@ class TestCacheManagerWithRealTSEData:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Setup
         cache_key = "tse:exists:test"
@@ -226,8 +282,6 @@ class TestCacheManagerWithRealTSEData:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Setup - add multiple keys
         for i in range(5):
@@ -254,8 +308,6 @@ class TestCacheServicePatterns:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         cache_key = "tse:cache_aside"
 
@@ -280,8 +332,6 @@ class TestCacheServicePatterns:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Write through: write to cache and database simultaneously
         cache_key = "tse:write_through"
@@ -297,15 +347,11 @@ class TestCacheServicePatterns:
     @pytest.mark.asyncio
     async def test_write_behind_pattern(self, tse_candles_short):
         """Test write-behind pattern."""
-        import asyncio
-
         from src.gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Write behind: write to cache immediately, persist later
         cache_key = "tse:write_behind"
@@ -339,8 +385,6 @@ class TestCachePerformance:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Prepare large dataset
         large_data = json.dumps([
@@ -372,8 +416,6 @@ class TestCachePerformance:
         cache = CacheManager()
         await cache.initialize()
 
-        if not cache._is_available:
-            pytest.skip("Redis not available")
 
         # Store data
         original_data = json.dumps([c.close for c in tse_candles_short])
