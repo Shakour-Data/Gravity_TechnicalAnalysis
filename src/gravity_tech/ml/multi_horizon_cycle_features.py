@@ -10,7 +10,7 @@ Multi-Horizon Feature Extraction for Cycle
 
 
 import numpy as np
-from gravity_tech.indicators.cycle import CycleIndicators
+from gravity_tech.core.indicators.cycle import CycleIndicators
 from gravity_tech.models.schemas import Candle
 
 
