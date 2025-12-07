@@ -13,7 +13,7 @@ License: MIT
 import logging
 
 import numpy as np
-from gravity_tech.models.schemas import Candle, IndicatorResult, SignalStrength
+from gravity_tech.core.domain.entities import Candle, IndicatorResult, SignalStrength
 from gravity_tech.services.performance_optimizer import (
     ResultCache,
     batch_indicator_calculation,
@@ -75,7 +75,7 @@ class FastTrendIndicators:
             confidence = 0.5
 
         return IndicatorResult(
-            indicator_name=f"SMA_{period}",
+            indicator_name=f"SMA({period})",
             category="TREND",
             signal=signal,
             value=float(current_sma),
@@ -102,7 +102,7 @@ class FastTrendIndicators:
             confidence = 0.5
 
         return IndicatorResult(
-            indicator_name=f"EMA_{period}",
+            indicator_name=f"EMA({period})",
             category="TREND",
             signal=signal,
             value=float(current_ema),
@@ -196,7 +196,7 @@ class FastMomentumIndicators:
             confidence = 0.5
 
         result = IndicatorResult(
-            indicator_name=f"RSI_{period}",
+            indicator_name=f"RSI({period})",
             category="MOMENTUM",
             signal=signal,
             value=float(current_rsi),
@@ -246,7 +246,7 @@ class FastVolatilityIndicators:
             confidence = 0.6
 
         return IndicatorResult(
-            indicator_name="BB",
+            indicator_name=f"Bollinger Bands({period},{num_std})",
             category="VOLATILITY",
             signal=signal,
             value=float(middle[-1]),
@@ -288,7 +288,7 @@ class FastVolatilityIndicators:
             confidence = 0.65
 
         return IndicatorResult(
-            indicator_name="ATR",
+            indicator_name=f"ATR({period})",
             category="VOLATILITY",
             signal=signal,
             value=float(current_atr),
