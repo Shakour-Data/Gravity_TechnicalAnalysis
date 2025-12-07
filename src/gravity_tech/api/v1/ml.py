@@ -31,7 +31,7 @@ Provides RESTful endpoints for:
 - Model performance metrics
 """
 
-import asyncio
+import pickle
 from pathlib import Path
 from typing import Any, Optional
 
@@ -40,15 +40,9 @@ import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from gravity_tech.ml.model_registry import (
-    PatternClassifierRegistry,
-    run_classifier,
-)
-
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["Machine Learning"], prefix="/ml")
-classifier_registry = PatternClassifierRegistry()
 
 
 # ============================================================================
@@ -158,42 +152,24 @@ class BacktestResponse(BaseModel):
 # Helper Functions
 # ============================================================================
 
-def _build_feature_array(feature_dict: dict[str, float]) -> np.ndarray:
-    """Convert the request payload into the ordered numpy array expected by the model."""
+def load_ml_model():
+    """Load the latest ML model"""
+    # Try advanced model first
+    model_v2_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
+    model_v1_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
 
-    ordered_keys = [
-        "xab_ratio_accuracy",
-        "abc_ratio_accuracy",
-        "bcd_ratio_accuracy",
-        "xad_ratio_accuracy",
-        "pattern_symmetry",
-        "pattern_slope",
-        "xa_angle",
-        "ab_angle",
-        "bc_angle",
-        "cd_angle",
-        "pattern_duration",
-        "xa_magnitude",
-        "ab_magnitude",
-        "bc_magnitude",
-        "cd_magnitude",
-        "volume_at_d",
-        "volume_trend",
-        "volume_confirmation",
-        "rsi_at_d",
-        "macd_at_d",
-        "momentum_divergence",
-    ]
-
-    return np.array([feature_dict[key] for key in ordered_keys], dtype=float)
-
-
-async def _infer_pattern(feature_array: np.ndarray) -> tuple[dict[str, Any], str]:
-    """Run inference in a background thread and return (result, model_version)."""
-    model, version = classifier_registry.get_classifier()
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, lambda: run_classifier(model, feature_array))
-    return result, version
+    if model_v2_path.exists():
+        with open(model_v2_path, 'rb') as f:
+            data = pickle.load(f)
+            # Advanced model is stored in dict
+            model = data['model'] if isinstance(data, dict) else data
+            return model, "v2"
+    elif model_v1_path.exists():
+        with open(model_v1_path, 'rb') as f:
+            model = pickle.load(f)
+            return model, "v1"
+    else:
+        raise FileNotFoundError("No ML model found. Please train a model first.")
 
 
 # ============================================================================
@@ -237,15 +213,51 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
         import time
         start_time = time.time()
 
+        # Load model
+        model, version = load_ml_model()
+
         # Prepare features
         feature_dict = request.features.dict()
-        feature_array = _build_feature_array(feature_dict)
+        feature_array = np.array([
+            feature_dict['xab_ratio_accuracy'],
+            feature_dict['abc_ratio_accuracy'],
+            feature_dict['bcd_ratio_accuracy'],
+            feature_dict['xad_ratio_accuracy'],
+            feature_dict['pattern_symmetry'],
+            feature_dict['pattern_slope'],
+            feature_dict['xa_angle'],
+            feature_dict['ab_angle'],
+            feature_dict['bc_angle'],
+            feature_dict['cd_angle'],
+            feature_dict['pattern_duration'],
+            feature_dict['xa_magnitude'],
+            feature_dict['ab_magnitude'],
+            feature_dict['bc_magnitude'],
+            feature_dict['cd_magnitude'],
+            feature_dict['volume_at_d'],
+            feature_dict['volume_trend'],
+            feature_dict['volume_confirmation'],
+            feature_dict['rsi_at_d'],
+            feature_dict['macd_at_d'],
+            feature_dict['momentum_divergence']
+        ])
 
         # Make prediction
-        prediction, version = await _infer_pattern(feature_array)
-        predicted_class = prediction["predicted_pattern"]
-        confidence = prediction["confidence"]
-        probabilities = prediction["probabilities"]
+        if hasattr(model, 'predict_single'):
+            # PatternClassifier
+            prediction = model.predict_single(feature_array)
+            predicted_class = prediction['pattern_type']
+            confidence = prediction['confidence']
+            probabilities = prediction['probabilities']
+        else:
+            # sklearn model
+            pred = model.predict(feature_array.reshape(1, -1))[0]
+            probas = model.predict_proba(feature_array.reshape(1, -1))[0]
+
+            class_names = ['gartley', 'butterfly', 'bat', 'crab']
+            predicted_class = class_names[pred]
+            confidence = float(np.max(probas))
+            probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
 
         inference_time = (time.time() - start_time) * 1000
 
@@ -302,6 +314,8 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
         start_time = time.time()
 
         # Load model
+        model, version = load_ml_model()
+
         predictions = []
         confidences = []
 
@@ -310,12 +324,44 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
 
             # Prepare features
             feature_dict = features.dict()
-            feature_array = _build_feature_array(feature_dict)
+            feature_array = np.array([
+                feature_dict['xab_ratio_accuracy'],
+                feature_dict['abc_ratio_accuracy'],
+                feature_dict['bcd_ratio_accuracy'],
+                feature_dict['xad_ratio_accuracy'],
+                feature_dict['pattern_symmetry'],
+                feature_dict['pattern_slope'],
+                feature_dict['xa_angle'],
+                feature_dict['ab_angle'],
+                feature_dict['bc_angle'],
+                feature_dict['cd_angle'],
+                feature_dict['pattern_duration'],
+                feature_dict['xa_magnitude'],
+                feature_dict['ab_magnitude'],
+                feature_dict['bc_magnitude'],
+                feature_dict['cd_magnitude'],
+                feature_dict['volume_at_d'],
+                feature_dict['volume_trend'],
+                feature_dict['volume_confirmation'],
+                feature_dict['rsi_at_d'],
+                feature_dict['macd_at_d'],
+                feature_dict['momentum_divergence']
+            ])
 
-            prediction, version = await _infer_pattern(feature_array)
-            predicted_class = prediction["predicted_pattern"]
-            confidence = prediction["confidence"]
-            probabilities = prediction["probabilities"]
+            # Make prediction
+            if hasattr(model, 'predict_single'):
+                prediction = model.predict_single(feature_array)
+                predicted_class = prediction['pattern_type']
+                confidence = prediction['confidence']
+                probabilities = prediction['probabilities']
+            else:
+                pred = model.predict(feature_array.reshape(1, -1))[0]
+                probas = model.predict_proba(feature_array.reshape(1, -1))[0]
+
+                class_names = ['gartley', 'butterfly', 'bat', 'crab']
+                predicted_class = class_names[pred]
+                confidence = float(np.max(probas))
+                probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
 
             feature_inference_time = (time.time() - feature_start) * 1000
 
@@ -376,7 +422,7 @@ async def get_model_info() -> ModelInfoResponse:
     - Hyperparameters
     """
     try:
-        model, version = classifier_registry.get_classifier()
+        model, version = load_ml_model()
 
         # Get model type
         model_type = type(model).__name__
@@ -428,7 +474,7 @@ async def get_model_info() -> ModelInfoResponse:
 async def ml_service_health():
     """Check ML service health"""
     try:
-        model, version = classifier_registry.get_classifier()
+        model, version = load_ml_model()
 
         return {
             "status": "healthy",
