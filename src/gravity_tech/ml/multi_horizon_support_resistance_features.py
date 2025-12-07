@@ -18,7 +18,7 @@ Multi-Horizon Support/Resistance Feature Extraction
 from dataclasses import dataclass
 
 import numpy as np
-from gravity_tech.indicators.support_resistance import SupportResistanceIndicators
+from gravity_tech.core.indicators.support_resistance import SupportResistanceIndicators
 from gravity_tech.models.schemas import Candle
 
 
