@@ -9,8 +9,8 @@ Multi-Horizon Feature Extraction for Momentum
 
 
 import pandas as pd
-from gravity_tech.indicators.momentum import MomentumIndicators
-from gravity_tech.indicators.volume import VolumeIndicators
+from gravity_tech.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.indicators.volume import VolumeIndicators
 from gravity_tech.models.schemas import Candle
 from gravity_tech.patterns.divergence import DivergenceDetector
 
