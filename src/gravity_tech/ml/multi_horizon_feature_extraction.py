@@ -10,7 +10,7 @@ Multi-Horizon Feature Extraction for ML Weight Learning
 
 import pandas as pd
 from gravity_tech.core.domain.entities import Candle
-from gravity_tech.indicators.trend import TrendIndicators
+from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.classical import ClassicalPatterns
 from gravity_tech.patterns.elliott_wave import ElliottWaveAnalyzer
