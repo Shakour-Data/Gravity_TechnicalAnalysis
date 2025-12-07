@@ -13,10 +13,15 @@ from datetime import datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from gravity_tech.core.contracts.analysis import AnalysisRequest, TechnicalAnalysisResult
-from gravity_tech.core.domain.entities import Candle, IndicatorResult
-from gravity_tech.database.tse_data_source import tse_data_source
+from gravity_tech.models.schemas import (
+    AnalysisRequest,
+    Candle,
+    IndicatorResult,
+    TechnicalAnalysisResult,
+)
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
+
+from src.database import tse_data_source
 
 logger = structlog.get_logger()
 
@@ -37,11 +42,6 @@ async def analyze_historical(
     """
     Analyze historical data from local database
     """
-    if not tse_data_source:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="TSE data source is not configured"
-        )
     # Calculate start date
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
