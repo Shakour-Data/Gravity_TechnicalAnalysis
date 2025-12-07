@@ -6,10 +6,13 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 import numpy as np
 
+# Use A4 landscape size (requirement: dashboards must match A4 dimensions)
+A4_FIGSIZE = (11.69, 8.27)
+
 # Set font to support Persian
 plt.rcParams['font.family'] = 'Arial'
 
-fig, ax = plt.subplots(figsize=(14, 10))
+fig, ax = plt.subplots(figsize=A4_FIGSIZE)
 ax.set_xlim(0, 10)
 ax.set_ylim(0, 10)
 ax.axis('off')
@@ -156,7 +159,7 @@ print("✅ Trend analysis flow diagram saved as 'trend_analysis_flow.png'")
 plt.close()
 
 # Create a second diagram showing indicator signals
-fig, ax = plt.subplots(figsize=(12, 8))
+fig, ax = plt.subplots(figsize=A4_FIGSIZE)
 ax.set_xlim(0, 10)
 ax.set_ylim(0, 10)
 ax.axis('off')

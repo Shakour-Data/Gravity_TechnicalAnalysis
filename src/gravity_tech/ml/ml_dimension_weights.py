@@ -21,6 +21,9 @@ import joblib
 import numpy as np
 import pandas as pd
 
+# Matplotlib dashboards must match A4 paper dimensions (landscape)
+A4_FIGSIZE = (11.69, 8.27)
+
 try:
     import lightgbm as lgb
     LIGHTGBM_AVAILABLE = True
@@ -463,7 +466,7 @@ class DimensionWeightLearner:
         features, importances = zip(*sorted_features, strict=True)
 
         # Plot
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=A4_FIGSIZE)
         plt.barh(range(len(features)), importances, color='steelblue')
         plt.yticks(range(len(features)), features)
         plt.xlabel('Feature Importance')
@@ -492,7 +495,7 @@ class DimensionWeightLearner:
         x = np.arange(len(dimensions))
         width = 0.35
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=A4_FIGSIZE)
         ax.bar(x - width/2, ml_weights, width, label='ML Learned Weights', color='steelblue')
         ax.bar(x + width/2, proposed_weights, width, label='Proposed Weights (40-30-20-10)', color='coral')
 

@@ -30,6 +30,9 @@ except ImportError:
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Matplotlib dashboards must adhere to A4 (landscape) dimensions
+A4_FIGSIZE = (11.69, 8.27)
+
 
 class PatternModelInterpreter:
     """
@@ -126,7 +129,7 @@ class PatternModelInterpreter:
 
         print("\n📈 Creating SHAP Summary Plot...")
 
-        plt.figure(figsize=(12, 8))
+        plt.figure(figsize=A4_FIGSIZE)
 
         # For multi-class, use class 0 (or combine)
         if isinstance(self.shap_values, list):
@@ -167,7 +170,7 @@ class PatternModelInterpreter:
 
         print("\n📊 Creating Feature Importance Plot...")
 
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=A4_FIGSIZE)
 
         # For multi-class, average across classes
         if isinstance(self.shap_values, list):
@@ -231,7 +234,7 @@ class PatternModelInterpreter:
             shap_vals = shap_values_single[0]
 
         # Create waterfall plot
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=A4_FIGSIZE)
 
         # Sort by absolute value
         indices = np.argsort(np.abs(shap_vals))[::-1][:15]
@@ -326,7 +329,7 @@ class PatternModelInterpreter:
         print("\n🔗 Analyzing Feature Interaction...")
         print(f"   {self.feature_names[feature_idx1]} × {self.feature_names[feature_idx2]}")
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=A4_FIGSIZE)
 
         # For multi-class, use first class
         if isinstance(self.shap_values, list):

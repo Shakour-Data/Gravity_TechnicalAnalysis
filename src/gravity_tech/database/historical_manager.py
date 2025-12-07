@@ -17,12 +17,15 @@ License: MIT
 
 import json
 from collections.abc import Sequence
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
-import psycopg2
+from psycopg2 import pool as psycopg_pool
 from psycopg2.extras import RealDictCursor, execute_values
+
+from gravity_tech.config.settings import settings
 
 
 @dataclass
@@ -69,31 +72,48 @@ class HistoricalScoreManager:
     مدیریت ذخیره و بازیابی امتیازهای تاریخی
     """
 
-    def __init__(self, connection_string: str):
+    def __init__(
+        self,
+        connection_string: str | None = None,
+        min_connections: int = 1,
+        max_connections: int | None = None,
+    ):
         """
         Args:
             connection_string: مثل "postgresql://user:pass@localhost:5432/dbname"
         """
-        self.connection_string = connection_string
-        self._connection = None
-
-    def connect(self):
-        """اتصال به دیتابیس"""
-        if self._connection is None or self._connection.closed:
-            self._connection = psycopg2.connect(self.connection_string)
-        return self._connection
+        self.connection_string = connection_string or settings.database_url
+        max_conn = max_connections or settings.database_pool_size
+        self._pool = psycopg_pool.SimpleConnectionPool(
+            min_connections,
+            max_conn,
+            dsn=self.connection_string,
+        )
 
     def close(self):
         """بستن اتصال"""
-        if self._connection and not self._connection.closed:
-            self._connection.close()
+        if self._pool:
+            self._pool.closeall()
 
     def __enter__(self):
-        self.connect()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    @contextmanager
+    def _cursor(self):
+        conn = self._pool.getconn()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            yield cursor, conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            self._pool.putconn(conn)
 
     # ═══════════════════════════════════════════════════════════════════
     # ذخیره امتیازها (Save)
@@ -122,10 +142,7 @@ class HistoricalScoreManager:
         Returns:
             score_id: شناسه رکورد ذخیره شده
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, conn):
             # 1. ذخیره امتیاز اصلی
             cursor.execute("""
                 INSERT INTO historical_scores (
@@ -185,15 +202,7 @@ class HistoricalScoreManager:
 
             # 7. به‌روزرسانی metadata
             self._update_metadata(cursor, score_entry.symbol, score_entry.timeframe, score_id)
-
-            conn.commit()
             return score_id
-
-        except Exception as e:
-            conn.rollback()
-            raise Exception(f"Error saving score: {str(e)}") from e
-        finally:
-            cursor.close()
 
     def _save_horizon_scores(self, cursor, score_id: int, horizon_scores: list[dict]):
         """ذخیره امتیازهای multi-horizon"""
@@ -343,19 +352,19 @@ class HistoricalScoreManager:
         Returns:
             دیکشنری شامل تمام اطلاعات یا None
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
-            cursor.execute("""
-                SELECT * FROM v_latest_scores
+        with self._cursor() as (cursor, _):
+            cursor.execute(
+                """
+                SELECT *
+                FROM historical_scores
                 WHERE symbol = %s AND timeframe = %s
-            """, (symbol, timeframe))
-
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (symbol, timeframe),
+            )
             row = cursor.fetchone()
             return row if row else None
-        finally:
-            cursor.close()
 
     def get_score_at_date(
         self,
@@ -366,18 +375,32 @@ class HistoricalScoreManager:
         """
         دریافت امتیاز در یک تاریخ خاص (آخرین تحلیل قبل از آن تاریخ)
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with self._cursor() as (cursor, _):
+            cursor.execute(
+                """
+                SELECT *
+                FROM historical_scores
+                WHERE symbol = %s AND timeframe = %s AND timestamp <= %s
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (symbol, timeframe, date),
+            )
+            row = cursor.fetchone()
+            if row:
+                return row
 
-        try:
-            cursor.execute("""
-                SELECT score_data FROM get_score_at_date(%s, %s, %s)
-            """, (symbol, timeframe, date))
-
-            result = cursor.fetchone()
-            return result['score_data'] if result else None
-        finally:
-            cursor.close()
+            cursor.execute(
+                """
+                SELECT *
+                FROM historical_scores
+                WHERE symbol = %s AND timeframe = %s AND timestamp >= %s
+                ORDER BY timestamp ASC
+                LIMIT 1
+                """,
+                (symbol, timeframe, date),
+            )
+            return cursor.fetchone()
 
     def get_score_timeseries(
         self,
@@ -392,27 +415,26 @@ class HistoricalScoreManager:
         Returns:
             لیست دیکشنری‌ها با timestamp, trend_score, momentum_score, ...
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
-            cursor.execute("""
-                SELECT * FROM get_score_timeseries(%s, %s, %s, %s)
-            """, (symbol, timeframe, from_date, to_date))
-
+        with self._cursor() as (cursor, _):
+            cursor.execute(
+                """
+                SELECT *
+                FROM historical_scores
+                WHERE symbol = %s
+                  AND timeframe = %s
+                  AND timestamp BETWEEN %s AND %s
+                ORDER BY timestamp ASC
+                """,
+                (symbol, timeframe, from_date, to_date),
+            )
             return cursor.fetchall()
-        finally:
-            cursor.close()
 
     def get_score_with_details(self, score_id: int) -> dict | None:
         """
         دریافت کامل یک تحلیل با تمام جزئیات
         (horizons, indicators, patterns, volume)
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, _):
             # امتیاز اصلی
             cursor.execute("SELECT * FROM historical_scores WHERE id = %s", (score_id,))
             score = cursor.fetchone()
@@ -452,9 +474,6 @@ class HistoricalScoreManager:
 
             return score
 
-        finally:
-            cursor.close()
-
     # ═══════════════════════════════════════════════════════════════════
     # آمار و تحلیل (Statistics)
     # ═══════════════════════════════════════════════════════════════════
@@ -467,11 +486,9 @@ class HistoricalScoreManager:
         """
         عملکرد اندیکاتورها در X روز گذشته
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
-            cursor.execute("""
+        with self._cursor() as (cursor, _):
+            cursor.execute(
+                """
                 SELECT
                     indicator_name,
                     indicator_category,
@@ -483,15 +500,14 @@ class HistoricalScoreManager:
                 WHERE score_id IN (
                     SELECT id FROM historical_scores
                     WHERE symbol = %s
-                    AND timestamp > NOW() - INTERVAL '%s days'
+                      AND timestamp > NOW() - INTERVAL '%s days'
                 )
                 GROUP BY indicator_name, indicator_category
                 ORDER BY avg_confidence DESC
-            """, (symbol, days))
-
+                """,
+                (symbol, days),
+            )
             return cursor.fetchall()
-        finally:
-            cursor.close()
 
     def get_pattern_success_rate(
         self,
@@ -501,10 +517,7 @@ class HistoricalScoreManager:
         """
         نرخ موفقیت الگوها
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, _):
             where_clause = "WHERE hp.detected_at > NOW() - INTERVAL '%s days'"
             params: list[Any] = [days]
 
@@ -512,7 +525,8 @@ class HistoricalScoreManager:
                 where_clause += " AND hp.pattern_name = %s"
                 params.append(pattern_name)
 
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 SELECT
                     hp.pattern_name,
                     hp.pattern_type,
@@ -525,12 +539,12 @@ class HistoricalScoreManager:
                 {where_clause}
                 GROUP BY hp.pattern_name, hp.pattern_type
                 ORDER BY success_rate DESC NULLS LAST
-            """, params)
+                """,
+                params,
+            )
 
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
-        finally:
-            cursor.close()
 
     # ═══════════════════════════════════════════════════════════════════
     # Cleanup
@@ -543,17 +557,72 @@ class HistoricalScoreManager:
         Returns:
             تعداد رکوردهای حذف شده
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
-        try:
-            cursor.execute("SELECT cleanup_old_scores(%s)", (days_to_keep,))
-            row = cursor.fetchone()
-            deleted_count = row['cleanup_old_scores'] if row else 0
-            conn.commit()
+        with self._cursor() as (cursor, _):
+            cursor.execute(
+                """
+                WITH old_scores AS (
+                    SELECT id
+                    FROM historical_scores
+                    WHERE timestamp < %s
+                ),
+                deleted_horizons AS (
+                    DELETE FROM historical_horizon_scores
+                    WHERE score_id IN (SELECT id FROM old_scores)
+                    RETURNING 1
+                ),
+                deleted_indicators AS (
+                    DELETE FROM historical_indicator_scores
+                    WHERE score_id IN (SELECT id FROM old_scores)
+                    RETURNING 1
+                ),
+                deleted_patterns AS (
+                    DELETE FROM historical_patterns
+                    WHERE score_id IN (SELECT id FROM old_scores)
+                    RETURNING 1
+                ),
+                deleted_volume AS (
+                    DELETE FROM historical_volume_analysis
+                    WHERE score_id IN (SELECT id FROM old_scores)
+                    RETURNING 1
+                ),
+                deleted_targets AS (
+                    DELETE FROM historical_price_targets
+                    WHERE score_id IN (SELECT id FROM old_scores)
+                    RETURNING 1
+                ),
+                deleted_scores AS (
+                    DELETE FROM historical_scores
+                    WHERE id IN (SELECT id FROM old_scores)
+                    RETURNING id
+                )
+                SELECT COUNT(*) AS deleted_count
+                FROM deleted_scores
+                """,
+                (cutoff_date,),
+            )
+
+            row = cursor.fetchone() or {}
+            deleted_count = int(row.get('deleted_count', 0) or 0)
+
+            if deleted_count:
+                cursor.execute(
+                    """
+                    UPDATE analysis_metadata
+                    SET last_score_id = NULL,
+                        last_analysis_at = NULL,
+                        updated_at = NOW()
+                    WHERE last_score_id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM historical_scores hs
+                          WHERE hs.id = analysis_metadata.last_score_id
+                      )
+                    """
+                )
+
             return deleted_count
-        finally:
-            cursor.close()
 
     def get_scores_by_symbol_timeframe(
         self,
@@ -566,10 +635,7 @@ class HistoricalScoreManager:
         """
         دریافت امتیازهای یک نماد و تایم‌فریم در بازه زمانی مشخص
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, _):
             cursor.execute("""
                 SELECT * FROM historical_scores
                 WHERE symbol = %s AND timeframe = %s
@@ -579,62 +645,54 @@ class HistoricalScoreManager:
             """, (symbol, timeframe, start_date, end_date, limit))
 
             rows = cursor.fetchall()
-            results: list[HistoricalScoreEntry] = []
 
-            for row in rows:
-                entry = HistoricalScoreEntry(
-                    symbol=row['symbol'],
-                    timestamp=row['timestamp'],
-                    timeframe=row['timeframe'],
-                    trend_score=row['trend_score'],
-                    trend_confidence=row['trend_confidence'],
-                    momentum_score=row['momentum_score'],
-                    momentum_confidence=row['momentum_confidence'],
-                    combined_score=row['combined_score'],
-                    combined_confidence=row['combined_confidence'],
-                    trend_weight=row['trend_weight'],
-                    momentum_weight=row['momentum_weight'],
-                    trend_signal=row['trend_signal'],
-                    momentum_signal=row['momentum_signal'],
-                    combined_signal=row['combined_signal'],
-                    recommendation=row['recommendation'],
-                    action=row['action'],
-                    price_at_analysis=row['price_at_analysis'],
-                    id=int(row['id']) if row['id'] is not None else None,
-                    created_at=row['created_at']
-                )
-                results.append(entry)
+        results: list[HistoricalScoreEntry] = []
 
-            return results
-        finally:
-            cursor.close()
+        for row in rows:
+            entry = HistoricalScoreEntry(
+                symbol=row['symbol'],
+                timestamp=row['timestamp'],
+                timeframe=row['timeframe'],
+                trend_score=row['trend_score'],
+                trend_confidence=row['trend_confidence'],
+                momentum_score=row['momentum_score'],
+                momentum_confidence=row['momentum_confidence'],
+                combined_score=row['combined_score'],
+                combined_confidence=row['combined_confidence'],
+                trend_weight=row['trend_weight'],
+                momentum_weight=row['momentum_weight'],
+                trend_signal=row['trend_signal'],
+                momentum_signal=row['momentum_signal'],
+                combined_signal=row['combined_signal'],
+                recommendation=row['recommendation'],
+                action=row['action'],
+                price_at_analysis=row['price_at_analysis'],
+                id=int(row['id']) if row['id'] is not None else None,
+                created_at=row['created_at']
+            )
+            results.append(entry)
+
+        return results
 
     def get_available_symbols(self) -> list[str]:
         """
         دریافت لیست نمادهای موجود در دیتابیس
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, _):
             cursor.execute("""
                 SELECT DISTINCT symbol FROM historical_scores
                 ORDER BY symbol
             """)
 
             rows = cursor.fetchall()
-            return [row['symbol'] for row in rows]
-        finally:
-            cursor.close()
+
+        return [row['symbol'] for row in rows]
 
     def get_available_timeframes(self, symbol: str | None = None) -> list[str]:
         """
         دریافت لیست تایم‌فریم‌های موجود
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, _):
             if symbol:
                 cursor.execute("""
                     SELECT DISTINCT timeframe FROM historical_scores
@@ -648,18 +706,14 @@ class HistoricalScoreManager:
                 """)
 
             rows = cursor.fetchall()
-            return [row['timeframe'] for row in rows]
-        finally:
-            cursor.close()
+
+        return [row['timeframe'] for row in rows]
 
     def get_symbol_statistics(self, symbol: str, timeframe: str | None = None) -> dict:
         """
         دریافت آمار یک نماد
         """
-        conn = self.connect()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        try:
+        with self._cursor() as (cursor, _):
             if timeframe:
                 cursor.execute("""
                     SELECT
@@ -686,12 +740,10 @@ class HistoricalScoreManager:
                 """, (symbol,))
 
             row = cursor.fetchone()
-            if row is not None:
-                return dict(row)
-            else:
-                return {}
-        finally:
-            cursor.close()
+
+        if row is not None:
+            return dict(row)
+        return {}
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -56,6 +56,10 @@ from gravity_tech.middleware.service_discovery import (
     startup_service_discovery,
 )
 from gravity_tech.services.cache_service import cache_manager
+from gravity_tech.services.data_ingestor_service import (
+    start_data_ingestor,
+    stop_data_ingestor,
+)
 from prometheus_client import make_asgi_app
 
 # Setup structured logging
@@ -212,6 +216,9 @@ async def startup_event():
     except Exception as e:
         logger.warning("event_publisher_initialization_failed", error=str(e))
 
+    if settings.enable_data_ingestion:
+        await start_data_ingestor()
+
     logger.info("application_ready")
 
 
@@ -224,6 +231,9 @@ async def shutdown_event():
     # بستن اتصالات
     await cache_manager.close()
     await event_publisher.close()
+
+    if settings.enable_data_ingestion:
+        await stop_data_ingestor()
 
     # حذف از Service Discovery
     if settings.eureka_enabled:

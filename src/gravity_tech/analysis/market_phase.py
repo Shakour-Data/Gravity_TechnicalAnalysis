@@ -25,9 +25,9 @@ from datetime import UTC, datetime
 from enum import Enum
 
 import numpy as np
-from gravity_tech.indicators.momentum import MomentumIndicators
-from gravity_tech.indicators.trend import TrendIndicators
-from gravity_tech.indicators.volume import VolumeIndicators
+from gravity_tech.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.indicators.trend import TrendIndicators
+from gravity_tech.core.indicators.volume import VolumeIndicators
 from gravity_tech.models.schemas import Candle
 
 

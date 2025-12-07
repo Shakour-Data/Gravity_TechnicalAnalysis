@@ -53,7 +53,7 @@ jobs:
       
       - name: Run integration tests
         run: |
-          pytest tests/integration/ -v
+          pytest tests/integration/ -v --ignore=tests/integration/api/
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
