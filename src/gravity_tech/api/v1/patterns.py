@@ -30,7 +30,6 @@ Provides RESTful endpoints for:
 - Real-time pattern monitoring
 """
 
-import asyncio
 from datetime import datetime
 
 import numpy as np
@@ -38,12 +37,9 @@ import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from gravity_tech.ml.model_registry import PatternClassifierRegistry, run_classifier
-
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["Pattern Recognition"], prefix="/patterns")
-classifier_registry = PatternClassifierRegistry()
 
 
 # ============================================================================
@@ -183,30 +179,49 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
         # Apply ML scoring if enabled
         if request.use_ml:
             try:
-                classifier, model_version = classifier_registry.get_classifier()
-                extractor = PatternFeatureExtractor()
-                filtered_patterns = []
-                loop = asyncio.get_running_loop()
+                import pickle
+                from pathlib import Path
 
-                for pattern in detected_patterns:
-                    features = extractor.extract_features(pattern, highs, lows, closes, volumes)
-                    feature_array = extractor.features_to_array(features)
-                    inference = await loop.run_in_executor(
-                        None, lambda: run_classifier(classifier, feature_array)
-                    )
-                    confidence = inference["confidence"]
 
-                    if confidence >= request.min_confidence:
-                        pattern.confidence = confidence
-                        filtered_patterns.append(pattern)
+                # Load ML model
+                model_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
+                if not model_path.exists():
+                    model_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
 
-                logger.info(
-                    "ml_scoring_applied",
-                    total_detected=len(detected_patterns),
-                    kept=len(filtered_patterns),
-                    model_version=model_version,
-                )
-                detected_patterns = filtered_patterns
+                if model_path.exists():
+                    with open(model_path, 'rb') as f:
+                        classifier = pickle.load(f)
+
+                    extractor = PatternFeatureExtractor()
+                    filtered_patterns = []
+
+                    for pattern in detected_patterns:
+                        # Extract features
+                        features = extractor.extract_features(
+                            pattern, highs, lows, closes, volumes
+                        )
+                        feature_array = extractor.features_to_array(features)
+
+                        # Get ML prediction
+                        if hasattr(classifier, 'predict_single'):
+                            prediction = classifier.predict_single(feature_array)
+                            confidence = prediction['confidence']
+                        else:
+                            # sklearn model
+                            probas = classifier.predict_proba(feature_array.reshape(1, -1))[0]
+                            confidence = float(np.max(probas))
+
+                        # Filter by confidence
+                        if confidence >= request.min_confidence:
+                            pattern.confidence = confidence
+                            filtered_patterns.append(pattern)
+
+                    detected_patterns = filtered_patterns
+                    logger.info("ml_scoring_applied",
+                               patterns_before=len(detected_patterns),
+                               patterns_after=len(filtered_patterns))
+                else:
+                    logger.warning("ml_model_not_found", path=str(model_path))
 
             except Exception as e:
                 logger.warning("ml_scoring_failed", error=str(e))
