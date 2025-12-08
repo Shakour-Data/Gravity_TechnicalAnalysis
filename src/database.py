@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -263,7 +263,7 @@ class TSEDatabaseConnector:
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        data = [(k, v) for k, v in updates.items()]
+        data = list(updates.items())
 
         cursor.executemany("""
             INSERT OR REPLACE INTO last_updates (symbol, last_date)
@@ -273,7 +273,7 @@ class TSEDatabaseConnector:
         conn.commit()
         conn.close()
 
-    def fetch_price_data(self, ticker: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> list[dict[str, Any]]:
+    def fetch_price_data(self, ticker: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
         """
         Fetches price data for a given ticker.
         Returns a list of dictionaries compatible with Candle schema.
@@ -320,7 +320,7 @@ class TSEDatabaseConnector:
 
         return candles
 
-    def fetch_market_index(self, index_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> list[dict[str, Any]]:
+    def fetch_market_index(self, index_code: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
         """
         Fetches market index data (e.g., CWI).
         """
