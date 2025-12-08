@@ -13,6 +13,7 @@ License: MIT
 from dataclasses import dataclass
 from typing import Any
 
+from .fibonacci_level import FibonacciLevel
 from .signal_strength import SignalStrength
 
 
@@ -22,15 +23,13 @@ class FibonacciResult:
     Immutable entity representing complete Fibonacci analysis results.
 
     Attributes:
-        retracement_levels: Dictionary of retracement levels {ratio: price}
-        extension_levels: Dictionary of extension levels {ratio: price}
+        levels: List of all Fibonacci levels
         confluence_zones: List of confluence zone dictionaries
         signal: Trading signal based on Fibonacci analysis
         confidence: Confidence level (0.0 to 1.0)
         description: Human-readable analysis description
     """
-    retracement_levels: dict[str, float]
-    extension_levels: dict[str, float]
+    levels: list[FibonacciLevel]
     confluence_zones: list[dict[str, Any]]
     signal: SignalStrength
     confidence: float
@@ -41,17 +40,26 @@ class FibonacciResult:
         if not (0.0 <= self.confidence <= 1.0):
             raise ValueError(f"Confidence must be between 0.0 and 1.0, got {self.confidence}")
 
-        # Validate retracement levels contain valid ratios
-        valid_ratios = ['0.236', '0.382', '0.5', '0.618', '0.786']
-        for ratio in self.retracement_levels.keys():
-            if ratio not in valid_ratios:
-                raise ValueError(f"Invalid retracement ratio: {ratio}")
+        # Validate levels contain valid ratios
+        valid_retracement_ratios = ['0.236', '0.382', '0.5', '0.618', '0.786']
+        valid_extension_ratios = ['1.0', '1.236', '1.382', '1.5', '1.618', '1.786', '2.0', '2.236', '2.618', '4.236']
+        for level in self.levels:
+            if level.level_type == 'RETRACEMENT':
+                if str(level.ratio) not in valid_retracement_ratios:
+                    raise ValueError(f"Invalid retracement ratio: {level.ratio}")
+            elif level.level_type == 'EXTENSION':
+                if str(level.ratio) not in valid_extension_ratios:
+                    raise ValueError(f"Invalid extension ratio: {level.ratio}")
 
-        # Validate extension levels contain valid ratios
-        valid_extensions = ['0.618', '1.0', '1.272', '1.382', '1.618', '2.0', '2.618']
-        for ratio in self.extension_levels.keys():
-            if ratio not in valid_extensions:
-                raise ValueError(f"Invalid extension ratio: {ratio}")
+    @property
+    def retracement_levels(self) -> dict[str, float]:
+        """Dictionary of retracement levels {ratio: price}"""
+        return {str(level.ratio): float(level.price) for level in self.levels if level.level_type == 'RETRACEMENT'}
+
+    @property
+    def extension_levels(self) -> dict[str, float]:
+        """Dictionary of extension levels {ratio: price}"""
+        return {str(level.ratio): float(level.price) for level in self.levels if level.level_type == 'EXTENSION'}
 
     def get_nearest_level(self, current_price: float) -> dict[str, Any] | None:
         """
@@ -63,7 +71,7 @@ class FibonacciResult:
         Returns:
             Dictionary with level info or None if no levels found
         """
-        all_levels = {**self.retracement_levels, **self.extension_levels}
+        all_levels = {str(level.ratio): float(level.price) for level in self.levels}
 
         if not all_levels:
             return None
@@ -88,11 +96,7 @@ class FibonacciResult:
         Returns:
             List of confluence zones
         """
-        all_levels = []
-        for ratio, price in self.retracement_levels.items():
-            all_levels.append({'ratio': ratio, 'price': price, 'type': 'retracement'})
-        for ratio, price in self.extension_levels.items():
-            all_levels.append({'ratio': ratio, 'price': price, 'type': 'extension'})
+        all_levels = [{'ratio': str(level.ratio), 'price': float(level.price), 'type': level.level_type.lower()} for level in self.levels]
 
         # Sort by price
         all_levels.sort(key=lambda x: x['price'])
