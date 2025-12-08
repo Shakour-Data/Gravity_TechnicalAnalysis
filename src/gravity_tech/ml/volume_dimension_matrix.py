@@ -17,14 +17,12 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
-from gravity_tech.models.schemas import (
-    Candle,
-    CycleScore,
-    MomentumScore,
-    SupportResistanceScore,
-    TrendScore,
-    VolatilityScore,
-)
+from gravity_tech.core.domain.entities import Candle
+from gravity_tech.ml.multi_horizon_analysis import TrendScore
+from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
+from gravity_tech.ml.multi_horizon_momentum_analysis import MomentumScore
+from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
+from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
 
 
 class InteractionType(Enum):
