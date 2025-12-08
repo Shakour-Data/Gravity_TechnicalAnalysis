@@ -57,6 +57,11 @@ class VolatilityScore:
         else:
             return "STABLE"  # پایدار
 
+    @property
+    def accuracy(self) -> float:
+        """سازگاری با ماژول‌های قدیمی"""
+        return self.confidence
+
 
 @dataclass
 class MultiHorizonVolatilityAnalysis:
