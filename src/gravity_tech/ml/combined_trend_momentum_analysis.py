@@ -204,7 +204,7 @@ class CombinedTrendMomentumAnalyzer:
         confidence: float
     ) -> ActionRecommendation:
         """تبدیل امتیاز به توصیه"""
-        if confidence < 0.3:
+        if confidence < 0.2:
             return ActionRecommendation.HOLD
 
         if score > 0.7:
@@ -232,7 +232,7 @@ class CombinedTrendMomentumAnalyzer:
 
         total_conf = sum(confs)
         if total_conf > 0:
-            weighted_score = sum(s * c for s, c in zip(scores, confs)) / total_conf
+            weighted_score = sum(s * c for s, c in zip(scores, confs, strict=True)) / total_conf
             avg_conf = total_conf / len(confs)
         else:
             weighted_score = 0.0
