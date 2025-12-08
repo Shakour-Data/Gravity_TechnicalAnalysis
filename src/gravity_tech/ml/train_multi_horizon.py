@@ -184,6 +184,8 @@ def train_multi_horizon_system(
 
     weights_file_l1 = output_path / f"indicator_weights_{symbol.lower()}.json"
     learner_indicators.save_weights(str(weights_file_l1))
+    model_file_l1 = weights_file_l1.with_suffix('.pkl')
+    learner_indicators.save_model_state(str(model_file_l1))
 
     # ═══════════════════════════════════════════════════════════
     # Step 4: استخراج ویژگی‌ها - سطح 2 (Dimensions)
@@ -215,6 +217,8 @@ def train_multi_horizon_system(
     # ذخیره وزن‌های سطح 2
     weights_file_l2 = output_path / f"dimension_weights_{symbol.lower()}.json"
     learner_dimensions.save_weights(str(weights_file_l2))
+    model_file_l2 = weights_file_l2.with_suffix('.pkl')
+    learner_dimensions.save_model_state(str(model_file_l2))
 
     # ═══════════════════════════════════════════════════════════
     # Step 6: گزارش نهایی
@@ -265,12 +269,14 @@ def train_multi_horizon_system(
         'level1': {
             'n_features': X_indicators.shape[1],
             'feature_names': list(X_indicators.columns),
-            'weights_file': str(weights_file_l1)
+            'weights_file': str(weights_file_l1),
+            'model_file': str(model_file_l1),
         },
         'level2': {
             'n_features': X_dimensions.shape[1],
             'feature_names': list(X_dimensions.columns),
-            'weights_file': str(weights_file_l2)
+            'weights_file': str(weights_file_l2),
+            'model_file': str(model_file_l2),
         },
         'statistics': {
             'level1': stats_indicators,
