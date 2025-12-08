@@ -176,6 +176,8 @@ def train_volatility_model(
     os.makedirs(output_dir, exist_ok=True)
     model_path = os.path.join(output_dir, 'volatility_weights.json')
     learner.save_weights(model_path)
+    model_state = os.path.join(output_dir, 'volatility_weights.pkl')
+    learner.save_model_state(model_state)
 
     if verbose:
         print(f"\n💾 Model saved: {model_path}")
