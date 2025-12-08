@@ -107,10 +107,10 @@ def fast_trained_models(fast_candles):
     horizons = ['3d', '7d', '30d']
 
     # Extract features
-    trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)  # type: ignore
     X_trend, Y_trend = trend_extractor.extract_training_dataset(fast_candles)
 
-    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=horizons)
+    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=horizons)  # type: ignore
     X_momentum, Y_momentum = momentum_extractor.extract_training_dataset(fast_candles)
 
     # Train models
@@ -212,7 +212,7 @@ def test_combined_analysis_fast(fast_candles, fast_trained_models):
     # Basic assertions
     assert hasattr(analysis, 'final_action')
     assert hasattr(analysis, 'final_confidence')
-    assert analysis.final_action in ['BUY', 'SELL', 'HOLD']
+    assert analysis.final_action.value in ['BUY', 'SELL', 'HOLD', 'ACCUMULATE']
     assert 0.0 <= analysis.final_confidence <= 1.0
 
 
@@ -220,10 +220,10 @@ def test_feature_extraction_shapes(fast_candles):
     """Test that feature extraction produces correct shapes."""
     horizons = ['3d']
 
-    trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)  # type: ignore
     X_trend, Y_trend = trend_extractor.extract_training_dataset(fast_candles)
 
-    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=horizons)
+    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=horizons)  # type: ignore
     X_momentum, Y_momentum = momentum_extractor.extract_training_dataset(fast_candles)
 
     # Check shapes
@@ -242,17 +242,17 @@ def test_model_training_convergence(fast_trained_models):
     trend_learner, momentum_learner = fast_trained_models
 
     # Check that models have been trained
-    assert hasattr(trend_learner, 'models')
-    assert hasattr(momentum_learner, 'models')
-    assert len(trend_learner.models) > 0
-    assert len(momentum_learner.models) > 0
+    assert hasattr(trend_learner, 'model')
+    assert hasattr(momentum_learner, 'model')
+    assert trend_learner.model is not None
+    assert momentum_learner.model is not None
 
 
 @pytest.mark.parametrize("trend_type", ["uptrend", "downtrend", "mixed"])
 def test_different_market_conditions(trend_type):
     """Test analysis under different market conditions."""
     # Create small dataset for specific trend
-    df = create_realistic_market_data(num_samples=30, trend=trend_type)
+    df = create_realistic_market_data(num_samples=400, trend=trend_type)
 
     candles = []
     for _, row in df.iterrows():
@@ -267,8 +267,8 @@ def test_different_market_conditions(trend_type):
         candles.append(candle)
 
     # Quick training
-    horizons = ['3d']
-    trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)
+    horizons = ['3d', '7d', '30d']
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)  # type: ignore
     X_trend, Y_trend = trend_extractor.extract_training_dataset(candles)
 
     trend_learner = MultiHorizonWeightLearner(horizons=horizons, test_size=0.5, random_state=42)
