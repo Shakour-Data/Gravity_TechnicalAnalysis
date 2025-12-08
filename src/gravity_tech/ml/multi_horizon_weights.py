@@ -8,6 +8,9 @@ Multi-Horizon Weight Learning with Multi-Output Regression
 """
 
 import json
+import logging
+import pickle
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
@@ -17,6 +20,8 @@ from lightgbm import LGBMRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.multioutput import MultiOutputRegressor
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -280,17 +285,45 @@ class MultiHorizonWeightLearner:
         Returns:
             DataFrame با ستون‌های [pred_3d, pred_7d, pred_30d]
         """
-        if self.model is None:
-            raise ValueError("Model not trained yet!")
+        if self.model is not None:
+            predictions = self.model.predict(X)
+            return pd.DataFrame(
+                predictions,
+                columns=[f'pred_{h}' for h in self.horizons]
+            )
 
-        predictions = self.model.predict(X)
-
-        pred_df = pd.DataFrame(
-            predictions,
-            columns=[f'pred_{h}' for h in self.horizons]
+        logger.warning(
+            "multi_horizon.predict_without_model",
+            extra={"horizons": self.horizons}
         )
+        return self._predict_with_weights(X)
 
-        return pred_df
+    def _predict_with_weights(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Lightweight fallback that approximates predictions using stored feature weights.
+        """
+        rows: list[dict[str, float]] = []
+        for _, row in X.iterrows():
+            horizon_preds: dict[str, float] = {}
+            for horizon in self.horizons:
+                horizon_weights = self.horizon_weights.get(horizon)
+                if not horizon_weights:
+                    horizon_preds[horizon] = 0.0
+                    continue
+
+                numerator = 0.0
+                weight_norm = 0.0
+                for feature_name, weight in horizon_weights.weights.items():
+                    value = row.get(feature_name, 0.0)
+                    numerator += value * weight
+                    weight_norm += abs(weight)
+
+                score = numerator / weight_norm if weight_norm else numerator
+                horizon_preds[horizon] = float(np.clip(score, -1.0, 1.0))
+
+            rows.append({f'pred_{h}': horizon_preds[h] for h in self.horizons})
+
+        return pd.DataFrame(rows)
 
     def save_weights(
         self,
@@ -338,6 +371,33 @@ class MultiHorizonWeightLearner:
         print(f"✅ Weights loaded from: {filepath}")
         print(f"   Horizons: {self.horizons}")
 
+    def save_model_state(
+        self,
+        filepath: str
+    ):
+        """
+        Persist the trained regression model so it can be reused later.
+        """
+        if self.model is None:
+            raise ValueError("No trained model available to save.")
+
+        with open(filepath, 'wb') as f:
+            pickle.dump(self.model, f)
+
+        logger.info("multi_horizon.model_saved", extra={"path": filepath})
+
+    def load_model_state(
+        self,
+        filepath: str
+    ):
+        """
+        Load a previously persisted regression model.
+        """
+        with open(filepath, 'rb') as f:
+            self.model = pickle.load(f)
+
+        logger.info("multi_horizon.model_loaded", extra={"path": filepath})
+
     def get_summary(self) -> dict:
         """
         خلاصه‌ای از وزن‌ها و معیارهای اعتماد
@@ -361,6 +421,33 @@ class MultiHorizonWeightLearner:
             }
 
         return summary
+
+    @classmethod
+    def load(
+        cls,
+        weights_path: str,
+        model_path: Optional[str] = None,
+        **kwargs,
+    ) -> "MultiHorizonWeightLearner":
+        """
+        Convenience helper to restore a learner from disk.
+
+        Args:
+            weights_path: JSON file produced by `save_weights`.
+            model_path: Optional pickle file produced by `save_model_state`.
+            kwargs: Optional overrides for constructor arguments (horizons, etc.).
+        """
+        learner = cls(**kwargs)
+        learner.load_weights(weights_path)
+        candidate_model = Path(model_path) if model_path else Path(weights_path).with_suffix(".pkl")
+        if candidate_model.exists():
+            learner.load_model_state(str(candidate_model))
+        else:
+            logger.info(
+                "multi_horizon.model_state_missing",
+                extra={"weights_path": weights_path, "model_path": str(candidate_model)},
+            )
+        return learner
 
 
 # ═══════════════════════════════════════════════════════════
