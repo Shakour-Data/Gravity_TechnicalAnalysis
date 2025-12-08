@@ -23,6 +23,19 @@ from gravity_tech.ml.multi_horizon_weights import HorizonWeights, MultiHorizonWe
 from gravity_tech.models.schemas import SignalStrength
 
 
+def score_to_signal(score: float) -> SignalStrength:
+    """Map a normalized score [-1, 1] to a SignalStrength value."""
+    if score > 0.7:
+        return SignalStrength.VERY_BULLISH
+    if score > 0.3:
+        return SignalStrength.BULLISH
+    if score > -0.3:
+        return SignalStrength.NEUTRAL
+    if score > -0.7:
+        return SignalStrength.BEARISH
+    return SignalStrength.VERY_BEARISH
+
+
 class MarketPattern(Enum):
     """
     الگوهای بازار ترکیبی از سه افق
@@ -58,6 +71,34 @@ class HorizonScore:
             return "WEAK"
         else:
             return "NEUTRAL"
+
+
+@dataclass
+class TrendScore:
+    """Aggregated trend dimension score used by downstream layers."""
+
+    score: float
+    confidence: float
+    signal: SignalStrength
+    pattern: MarketPattern
+    recommendation: str
+
+    @property
+    def accuracy(self) -> float:
+        """Backward compatible alias used by 5D matrix implementation."""
+        return self.confidence
+
+    @property
+    def strength(self) -> str:
+        """Qualitative interpretation of the score."""
+        abs_score = abs(self.score)
+        if abs_score > 0.7:
+            return "STRONG"
+        if abs_score > 0.4:
+            return "MODERATE"
+        if abs_score > 0.2:
+            return "WEAK"
+        return "NEUTRAL"
 
 
 @dataclass
@@ -122,6 +163,17 @@ class MultiHorizonAnalysis:
                 '30d': self.recommendation_30d
             }
         }
+
+    def to_trend_score(self) -> TrendScore:
+        """Convert the combined output into a TrendScore for downstream stages."""
+        signal = score_to_signal(self.combined_score)
+        return TrendScore(
+            score=self.combined_score,
+            confidence=self.combined_confidence,
+            signal=signal,
+            pattern=self.pattern,
+            recommendation=self.recommendation_7d
+        )
 
 
 class MultiHorizonTrendAnalyzer:
@@ -213,16 +265,7 @@ class MultiHorizonTrendAnalyzer:
 
     def _score_to_signal(self, score: float) -> SignalStrength:
         """تبدیل score به SignalStrength"""
-        if score > 0.7:
-            return SignalStrength.VERY_BULLISH
-        elif score > 0.3:
-            return SignalStrength.BULLISH
-        elif score > -0.3:
-            return SignalStrength.NEUTRAL
-        elif score > -0.7:
-            return SignalStrength.BEARISH
-        else:
-            return SignalStrength.VERY_BEARISH
+        return score_to_signal(score)
 
     def _detect_pattern(
         self,
