@@ -17,10 +17,13 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.3)
 import math
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from enum import Enum
 from typing import Any
 
-from gravity_tech.core.domain.entities import FibonacciLevel, FibonacciResult
+from gravity_tech.core.domain.entities import Candle, FibonacciLevel, FibonacciResult
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
+
+Direction = Enum('Direction', ['UP', 'DOWN'])
 
 
 @dataclass
@@ -68,12 +71,12 @@ class FibonacciTools:
         levels = []
 
         for ratio in ratios:
-            price = low + (range_size * Decimal(str(ratio)))
+            price = high - (range_size * Decimal(ratio))
             price = price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
             level = FibonacciLevel(
                 ratio=float(ratio),
-                price=float(price),
+                price=price,
                 level_type="MEDIUM",
                 strength=0.0,  # Default value, adjust as needed
                 touches=0,    # Default value, adjust as needed
@@ -87,7 +90,8 @@ class FibonacciTools:
         self,
         high: Decimal,
         low: Decimal,
-        ratios: list[float] | None = None
+        ratios: list[float] | None = None,
+        direction: str = "up"
     ) -> list[FibonacciLevel]:
         """
         Calculate Fibonacci extension levels.
@@ -96,10 +100,14 @@ class FibonacciTools:
             high: Peak price
             low: Trough price
             ratios: Custom ratios (default: standard extensions)
+            direction: Direction of the trend (UP or DOWN)
 
         Returns:
             List of FibonacciLevel objects
         """
+        if direction not in ['up', 'down']:
+            raise ValueError(f"Invalid direction: {direction}. Must be 'up' or 'down'")
+
         if ratios is None:
             ratios = self.FIBONACCI_RATIOS['extensions']
 
@@ -107,7 +115,10 @@ class FibonacciTools:
         levels = []
 
         for ratio in ratios:
-            price = high + (range_size * Decimal(str(ratio)))
+            if direction == "down":
+                price = low - (range_size * Decimal(ratio))
+            else:
+                price = high + (range_size * Decimal(ratio))
             price = price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
             level = FibonacciLevel(
@@ -196,6 +207,10 @@ class FibonacciTools:
         origin_price, origin_time = origin_point
         high_price, high_time = high_point
 
+        # Handle degenerate case where origin and high points have same time
+        if high_time == origin_time:
+            return []
+
         levels = []
 
         for ratio in ratios:
@@ -248,7 +263,7 @@ class FibonacciTools:
 
             level = FibonacciLevel(
                 ratio=float(ratio),
-                price=float(projection),
+                price=projection,
                 level_type="VERY_STRONG",
                 strength=0.0,  # Default value, adjust as needed
                 touches=0,    # Default value, adjust as needed
@@ -261,7 +276,7 @@ class FibonacciTools:
     def find_fibonacci_levels(
         self,
         candles: list[Any],
-        lookback_periods: int = 100,
+        lookback_period: int = 100,
         min_swing_size: Decimal = Decimal('0.01')
     ) -> FibonacciResult:
         """
@@ -275,10 +290,12 @@ class FibonacciTools:
         Returns:
             FibonacciResult with all calculated levels
         """
-        if len(candles) < lookback_periods:
-            lookback_periods = len(candles)
+        if len(candles) < lookback_period:
+            lookback_period = len(candles)
 
-        recent_candles = candles[-lookback_periods:]
+        recent_candles = candles[-lookback_period:]
+
+        current_price = Decimal(candles[-1].close) if candles else Decimal('0')
 
         # Find swing highs and lows
         swing_highs, swing_lows = self._find_swings(recent_candles, min_swing_size)
@@ -287,16 +304,16 @@ class FibonacciTools:
 
         # Calculate retracements from recent swings
         for i in range(len(swing_highs) - 1):
-            high1 = swing_highs[i]
-            high2 = swing_highs[i + 1]
+            high1 = Decimal(swing_highs[i])
+            high2 = Decimal(swing_highs[i + 1])
 
             if high2 > high1:  # Uptrend
                 retracements = self.calculate_retracements(high2, high1)
                 all_levels.extend(retracements)
 
         for i in range(len(swing_lows) - 1):
-            low1 = swing_lows[i]
-            low2 = swing_lows[i + 1]
+            low1 = Decimal(swing_lows[i])
+            low2 = Decimal(swing_lows[i + 1])
 
             if low2 < low1:  # Downtrend
                 retracements = self.calculate_retracements(low1, low2)
@@ -304,8 +321,8 @@ class FibonacciTools:
 
         # Calculate extensions
         if swing_highs and swing_lows:
-            recent_high = max(swing_highs)
-            recent_low = min(swing_lows)
+            recent_high = Decimal(max(swing_highs))
+            recent_low = Decimal(min(swing_lows))
 
             extensions = self.calculate_extensions(recent_high, recent_low)
             all_levels.extend(extensions)
@@ -313,17 +330,8 @@ class FibonacciTools:
         # Remove duplicates and sort by price
         unique_levels = self._remove_duplicate_levels(all_levels)
 
-        # Separate levels into retracements and extensions
-        retracement_levels = {}
-        extension_levels = {}
-        for level in unique_levels:
-            if 'retracement' in level.description:
-                retracement_levels[f"{level.ratio:.3f}"] = level.price
-            elif 'extension' in level.description:
-                extension_levels[f"{level.ratio:.3f}"] = level.price
-
         # Create confluence zones
-        confluence_zones = self.analyze_fibonacci_confluence(unique_levels)
+        confluence_zones = self.analyze_fibonacci_confluence(unique_levels, current_price)
 
         # Determine signal based on current price
         current_price = recent_candles[-1].close if recent_candles else 0.0
@@ -333,8 +341,7 @@ class FibonacciTools:
         description = f"Fibonacci analysis completed with {len(unique_levels)} levels found"
 
         return FibonacciResult(
-            retracement_levels=retracement_levels,
-            extension_levels=extension_levels,
+            levels=unique_levels,
             confluence_zones=[{"price": float(k), "levels": [lvl.description for lvl in v]} for k, v in confluence_zones.items()],
             signal=signal,
             confidence=confidence,
@@ -343,19 +350,25 @@ class FibonacciTools:
 
     def analyze_fibonacci_confluence(
         self,
-        levels: list[FibonacciLevel],
+        levels: list,
+        current_price: Decimal,
         tolerance: Decimal = Decimal('0.001')
     ) -> dict[Decimal, list[FibonacciLevel]]:
         """
         Analyze confluence between Fibonacci levels.
 
         Args:
-            levels: List of Fibonacci levels
+            levels: List of Fibonacci levels or candles
+            current_price: Current price
             tolerance: Price tolerance for confluence
 
         Returns:
             Dictionary mapping price levels to confluent Fibonacci levels
         """
+        if levels and isinstance(levels[0], Candle):
+            fib_result = self.find_fibonacci_levels(levels)
+            levels = fib_result.levels
+
         # Sort levels by price
         sorted_levels = sorted(levels, key=lambda x: x.price)
 
@@ -365,7 +378,7 @@ class FibonacciTools:
             # Find levels within tolerance
             nearby_levels = [
                 lvl for lvl in sorted_levels
-                if abs(lvl.price - level.price) <= tolerance
+                if abs(float(lvl.price) - float(level.price)) <= float(tolerance)
             ]
 
             if len(nearby_levels) > 1:
@@ -446,7 +459,7 @@ class FibonacciTools:
         unique_levels = [sorted_levels[0]]
 
         for level in sorted_levels[1:]:
-            if abs(level.price - unique_levels[-1].price) > tolerance:
+            if abs(float(level.price) - float(unique_levels[-1].price)) > float(tolerance):
                 unique_levels.append(level)
 
         return unique_levels
@@ -477,7 +490,7 @@ class FibonacciTools:
         near_level_factor = 0.0
 
         for level in levels:
-            if abs(current_price - level.price) / current_price < 0.01:  # Within 1%
+            if abs(float(current_price) - float(level.price)) / float(current_price) < 0.01:  # Within 1%
                 near_level_factor = 1.0
                 break
 
@@ -514,8 +527,8 @@ class FibonacciTools:
         nearest_support = max(support_levels, key=lambda x: x.price)
         nearest_resistance = min(resistance_levels, key=lambda x: x.price)
 
-        support_distance = abs(current_price - nearest_support.price) / current_price
-        resistance_distance = abs(current_price - nearest_resistance.price) / current_price
+        support_distance = abs(float(current_price) - float(nearest_support.price)) / float(current_price)
+        resistance_distance = abs(float(current_price) - float(nearest_resistance.price)) / float(current_price)
 
         # Determine signal based on proximity to levels
         if support_distance < 0.005 and resistance_distance > 0.01:  # Close to support
