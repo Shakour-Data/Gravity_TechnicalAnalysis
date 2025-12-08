@@ -2,6 +2,6 @@
 Core analysis package - Market analysis algorithms
 """
 
-from .market_phase import MarketPhaseAnalyzer
+from .market_phase import MarketPhaseAnalysis
 
-__all__ = ["MarketPhaseAnalyzer"]
+__all__ = ["MarketPhaseAnalysis"]
