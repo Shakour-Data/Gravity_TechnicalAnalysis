@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import HorizonWeights, MultiHorizonWeightLearner
 from gravity_tech.models.schemas import Candle, SignalStrength
@@ -70,6 +71,23 @@ class CycleScore:
             return "SLOW"
         else:
             return "VERY_SLOW"
+
+    @property
+    def accuracy(self) -> float:
+        """سازگاری با واسط‌های قدیمی"""
+        return self.confidence
+
+    @property
+    def phase_strength(self) -> str:
+        """Qualitative description of the score magnitude for downstream consumers."""
+        magnitude = abs(self.score)
+        if magnitude > 0.7:
+            return "STRONG"
+        if magnitude > 0.4:
+            return "MODERATE"
+        if magnitude > 0.2:
+            return "WEAK"
+        return "NEUTRAL"
 
 
 @dataclass
@@ -159,49 +177,57 @@ class MultiHorizonCycleAnalyzer:
     def __init__(
         self,
         lookback_period: int = 100,
-        weights_path: Optional[str] = None
+        weight_learner: Optional[MultiHorizonWeightLearner] = None,
+        weights_path: Optional[str] = None,
+        model_path: Optional[str] = None,
+        horizons: Optional[list[str]] = None,
     ):
         """
         Initialize analyzer
 
         Args:
             lookback_period: تعداد کندل‌های گذشته
+            weight_learner: نمونه آماده‌ی MultiHorizonWeightLearner
             weights_path: مسیر فایل وزن‌های آموزش دیده (اختیاری)
+            model_path: مسیر فایل pickle مدل (اختیاری)
+            horizons: فهرست افق‌ها (پیش‌فرض: ['3d','7d','30d'])
         """
         self.lookback_period = lookback_period
+        self.horizons = horizons or ['3d', '7d', '30d']
         self.feature_extractor = MultiHorizonCycleFeatureExtractor(
             lookback_period=lookback_period
         )
 
-        # بارگذاری وزن‌ها
-        if weights_path:
-            self.weight_learner = MultiHorizonWeightLearner.load(weights_path)
+        if weight_learner is not None:
+            self.weight_learner = weight_learner
+        elif weights_path:
+            self.weight_learner = MultiHorizonWeightLearner.load(weights_path, model_path)
         else:
-            # وزن‌های پیش‌فرض
-            self.weight_learner = self._create_default_weights()
+            self.weight_learner = self._create_default_learner()
 
-    def _create_default_weights(self) -> MultiHorizonWeightLearner:
+    def _create_default_learner(self) -> MultiHorizonWeightLearner:
         """وزن‌های پیش‌فرض برای اندیکاتورهای سیکل"""
-        learner = MultiHorizonWeightLearner()
+        learner = MultiHorizonWeightLearner(horizons=self.horizons)
+        feature_names = self.feature_extractor.get_feature_names()
+        learner.feature_names = feature_names
 
-        # وزن‌های پیش‌فرض برای هر اندیکاتور
-        default_indicator_weights = {
-            'dpo': 0.12,
-            'ehlers_cycle': 0.16,
-            'dominant_cycle': 0.15,
-            'schaff_trend_cycle': 0.14,
-            'phase_accumulation': 0.13,
-            'hilbert_transform': 0.16,
-            'market_cycle_model': 0.14
+        uniform_weights = {name: 1.0 / len(feature_names) for name in feature_names} if feature_names else {}
+        metrics = {
+            'r2_test': 0.0,
+            'mae_test': 0.0,
+            'r2_train': 0.0,
+            'mae_train': 0.0,
         }
 
-        # وزن‌های یکسان برای همه افق‌ها
-        for horizon in ['3d', '7d', '30d']:
-            learner.weights[horizon] = HorizonWeights(
+        learner.horizon_weights = {
+            horizon: HorizonWeights(
                 horizon=horizon,
-                indicator_weights=default_indicator_weights.copy(),
-                feature_importance={}
+                weights=uniform_weights.copy(),
+                metrics=metrics.copy(),
+                confidence=0.25,
             )
+            for horizon in self.horizons
+        }
 
         return learner
 
@@ -218,32 +244,33 @@ class MultiHorizonCycleAnalyzer:
         if len(candles) < self.lookback_period:
             return self._get_neutral_analysis()
 
-        # استخراج ویژگی‌ها
-        features = self.feature_extractor.extract_cycle_features(
-            candles[-self.lookback_period:]
+        feature_window = candles[-self.lookback_period:]
+        features = self.feature_extractor.extract_cycle_features(feature_window)
+        features_df = pd.DataFrame([features])
+        predictions = self.weight_learner.predict_multi_horizon(features_df)
+
+        cycle_scores: dict[str, CycleScore] = {}
+        for horizon in self.horizons:
+            pred_col = f'pred_{horizon}'
+            raw_score = float(predictions[pred_col].iloc[0]) if pred_col in predictions else 0.0
+            cycle_scores[horizon] = self._build_cycle_score(horizon, raw_score, features)
+
+        cycle_3d = cycle_scores.get('3d', self._neutral_score('3d'))
+        cycle_7d = cycle_scores.get('7d', self._neutral_score('7d'))
+        cycle_30d = cycle_scores.get('30d', self._neutral_score('30d'))
+
+        weights = {'3d': 0.3, '7d': 0.4, '30d': 0.3}
+        weighted_sum = sum(
+            cycle_scores[horizon].score * cycle_scores[horizon].confidence * weights[horizon]
+            for horizon in weights
+        )
+        confidence_sum = sum(
+            cycle_scores[horizon].confidence * weights[horizon]
+            for horizon in weights
         )
 
-        # محاسبه امتیاز برای هر افق
-        cycle_3d = self._calculate_horizon_score(features, '3d')
-        cycle_7d = self._calculate_horizon_score(features, '7d')
-        cycle_30d = self._calculate_horizon_score(features, '30d')
-
-        # امتیاز ترکیبی (weighted average)
-        combined_cycle = (
-            cycle_3d.score * cycle_3d.confidence * 0.3 +
-            cycle_7d.score * cycle_7d.confidence * 0.4 +
-            cycle_30d.score * cycle_30d.confidence * 0.3
-        ) / (
-            cycle_3d.confidence * 0.3 +
-            cycle_7d.confidence * 0.4 +
-            cycle_30d.confidence * 0.3
-        )
-
-        combined_confidence = (
-            cycle_3d.confidence * 0.3 +
-            cycle_7d.confidence * 0.4 +
-            cycle_30d.confidence * 0.3
-        )
+        combined_cycle = weighted_sum / confidence_sum if confidence_sum else 0.0
+        combined_confidence = confidence_sum
 
         # تشخیص فاز غالب
         dominant_phase = self._determine_dominant_phase([cycle_3d, cycle_7d, cycle_30d])
@@ -270,77 +297,48 @@ class MultiHorizonCycleAnalyzer:
             cycle_alignment=alignment
         )
 
-    def _calculate_horizon_score(
+    def _build_cycle_score(
         self,
+        horizon: str,
+        raw_score: float,
         features: dict[str, float],
-        horizon: str
     ) -> CycleScore:
-        """محاسبه امتیاز سیکل برای یک افق"""
-        weights = self.weight_learner.weights.get(horizon)
-        if not weights:
-            weights = self.weight_learner.weights['7d']  # fallback
-
-        # اندیکاتورهای سیکل
-        indicators = [
-            'dpo',
-            'ehlers_cycle',
-            'dominant_cycle',
-            'schaff_trend_cycle',
-            'phase_accumulation',
-            'hilbert_transform',
-            'market_cycle_model'
-        ]
-
-        # محاسبه weighted score
-        total_score = 0.0
-        total_confidence = 0.0
-
-        for indicator in indicators:
-            weight = weights.indicator_weights.get(indicator, 1.0 / len(indicators))
-            signal = features.get(f"{indicator}_signal", 0.0)
-            confidence = features.get(f"{indicator}_confidence", 0.5)
-
-            total_score += signal * confidence * weight
-            total_confidence += confidence * weight
-
-        # Normalize
-        if total_confidence > 0:
-            score = total_score / total_confidence
-        else:
-            score = 0.0
-
-        score = np.clip(score, -1, 1)
-
-        # محاسبه confidence کلی
-        confidences = [
-            features.get(f"{ind}_confidence", 0.5)
-            for ind in indicators
-        ]
-        avg_confidence = np.mean(confidences)
-
-        # Signal strength
-        if score > 0.6:
-            signal = SignalStrength.VERY_BULLISH
-        elif score > 0.2:
-            signal = SignalStrength.BULLISH
-        elif score < -0.6:
-            signal = SignalStrength.VERY_BEARISH
-        elif score < -0.2:
-            signal = SignalStrength.BEARISH
-        else:
-            signal = SignalStrength.NEUTRAL
-
-        # فاز و دوره سیکل
+        """تبدیل خروجی مدل به CycleScore."""
+        normalized_score = float(np.clip(raw_score, -1.0, 1.0))
+        horizon_weights = self.weight_learner.get_horizon_weights(horizon)
+        confidence = horizon_weights.confidence if horizon_weights else 0.0
+        signal = self._score_to_signal(normalized_score)
         phase = features.get('cycle_avg_phase', 0.0)
         cycle_period = features.get('cycle_avg_period', 20.0)
 
         return CycleScore(
             horizon=horizon,
-            score=score,
-            confidence=avg_confidence,
+            score=normalized_score,
+            confidence=confidence,
             signal=signal,
             phase=phase,
             cycle_period=cycle_period
+        )
+
+    def _score_to_signal(self, score: float) -> SignalStrength:
+        if score > 0.6:
+            return SignalStrength.VERY_BULLISH
+        if score > 0.2:
+            return SignalStrength.BULLISH
+        if score < -0.6:
+            return SignalStrength.VERY_BEARISH
+        if score < -0.2:
+            return SignalStrength.BEARISH
+        return SignalStrength.NEUTRAL
+
+    def _neutral_score(self, horizon: str) -> CycleScore:
+        return CycleScore(
+            horizon=horizon,
+            score=0.0,
+            confidence=0.0,
+            signal=SignalStrength.NEUTRAL,
+            phase=0.0,
+            cycle_period=20.0,
         )
 
     def _determine_dominant_phase(self, scores: list[CycleScore]) -> str:
@@ -422,20 +420,11 @@ class MultiHorizonCycleAnalyzer:
 
     def _get_neutral_analysis(self) -> MultiHorizonCycleAnalysis:
         """تحلیل خنثی در صورت عدم وجود داده کافی"""
-        neutral_score = CycleScore(
-            horizon="",
-            score=0.0,
-            confidence=0.0,
-            signal=SignalStrength.NEUTRAL,
-            phase=0.0,
-            cycle_period=20.0
-        )
-
         return MultiHorizonCycleAnalysis(
             timestamp=datetime.now().isoformat(),
-            cycle_3d=neutral_score,
-            cycle_7d=neutral_score,
-            cycle_30d=neutral_score,
+            cycle_3d=self._neutral_score('3d'),
+            cycle_7d=self._neutral_score('7d'),
+            cycle_30d=self._neutral_score('30d'),
             combined_cycle=0.0,
             combined_confidence=0.0,
             dominant_phase="ACCUMULATION",
