@@ -11,6 +11,7 @@ License: MIT
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass(frozen=True)
@@ -26,7 +27,7 @@ class FibonacciLevel:
         touches: Number of times price touched this level
         description: Human-readable description
     """
-    price: float
+    price: Decimal
     ratio: float
     level_type: str  # "WEAK", "MEDIUM", "STRONG", "VERY_STRONG"
     strength: float  # 0.0 to 1.0
@@ -56,8 +57,8 @@ class FibonacciLevel:
         Returns:
             True if level is support
         """
-        tolerance_amount = self.price * tolerance
-        return abs(current_price - self.price) <= tolerance_amount and current_price >= self.price
+        tolerance_amount = self.price * Decimal(str(tolerance))
+        return abs(Decimal(str(current_price)) - self.price) <= tolerance_amount and Decimal(str(current_price)) >= self.price
 
     def is_resistance(self, current_price: float, tolerance: float = 0.005) -> bool:
         """
@@ -70,8 +71,8 @@ class FibonacciLevel:
         Returns:
             True if level is resistance
         """
-        tolerance_amount = self.price * tolerance
-        return abs(current_price - self.price) <= tolerance_amount and current_price <= self.price
+        tolerance_amount = self.price * Decimal(str(tolerance))
+        return abs(Decimal(str(current_price)) - self.price) <= tolerance_amount and Decimal(str(current_price)) <= self.price
 
     def get_strength_description(self) -> str:
         """Get human-readable strength description"""
