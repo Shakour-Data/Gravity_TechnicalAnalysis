@@ -1,5 +1,5 @@
 {
-  "test_date": "2025-12-05T18:05:42.957248",
+  "test_date": "2025-12-07T20:49:12.086224",
   "symbol": "BTCUSDT",
   "training_samples": 295,
   "horizons": [
@@ -8,24 +8,24 @@
     30
   ],
   "level1_results": {
-    "pattern": "STRONG_DOWNTREND",
-    "pattern_confidence": 0.4953917699725774,
+    "pattern": "STRONG_UPTREND",
+    "pattern_confidence": 0.4477709260862867,
     "scores": {
-      "3d": -0.5833883993696589,
-      "7d": -0.7154380530411315,
-      "30d": -0.5941070048680226
+      "3d": 0.5368088370895984,
+      "7d": 0.8268283319409304,
+      "30d": 1.0
     },
     "confidences": {
-      "3d": 0.30504763476615626,
-      "7d": 0.6865774359456542,
-      "30d": 0.4945502392059217
+      "3d": 0.18601732604793017,
+      "7d": 0.4572954522109298,
+      "30d": 0.7
     },
-    "combined_score": -0.6479589792387008,
-    "combined_confidence": 0.4953917699725774
+    "combined_score": 0.876907150363641,
+    "combined_confidence": 0.4477709260862867
   },
   "recommendations": {
-    "3d": "⛔ STRONG SELL - All horizons bearish",
-    "7d": "⛔ STRONG SELL - All horizons bearish",
-    "30d": "⛔ STRONG SELL - All horizons bearish"
+    "3d": "⚠️ UNCERTAIN - Low confidence (19%)",
+    "7d": "🚀 STRONG BUY - All horizons bullish",
+    "30d": "🚀 STRONG BUY - All horizons bullish"
   }
 }
