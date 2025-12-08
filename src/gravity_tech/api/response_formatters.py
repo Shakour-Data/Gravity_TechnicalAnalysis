@@ -185,88 +185,41 @@ def format_momentum_response(
 
 
 def format_combined_response(
-    trend_result,
-    momentum_result,
-    trend_weight: float = 0.5,
-    momentum_weight: float = 0.5,
-    use_persian: bool = False,
-    include_raw: bool = False
+    combined_analysis,
+    trend_analysis,
+    momentum_analysis,
+    use_persian: bool = False
 ) -> dict[str, Any]:
     """
-    فرمت کردن نتیجه ترکیبی روند + مومنتوم برای API
+    فرمت کردن نتیجه ترکیبی برای API
 
     Args:
-        trend_result: نتیجه تحلیل روند
-        momentum_result: نتیجه تحلیل مومنتوم
-        trend_weight: وزن روند (پیش‌فرض: 0.5)
-        momentum_weight: وزن مومنتوم (پیش‌فرض: 0.5)
+        combined_analysis: نتیجه تحلیل ترکیبی
+        trend_analysis: نتیجه تحلیل روند
+        momentum_analysis: نتیجه تحلیل مومنتوم
         use_persian: استفاده از برچسب‌های فارسی
-        include_raw: شامل کردن مقادیر خام
 
     Returns:
-        دیکشنری JSON-ready برای API response
-
-    Example:
-        ```python
-        combined = format_combined_response(
-            trend_result,
-            momentum_result,
-            trend_weight=0.6,
-            momentum_weight=0.4,
-            use_persian=False
-        )
-        # → {
-        #     "analysis_type": "COMBINED",
-        #     "trend": {...},
-        #     "momentum": {...},
-        #     "combined": {
-        #         "score": 79,
-        #         "confidence": 80,
-        #         "signal": "BULLISH",
-        #         "action": "BUY",
-        #         "weights": {"trend": 0.6, "momentum": 0.4}
-        #     }
-        # }
-        ```
+        دیکشنری فرمت شده برای API
     """
     response = {
-        "analysis_type": "COMBINED" if not use_persian else "ترکیبی",
-        "trend": format_trend_response(trend_result, use_persian, include_raw),
-        "momentum": format_momentum_response(momentum_result, use_persian, include_raw)
-    }
-
-    # محاسبه combined score
-    if "overall" in response["trend"] and "overall" in response["momentum"]:
-        trend_score = response["trend"]["overall"]["score"] / 100.0  # بازگشت به [-1,+1]
-        momentum_score = response["momentum"]["overall"]["score"] / 100.0
-
-        trend_conf = response["trend"]["overall"]["confidence"] / 100.0
-        momentum_conf = response["momentum"]["overall"]["confidence"] / 100.0
-
-        # Combined score (وزن‌دار)
-        combined_score = (trend_score * trend_weight) + (momentum_score * momentum_weight)
-        combined_confidence = (trend_conf * trend_weight) + (momentum_conf * momentum_weight)
-
-        response["combined"] = {
-            "score": score_to_display(combined_score),
-            "confidence": confidence_to_display(combined_confidence),
-            "signal": get_signal_label(combined_score, use_persian),
-            "confidence_quality": get_confidence_label(combined_confidence, use_persian),
-            "action": _get_combined_action(
-                trend_score,
-                momentum_score,
-                combined_score,
-                use_persian
-            ),
-            "weights": {
-                "trend": trend_weight,
-                "momentum": momentum_weight
+        "type": "combined_analysis",
+        "recommendation": {
+            "action": combined_analysis.final_action,
+            "confidence": combined_analysis.final_confidence,
+            "scores": {
+                "3d": combined_analysis.combined_score_3d,
+                "7d": combined_analysis.combined_score_7d,
+                "30d": combined_analysis.combined_score_30d
             }
         }
+    }
 
-        if include_raw:
-            response["combined"]["raw_score"] = round(combined_score, 3)
-            response["combined"]["raw_confidence"] = round(combined_confidence, 3)
+    if trend_analysis:
+        response["trend_analysis"] = format_trend_response(trend_analysis, use_persian)
+
+    if momentum_analysis:
+        response["momentum_analysis"] = format_momentum_response(momentum_analysis, use_persian)
 
     return response
 
@@ -392,6 +345,58 @@ def _get_combined_action(
             return "SELL"
         else:
             return "STRONG_SELL"
+
+
+def format_analysis_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    """
+    فرمت کردن خلاصه تحلیل برای API
+
+    Args:
+        summary: دیکشنری حاوی اطلاعات خلاصه تحلیل
+
+    Returns:
+        دیکشنری فرمت شده برای API
+    """
+    from datetime import datetime
+
+    return {
+        "type": "analysis_summary",
+        "timestamp": datetime.utcnow().isoformat(),
+        "metrics": summary
+    }
+
+
+def format_error_response(
+    message: str,
+    error_code: str = "INTERNAL_ERROR",
+    details: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """
+    فرمت کردن پاسخ خطا برای API
+
+    Args:
+        message: پیام خطا
+        error_code: کد خطا
+        details: جزئیات اضافی خطا
+
+    Returns:
+        دیکشنری فرمت شده برای API
+    """
+    from datetime import datetime
+
+    error_response = {
+        "type": "error",
+        "timestamp": datetime.utcnow().isoformat(),
+        "error": {
+            "code": error_code,
+            "message": message
+        }
+    }
+
+    if details:
+        error_response["error"]["details"] = details
+
+    return error_response
 
 
 # ═══════════════════════════════════════════════════════════════════
