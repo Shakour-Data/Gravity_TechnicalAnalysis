@@ -24,15 +24,13 @@ from enum import Enum
 from typing import Optional
 
 import numpy as np
-from gravity_tech.models.schemas import (
-    Candle,
-    CycleScore,
-    MomentumScore,
-    SignalStrength,
-    SupportResistanceScore,
-    TrendScore,
-    VolatilityScore,
-)
+from gravity_tech.core.domain.entities import Candle
+from gravity_tech.models.schemas import SignalStrength
+from gravity_tech.ml.multi_horizon_analysis import TrendScore
+from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
+from gravity_tech.ml.multi_horizon_momentum_analysis import MomentumScore
+from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
+from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
 
 
 class DecisionSignal(Enum):
