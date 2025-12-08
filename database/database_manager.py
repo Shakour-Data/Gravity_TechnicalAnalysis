@@ -473,35 +473,55 @@ class DatabaseManager:
         volatility_level: Optional[float] = None,
         trend_strength: Optional[float] = None,
         volume_profile: Optional[str] = None,
+        prediction_value: Optional[float] = None,
+        actual_result: Optional[str] = None,
+        actual_price_change: Optional[float] = None,
+        success: Optional[bool] = None,
+        accuracy: Optional[float] = None,
+        result_timestamp=None,
+        evaluation_period_hours: Optional[int] = None,
         metadata: Optional[Dict] = None
     ) -> int:
         """
-        ثبت عملکرد ابزار
+        ثبت عملکرد ابزار (تمام فیلدهای جدول را پشتیبانی می‌کند)
         
         Returns:
             ID رکورد ذخیره شده
         """
+
+        # Normalize datetime input if provided
+        if result_timestamp is not None:
+            try:
+                result_timestamp = result_timestamp.isoformat()  # type: ignore[attr-defined]
+            except Exception:
+                pass
         
         if self.db_type == DatabaseType.JSON_FILE:
             return self._record_tool_performance_json(
                 tool_name, tool_category, symbol, timeframe, market_regime,
                 prediction_type, confidence_score, volatility_level,
-                trend_strength, volume_profile, metadata
+                trend_strength, volume_profile, prediction_value,
+                actual_result, actual_price_change, success, accuracy,
+                result_timestamp, evaluation_period_hours, metadata
             )
         
         query = """
         INSERT INTO tool_performance_history (
             tool_name, tool_category, symbol, timeframe, market_regime,
             volatility_level, trend_strength, volume_profile,
-            prediction_type, confidence_score, metadata
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            prediction_type, prediction_value, confidence_score,
+            actual_result, actual_price_change, success, accuracy,
+            result_timestamp, evaluation_period_hours, metadata
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
         """ if self.db_type == DatabaseType.POSTGRESQL else """
         INSERT INTO tool_performance_history (
             tool_name, tool_category, symbol, timeframe, market_regime,
             volatility_level, trend_strength, volume_profile,
-            prediction_type, confidence_score, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            prediction_type, prediction_value, confidence_score,
+            actual_result, actual_price_change, success, accuracy,
+            result_timestamp, evaluation_period_hours, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         metadata_json = json.dumps(metadata) if metadata else None
@@ -509,7 +529,9 @@ class DatabaseManager:
         params = (
             tool_name, tool_category, symbol, timeframe, market_regime,
             volatility_level, trend_strength, volume_profile,
-            prediction_type, confidence_score, metadata_json
+            prediction_type, prediction_value, confidence_score,
+            actual_result, actual_price_change, success, accuracy,
+            result_timestamp, evaluation_period_hours, metadata_json
         )
         
         try:
@@ -532,10 +554,100 @@ class DatabaseManager:
             logger.error(f"❌ Failed to record performance: {e}")
             raise
     
+    def update_tool_result(
+        self,
+        record_id: int,
+        actual_result: Optional[str] = None,
+        actual_price_change: Optional[float] = None,
+        success: Optional[bool] = None,
+        accuracy: Optional[float] = None,
+        result_timestamp=None,
+        evaluation_period_hours: Optional[int] = None
+    ) -> bool:
+        """
+        به‌روزرسانی فیلدهای نتیجه برای رکورد موجود در tool_performance_history
+        """
+        if result_timestamp is not None:
+            try:
+                result_timestamp = result_timestamp.isoformat()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            for item in self.json_data.get("tool_performance_history", []):
+                if item.get("id") == record_id:
+                    if actual_result is not None:
+                        item["actual_result"] = actual_result
+                    if actual_price_change is not None:
+                        item["actual_price_change"] = actual_price_change
+                    if success is not None:
+                        item["success"] = success
+                    if accuracy is not None:
+                        item["accuracy"] = accuracy
+                    if result_timestamp is not None:
+                        item["result_timestamp"] = result_timestamp
+                    if evaluation_period_hours is not None:
+                        item["evaluation_period_hours"] = evaluation_period_hours
+                    item["updated_at"] = datetime.utcnow().isoformat()
+                    self._save_json()
+                    return True
+            return False
+
+        set_clauses = []
+        params: list[Any] = []
+        placeholder = "%s" if self.db_type == DatabaseType.POSTGRESQL else "?"
+
+        if actual_result is not None:
+            set_clauses.append(f"actual_result = {placeholder}")
+            params.append(actual_result)
+        if actual_price_change is not None:
+            set_clauses.append(f"actual_price_change = {placeholder}")
+            params.append(actual_price_change)
+        if success is not None:
+            set_clauses.append(f"success = {placeholder}")
+            params.append(success)
+        if accuracy is not None:
+            set_clauses.append(f"accuracy = {placeholder}")
+            params.append(accuracy)
+        if result_timestamp is not None:
+            set_clauses.append(f"result_timestamp = {placeholder}")
+            params.append(result_timestamp)
+        if evaluation_period_hours is not None:
+            set_clauses.append(f"evaluation_period_hours = {placeholder}")
+            params.append(evaluation_period_hours)
+
+        # always bump updated_at
+        set_clauses.append("updated_at = NOW()" if self.db_type == DatabaseType.POSTGRESQL else "updated_at = CURRENT_TIMESTAMP")
+
+        if not set_clauses:
+            return False
+
+        query = f"""
+        UPDATE tool_performance_history
+        SET {', '.join(set_clauses)}
+        WHERE id = {placeholder}
+        """
+        params.append(record_id)
+
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(params))
+            conn.commit()
+            updated = cursor.rowcount > 0
+            cursor.close()
+            self.release_connection(conn)
+            return updated
+        except Exception as e:
+            logger.error(f"❌ Failed to update tool result: {e}")
+            raise
+    
     def _record_tool_performance_json(
         self, tool_name, tool_category, symbol, timeframe, market_regime,
         prediction_type, confidence_score, volatility_level,
-        trend_strength, volume_profile, metadata
+        trend_strength, volume_profile, prediction_value,
+        actual_result, actual_price_change, success, accuracy,
+        result_timestamp, evaluation_period_hours, metadata
     ) -> int:
         """ثبت عملکرد در JSON"""
         
@@ -550,7 +662,14 @@ class DatabaseManager:
             "trend_strength": trend_strength,
             "volume_profile": volume_profile,
             "prediction_type": prediction_type,
+            "prediction_value": prediction_value,
             "confidence_score": confidence_score,
+            "actual_result": actual_result,
+            "actual_price_change": actual_price_change,
+            "success": success,
+            "accuracy": accuracy,
+            "result_timestamp": result_timestamp,
+            "evaluation_period_hours": evaluation_period_hours,
             "metadata": metadata,
             "prediction_timestamp": datetime.utcnow().isoformat(),
             "created_at": datetime.utcnow().isoformat()
