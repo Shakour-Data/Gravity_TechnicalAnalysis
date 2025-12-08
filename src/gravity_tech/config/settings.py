@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     max_candles: int = 1000
     parallel_processing: bool = True
     max_workers: int = 10
+    use_fast_indicators: bool = True
 
 
 settings = Settings()
