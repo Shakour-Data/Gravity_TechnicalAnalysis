@@ -11,6 +11,7 @@ Training Pipeline for Multi-Horizon Support/Resistance Weights
 """
 
 import json
+import pickle
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -441,6 +442,7 @@ class MultiHorizonSupportResistanceTrainer:
         print("\n🎯 شروع آموزش وزن‌ها...")
 
         weights = {}
+        model_state: dict[str, dict[str, object]] = {}
 
         for horizon in ['3d', '7d', '30d']:
             print(f"\n  📊 آموزش {horizon}...")
@@ -466,12 +468,19 @@ class MultiHorizonSupportResistanceTrainer:
 
                 # ایجاد dictionary وزن‌ها
                 horizon_weights = {}
+                clean_names: list[str] = []
                 for i, feature_name in enumerate(horizon_features):
                     # حذف prefix افق
                     clean_name = feature_name.replace(f'{horizon}_', '')
                     horizon_weights[clean_name] = float(w[i])
+                    clean_names.append(clean_name)
 
                 weights[horizon] = horizon_weights
+                model_state[horizon] = {
+                    'feature_names': clean_names,
+                    'weights': [float(value) for value in w.tolist()],
+                    'intercept': 0.0
+                }
 
                 # ارزیابی
                 predictions = X @ w
@@ -488,7 +497,13 @@ class MultiHorizonSupportResistanceTrainer:
             except Exception as e:
                 print(f"    ⚠️  خطا در آموزش {horizon}: {e}")
                 # استفاده از وزن‌های پیش‌فرض
-                weights[horizon] = self._get_default_weights(horizon)
+                default_weights = self._get_default_weights(horizon)
+                weights[horizon] = default_weights
+                model_state[horizon] = {
+                    'feature_names': list(default_weights.keys()),
+                    'weights': list(default_weights.values()),
+                    'intercept': 0.0
+                }
 
         # ذخیره وزن‌ها
         output_file = Path(output_path)
@@ -497,7 +512,12 @@ class MultiHorizonSupportResistanceTrainer:
         with open(output_file, 'w') as f:
             json.dump(weights, f, indent=2)
 
+        model_file = output_file.with_suffix('.pkl')
+        with open(model_file, 'wb') as fh:
+            pickle.dump(model_state, fh)
+
         print(f"\n✅ وزن‌ها ذخیره شد: {output_path}")
+        print(f"✅ مدل ذخیره شد: {model_file}")
 
         return weights
 
@@ -543,7 +563,8 @@ if __name__ == "__main__":
 
     # بارگذاری analyzer با وزن‌های جدید
     analyzer = MultiHorizonSupportResistanceAnalyzer(
-        weights_path="models/support_resistance/sr_weights.json"
+        weights_path="models/support_resistance/sr_weights.json",
+        model_path="models/support_resistance/sr_weights.pkl",
     )
 
     # تست روی چند نمونه
