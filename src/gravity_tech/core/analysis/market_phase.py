@@ -44,9 +44,9 @@ from enum import Enum
 
 import numpy as np
 from gravity_tech.core.domain.entities import Candle
-from indicators.momentum import MomentumIndicators
-from indicators.trend import TrendIndicators
-from indicators.volume import VolumeIndicators
+from gravity_tech.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.indicators.trend import TrendIndicators
+from gravity_tech.core.indicators.volume import VolumeIndicators
 
 
 class MarketPhase(str, Enum):
@@ -164,7 +164,6 @@ class MarketPhaseAnalysis:
 
         recent = candles[-period:]
         volumes = [c.volume for c in recent]
-        closes = [c.close for c in recent]
 
         avg_volume = np.mean(volumes)
 
@@ -198,7 +197,7 @@ class MarketPhaseAnalysis:
         }
 
     @staticmethod
-    def calculate_price_momentum(candles: list[Candle], periods: list[int] = [10, 20, 50]) -> dict:
+    def calculate_price_momentum(candles: list[Candle], periods: list[int] | None = None) -> dict:
         """
         Calculate price momentum across multiple timeframes
 
@@ -209,6 +208,9 @@ class MarketPhaseAnalysis:
         Returns:
             Dictionary with momentum information
         """
+        if periods is None:
+            periods = [10, 20, 50]
+
         if len(candles) < max(periods):
             return {"status": "insufficient_data"}
 
@@ -248,12 +250,9 @@ class MarketPhaseAnalysis:
         # Get indicator signals
         sma_20 = TrendIndicators.sma(candles, 20)
         sma_50 = TrendIndicators.sma(candles, 50)
-        ema_20 = TrendIndicators.ema(candles, 20)
 
         macd = TrendIndicators.macd(candles)
         rsi = MomentumIndicators.rsi(candles, 14)
-
-        obv = VolumeIndicators.obv(candles)
 
         closes = [c.close for c in candles]
         current_price = closes[-1]
