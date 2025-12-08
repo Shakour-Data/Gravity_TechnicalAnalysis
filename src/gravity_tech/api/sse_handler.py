@@ -50,7 +50,8 @@ class SSEConnectionManager:
         self.client_data[client_id] = {
             'connected_at': datetime.utcnow(),
             'last_activity': datetime.utcnow(),
-            'message_count': 0
+            'message_count': 0,
+            'subscriptions': set()
         }
         logger.info(f"SSE Client {client_id} connected. Total connections: {len(self.active_connections)}")
         return queue
@@ -70,19 +71,41 @@ class SSEConnectionManager:
         if client_id not in self.subscriptions:
             self.subscriptions[client_id] = set()
         self.subscriptions[client_id].add(subscription_type)
+
+        # Mirror subscription state in client metadata for quick access
+        if client_id in self.client_data:
+            self.client_data[client_id].setdefault('subscriptions', set()).add(subscription_type)
+
         logger.info(f"SSE Client {client_id} subscribed to {subscription_type}")
 
     async def unsubscribe(self, client_id: str, subscription_type: SubscriptionType) -> None:
         """Unsubscribe client from a data stream"""
         if client_id in self.subscriptions:
             self.subscriptions[client_id].discard(subscription_type)
+            if client_id in self.client_data:
+                self.client_data[client_id].setdefault('subscriptions', set()).discard(subscription_type)
             logger.info(f"SSE Client {client_id} unsubscribed from {subscription_type}")
 
     async def broadcast_to_subscribers(self, subscription_type: SubscriptionType,
                                      message: dict[str, Any]) -> None:
         """Broadcast message to all subscribers of a type"""
-        # Put message in broadcast queue
-        await self.broadcast_queues[subscription_type].put(message)
+        recipients = [
+            (client_id, self.active_connections[client_id])
+            for client_id, subs in self.subscriptions.items()
+            if subscription_type in subs and client_id in self.active_connections
+        ]
+
+        if not recipients:
+            return
+
+        for client_id, queue in recipients:
+            await queue.put(message)
+
+            # Track activity for the client when delivering broadcasts
+            client_meta = self.client_data.get(client_id)
+            if client_meta is not None:
+                client_meta['last_activity'] = datetime.utcnow()
+                client_meta['message_count'] += 1
 
     async def send_personal_message(self, client_id: str, message: dict[str, Any]) -> None:
         """Send message to specific client"""
@@ -102,6 +125,10 @@ class SSEConnectionManager:
                 for sub_type in SubscriptionType
             }
         }
+
+    def get_client_data(self, client_id: str) -> dict[str, Any] | None:
+        """Return stored metadata for a client, if connected"""
+        return self.client_data.get(client_id)
 
 
 class SSEHandler:
