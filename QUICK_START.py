@@ -194,7 +194,7 @@ WORKFLOW = """
 # 📚 MOST USEFUL COMMANDS
 # ============================================================================
 
-if __name__ == "__main__":
+def main():
     print("=" * 70)
     print("🚀 TEST EXECUTION QUICK START")
     print("=" * 70)
@@ -242,6 +242,9 @@ if __name__ == "__main__":
     print("  - README_TESTS.md")
     print("  - COMPLETION_SUMMARY.md")
     print()
+
+if __name__ == "__main__":
+    main()
 
 # ============================================================================
 # 🔗 IMPORTANT LINKS
