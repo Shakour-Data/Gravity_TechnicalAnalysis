@@ -27,7 +27,7 @@ class MultiHorizonFeatureExtractor:
     def __init__(
         self,
         lookback_period: int = 100,
-        horizons: list = None
+        horizons: list[int | str] | None = None
     ):
         """
         Initialize multi-horizon feature extractor
