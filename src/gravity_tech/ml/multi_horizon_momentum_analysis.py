@@ -36,6 +36,11 @@ class MomentumScore:
         else:
             return "NEUTRAL"
 
+    @property
+    def accuracy(self) -> float:
+        """سازگاری با واسط‌های قدیمی"""
+        return self.confidence
+
 
 @dataclass
 class MultiHorizonMomentumAnalysis:
@@ -63,19 +68,19 @@ class MultiHorizonMomentumAnalysis:
                 '3d': {
                     'score': self.momentum_3d.score,
                     'confidence': self.momentum_3d.confidence,
-                    'trend': self.momentum_3d.trend_signal.name,
+                    'signal': self.momentum_3d.signal.name,
                     'strength': self.momentum_3d.get_strength()
                 },
                 '7d': {
                     'score': self.momentum_7d.score,
                     'confidence': self.momentum_7d.confidence,
-                    'trend': self.momentum_7d.trend_signal.name,
+                    'signal': self.momentum_7d.signal.name,
                     'strength': self.momentum_7d.get_strength()
                 },
                 '30d': {
                     'score': self.momentum_30d.score,
                     'confidence': self.momentum_30d.confidence,
-                    'trend': self.momentum_30d.trend_signal.name,
+                    'signal': self.momentum_30d.signal.name,
                     'strength': self.momentum_30d.get_strength()
                 }
             },
