@@ -12,7 +12,7 @@ License: MIT
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import structlog
@@ -21,7 +21,7 @@ from gravity_tech.indicators.momentum import MomentumIndicators
 from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.indicators.volume import VolumeIndicators
 from gravity_tech.models.schemas import Candle
-from gravity_tech.patterns.classical import detect_classical_patterns
+from gravity_tech.patterns.classical import ClassicalPatterns
 
 logger = structlog.get_logger()
 
@@ -75,7 +75,7 @@ class ScenarioAnalyzer:
     - محاسبه سناریوها بر اساس داده‌های clean
     """
 
-    def __init__(self, data_service_client: Optional[DataServiceClient] = None):
+    def __init__(self, data_service_client: DataServiceClient | None = None):
         """
         Initialize scenario analyzer.
 
@@ -174,6 +174,9 @@ class ScenarioAnalyzer:
         Returns:
             ThreeScenarioAnalysis
         """
+        if not candles:
+            raise ValueError("No candles provided for scenario analysis.")
+
         if current_price is None:
             current_price = candles[-1].close
 
@@ -238,8 +241,6 @@ class ScenarioAnalyzer:
     def _base_technical_analysis(self, candles: list[Candle]) -> dict[str, Any]:
         """تحلیل تکنیکال پایه"""
         closes = np.array([c.close for c in candles])
-        highs = np.array([c.high for c in candles])
-        lows = np.array([c.low for c in candles])
         volumes = np.array([c.volume for c in candles])
 
         # Trend
@@ -256,7 +257,7 @@ class ScenarioAnalyzer:
         current_volume = volumes[-1]
 
         # Patterns
-        patterns = detect_classical_patterns(candles[-100:])
+        patterns = ClassicalPatterns.detect_all(candles[-100:])
 
         return {
             "sma_20": sma_20,
@@ -290,7 +291,8 @@ class ScenarioAnalyzer:
         target_price = current_price * (1 + (atr_pct * 3) / 100)
         stop_loss = current_price * (1 - (atr_pct * 0.5) / 100)
 
-        risk_reward = (target_price - current_price) / (current_price - stop_loss)
+        denominator = current_price - stop_loss
+        risk_reward = (target_price - current_price) / denominator if denominator > 0 else 0.0
 
         # سیگنال‌های کلیدی
         key_signals = self._identify_bullish_signals(base)
@@ -336,7 +338,8 @@ class ScenarioAnalyzer:
         target_price = current_price * (1 + (atr_pct * 1.5) / 100)
         stop_loss = current_price * (1 - (atr_pct * 1.0) / 100)
 
-        risk_reward = (target_price - current_price) / (current_price - stop_loss)
+        denominator = current_price - stop_loss
+        risk_reward = (target_price - current_price) / denominator if denominator > 0 else 0.0
 
         key_signals = self._identify_neutral_signals(base)
 
@@ -378,7 +381,8 @@ class ScenarioAnalyzer:
         target_price = current_price * (1 + (atr_pct * 0.5) / 100)
         stop_loss = current_price * (1 - (atr_pct * 1.5) / 100)
 
-        risk_reward = (target_price - current_price) / (current_price - stop_loss) if (current_price - stop_loss) > 0 else 0.1
+        denominator = current_price - stop_loss
+        risk_reward = (target_price - current_price) / denominator if denominator > 0 else 0.0
 
         key_signals = self._identify_bearish_signals(base)
 
