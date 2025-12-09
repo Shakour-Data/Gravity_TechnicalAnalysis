@@ -58,7 +58,7 @@ k9s version
 ### 1. Create Namespace
 
 ```bash
-kubectl apply -f k8s/namespace.yaml
+kubectl apply -f infra/k8s/namespace.yaml
 ```
 
 Verify:
@@ -69,7 +69,7 @@ kubectl get namespace tech-analysis-prod
 ### 2. Setup RBAC
 
 ```bash
-kubectl apply -f k8s/rbac.yaml
+kubectl apply -f infra/k8s/rbac.yaml
 ```
 
 Verify:
@@ -81,7 +81,7 @@ kubectl get role,rolebinding -n tech-analysis-prod
 ### 3. Deploy Redis Cache
 
 ```bash
-kubectl apply -f k8s/redis.yaml
+kubectl apply -f infra/k8s/redis.yaml
 ```
 
 Verify:
@@ -101,7 +101,7 @@ kubectl create secret generic technical-analysis-secret \
   -n tech-analysis-prod
 
 # Or apply from secret.yaml (edit values first)
-kubectl apply -f k8s/secret.yaml
+kubectl apply -f infra/k8s/secret.yaml
 ```
 
 Verify:
@@ -117,33 +117,33 @@ kubectl get secrets -n tech-analysis-prod
 
 #### Step 1: Apply ConfigMaps
 ```bash
-kubectl apply -f k8s/configmap.yaml
+kubectl apply -f infra/k8s/configmap.yaml
 ```
 
 #### Step 2: Deploy Application
 ```bash
-kubectl apply -f k8s/deployment.yaml
+kubectl apply -f infra/k8s/deployment.yaml
 ```
 
 #### Step 3: Create Service
 ```bash
-kubectl apply -f k8s/service.yaml
+kubectl apply -f infra/k8s/service.yaml
 ```
 
 #### Step 4: Setup Ingress
 ```bash
 # Edit ingress.yaml with your domain
-kubectl apply -f k8s/ingress.yaml
+kubectl apply -f infra/k8s/ingress.yaml
 ```
 
 #### Step 5: Enable Auto-Scaling
 ```bash
-kubectl apply -f k8s/hpa.yaml
+kubectl apply -f infra/k8s/hpa.yaml
 ```
 
 #### Step 6: Setup Monitoring
 ```bash
-kubectl apply -f k8s/monitoring.yaml
+kubectl apply -f infra/k8s/monitoring.yaml
 ```
 
 ### Method 2: Helm Chart (Recommended)
@@ -182,6 +182,9 @@ helm status technical-analysis -n tech-analysis-prod
 - `patterns_detected_total` - Pattern detection count
 - `cache_hits_total` - Cache hits
 - `cache_requests_total` - Cache requests
+- `data_connector_requests_total`/`data_connector_latency_seconds` - Remote vs mock fetches and latency
+- `ml_prediction_requests_total`/`ml_prediction_latency_seconds` - ML inference volume and P95 latency
+- `ml_model_cache_hits_total`/`ml_model_loads_total` - Model cache effectiveness
 
 **Verify Metrics:**
 ```bash
@@ -190,6 +193,8 @@ kubectl port-forward -n tech-analysis-prod svc/technical-analysis 8000:8000
 
 # Query metrics
 curl http://localhost:8000/metrics | grep http_requests_total
+curl http://localhost:8000/metrics | grep data_connector_requests_total
+curl http://localhost:8000/metrics | grep ml_prediction_requests_total
 ```
 
 ### 2. Grafana Dashboards
@@ -202,7 +207,7 @@ kubectl port-forward -n monitoring svc/grafana 3000:3000
 
 **Import Dashboard:**
 1. Go to Dashboards → Import
-2. Load `k8s/monitoring.yaml` dashboard JSON
+2. Load `infra/k8s/monitoring.yaml` dashboard JSON
 3. Select Prometheus data source
 
 **Key Dashboard Panels:**
@@ -489,13 +494,13 @@ kubectl rollout undo deployment/technical-analysis --to-revision=2 -n tech-analy
 **RPO:** 0 minutes (stateless service)
 
 **Steps:**
-1. Restore namespace: `kubectl apply -f k8s/namespace.yaml`
+1. Restore namespace: `kubectl apply -f infra/k8s/namespace.yaml`
 2. Restore secrets: `kubectl apply -f backup/secret.yaml`
 3. Restore ConfigMaps: `kubectl apply -f backup/configmap.yaml`
-4. Deploy Redis: `kubectl apply -f k8s/redis.yaml`
-5. Deploy application: `kubectl apply -f k8s/deployment.yaml`
-6. Restore service: `kubectl apply -f k8s/service.yaml`
-7. Restore ingress: `kubectl apply -f k8s/ingress.yaml`
+4. Deploy Redis: `kubectl apply -f infra/k8s/redis.yaml`
+5. Deploy application: `kubectl apply -f infra/k8s/deployment.yaml`
+6. Restore service: `kubectl apply -f infra/k8s/service.yaml`
+7. Restore ingress: `kubectl apply -f infra/k8s/ingress.yaml`
 8. Verify health: `kubectl get pods -n tech-analysis-prod`
 
 ---
@@ -530,7 +535,7 @@ snyk container test ghcr.io/gravitywavesml/gravity_techanalysis:v1.1.0
 **Scan Kubernetes Manifests:**
 ```bash
 # Using kubesec
-kubesec scan k8s/deployment.yaml
+kubesec scan infra/k8s/deployment.yaml
 
 # Using kube-bench
 kube-bench run --targets node,policies
@@ -595,7 +600,7 @@ kubectl rollout status deployment/technical-analysis -n tech-analysis-prod
 
 **Update ConfigMap:**
 ```bash
-kubectl apply -f k8s/configmap.yaml
+kubectl apply -f infra/k8s/configmap.yaml
 kubectl rollout restart deployment/technical-analysis -n tech-analysis-prod
 ```
 
@@ -619,6 +624,7 @@ kubectl get hpa -n tech-analysis-prod
 curl http://<your-domain>/health
 curl http://<your-domain>/health/ready
 curl http://<your-domain>/health/live
+curl http://<your-domain>/api/v1/db/ui  # minimal DB explorer (no auth)
 ```
 
 ### 3. Resource Cleanup
