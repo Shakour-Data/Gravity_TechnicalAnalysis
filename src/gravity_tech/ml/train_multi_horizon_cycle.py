@@ -7,13 +7,17 @@ Training Pipeline برای Multi-Horizon Cycle System
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
+
+from src.config import TSE_DB_FILE
+from src.database import tse_data_source
 
 
 def create_realistic_cycle_data(
@@ -132,6 +136,110 @@ def _phase_to_target(phase: float) -> float:
     return 0.5
 
 
+def _rows_to_candles(rows: Sequence[dict[str, Any]], symbol: str, timeframe: str = '1d') -> list[Candle]:
+    """Convert raw dictionaries from DB fetchers to Candle objects."""
+    candles: list[Candle] = []
+    for row in rows:
+        ts = row.get("timestamp")
+        if ts is None:
+            continue
+        candles.append(
+            Candle(
+                timestamp=ts,
+                open=float(row.get("open", 0.0) or 0.0),
+                high=float(row.get("high", 0.0) or 0.0),
+                low=float(row.get("low", 0.0) or 0.0),
+                close=float(row.get("close", 0.0) or 0.0),
+                volume=float(row.get("volume", 0.0) or 0.0),
+                symbol=str(symbol),
+                timeframe=timeframe,
+            )
+        )
+    return candles
+
+
+def load_tse_instruments(
+    symbols: Sequence[str] | None = None,
+    market_indices: Sequence[str] | None = None,
+    sector_indices: Sequence[str] | None = None,
+    *,
+    min_candles: int,
+    max_symbols: int = 8,
+    max_market_indices: int = 4,
+    max_sector_indices: int = 6,
+    timeframe: str = '1d',
+    verbose: bool = True,
+) -> dict[str, list[Candle]]:
+    """
+    Load instruments from the main TSE SQLite database, including symbols,
+    market indices, and sector indices.
+    """
+    instruments: dict[str, list[Candle]] = {}
+
+    if not os.path.exists(TSE_DB_FILE):
+        if verbose:
+            print(f"⚠️  TSE database not found at {TSE_DB_FILE}")
+        return instruments
+
+    if tse_data_source is None:
+        if verbose:
+            print("⚠️  TSE data source is not configured; skipping real data load.")
+        return instruments
+
+    resolved_symbols = list(symbols or [])
+    resolved_market_indices = list(market_indices or [])
+    resolved_sector_indices = list(sector_indices or [])
+
+    if not resolved_symbols and hasattr(tse_data_source, "list_symbols"):
+        try:
+            resolved_symbols = tse_data_source.list_symbols(limit=max_symbols)
+        except Exception as exc:
+            if verbose:
+                print(f"⚠️  Unable to list symbols from DB: {exc}")
+
+    if not resolved_market_indices and hasattr(tse_data_source, "list_market_indices"):
+        try:
+            resolved_market_indices = tse_data_source.list_market_indices(limit=max_market_indices)
+        except Exception as exc:
+            if verbose:
+                print(f"⚠️  Unable to list market indices: {exc}")
+
+    if not resolved_sector_indices and hasattr(tse_data_source, "list_sector_indices"):
+        try:
+            resolved_sector_indices = tse_data_source.list_sector_indices(limit=max_sector_indices)
+        except Exception as exc:
+            if verbose:
+                print(f"⚠️  Unable to list sector indices: {exc}")
+
+    def _load_group(label: str, codes: Sequence[str], fetcher) -> None:
+        for code in codes:
+            try:
+                raw_rows = fetcher(code)
+            except Exception as exc:
+                if verbose:
+                    print(f"⚠️  Failed to load {label} '{code}': {exc}")
+                continue
+
+            candles = _rows_to_candles(raw_rows, str(code), timeframe)
+            if len(candles) < min_candles:
+                if verbose:
+                    print(f"• Skipping {label} '{code}': {len(candles)} < {min_candles} candles")
+                continue
+
+            instruments[str(code)] = candles
+            if verbose:
+                print(f"• Loaded {label} '{code}' with {len(candles)} candles")
+
+    _load_group("symbol", resolved_symbols, tse_data_source.fetch_price_data)
+    _load_group("market index", resolved_market_indices, tse_data_source.fetch_market_index)
+    if hasattr(tse_data_source, "fetch_sector_index"):
+        _load_group("sector index", resolved_sector_indices, tse_data_source.fetch_sector_index)
+
+    if verbose:
+        print(f"✅ Real TSE sequences ready: {len(instruments)}")
+    return instruments
+
+
 def build_cycle_dataset(
     candles: Sequence[Candle],
     lookback_period: int,
@@ -165,24 +273,57 @@ def build_cycle_dataset(
 
 
 def train_cycle_model(
-    candles: Sequence[Candle],
+    candles: Sequence[Candle] | None = None,
     horizons: Sequence[str] | None = None,
     lookback_period: int = 100,
     test_size: float = 0.2,
     output_dir: str = 'models/cycle',
     verbose: bool = True,
+    instrument_candles: Mapping[str, Sequence[Candle]] | None = None,
 ) -> MultiHorizonWeightLearner:
     horizons = list(horizons or ['3d', '7d', '30d'])
+    horizon_steps = {h: int(h.replace('d', '')) for h in horizons}
+    max_horizon = max(horizon_steps.values())
+    min_required = lookback_period + max_horizon
 
     if verbose:
         print("=" * 70)
         print("🚀 TRAINING MULTI-HORIZON CYCLE MODEL")
         print("=" * 70)
-        print(f"\n📈 Dataset candles: {len(candles)}")
+        if instrument_candles:
+            print(f"\n📊 Instruments: {len(instrument_candles)} sequences")
+            print(f"🔁 Min candles per instrument: {min_required}")
+        elif candles is not None:
+            print(f"\n📈 Dataset candles: {len(candles)}")
         print(f"🕒 Horizons: {horizons}")
         print(f"🔍 Lookback: {lookback_period}")
 
-    X, Y = build_cycle_dataset(candles, lookback_period, horizons)
+    if instrument_candles:
+        feature_parts: list[pd.DataFrame] = []
+        target_parts: list[pd.DataFrame] = []
+        for name, series in instrument_candles.items():
+            if len(series) < min_required:
+                if verbose:
+                    print(f"- Skipping {name}: requires {min_required} candles, has {len(series)}")
+                continue
+            Xi, Yi = build_cycle_dataset(series, lookback_period, horizons)
+            if not Xi.empty and not Yi.empty:
+                feature_parts.append(Xi)
+                target_parts.append(Yi)
+                if verbose:
+                    print(f"- {name}: added {len(Xi)} samples")
+
+        if not feature_parts or not target_parts:
+            raise ValueError("No instruments had enough data to build the training set.")
+
+        X = pd.concat(feature_parts, ignore_index=True).replace([np.inf, -np.inf], 0).fillna(0)
+        Y = pd.concat(target_parts, ignore_index=True).replace([np.inf, -np.inf], 0).fillna(0)
+    else:
+        if candles is None:
+            raise ValueError("Candles are required when instrument_candles is not provided.")
+        if len(candles) < min_required:
+            raise ValueError(f"Not enough candles for training. Need {min_required}, got {len(candles)}.")
+        X, Y = build_cycle_dataset(candles, lookback_period, horizons)
 
     if verbose:
         print(f"\n✅ Prepared {len(X)} samples with {X.shape[1]} features.")
@@ -227,22 +368,45 @@ def main() -> MultiHorizonWeightLearner:
     print("Multi-Horizon Cycle Training Pipeline")
     print("=" * 70)
 
-    training_candles: list[Candle] = []
-    regimes = ['fast', 'slow', 'range', 'mixed']
-    for regime in regimes:
-        print(f"🔁 Generating {regime} regime samples...")
-        training_candles.extend(create_realistic_cycle_data(600, regime))
+    horizons = ['3d', '7d', '30d']
+    lookback_period = 100
+    max_horizon = max(int(h.replace('d', '')) for h in horizons)
+    min_candles = lookback_period + max_horizon
 
-    learner = train_cycle_model(
-        candles=training_candles,
-        horizons=['3d', '7d', '30d'],
-        lookback_period=100,
-        output_dir='models/cycle',
+    print(f"\U0001f4e5 Trying to load real TSE data from {TSE_DB_FILE} ...")
+    instrument_sets = load_tse_instruments(
+        min_candles=min_candles,
+        timeframe='1d',
         verbose=True,
     )
 
+    if instrument_sets:
+        learner = train_cycle_model(
+            candles=None,
+            instrument_candles=instrument_sets,
+            horizons=horizons,
+            lookback_period=lookback_period,
+            output_dir='models/cycle',
+            verbose=True,
+        )
+    else:
+        print("\u26a0\ufe0f  Falling back to synthetic cycle generation.")
+        training_candles: list[Candle] = []
+        regimes = ['fast', 'slow', 'range', 'mixed']
+        for regime in regimes:
+            print(f"\U0001f6a7 Generating {regime} regime samples...")
+            training_candles.extend(create_realistic_cycle_data(600, regime))
+
+        learner = train_cycle_model(
+            candles=training_candles,
+            horizons=horizons,
+            lookback_period=lookback_period,
+            output_dir='models/cycle',
+            verbose=True,
+        )
+
     print("\n" + "=" * 70)
-    print("✅ Cycle training completed successfully.")
+    print("\u2705 Cycle training completed successfully.")
     print("=" * 70)
     return learner
 
