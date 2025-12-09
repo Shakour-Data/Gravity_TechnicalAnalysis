@@ -98,12 +98,11 @@ class TechnicalAnalysisService:
                 VolatilityIndicators.calculate_all(request.candles),
                 fast_names["volatility_indicators"],
             )
-            # TODO: SupportResistanceIndicators doesn't have calculate_all method yet
-            # TechnicalAnalysisService._extend_indicators(
-            #     result.support_resistance_indicators,
-            #     SupportResistanceIndicators.calculate_all(request.candles),
-            #     set(),
-            # )
+            TechnicalAnalysisService._extend_indicators(
+                result.support_resistance_indicators,
+                SupportResistanceIndicators.calculate_all(request.candles),
+                set(),
+            )
 
             # Detect candlestick patterns
             result.candlestick_patterns = CandlestickPatterns.detect_patterns(request.candles)
