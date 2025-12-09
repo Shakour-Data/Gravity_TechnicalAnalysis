@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Sequence
 
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.data_connector import DataConnector
@@ -114,11 +114,14 @@ def _resolve_candles(args) -> list[Candle]:
         return _load_candles(args.candles)
     if args.symbol:
         connector = DataConnector()
-        candles = connector.fetch_candles(
-            symbol=args.symbol,
-            interval=args.interval,
-            limit=args.limit,
-        )
+        try:
+            candles = connector.fetch_candles(
+                symbol=args.symbol,
+                interval=args.interval,
+                limit=args.limit,
+            )
+        except Exception as e:
+            raise SystemExit(f"Failed to fetch candles from data connector: {e}") from None
         if not candles:
             raise SystemExit("No candles retrieved from data connector.")
         return candles
