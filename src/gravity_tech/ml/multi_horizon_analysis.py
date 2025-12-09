@@ -19,8 +19,8 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
+from gravity_tech.core.domain.entities.signal_strength import SignalStrength
 from gravity_tech.ml.multi_horizon_weights import HorizonWeights, MultiHorizonWeightLearner
-from gravity_tech.models.schemas import SignalStrength
 
 
 def score_to_signal(score: float) -> SignalStrength:
@@ -346,7 +346,7 @@ class MultiHorizonTrendAnalyzer:
 
         if total_confidence > 0:
             weighted_score = sum(
-                s * c for s, c in zip(scores, confidences)
+                s * c for s, c in zip(scores, confidences, strict=True)
             ) / total_confidence
 
             combined_confidence = total_confidence / len(confidences)
