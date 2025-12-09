@@ -23,6 +23,7 @@ from gravity_tech.core.indicators.momentum import MomentumIndicators
 from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
 from gravity_tech.database.tse_data_source import tse_data_source
+from gravity_tech.ml.data_connector import DataConnector
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
 
 
@@ -230,7 +231,15 @@ class ToolRecommendationService:
                 candles = []
 
         if not candles:
-            candles = self._generate_synthetic_candles(limit)
+            try:
+                connector = DataConnector(allow_mock_on_failure=False)
+                fetched = connector.fetch_candles(symbol=symbol, interval=timeframe, limit=limit)
+                candles.extend(fetched)
+            except Exception:
+                candles = []
+
+        if not candles:
+            raise ValueError(f"No real candles available for symbol {symbol}")
 
         return candles
 
