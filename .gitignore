@@ -316,6 +316,7 @@ docker-compose.override.yml
 
 # Kubernetes secrets
 k8s/secrets/
+infra/k8s/secrets/
 *.kubeconfig
 
 # ==============================================================================
