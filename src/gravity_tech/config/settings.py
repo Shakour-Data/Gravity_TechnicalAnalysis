@@ -24,7 +24,6 @@ Notes:               Loads all configuration from environment variables.
 
 Configuration management for Technical Analysis Microservice
 """
-from typing import Optional
 
 from pydantic_settings import BaseSettings
 
@@ -53,10 +52,10 @@ class Settings(BaseSettings):
     jwt_expiration_minutes: int = 1440  # 24 hours in minutes
 
     # Redis Cache
+    cache_enabled: bool = False  # disable by default; set True only when Redis is available
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
-    cache_enabled: bool = True
     cache_ttl: int = 300
 
     # Data Service Integration (NEW)
@@ -67,13 +66,13 @@ class Settings(BaseSettings):
 
     # Service Discovery
     eureka_enabled: bool = False
-    eureka_server_url: Optional[str] = None
+    eureka_server_url: str | None = None
 
     # Event Messaging
     kafka_enabled: bool = False
-    kafka_bootstrap_servers: Optional[str] = None
+    kafka_bootstrap_servers: str | None = None
     rabbitmq_enabled: bool = False
-    rabbitmq_url: Optional[str] = None
+    rabbitmq_url: str | None = None
 
     # Data Ingestion (Hybrid Architecture)
     enable_data_ingestion: bool = True  # Enable automatic saving of analysis results to database
@@ -82,6 +81,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost:5432/gravity_tech"
     database_pool_size: int = 10
     database_max_overflow: int = 20
+    sqlite_path: str = "data/tool_performance.db"
+    json_storage_path: str = "data/tool_performance.json"
 
     # Observability
     metrics_enabled: bool = True
