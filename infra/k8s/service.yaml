@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: technical-analysis
+  namespace: tech-analysis-prod
+  labels:
+    app: technical-analysis
+spec:
+  type: ClusterIP
+  selector:
+    app: technical-analysis
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

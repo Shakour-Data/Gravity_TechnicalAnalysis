@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: technical-analysis-config
+  namespace: tech-analysis-prod
+data:
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+  WORKERS: "4"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"

@@ -1,0 +1,71 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: technical-analysis
+  namespace: tech-analysis-prod
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: technical-analysis
+  namespaceSelector:
+    matchNames:
+      - tech-analysis-prod
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /metrics
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: technical-analysis-alerts
+  namespace: tech-analysis-prod
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: technical-analysis.rules
+      rules:
+        - alert: HighErrorRate
+          expr: sum(rate(http_requests_total{status!~"2.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate detected"
+            description: "More than 5% of HTTP requests are failing for 5 minutes."
+        - alert: SlowInference
+          expr: histogram_quantile(0.95, sum(rate(ml_prediction_duration_seconds_bucket[5m])) by (le)) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ML inference latency is high"
+            description: "P95 inference latency above 500ms."
+        - alert: DataConnectorFailuresHigh
+          expr: sum(rate(data_connector_requests_total{source="remote",outcome="failure"}[5m])) / sum(rate(data_connector_requests_total{source="remote"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Remote data fetch failures exceed 5%"
+            description: "Investigate historical-data service or network issues."
+        - alert: DataConnectorMockUsage
+          expr: sum(rate(data_connector_requests_total{source="mock"}[10m])) > 0
+          for: 10m
+          labels:
+            severity: info
+          annotations:
+            summary: "Mock data is being served"
+            description: "Mock fallback was used in the last 10 minutes; verify upstream availability."
+        - alert: MlPredictionP95High
+          expr: histogram_quantile(0.95, sum(rate(ml_prediction_latency_seconds_bucket[5m])) by (le, endpoint)) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ML prediction latency P95 > 500ms"
+            description: "Endpoints exceeding 500ms P95 over 5m; check model size or CPU saturation."
