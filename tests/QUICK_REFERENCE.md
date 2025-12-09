@@ -388,7 +388,7 @@ pytest tests/ -n auto -v
 - 📖 Full Setup: See `README_TESTS.md`
 - 📊 Progress: See `PROGRESS_CHECKLIST.md`
 - 📋 Organization: See `TEST_ORGANIZATION.md`
-- 📈 Summary: See `FINAL_TEST_SUMMARY.md`
+- 📈 Summary: See `docs/reports/FINAL_TEST_SUMMARY.md`
 - ⚙️ Execution: See `EXECUTION_GUIDE.py`
 
 ---
