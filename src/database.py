@@ -273,6 +273,68 @@ class TSEDatabaseConnector:
         conn.commit()
         conn.close()
 
+    def list_symbols(self, limit: int = 50, min_rows: int = 50) -> list[str]:
+        """
+        Return tickers available in price_data with a minimum number of rows.
+        Useful for sampling symbols with enough history.
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ticker
+            FROM price_data
+            GROUP BY ticker
+            HAVING COUNT(*) >= ?
+            ORDER BY COUNT(*) DESC
+            LIMIT ?
+            """,
+            (min_rows, limit),
+        )
+        tickers = [row[0] for row in cursor.fetchall() if row[0]]
+        conn.close()
+        return tickers
+
+    def list_market_indices(self, limit: int = 10) -> list[str]:
+        """
+        Return available market index codes that have data.
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT index_code
+            FROM market_indices
+            GROUP BY index_code
+            ORDER BY COUNT(*) DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        codes = [row[0] for row in cursor.fetchall() if row[0]]
+        conn.close()
+        return codes
+
+    def list_sector_indices(self, limit: int = 15) -> list[str]:
+        """
+        Return sector codes that have associated sector index data.
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT sector_code
+            FROM sector_indices
+            GROUP BY sector_code
+            ORDER BY COUNT(*) DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        sectors = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+        conn.close()
+        return sectors
+
     def fetch_price_data(self, ticker: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
         """
         Fetches price data for a given ticker.
@@ -361,6 +423,51 @@ class TSEDatabaseConnector:
                 "low": row["low"],
                 "close": row["close"],
                 "volume": 0  # Indices often don't have volume in the same way, or it's not in this table
+            })
+
+        return candles
+
+    def fetch_sector_index(self, sector_code: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
+        """
+        Fetches sector index data using the sector_code (sector_id).
+        """
+        from datetime import datetime
+
+        conn = self.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        query = "SELECT date, open, high, low, close FROM sector_indices WHERE sector_code = ?"
+        params = [sector_code]
+
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+
+        query += " ORDER BY date ASC"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        candles = []
+        for row in rows:
+            try:
+                dt = datetime.strptime(row["date"], "%Y-%m-%d")
+            except ValueError:
+                continue
+
+            candles.append({
+                "timestamp": dt,
+                "open": row["open"],
+                "high": row["high"],
+                "low": row["low"],
+                "close": row["close"],
+                "volume": 0,
             })
 
         return candles
