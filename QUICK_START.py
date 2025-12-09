@@ -238,9 +238,9 @@ def main():
     print("=" * 70)
     print()
     print("📖 For more details, see:")
-    print("  - QUICK_REFERENCE.md")
-    print("  - README_TESTS.md")
-    print("  - COMPLETION_SUMMARY.md")
+    print("  - tests/QUICK_REFERENCE.md")
+    print("  - tests/README_TESTS.md")
+    print("  - docs/reports/COMPLETION_SUMMARY.md")
     print()
 
 if __name__ == "__main__":
@@ -253,7 +253,7 @@ if __name__ == "__main__":
 """
 📂 Key Files Location:
 
-Project Root:
+docs/reports/:
   - COMPLETION_SUMMARY.md
   - FINAL_TEST_SUMMARY.md
   - TEST_SUITE_STATUS.md
