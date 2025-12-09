@@ -1,0 +1,1 @@
+python -m gravity_tech.cli.run_db_ui --port 8000 --reload
