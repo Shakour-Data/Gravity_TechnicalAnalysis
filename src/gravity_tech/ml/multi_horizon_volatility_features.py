@@ -1,16 +1,27 @@
 """
 Multi-Horizon Feature Extraction for Volatility
-
-استخراج ویژگی‌های نوسان برای چندین افق زمانی:
-- 8 اندیکاتور نوسان (ATR, Bollinger, Keltner, Donchian, StdDev, HV, ATR%, Chaikin)
-- Multi-Horizon Learning: 3d, 7d, 30d
 """
 
+import logging
+from collections import deque
+from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
-from gravity_tech.models.schemas import Candle
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class VolatilitySeriesCache:
+    """Cached series to avoid recomputing true range/ATR and returns."""
+
+    closes: np.ndarray
+    true_range: np.ndarray
+    atr: np.ndarray
 
 
 class MultiHorizonVolatilityFeatureExtractor:
@@ -35,7 +46,8 @@ class MultiHorizonVolatilityFeatureExtractor:
     def __init__(
         self,
         lookback_period: int = 100,
-        horizons: list = None
+        horizons: list = None,
+        atr_span: int = 14,
     ):
         """
         Initialize feature extractor
@@ -44,8 +56,10 @@ class MultiHorizonVolatilityFeatureExtractor:
             lookback_period: تعداد کندل‌های گذشته
             horizons: لیست افق‌های زمانی (پیش‌فرض: [3, 7, 30])
                      می‌تواند int باشد [3, 7, 30] یا string ['3d', '7d', '30d']
+            atr_span: طول EMA برای ATR (پیش‌فرض 14)
         """
         self.lookback_period = lookback_period
+        self.atr_span = atr_span
 
         # تبدیل horizons به int اگر string است
         if horizons is None:
@@ -92,7 +106,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['atr_normalized'] = atr_result.normalized
             features['atr_percentile'] = atr_result.percentile
         except Exception as e:
-            print(f"Warning: ATR calculation error: {e}")
+            logger.warning("ATR calculation error", exc_info=e)
             features.update({
                 'atr_signal': 0.0, 'atr_confidence': 0.5,
                 'atr_weighted': 0.0, 'atr_normalized': 0.0, 'atr_percentile': 50.0
@@ -110,7 +124,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['bollinger_bands_normalized'] = bb_result.normalized
             features['bollinger_bands_percentile'] = bb_result.percentile
         except Exception as e:
-            print(f"Warning: Bollinger Bands calculation error: {e}")
+            logger.warning("Bollinger Bands calculation error", exc_info=e)
             features.update({
                 'bollinger_bands_signal': 0.0, 'bollinger_bands_confidence': 0.5,
                 'bollinger_bands_weighted': 0.0, 'bollinger_bands_normalized': 0.0,
@@ -129,7 +143,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['keltner_channel_normalized'] = keltner_result.normalized
             features['keltner_channel_percentile'] = keltner_result.percentile
         except Exception as e:
-            print(f"Warning: Keltner Channel calculation error: {e}")
+            logger.warning("Keltner Channel calculation error", exc_info=e)
             features.update({
                 'keltner_channel_signal': 0.0, 'keltner_channel_confidence': 0.5,
                 'keltner_channel_weighted': 0.0, 'keltner_channel_normalized': 0.0,
@@ -148,7 +162,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['donchian_channel_normalized'] = donchian_result.normalized
             features['donchian_channel_percentile'] = donchian_result.percentile
         except Exception as e:
-            print(f"Warning: Donchian Channel calculation error: {e}")
+            logger.warning("Donchian Channel calculation error", exc_info=e)
             features.update({
                 'donchian_channel_signal': 0.0, 'donchian_channel_confidence': 0.5,
                 'donchian_channel_weighted': 0.0, 'donchian_channel_normalized': 0.0,
@@ -167,7 +181,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['standard_deviation_normalized'] = std_result.normalized
             features['standard_deviation_percentile'] = std_result.percentile
         except Exception as e:
-            print(f"Warning: Standard Deviation calculation error: {e}")
+            logger.warning("Standard Deviation calculation error", exc_info=e)
             features.update({
                 'standard_deviation_signal': 0.0, 'standard_deviation_confidence': 0.5,
                 'standard_deviation_weighted': 0.0, 'standard_deviation_normalized': 0.0,
@@ -186,7 +200,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['historical_volatility_normalized'] = hv_result.normalized
             features['historical_volatility_percentile'] = hv_result.percentile
         except Exception as e:
-            print(f"Warning: Historical Volatility calculation error: {e}")
+            logger.warning("Historical Volatility calculation error", exc_info=e)
             features.update({
                 'historical_volatility_signal': 0.0, 'historical_volatility_confidence': 0.5,
                 'historical_volatility_weighted': 0.0, 'historical_volatility_normalized': 0.0,
@@ -205,7 +219,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['atr_percentage_normalized'] = atr_pct_result.normalized
             features['atr_percentage_percentile'] = atr_pct_result.percentile
         except Exception as e:
-            print(f"Warning: ATR Percentage calculation error: {e}")
+            logger.warning("ATR Percentage calculation error", exc_info=e)
             features.update({
                 'atr_percentage_signal': 0.0, 'atr_percentage_confidence': 0.5,
                 'atr_percentage_weighted': 0.0, 'atr_percentage_normalized': 0.0,
@@ -224,7 +238,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['chaikin_volatility_normalized'] = chaikin_result.normalized
             features['chaikin_volatility_percentile'] = chaikin_result.percentile
         except Exception as e:
-            print(f"Warning: Chaikin Volatility calculation error: {e}")
+            logger.warning("Chaikin Volatility calculation error", exc_info=e)
             features.update({
                 'chaikin_volatility_signal': 0.0, 'chaikin_volatility_confidence': 0.5,
                 'chaikin_volatility_weighted': 0.0, 'chaikin_volatility_normalized': 0.0,
@@ -278,7 +292,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             return normalized_change
 
         except Exception as e:
-            print(f"Warning: Future volatility calculation error: {e}")
+            logger.warning("Future volatility calculation error", exc_info=e)
             return 0.0
 
     def extract_features_with_target(
@@ -327,35 +341,89 @@ class MultiHorizonVolatilityFeatureExtractor:
         if horizons is None:
             horizons = self.horizons
 
-        X_list = []
-        y_dict = {f'target_{h}d': [] for h in horizons}
+        total_needed = self.lookback_period + max(horizons)
+        if len(candles) < total_needed:
+            raise ValueError(f"Need at least {total_needed} candles for volatility dataset")
 
-        # حداکثر افق
-        max_h = max(horizons)
+        cache = self._build_series_cache(candles)
+        change_matrix = self._compute_vol_change_matrix(cache.atr, horizons)
 
-        # برای هر نقطه زمانی
-        for i in range(self.lookback_period, len(candles) - max_h):
-            window_candles = candles[:i+1]
+        X_rows: list[dict[str, float]] = []
+        y_rows: list[dict[str, float]] = []
 
-            try:
-                # استخراج ویژگی‌ها
-                features = self.extract_volatility_features(window_candles)
-                X_list.append(features)
+        usable_length = len(candles) - max(horizons) - self.lookback_period + 1
+        window_deque: deque[Candle] = deque(
+            candles[: self.lookback_period],
+            maxlen=self.lookback_period,
+        )
 
-                # محاسبه target برای هر horizon
-                for h in horizons:
-                    future_candles = candles[:i+h+1]
-                    target = self.calculate_future_volatility_change(future_candles, h)
-                    y_dict[f'target_{h}d'].append(target)
+        for offset in range(usable_length):
+            end = offset + self.lookback_period
+            current_idx = end - 1
 
-            except Exception as e:
-                print(f"Warning: Error at index {i}: {e}")
+            targets = self._collect_vol_targets(change_matrix, horizons, current_idx)
+            if targets is None:
+                if end < len(candles):
+                    window_deque.append(candles[end])
                 continue
 
-        X = pd.DataFrame(X_list)
-        y = pd.DataFrame(y_dict)
+            try:
+                features = self.extract_volatility_features(list(window_deque))
+                X_rows.append(features)
+                y_rows.append(targets)
+            except Exception as e:
+                logger.warning("Volatility dataset error", extra={"index": offset}, exc_info=e)
 
+            if end < len(candles):
+                window_deque.append(candles[end])
+
+        X = pd.DataFrame(X_rows)
+        y = pd.DataFrame(y_rows)
+
+        logger.info(
+            "Extracted volatility dataset",
+            extra={"samples": len(X), "features": X.shape[1], "targets": y.shape[1]},
+        )
         return X, y
+
+    def _build_series_cache(self, candles: list[Candle]) -> VolatilitySeriesCache:
+        closes = np.array([c.close for c in candles], dtype=float)
+        true_range = np.array(VolatilityIndicators.true_range(candles), dtype=float)
+        atr_series = pd.Series(true_range).ewm(span=self.atr_span, adjust=False).mean().to_numpy()
+        return VolatilitySeriesCache(closes=closes, true_range=true_range, atr=atr_series)
+
+    def _compute_vol_change_matrix(
+        self,
+        atr: np.ndarray,
+        horizons: list[int],
+    ) -> dict[int, np.ndarray]:
+        change_matrix: dict[int, np.ndarray] = {}
+        for h in horizons:
+            if h <= 0 or h >= len(atr):
+                continue
+            future = atr[h:]
+            current = atr[:-h]
+            pct_change = ((future - current) / current) * 100
+            padded = np.concatenate([np.full(h, np.nan), pct_change])
+            change_matrix[h] = padded
+        return change_matrix
+
+    def _collect_vol_targets(
+        self,
+        change_matrix: dict[int, np.ndarray],
+        horizons: list[int],
+        idx: int,
+    ) -> Optional[dict[str, float]]:
+        targets: dict[str, float] = {}
+        for h in horizons:
+            series = change_matrix.get(h)
+            if series is None or idx >= len(series):
+                return None
+            val = series[idx]
+            if np.isnan(val):
+                return None
+            targets[f'target_{h}d'] = float(np.clip(val / 50.0, -1.0, 1.0))
+        return targets
 
     def get_feature_names(self) -> list[str]:
         """
