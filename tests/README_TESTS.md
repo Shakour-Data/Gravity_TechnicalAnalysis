@@ -38,9 +38,114 @@ tests/unit/
 ✅ TEST_SUMMARY.py           → Test statistics
 ✅ EXECUTION_GUIDE.py        → How to run tests
 ✅ PROGRESS_CHECKLIST.md     → Detailed checklist
-✅ FINAL_TEST_SUMMARY.md     → Complete overview
+✅ docs/reports/FINAL_TEST_SUMMARY.md     → Complete overview
 ✅ README.md                 ← You are here
 ```
+
+---
+
+## 🆕 Recent Test Organization (December 2025)
+
+### New Directory Structure
+```
+tests/
+├── fast/                    # Fast tests (< 5 seconds each)
+│   ├── test_combined_system_fast.py
+│   └── test_fast_combined_system.py
+├── slow/                    # Slow tests (5-60 seconds)
+│   ├── test_combined_system.py
+│   ├── test_multi_horizon.py
+│   ├── test_complete_analysis.py
+│   └── test_complete_analysis_pipeline.py
+├── data_driven/             # Tests using real TSE data
+│   ├── test_all_with_tse_data.py
+│   ├── test_phase4_advanced_patterns_tse.py
+│   ├── test_phase5_edge_cases_stress_tse.py
+│   └── test_services_with_tse_data.py
+├── accuracy/                # Accuracy and confidence tests
+│   ├── test_accuracy_weighting.py
+│   ├── test_comprehensive_accuracy.py
+│   └── test_confidence_metrics.py
+├── api/                     # API endpoint tests
+│   ├── test_api_v1_clean.py
+│   └── test_api_v1_comprehensive_fixed.py
+├── cli/                     # CLI tests
+│   └── test_run_complete_pipeline.py
+├── integration/             # General integration tests
+├── unit/                    # Unit tests (organized by module)
+│   ├── analysis/
+│   ├── api/
+│   ├── core/
+│   ├── domain/
+│   ├── indicators/
+│   ├── middleware/
+│   ├── ml/
+│   ├── patterns/
+│   ├── services/
+│   ├── utils/
+│   ├── test_quick_start.py
+│   └── test_ultra_fast_mocks.py
+└── conftest.py              # Shared fixtures
+```
+
+### Test Categories and Markers
+
+#### Markers
+- `@pytest.mark.unit` - Unit tests
+- `@pytest.mark.integration` - Integration tests
+- `@pytest.mark.slow` - Tests taking >5 seconds
+- `@pytest.mark.fast` - Tests taking <5 seconds
+
+#### Running Tests
+
+```bash
+# Run all fast tests
+pytest tests/fast/ -m "fast"
+
+# Run all slow tests (CI only)
+pytest tests/slow/ -m "slow"
+
+# Run data-driven tests (requires TSE database)
+pytest tests/data_driven/
+
+# Run unit tests only
+pytest tests/unit/ -m "unit"
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+```
+
+### Optimization Strategies
+
+#### Speed Improvements Made:
+1. **Reduced dataset sizes**: Fast tests use 50-100 samples vs 600-1500
+2. **Pre-computed fixtures**: Avoid re-training models
+3. **Mock heavy operations**: Use stubs for complex computations
+4. **Parallel execution**: Tests can run in parallel
+
+#### Performance Benchmarks:
+- Fast tests: <5 seconds each
+- Slow tests: 5-60 seconds each
+- Data-driven tests: Variable (depend on database size)
+
+### Duplicate Test Resolution
+
+#### Merged/Consolidated Tests:
+- `test_combined_system.py` (slow) and `test_fast_combined_system.py` (fast) - Keep both with different markers
+- `test_api_v1_clean.py` and `test_api_v1_comprehensive_fixed.py` - Keep both (different fixture approaches)
+
+#### Unique Tests Maintained:
+- TSE data tests are complementary, not duplicate
+- Accuracy tests cover different scenarios
+- Unit tests are component-specific
+
+### Maintenance Guidelines
+
+1. **New tests**: Place in appropriate category directory
+2. **Slow tests**: Always create fast counterparts
+3. **Data dependencies**: Use fixtures, avoid hard-coded paths
+4. **Markers**: Use appropriate pytest markers
+5. **Documentation**: Update this README when adding new categories
 
 ---
 
@@ -247,7 +352,7 @@ Ctrl+Shift+P → Run Task → Run All Tests
 | **TEST_SUMMARY.py** | Quick reference & commands |
 | **EXECUTION_GUIDE.py** | How to run tests |
 | **PROGRESS_CHECKLIST.md** | Detailed progress tracking |
-| **FINAL_TEST_SUMMARY.md** | Complete project overview |
+| **docs/reports/FINAL_TEST_SUMMARY.md** | Complete project overview |
 | **README.md** | This file |
 
 ---
@@ -385,6 +490,6 @@ And check the results!
 **Ready to achieve 70%+ test coverage! 🎉**
 
 For more details, see:
-- `FINAL_TEST_SUMMARY.md` - Complete overview
+- `docs/reports/FINAL_TEST_SUMMARY.md` - Complete overview
 - `PROGRESS_CHECKLIST.md` - Detailed tracking
 - `TEST_ORGANIZATION.md` - Folder structure
