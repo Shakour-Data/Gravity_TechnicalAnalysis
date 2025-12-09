@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -16,6 +17,32 @@ import numpy as np
 import requests
 from gravity_tech.config.settings import settings
 from gravity_tech.core.domain.entities import Candle
+
+try:
+    from prometheus_client import Counter, Histogram
+except Exception:  # pragma: no cover - fallback when prometheus_client is unavailable
+    class _Noop:
+        def labels(self, *args, **kwargs):
+            return self
+
+        def inc(self, *args, **kwargs):
+            return self
+
+        def observe(self, *args, **kwargs):
+            return self
+
+    Counter = Histogram = lambda *args, **kwargs: _Noop()
+
+DATA_CONNECTOR_REQUESTS = Counter(
+    "data_connector_requests_total",
+    "Total DataConnector fetches",
+    ["source", "outcome", "interval"],
+)
+DATA_CONNECTOR_LATENCY = Histogram(
+    "data_connector_latency_seconds",
+    "Latency of DataConnector fetches",
+    ["source", "interval"],
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +58,7 @@ class DataConnector:
         timeout: Optional[int] = None,
         max_retries: Optional[int] = None,
         backoff_factor: float = 0.5,
-        allow_mock_on_failure: bool = True,
+        allow_mock_on_failure: bool = False,
         session: Optional[requests.Session] = None,
     ):
         self.base_url = (base_url or settings.DATA_SERVICE_URL).rstrip("/")
@@ -43,6 +70,11 @@ class DataConnector:
         self.allow_mock = allow_mock_on_failure
         self._session = session or requests.Session()
         self.last_data_source: str = "remote"
+        # Telemetry counters
+        self.success_count = 0
+        self.failure_count = 0
+        self.mock_count = 0
+        self.last_latency_ms: float | None = None
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -90,12 +122,30 @@ class DataConnector:
             "limit": limit,
         }
 
+        start_ts = time.perf_counter()
         try:
             payload = self._perform_request("/api/v1/candles", params=params)
             candles = [self._parse_candle(item) for item in payload.get("candles", [])]
             self.last_data_source = "remote"
+            self.success_count += 1
+            self.last_latency_ms = (time.perf_counter() - start_ts) * 1000
+            duration_seconds = self.last_latency_ms / 1000
+            DATA_CONNECTOR_REQUESTS.labels("remote", "success", interval).inc()
+            DATA_CONNECTOR_LATENCY.labels("remote", interval).observe(duration_seconds)
+            logger.info(
+                "data_connector.fetch_success",
+                extra={
+                    "symbol": symbol,
+                    "interval": interval,
+                    "limit": limit,
+                    "latency_ms": self.last_latency_ms,
+                    "source": self.last_data_source,
+                },
+            )
             return candles
         except requests.RequestException as exc:
+            self.failure_count += 1
+            DATA_CONNECTOR_REQUESTS.labels("remote", "failure", interval).inc()
             logger.warning(
                 "data_connector.remote_fetch_failed",
                 extra={
@@ -110,8 +160,13 @@ class DataConnector:
 
         # Mock fallback for offline scenarios
         self.last_data_source = "mock"
+        self.mock_count += 1
         logger.info("data_connector.generating_mock_data", extra={"symbol": symbol})
-        return self._generate_mock_data(symbol, start_date, limit, interval_delta)
+        mock_start = time.perf_counter()
+        candles = self._generate_mock_data(symbol, start_date, limit, interval_delta)
+        DATA_CONNECTOR_REQUESTS.labels("mock", "success", interval).inc()
+        DATA_CONNECTOR_LATENCY.labels("mock", interval).observe(time.perf_counter() - mock_start)
+        return candles
 
     def fetch_multiple_symbols(
         self,
@@ -119,14 +174,34 @@ class DataConnector:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = 1000,
+        max_workers: int = 4,
     ) -> dict[str, list[Candle]]:
         """
-        Fetch data for multiple symbols sequentially.
+        Fetch data for multiple symbols concurrently.
         """
-        return {
-            symbol: self.fetch_daily_candles(symbol, start_date, end_date, limit)
-            for symbol in symbols
-        }
+        results: dict[str, list[Candle]] = {}
+        if not symbols:
+            return results
+
+        def _task(sym: str) -> tuple[str, list[Candle]]:
+            candles = self.fetch_daily_candles(sym, start_date, end_date, limit)
+            return sym, candles
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_task, sym): sym for sym in symbols}
+            for fut in as_completed(futures):
+                sym = futures[fut]
+                try:
+                    sym_key, candles = fut.result()
+                    results[sym_key] = candles
+                except Exception as exc:
+                    logger.warning(
+                        "data_connector.fetch_symbol_failed",
+                        extra={"symbol": sym, "error": str(exc)},
+                    )
+                    results[sym] = []
+
+        return results
 
     # ------------------------------------------------------------------ #
     # Internal helpers
