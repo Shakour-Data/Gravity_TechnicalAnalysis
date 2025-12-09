@@ -52,6 +52,28 @@ class SupportResistanceIndicators:
     """Support and Resistance indicators calculator"""
 
     @staticmethod
+    def calculate_all(candles: list[Candle]) -> list[IndicatorResult]:
+        """
+        Aggregate key S/R methods into a single list of IndicatorResult objects.
+        """
+        if len(candles) < 5:
+            raise ValueError("Need at least 5 candles for support/resistance calculation")
+
+        results: list[IndicatorResult] = []
+        try:
+            results.append(SupportResistanceIndicators.pivot_points(candles, method="standard"))
+            results.append(SupportResistanceIndicators.pivot_points(candles, method="fibonacci"))
+            results.append(SupportResistanceIndicators.camarilla_pivots(candles))
+            results.append(SupportResistanceIndicators.fibonacci_retracement(candles, lookback=50))
+            results.append(SupportResistanceIndicators.support_resistance_levels(candles, window=50))
+        except Exception as exc:
+            # Best-effort aggregation; skip failing indicators
+            import logging
+            logging.getLogger(__name__).warning("sr_calculate_all_error", exc_info=exc)
+
+        return results
+
+    @staticmethod
     def pivot_points(candles: list[Candle], method: str = 'standard') -> IndicatorResult:
         """
         Pivot Points with different calculation methods
