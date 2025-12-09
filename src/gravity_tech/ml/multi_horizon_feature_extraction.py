@@ -8,6 +8,13 @@ Multi-Horizon Feature Extraction for ML Weight Learning
 """
 
 
+import logging
+import logging
+from collections import deque
+from dataclasses import dataclass
+from typing import Optional
+
+import numpy as np
 import pandas as pd
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.trend import TrendIndicators
@@ -15,6 +22,19 @@ from gravity_tech.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.classical import ClassicalPatterns
 from gravity_tech.patterns.elliott_wave import ElliottWaveAnalyzer
 
+logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class TrendSeriesCache:
+    """Cached arrays to avoid recomputing series per sliding window."""
+
+    closes: np.ndarray
+    highs: np.ndarray
+    lows: np.ndarray
+    volumes: np.ndarray
+
+logger = logging.getLogger(__name__)
 
 class MultiHorizonFeatureExtractor:
     """
@@ -36,6 +56,7 @@ class MultiHorizonFeatureExtractor:
             lookback_period: تعداد کندل‌های گذشته برای محاسبه اندیکاتورها
             horizons: لیست افق‌های زمانی (پیش‌فرض: [3, 7, 30])
                      می‌تواند int باشد [3, 7, 30] یا string ['3d', '7d', '30d']
+            (پارامترها قابل‌تنظیم برای اسکریپت‌های آموزش)
         """
         self.lookback_period = lookback_period
         # تبدیل robust horizons به int (حتی اگر ورودی ['3d', ...] یا ترکیبی باشد)
@@ -122,7 +143,7 @@ class MultiHorizonFeatureExtractor:
             dim1_confidence = total_weight / len(indicator_results)
 
         except Exception as e:
-            print(f"Warning: Indicator calculation error: {e}")
+            logger.warning("Indicator calculation error", exc_info=e)
             dim1_score = 0.0
             dim1_confidence = 0.5
 
@@ -148,7 +169,7 @@ class MultiHorizonFeatureExtractor:
                 dim2_confidence = 0.5
 
         except Exception as e:
-            print(f"Warning: Candlestick pattern error: {e}")
+            logger.warning("Candlestick pattern error", exc_info=e)
             dim2_score = 0.0
             dim2_confidence = 0.5
 
@@ -166,7 +187,7 @@ class MultiHorizonFeatureExtractor:
             dim3_confidence = elliott.confidence
 
         except Exception as e:
-            print(f"Warning: Elliott Wave error: {e}")
+            logger.warning("Elliott Wave error", exc_info=e)
             dim3_score = 0.0
             dim3_confidence = 0.5
 
@@ -191,7 +212,7 @@ class MultiHorizonFeatureExtractor:
                 dim4_confidence = 0.5
 
         except Exception as e:
-            print(f"Warning: Classical pattern error: {e}")
+            logger.warning("Classical pattern error", exc_info=e)
             dim4_score = 0.0
             dim4_confidence = 0.5
 
@@ -257,57 +278,113 @@ class MultiHorizonFeatureExtractor:
             X: DataFrame ویژگی‌ها
             Y: DataFrame اهداف (ستون‌های return_3d, return_7d, return_30d)
         """
-        print(f"\n📊 Extracting multi-horizon features at '{level}' level...")
-        print(f"   Horizons: {self.horizons} days")
+        total_needed = self.lookback_period + self.max_horizon
+        if len(candles) < total_needed:
+            raise ValueError(f"Need at least {total_needed} candles for multi-horizon dataset")
 
-        all_features = []
-        all_targets = []
+        cache = self._build_series_cache(candles)
+        return_matrix = self._compute_return_matrix(cache.closes)
 
-        # حلقه روی کندل‌ها
-        for i in range(len(candles) - self.lookback_period - self.max_horizon):
-            # پنجره lookback
-            window = candles[i : i + self.lookback_period]
+        logger.info(
+            "Extracting multi-horizon features",
+            extra={"level": level, "horizons": self.horizons},
+        )
+
+        features_rows: list[dict[str, float]] = []
+        targets_rows: list[dict[str, float]] = []
+
+        usable_length = len(candles) - self.max_horizon - self.lookback_period + 1
+        window_deque: deque[Candle] = deque(
+            candles[: self.lookback_period],
+            maxlen=self.lookback_period,
+        )
+
+        for offset in range(usable_length):
+            start = offset
+            end = offset + self.lookback_period
+            current_idx = end - 1
+
+            targets = self._collect_targets(return_matrix, current_idx)
+            if targets is None:
+                if end < len(candles):
+                    window_deque.append(candles[end])
+                continue
 
             try:
-                # استخراج ویژگی‌ها
                 if level == "indicators":
-                    features = self.extract_indicator_features(window)
+                    features = self.extract_indicator_features(list(window_deque))
                 elif level == "dimensions":
-                    features = self.extract_dimension_features(window)
+                    features = self.extract_dimension_features(list(window_deque))
                 else:
                     raise ValueError(f"Unknown level: {level}")
 
-                # محاسبه بازدهی‌های آینده
-                targets = self.calculate_multi_horizon_returns(
-                    candles,
-                    i + self.lookback_period
-                )
-
-                # فقط نمونه‌های کامل
-                if None not in targets.values():
-                    all_features.append(features)
-                    all_targets.append(targets)
-
+                features_rows.append(features)
+                targets_rows.append(targets)
             except Exception as e:
-                print(f"Warning: Error processing sample {i}: {e}")
-                continue
+                logger.warning("Error processing sample", extra={"index": offset}, exc_info=e)
 
-        # تبدیل به DataFrame
-        X = pd.DataFrame(all_features)
-        Y = pd.DataFrame(all_targets)
+            next_idx = end
+            if next_idx < len(candles):
+                window_deque.append(candles[next_idx])
 
-        print(f"✅ Extracted {len(X)} complete training samples")
-        print(f"   Features: {X.shape[1]} columns")
-        print(f"   Targets: {Y.shape[1]} horizons")
+        X = pd.DataFrame(features_rows)
+        Y = pd.DataFrame(targets_rows)
 
-        # نمایش آمار بازدهی‌ها
+        logger.info(
+            "Extracted multi-horizon dataset",
+            extra={"samples": len(X), "features": X.shape[1], "targets": Y.shape[1]},
+        )
+
         for horizon in self.horizons:
             col = f'return_{horizon}d'
             mean_return = Y[col].mean()
             std_return = Y[col].std()
-            print(f"   {col}: mean={mean_return:.4f} ({mean_return*100:.2f}%), std={std_return:.4f}")
+            logger.debug(
+                "Target stats",
+                extra={
+                    "column": col,
+                    "mean": float(mean_return),
+                    "std": float(std_return),
+                    "mean_pct": float(mean_return * 100),
+                },
+            )
 
         return X, Y
+
+    def _build_series_cache(self, candles: list[Candle]) -> TrendSeriesCache:
+        closes = np.array([c.close for c in candles], dtype=float)
+        highs = np.array([c.high for c in candles], dtype=float)
+        lows = np.array([c.low for c in candles], dtype=float)
+        volumes = np.array([c.volume for c in candles], dtype=float)
+        return TrendSeriesCache(closes=closes, highs=highs, lows=lows, volumes=volumes)
+
+    def _compute_return_matrix(self, closes: np.ndarray) -> dict[int, np.ndarray]:
+        return_matrix: dict[int, np.ndarray] = {}
+        for horizon in self.horizons:
+            if horizon <= 0 or horizon >= len(closes):
+                continue
+            fwd = closes[horizon:]
+            curr = closes[:-horizon]
+            returns = (fwd - curr) / curr
+            padded = np.concatenate([np.full(horizon, np.nan), returns])
+            return_matrix[horizon] = padded
+        return return_matrix
+
+    def _collect_targets(
+        self,
+        return_matrix: dict[int, np.ndarray],
+        idx: int,
+    ) -> Optional[dict[str, float]]:
+        targets: dict[str, float] = {}
+        for horizon in self.horizons:
+            series = return_matrix.get(horizon)
+            if series is None or idx >= len(series):
+                return None
+            val = series[idx]
+            if np.isnan(val):
+                return None
+            targets[f'return_{horizon}d'] = float(val)
+        return targets
 
     def create_summary_statistics(
         self,
