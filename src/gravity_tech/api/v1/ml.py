@@ -32,17 +32,53 @@ Provides RESTful endpoints for:
 """
 
 import pickle
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
 import structlog
 from fastapi import APIRouter, HTTPException, status
+from gravity_tech.database.database_manager import DatabaseManager
 from pydantic import BaseModel, Field
+
+try:
+    from prometheus_client import Counter, Histogram
+except Exception:  # pragma: no cover - fallback when prometheus_client missing
+    class _Noop:
+        def labels(self, *args, **kwargs):
+            return self
+
+        def inc(self, *args, **kwargs):
+            return self
+
+        def observe(self, *args, **kwargs):
+            return self
+
+    Counter = Histogram = lambda *args, **kwargs: _Noop()
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["Machine Learning"], prefix="/ml")
+MODEL_CACHE: dict[str, Any] = {}
+MODEL_META: dict[str, Any] = {}
+
+# Prometheus metrics
+MODEL_CACHE_HITS = Counter("ml_model_cache_hits_total", "ML model cache hits", ["version"])
+MODEL_CACHE_LOADS = Counter("ml_model_loads_total", "ML model loads from disk", ["version"])
+PREDICTION_REQUESTS = Counter(
+    "ml_prediction_requests_total", "Total ML prediction requests", ["endpoint", "status", "model_version"]
+)
+PREDICTION_LATENCY = Histogram(
+    "ml_prediction_latency_seconds", "Prediction latency (seconds)", ["endpoint", "model_version"]
+)
+BACKTEST_REQUESTS = Counter(
+    "ml_backtest_requests_total", "Total backtest requests", ["status"]
+)
+BACKTEST_LATENCY = Histogram(
+    "ml_backtest_latency_seconds", "Backtest latency (seconds)"
+)
 
 
 # ============================================================================
@@ -91,6 +127,8 @@ class PredictionResponse(BaseModel):
     probabilities: dict[str, float] = Field(..., description="Probability for each pattern class")
     model_version: str = Field(..., description="Model version used")
     inference_time_ms: float = Field(..., description="Inference time in milliseconds")
+    model_hash: str | None = Field(None, description="SHA256 of model artifact")
+    model_loaded_at: str | None = Field(None, description="UTC time when model was loaded into cache")
 
 
 class BatchPredictionResponse(BaseModel):
@@ -146,30 +184,55 @@ class BacktestResponse(BaseModel):
     trade_count: int
     backtest_period: dict[str, str]
     analysis_time_ms: float
+    model_version: str | None = Field(None, description="Model version used (if classifier involved)")
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
+def _hash_file(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def load_ml_model():
-    """Load the latest ML model"""
-    # Try advanced model first
+    """Load the latest ML model (cached)"""
+    global MODEL_CACHE, MODEL_META
+
     model_v2_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
     model_v1_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
 
-    if model_v2_path.exists():
-        with open(model_v2_path, 'rb') as f:
+    candidates = [("v2", model_v2_path), ("v1", model_v1_path)]
+
+    for version, path in candidates:
+        if not path.exists():
+            continue
+        file_hash = _hash_file(path)
+        cached = MODEL_CACHE.get(version)
+        cached_meta = MODEL_META.get(version)
+        if cached and cached_meta and cached_meta.get("hash") == file_hash:
+            MODEL_CACHE_HITS.labels(version).inc()
+            return cached, version
+
+        with open(path, "rb") as f:
             data = pickle.load(f)
-            # Advanced model is stored in dict
-            model = data['model'] if isinstance(data, dict) else data
-            return model, "v2"
-    elif model_v1_path.exists():
-        with open(model_v1_path, 'rb') as f:
-            model = pickle.load(f)
-            return model, "v1"
-    else:
-        raise FileNotFoundError("No ML model found. Please train a model first.")
+            model = data["model"] if isinstance(data, dict) else data
+            MODEL_CACHE[version] = model
+            MODEL_META[version] = {
+                "path": str(path),
+                "hash": file_hash,
+                "loaded_at": datetime.utcnow().isoformat(),
+            }
+            MODEL_CACHE_LOADS.labels(version).inc()
+            return model, version
+
+    raise FileNotFoundError("No ML model found. Please train a model first.")
 
 
 # ============================================================================
@@ -210,11 +273,11 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
     ```
     """
     try:
-        import time
-        start_time = time.time()
+        start_ts = time.perf_counter()
 
         # Load model
         model, version = load_ml_model()
+        meta = MODEL_META.get(version, {})
 
         # Prepare features
         feature_dict = request.features.dict()
@@ -259,30 +322,37 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
             confidence = float(np.max(probas))
             probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
 
-        inference_time = (time.time() - start_time) * 1000
+        duration_seconds = time.perf_counter() - start_ts
+        inference_time = duration_seconds * 1000
 
         response = PredictionResponse(
             predicted_pattern=predicted_class,
             confidence=confidence,
             probabilities=probabilities,
             model_version=version,
-            inference_time_ms=round(inference_time, 2)
+            inference_time_ms=round(inference_time, 2),
+            model_hash=meta.get("hash"),
+            model_loaded_at=meta.get("loaded_at"),
         )
 
         logger.info("ml_prediction",
                    pattern=predicted_class,
                    confidence=confidence,
                    inference_time_ms=round(inference_time, 2))
+        PREDICTION_REQUESTS.labels("predict", "success", version).inc()
+        PREDICTION_LATENCY.labels("predict", version).observe(duration_seconds)
 
         return response
 
     except FileNotFoundError as e:
+        PREDICTION_REQUESTS.labels("predict", "model_missing", "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
         )
     except Exception as e:
         logger.error("ml_prediction_error", error=str(e))
+        PREDICTION_REQUESTS.labels("predict", "error", version if "version" in locals() else "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Prediction failed: {str(e)}"
@@ -310,17 +380,17 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
     - Backtesting validation
     """
     try:
-        import time
-        start_time = time.time()
+        start_ts = time.perf_counter()
 
         # Load model
         model, version = load_ml_model()
+        meta = MODEL_META.get(version, {})
 
         predictions = []
         confidences = []
 
         for features in request.features_list:
-            feature_start = time.time()
+            feature_start = time.perf_counter()
 
             # Prepare features
             feature_dict = features.dict()
@@ -363,18 +433,21 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
                 confidence = float(np.max(probas))
                 probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
 
-            feature_inference_time = (time.time() - feature_start) * 1000
+            feature_inference_time = (time.perf_counter() - feature_start) * 1000
 
             predictions.append(PredictionResponse(
                 predicted_pattern=predicted_class,
                 confidence=confidence,
                 probabilities=probabilities,
                 model_version=version,
-                inference_time_ms=round(feature_inference_time, 2)
+                inference_time_ms=round(feature_inference_time, 2),
+                model_hash=meta.get("hash") if meta else None,
+                model_loaded_at=meta.get("loaded_at") if meta else None,
             ))
             confidences.append(confidence)
 
-        total_time = (time.time() - start_time) * 1000
+        duration_seconds = time.perf_counter() - start_ts
+        total_time = duration_seconds * 1000
         avg_confidence = float(np.mean(confidences))
 
         response = BatchPredictionResponse(
@@ -388,16 +461,20 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
                    count=len(predictions),
                    avg_confidence=avg_confidence,
                    total_time_ms=round(total_time, 2))
+        PREDICTION_REQUESTS.labels("predict_batch", "success", version).inc()
+        PREDICTION_LATENCY.labels("predict_batch", version).observe(duration_seconds)
 
         return response
 
     except FileNotFoundError as e:
+        PREDICTION_REQUESTS.labels("predict_batch", "model_missing", "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
         )
     except Exception as e:
         logger.error("batch_prediction_error", error=str(e))
+        PREDICTION_REQUESTS.labels("predict_batch", "error", version if "version" in locals() else "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch prediction failed: {str(e)}"
@@ -426,6 +503,7 @@ async def get_model_info() -> ModelInfoResponse:
 
         # Get model type
         model_type = type(model).__name__
+        meta = MODEL_META.get(version, {})
 
         # Default info
         info = ModelInfoResponse(
@@ -451,7 +529,7 @@ async def get_model_info() -> ModelInfoResponse:
 
         logger.info("model_info_retrieved", version=version, model_type=model_type)
 
-        return info
+        return info.copy(update={"hyperparameters": info.hyperparameters, **meta})
 
     except FileNotFoundError as e:
         raise HTTPException(
@@ -475,6 +553,7 @@ async def ml_service_health():
     """Check ML service health"""
     try:
         model, version = load_ml_model()
+        meta = MODEL_META.get(version, {})
 
         return {
             "status": "healthy",
@@ -483,6 +562,7 @@ async def ml_service_health():
             "model_loaded": True,
             "model_version": version,
             "model_type": type(model).__name__,
+            "model_hash": meta.get("hash"),
             "features": {
                 "single_prediction": True,
                 "batch_prediction": True,
