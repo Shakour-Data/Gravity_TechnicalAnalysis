@@ -199,81 +199,79 @@ class HarmonicPatternDetector:
 
         # Try different combinations of pivots
         for i in range(len(pivot_lows) - 2):
-            for j in range(len(pivot_highs) - 1):
-                # Check if pivots are in correct sequence
-                x_idx, x_price = pivot_lows[i]
+            # Check if pivots are in correct sequence
+            x_idx, x_price = pivot_lows[i]
 
-                # Find A (high after X)
-                a_candidates = [(idx, price) for idx, price in pivot_highs if idx > x_idx]
-                if not a_candidates:
-                    continue
-                a_idx, a_price = a_candidates[0]
+            # Find A (high after X)
+            a_candidates = [(idx, price) for idx, price in pivot_highs if idx > x_idx]
+            if not a_candidates:
+                continue
+            a_idx, a_price = a_candidates[0]
 
-                # Find B (low after A)
-                b_candidates = [(idx, price) for idx, price in pivot_lows if idx > a_idx]
-                if not b_candidates:
-                    continue
-                b_idx, b_price = b_candidates[0]
+            # Find B (low after A)
+            b_candidates = [(idx, price) for idx, price in pivot_lows if idx > a_idx]
+            if not b_candidates:
+                continue
+            b_idx, b_price = b_candidates[0]
 
-                # Find C (high after B)
-                c_candidates = [(idx, price) for idx, price in pivot_highs if idx > b_idx]
-                if not c_candidates:
-                    continue
-                c_idx, c_price = c_candidates[0]
+            # Find C (high after B)
+            c_candidates = [(idx, price) for idx, price in pivot_highs if idx > b_idx]
+            if not c_candidates:
+                continue
+            c_idx, c_price = c_candidates[0]
 
-                # Find D (low after C) - completion point
-                d_candidates = [(idx, price) for idx, price in pivot_lows if idx > c_idx]
-                if not d_candidates:
-                    continue
-                d_idx, d_price = d_candidates[0]
+            # Find D (low after C) - completion point
+            d_candidates = [(idx, price) for idx, price in pivot_lows if idx > c_idx]
+            if not d_candidates:
+                continue
+            d_idx, d_price = d_candidates[0]
 
-                # Create pattern points
-                points = {
-                    'X': PatternPoint(x_idx, x_price, 'X'),
-                    'A': PatternPoint(a_idx, a_price, 'A'),
-                    'B': PatternPoint(b_idx, b_price, 'B'),
-                    'C': PatternPoint(c_idx, c_price, 'C'),
-                    'D': PatternPoint(d_idx, d_price, 'D')
-                }
+            # Create pattern points
+            points = {
+                'X': PatternPoint(x_idx, x_price, 'X'),
+                'A': PatternPoint(a_idx, a_price, 'A'),
+                'B': PatternPoint(b_idx, b_price, 'B'),
+                'C': PatternPoint(c_idx, c_price, 'C'),
+                'D': PatternPoint(d_idx, d_price, 'D')
+            }
 
-                # Calculate ratios
-                xa_move = a_price - x_price
-                ab_move = a_price - b_price
-                bc_move = c_price - b_price
-                cd_move = c_price - d_price
-                ad_move = d_price - x_price
+            # Calculate ratios
+            xa_move = a_price - x_price
+            ab_move = a_price - b_price
+            cd_move = c_price - d_price
+            ad_move = d_price - x_price
 
-                if xa_move == 0 or ab_move == 0:
-                    continue
+            if xa_move == 0 or ab_move == 0:
+                continue
 
-                ratios = {
-                    'XA_BC': ab_move / xa_move if xa_move != 0 else 0,
-                    'AB_CD': cd_move / ab_move if ab_move != 0 else 0,
-                    'XA_AD': ad_move / xa_move if xa_move != 0 else 0
-                }
+            ratios = {
+                'XA_BC': ab_move / xa_move if xa_move != 0 else 0,
+                'AB_CD': cd_move / ab_move if ab_move != 0 else 0,
+                'XA_AD': ad_move / xa_move if xa_move != 0 else 0
+            }
 
-                # Identify pattern type
-                pattern_type, confidence = self._identify_pattern_type(ratios)
+            # Identify pattern type
+            pattern_type, confidence = self._identify_pattern_type(ratios)
 
-                if pattern_type != PatternType.UNKNOWN and confidence > 0.5:
-                    # Calculate targets and stop loss
-                    stop_loss = d_price - (a_price - x_price) * 0.1
-                    target_1 = d_price + (a_price - d_price) * 0.382
-                    target_2 = d_price + (a_price - d_price) * 0.618
+            if pattern_type != PatternType.UNKNOWN and confidence > 0.5:
+                # Calculate targets and stop loss
+                stop_loss = d_price - (a_price - x_price) * 0.1
+                target_1 = d_price + (a_price - d_price) * 0.382
+                target_2 = d_price + (a_price - d_price) * 0.618
 
-                    pattern = HarmonicPattern(
-                        pattern_type=pattern_type,
-                        direction=PatternDirection.BULLISH,
-                        points=points,
-                        ratios=ratios,
-                        confidence=confidence * 100,
-                        fibonacci_accuracy=confidence,
-                        completion_point=d_price,
-                        stop_loss=stop_loss,
-                        target_1=target_1,
-                        target_2=target_2
-                    )
-                    patterns.append(pattern)
+                pattern = HarmonicPattern(
+                    pattern_type=pattern_type,
+                    direction=PatternDirection.BULLISH,
+                    points=points,
+                    ratios=ratios,
+                    confidence=confidence * 100,
+                    fibonacci_accuracy=confidence,
+                    completion_point=d_price,
+                    stop_loss=stop_loss,
+                    target_1=target_1,
+                    target_2=target_2
+                )
+                patterns.append(pattern)
 
         return patterns
 
@@ -331,7 +329,6 @@ class HarmonicPatternDetector:
             # Calculate ratios (inverted for bearish)
             xa_move = x_price - a_price
             ab_move = b_price - a_price
-            bc_move = b_price - c_price
             cd_move = d_price - c_price
             ad_move = x_price - d_price
 
