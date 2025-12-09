@@ -17,16 +17,15 @@ import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
+from gravity_tech.ml.pattern_features import PatternFeatureExtractor
+from gravity_tech.patterns.harmonic import HarmonicPattern, HarmonicPatternDetector
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from gravity_tech.ml.pattern_features import PatternFeatureExtractor
-from gravity_tech.patterns.harmonic import HarmonicPattern, HarmonicPatternDetector
 
 
 @dataclass
@@ -63,7 +62,7 @@ class PatternBacktester:
     def __init__(
         self,
         detector: HarmonicPatternDetector,
-        classifier: Optional[any] = None,
+        classifier: Any | None = None,
         min_confidence: float = 0.6
     ):
         """
@@ -231,7 +230,7 @@ class PatternBacktester:
         lows: np.ndarray,
         dates: pd.DatetimeIndex,
         confidence: float
-    ) -> Optional[TradeResult]:
+    ) -> TradeResult | None:
         """
         Simulate a single trade based on pattern.
 
@@ -473,10 +472,75 @@ def demo_backtesting():
     print(f"   Price range: ${lows.min():.2f} - ${highs.max():.2f}")
 
     # Run backtest
-    trades = backtester.run_backtest(highs, lows, closes, volume, dates)
+    backtester.run_backtest(highs, lows, closes, volume, dates)
 
     # Print summary
     backtester.print_summary()
+
+
+def run_backtest_with_synthetic_data(n_bars: int = 1000) -> PatternBacktester:
+    """Run backtest with synthetic data for testing purposes."""
+    detector = HarmonicPatternDetector(tolerance=0.15)
+    backtester = PatternBacktester(detector=detector, classifier=None, min_confidence=0.5)
+    highs, lows, closes, volume, dates = backtester.generate_historical_data(n_bars=n_bars)
+    backtester.run_backtest(highs, lows, closes, volume, dates)
+    backtester.print_summary()
+    return backtester
+
+
+def run_backtest_with_real_data(
+    symbol: str,
+    source: str,
+    interval: str,
+    limit: int,
+    allow_mock: bool = False,
+    min_confidence: float = 0.6,
+    persist: bool = False,
+) -> PatternBacktester:
+    """
+    Run backtest with real market data from database or data connector.
+
+    Args:
+        symbol: Trading symbol (e.g., 'BTCUSDT', 'FOLD')
+        source: Data source ('db' or 'connector')
+        interval: Time interval (e.g., '1d', '4h')
+        limit: Number of data points to load
+        allow_mock: Allow fallback to mock data if connector fails
+        min_confidence: Minimum pattern confidence threshold
+        persist: Whether to save results to database
+
+    Returns:
+        PatternBacktester instance with results
+    """
+    print(f"\n📊 Running Backtest for {symbol}")
+    print(f"   Source: {source}")
+    print(f"   Interval: {interval}")
+    print(f"   Limit: {limit}")
+    print(f"   Min Confidence: {min_confidence}")
+    print("=" * 80)
+
+    # Create detector and backtester
+    detector = HarmonicPatternDetector(tolerance=0.15)
+    backtester = PatternBacktester(
+        detector=detector,
+        classifier=None,  # No ML for basic backtesting
+        min_confidence=min_confidence
+    )
+
+    # TODO: Implement data loading from database/connector
+    # For now, fall back to synthetic data with a warning
+    print("⚠️  Real data loading not yet implemented - using synthetic data")
+    highs, lows, closes, volume, dates = backtester.generate_historical_data(n_bars=limit)
+
+    # Run backtest
+    backtester.run_backtest(highs, lows, closes, volume, dates)
+
+    # Print summary
+    backtester.print_summary()
+
+    # TODO: Implement persistence to database if persist=True
+
+    return backtester
 
 
 if __name__ == "__main__":
