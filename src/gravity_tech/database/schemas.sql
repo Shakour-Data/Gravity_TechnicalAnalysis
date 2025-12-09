@@ -195,6 +195,20 @@ CREATE TABLE IF NOT EXISTS historical_volume_analysis (
     CONSTRAINT unique_volume_entry UNIQUE (score_id)
 );
 
+-- Backtest runs (summary-level)
+CREATE TABLE IF NOT EXISTS backtest_runs (
+    id BIGSERIAL PRIMARY KEY,
+    symbol VARCHAR(50) NOT NULL,
+    source VARCHAR(32) NOT NULL, -- db, connector, synthetic
+    interval VARCHAR(10),
+    params JSONB,
+    metrics JSONB,
+    period_start TIMESTAMPTZ,
+    period_end TIMESTAMPTZ,
+    model_version VARCHAR(32),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 
 -- 8️⃣ جدول Metadata برای کش و بهینه‌سازی
 CREATE TABLE IF NOT EXISTS analysis_metadata (
