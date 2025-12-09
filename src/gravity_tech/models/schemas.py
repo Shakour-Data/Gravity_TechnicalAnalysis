@@ -1,22 +1,23 @@
 """
-===============================================================================
-DEPRECATION WARNING
+Deprecated compatibility shim for legacy imports.
 
-`gravity_tech.models.schemas` has been replaced by
-`gravity_tech.core.contracts.analysis`. Import contracts from the new module
-instead of this compatibility shim. This module will be removed in Phase 2.2.
-===============================================================================
+Use `gravity_tech.core.contracts.analysis` and
+`gravity_tech.core.domain.entities` instead. This module will be removed in
+Phase 2.2.
 """
+
+from __future__ import annotations
 
 import warnings
 
-from gravity_tech.core.contracts.analysis import (  # noqa: F401
+from gravity_tech.core.contracts.analysis import (
     AnalysisRequest,
     ChartAnalysisResult,
     MarketPhaseResult,
     TechnicalAnalysisResult,
 )
-from gravity_tech.core.domain.entities import (  # noqa: F401
+from gravity_tech.core.domain.entities import (
+    CoreSignalStrength as SignalStrength,
     Candle,
     ElliottWaveResult,
     FibonacciLevel,
@@ -34,13 +35,13 @@ from gravity_tech.core.domain.entities import (  # noqa: F401
     WavePoint,
     WebSocketMessage,
 )
-from gravity_tech.core.domain.entities import (  # noqa: F401
-    CoreSignalStrength as SignalStrength,
-)
 
 warnings.warn(
-    "Importing from gravity_tech.models.schemas is deprecated. "
-    "Switch to gravity_tech.core.contracts.analysis and gravity_tech.core.domain.entities.",
+    (
+        "Importing from gravity_tech.models.schemas is deprecated. "
+        "Switch to gravity_tech.core.contracts.analysis and "
+        "gravity_tech.core.domain.entities."
+    ),
     DeprecationWarning,
     stacklevel=2,
 )
