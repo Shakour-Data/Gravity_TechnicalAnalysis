@@ -2,6 +2,15 @@
 
 This document maps every major workflow in the Gravity Technical Analysis project, explains how each layer works today, and tracks the issues blocking a production-ready rollout. It is intended to replace the partially garbled `PROCESS_AUDIT_FA.md` and will be updated as remediation work lands.
 
+## Latest Remediation (Dec 2025)
+- Multi-horizon pipeline wired to cached features and injected learners; end-to-end regression test added.
+- DataConnector: mock fallback now opt-in, telemetry counters added, concurrent multi-symbol fetch supported.
+- ML API caches models (hash/version exposed) and offloads inference loading from the event loop.
+- Tooling API now backed by `ToolRecommendationService` instead of stubs.
+- Support/Resistance indicators are active in `TechnicalAnalysisService` via `calculate_all`.
+- Backtesting aligned to real data (TSE DB or DataConnector) with a new CLI wrapper; synthetic mode is explicit only.
+- Kubernetes manifests supplied under `infra/k8s` and deployment guide paths updated.
+
 ## Process Inventory
 
 | # | Process | Purpose | Primary entrypoints | Health | Key blockers |
@@ -208,43 +217,57 @@ This document maps every major workflow in the Gravity Technical Analysis projec
 ## 11. Backtesting & Evaluation
 
 **Workflow summary**
-- `PatternBacktester` simulates trades using harmonic pattern detection and optional ML classifiers (`src/gravity_tech/ml/backtesting.py:1-210`).
+- `PatternBacktester` simulates trades using harmonic pattern detection and optional ML classifiers (`src/gravity_tech/ml/backtesting.py`).
+- CLI wrapper `gravity_tech.cli.run_backtesting` runs backtests against real data (TSE DB or DataConnector) or explicit synthetic mode; synthetic generation is opt-in only.
 
 **Open issues**
-- **[Medium]** The module mutates `sys.path` at import time (`src/gravity_tech/ml/backtesting.py:23-33`), which breaks tooling and makes packaging unreliable.
-- **[Medium]** There are no pytest fixtures or CLI entrypoints to run regression backtests automatically; everything is script-driven.
+- **[Low]** No Prometheus-style metrics for backtest runs (latency/trade counts) and no persisted fixtures for deterministic regression.
 
 **Remediation**
-1. Convert the module into a proper package import (using relative imports instead of path hacking).
-2. Provide a CLI/pytest hook that executes a small deterministic backtest so API changes can be validated in CI.
+1. Add a tiny deterministic fixture (e.g., cached OHLCV slice) to exercise the CLI in CI without hitting external data.
+2. Emit optional metrics or structured logs (JSON) for backtest outcomes to aid comparison across runs.
 
 ---
 
 ## 12. Deployment, Operations, and QA
 
 **Workflow summary**
-- `docs/operations/DEPLOYMENT_GUIDE.md` documents manual Kubernetes deployment steps.
-- Tests under `tests/` cover integration (multi-horizon stack) and unit scenarios (cycle score, etc.).
+- `docs/operations/DEPLOYMENT_GUIDE.md` documents Kubernetes deployment; manifests now live under `infra/k8s/` (namespace/RBAC/redis/app/service/ingress/hpa/monitoring).
+- Tests under `tests/` cover unit/slow/CLI paths; integration suites using TSE data were removed pending a lightweight replacement.
 
 **Open issues**
-- **[High]** The deployment guide references `k8s/*.yaml` manifests that do not exist in the repo (`docs/operations/DEPLOYMENT_GUIDE.md:36-72`), so the documented process cannot be followed.
-- **[Medium]** `tests/integration/test_combined_system.py` trains LightGBM models inside pytest fixtures (`tests/integration/test_combined_system.py:50-199`), leading to >1 minute runtime and high memory use.
-- **[Medium]** `tests/unit/analysis/test_cycle_score.py` performs no assertions; it only prints indicator counts, so regressions in cycle scoring will pass unnoticed (`tests/unit/analysis/test_cycle_score.py:8-75`).
-- **[Low]** Several tests and utilities still emit Farsi/Thai characters that render as `???` on Windows terminals, making logs hard to read.
+- **[Medium]** Observability values in `infra/k8s/monitoring.yaml` are placeholders; alert thresholds and namespaces need environment-specific tuning.
+- **[Medium]** Some regression coverage for real-data paths (e.g., TSE DB) is missing after removing heavy integration suites.
+- **Low]** A few utilities still log localized strings that may render poorly on Windows consoles.
 
 **Remediation**
-1. Either add the missing `k8s/` manifests (namespace, RBAC, deployments, services) or update the guide to point to the existing `deployment/` assets.
-2. Snapshot trained multi-horizon weights to disk and let tests load them instead of retraining, or use much smaller synthetic datasets to keep CI under 2 minutes.
-3. Add real assertions to `test_cycle_score` (e.g., verify `overall_cycle_signal` is not `None`) and strip diagnostic prints from regression tests.
+1. Calibrate PrometheusRule thresholds once telemetry is live; document scrape targets and alerts in the deployment guide.
+2. Reintroduce a slim real-data regression (small DB fixture or connector stub) to cover end-to-end analysis without long runtimes.
+3. Normalize logs to ASCII where feasible or ensure consoles use UTF-8.
 
 ---
 
-## Prioritized Remediation Plan
+## 13. Observability & Telemetry
 
-1. **Unblock the analysis pipeline (Critical).** Load the saved multi-horizon learners, feed analyzers with precomputed feature dicts, and ensure `CompleteAnalysisPipeline` hands real `*Score` objects to volume and 5D matrices.
-2. **Vectorize the remaining feature extractors (High).** Bring trend/dimension/volatility extractors to parity with the optimized momentum extractor so training can finish within minutes.
-3. **Stabilize runtime services (High).** Cache ML models inside `api/v1/ml.py`, add telemetry/guardrails to `DataConnector`, and integrate support/resistance indicators into `TechnicalAnalysisService`.
-4. **Finish tool recommendation & deployment assets (Medium).** Implement the recommender/train-save flow, back it with real manifests or update the runbook, and add regression coverage for `/tools`.
-5. **Tighten QA (Medium).** Shorten integration tests, add missing assertions, and ensure deployment/backtesting paths have automated checks.
+**Current state**
+- DataConnector tracks success/failure/mock counts and latency in-memory; no Prometheus export yet.
+- ML API caches models and returns hash/version metadata, but inference latency/cache-hit metrics are not exposed.
+- ServiceMonitor/PrometheusRule stubs exist in `infra/k8s/monitoring.yaml`.
 
-Addressing the items above (in that order) will take the system from "mostly aspirational" to an executable, testable pipeline that can power real recommendations without manual intervention.
+**Actions**
+1. Add Prometheus counters/timers around DataConnector fetches (remote vs mock) and ML inference (latency, cache hits/misses).
+2. Expose `/metrics` from the FastAPI app and validate ServiceMonitor scraping; include example `curl` in the deployment guide.
+3. Tune alert thresholds for error rates/latency based on baseline traffic and document them.
+
+---
+
+## 14. Feature Cache & Weight Loader Architecture
+
+**Current design**
+- Multi-horizon analyzers consume cached feature dicts; weight artifacts reside under `ml_models/multi_horizon/*.json|pkl` and are injected via `pipeline_factory.build_pipeline_from_weights`.
+- CLI `run_complete_pipeline` fetches candles via DataConnector (or file) and feeds cached features into analyzers; `run_backtesting` aligns pattern backtests to real data sources.
+
+**Actions**
+1. Document the end-to-end flow: candles → feature cache (trend/momentum/volatility/cycle/SR) → analyzers with injected weights → volume/5D matrices → decision.
+2. Record artifact versions/hashes required for each analyzer and where to update them after retraining.
+3. Add a small diagram/table mapping CLIs (`run_complete_pipeline`, `run_backtesting`) to inputs, artifacts, and outputs for onboarding.
