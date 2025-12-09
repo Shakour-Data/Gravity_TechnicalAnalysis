@@ -205,7 +205,8 @@ class DatabaseManager:
                     "tool_performance_stats": [],
                     "ml_weights_history": [],
                     "tool_recommendations_log": [],
-                    "historical_scores": []
+                    "historical_scores": [],
+                    "backtest_runs": [],
                 }
                 self._save_json()
 
@@ -488,6 +489,20 @@ class DatabaseManager:
             ON historical_indicator_scores(indicator_category);
         CREATE INDEX IF NOT EXISTS idx_indicator_score_id
             ON historical_indicator_scores(score_id);
+
+        -- Backtest runs (summary-level)
+        CREATE TABLE IF NOT EXISTS backtest_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            source TEXT NOT NULL,
+            interval TEXT,
+            params TEXT,
+            metrics TEXT,
+            period_start TEXT,
+            period_end TEXT,
+            model_version TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         """
 
         try:
@@ -499,6 +514,102 @@ class DatabaseManager:
             logger.info("✅ SQLite schema created successfully")
         except Exception as e:
             logger.error(f"❌ Failed to create SQLite schema: {e}")
+
+
+    def save_backtest_run(
+        self,
+        *,
+        symbol: str,
+        source: str,
+        interval: str | None,
+        params: dict[str, Any] | None,
+        metrics: dict[str, Any] | None,
+        period_start: datetime | None,
+        period_end: datetime | None,
+        model_version: str | None = None,
+    ) -> int | None:
+        """
+        Persist a backtest summary row.
+
+        Returns the inserted id when available (None for JSON fallback).
+        """
+        params_json = json.dumps(params or {})
+        metrics_json = json.dumps(metrics or {})
+        start_ts = period_start.isoformat() if period_start else None
+        end_ts = period_end.isoformat() if period_end else None
+
+        if self.db_type == DatabaseType.POSTGRESQL:
+            query = """
+                INSERT INTO backtest_runs
+                    (symbol, source, interval, params, metrics, period_start, period_end, model_version)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """
+            conn = self.connection_pool.getconn()
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        query,
+                        (
+                            symbol,
+                            source,
+                            interval,
+                            params_json,
+                            metrics_json,
+                            start_ts,
+                            end_ts,
+                            model_version,
+                        ),
+                    )
+                    inserted_id = cursor.fetchone()[0]
+                    conn.commit()
+                    return inserted_id
+            finally:
+                self.connection_pool.putconn(conn)
+
+        if self.db_type == DatabaseType.SQLITE:
+            query = """
+                INSERT INTO backtest_runs
+                    (symbol, source, interval, params, metrics, period_start, period_end, model_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            if self.sqlite_connection is None:
+                raise RuntimeError("SQLite connection not initialized")
+            cursor = self.sqlite_connection.cursor()
+            cursor.execute(
+                query,
+                (
+                    symbol,
+                    source,
+                    interval,
+                    params_json,
+                    metrics_json,
+                    start_ts,
+                    end_ts,
+                    model_version,
+                ),
+            )
+            self.sqlite_connection.commit()
+            return cursor.lastrowid
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            record = {
+                "id": len(self.json_data.get("backtest_runs", [])) + 1,
+                "symbol": symbol,
+                "source": source,
+                "interval": interval,
+                "params": params or {},
+                "metrics": metrics or {},
+                "period_start": start_ts,
+                "period_end": end_ts,
+                "model_version": model_version,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            self.json_data.setdefault("backtest_runs", []).append(record)
+            self._save_json()
+            return record["id"]
+
+        return None
 
     def get_connection(self):
         """دریافت connection (برای PostgreSQL یا SQLite)"""
