@@ -1,76 +1,60 @@
-"""Test to show Cycle score in final calculation."""
-import asyncio
+"""Ensure cycle indicators feed into the combined signal calculation."""
 from datetime import datetime, timedelta
 
 import numpy as np
 import pytest
-from gravity_tech.core.domain.entities import Candle
-from gravity_tech.models.schemas import AnalysisRequest
+from gravity_tech.core.contracts.analysis import AnalysisRequest
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength as SignalStrength
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
+from gravity_tech.services.signal_engine import compute_overall_signals
 
 
 @pytest.mark.asyncio
-async def test_cycle_scoring():
-    """Test cycle scoring in overall calculation."""
-    # Generate sample data
+async def test_cycle_scoring_strengthens_overall_signal():
+    """Cycle indicators should be present and positively affect the final signal."""
     candles = []
     base_time = datetime.now()
     base_price = 100.0
 
-    # Create strong uptrend
-    for i in range(100):
-        price = base_price + (i * 0.5) + np.random.normal(0, 1)
+    # Deterministic rising series with a gentle cyclic component to exercise cycle detectors
+    for i in range(120):
+        drift = i * 0.6
+        cycle_component = 0.8 * np.sin(i / 5.0)
+        price = base_price + drift + cycle_component
         candles.append(Candle(
             timestamp=base_time + timedelta(hours=i),
-            open=price - 0.5,
-            high=price + 1.0,
-            low=price - 1.0,
+            open=price - 0.3,
+            high=price + 0.6,
+            low=price - 0.6,
             close=price,
-            volume=1000 + i * 10
+            volume=1500 + i * 12
         ))
 
-    request = AnalysisRequest(
-        symbol="BTCUSDT",
-        timeframe="1h",
-        candles=candles
-    )
-
-    print("=" * 70)
-    print("تست محاسبه امتیاز با لحاظ کردن Cycle")
-    print("Test Cycle Score in Overall Calculation")
-    print("=" * 70)
-
+    request = AnalysisRequest(symbol="BTCUSDT", timeframe="1h", candles=candles)
     result = await TechnicalAnalysisService.analyze(request)
 
-    print("\n📊 Overall Signals:")
-    print(f"  • Trend Signal: {result.overall_trend_signal.value if result.overall_trend_signal else 'None'}")
-    print(f"  • Momentum Signal: {result.overall_momentum_signal.value if result.overall_momentum_signal else 'None'}")
-    print(f"  • Cycle Signal: {result.overall_cycle_signal.value if result.overall_cycle_signal else 'None'}")
-    print(f"  • Overall Signal: {result.overall_signal.value if result.overall_signal else 'None'}")
-    confidence_str = f"{result.overall_confidence:.2%}" if result.overall_confidence is not None else "None"
-    print(f"  • Confidence: {confidence_str}")
+    # Cycle signals must be present and non-trivial
+    assert len(result.cycle_indicators) >= 6
+    assert any(ind.signal != SignalStrength.NEUTRAL for ind in result.cycle_indicators)
+    assert result.overall_cycle_signal in {
+        SignalStrength.BULLISH_BROKEN,
+        SignalStrength.BULLISH,
+        SignalStrength.VERY_BULLISH,
+    }
 
-    print("\n📐 Weighting Formula:")
-    print("  Overall = (Trend × 30%) + (Momentum × 25%) + (Cycle × 25%)")
-    print("  Then adjusted by Volume (20% as confirmer)")
+    # Overall signal should remain bullish on the strong uptrend
+    assert result.overall_signal in {
+        SignalStrength.BULLISH_BROKEN,
+        SignalStrength.BULLISH,
+        SignalStrength.VERY_BULLISH,
+    }
+    assert result.overall_confidence is not None and 0.0 <= result.overall_confidence <= 1.0
 
-    print("\n📈 Indicator Counts:")
-    print(f"  • Trend Indicators: {len(result.trend_indicators)}")
-    print(f"  • Momentum Indicators: {len(result.momentum_indicators)}")
-    print(f"  • Cycle Indicators: {len(result.cycle_indicators)}")
-    print(f"  • Volume Indicators: {len(result.volume_indicators)}")
+    for indicator in result.cycle_indicators:
+        assert 0.0 <= indicator.confidence <= 1.0
 
-    # Show sample cycle indicators
-    print("\n🔄 Sample Cycle Indicators:")
-    for ind in result.cycle_indicators[:3]:
-        print(f"  • {ind.indicator_name}: {ind.signal.value} (conf: {ind.confidence:.2%})")
-
-    print("\n" + "=" * 70)
-    print("✅ Cycle indicators are now included in overall calculation!")
-    print("✅ Weighting: Trend 30%, Momentum 25%, Cycle 25%, Volume 20%")
-    print("=" * 70)
-
-
-if __name__ == "__main__":
-    asyncio.run(test_cycle_scoring())
-
+    # Removing cycle inputs should not improve the overall score on this dataset
+    stripped = result.model_copy(deep=True)
+    stripped.cycle_indicators = []
+    compute_overall_signals(stripped)
+    assert result.overall_signal.get_score() > stripped.overall_signal.get_score()
