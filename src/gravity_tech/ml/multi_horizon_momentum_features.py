@@ -10,15 +10,19 @@ Multi-Horizon Feature Extraction for Momentum
 
 from __future__ import annotations
 
+import logging
 from collections import deque
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 from gravity_tech.patterns.divergence import DivergenceDetector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -64,7 +68,14 @@ class MultiHorizonMomentumFeatureExtractor:
         self,
         lookback_period: int = 100,
         horizons: list[int | str] | None = None,
+        divergence_lookback: int = 20,
     ):
+        """
+        Args:
+            lookback_period: تعداد کندل‌های ورودی برای هر نمونه
+            horizons: افق‌های زمانی برحسب روز (int یا '3d'/'7d'/...)
+            divergence_lookback: طول پنجره تشخیص واگرایی برای Momentum
+        """
         self.lookback_period = lookback_period
         if horizons is None:
             self.horizons = self.HORIZONS
@@ -76,7 +87,7 @@ class MultiHorizonMomentumFeatureExtractor:
                 else:
                     self.horizons.append(int(horizon))
         self.max_horizon = max(self.horizons)
-        self.divergence_detector = DivergenceDetector(lookback=20)
+        self.divergence_detector = DivergenceDetector(lookback=divergence_lookback)
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -113,9 +124,10 @@ class MultiHorizonMomentumFeatureExtractor:
                 f"Need at least {total_needed} candles for multi-horizon dataset"
             )
 
-        print("\n?? Extracting multi-horizon momentum features...")
-        print(f"   Horizons: {self.horizons} days")
-        print(f"   Indicators: {len(self.MOMENTUM_INDICATORS)}")
+        logger.info(
+            "Extracting multi-horizon momentum features",
+            extra={"horizons": self.horizons, "indicators": len(self.MOMENTUM_INDICATORS)},
+        )
 
         cache = self._build_series_cache(candles)
         return_matrix = self._compute_return_matrix(cache.closes)
@@ -161,16 +173,22 @@ class MultiHorizonMomentumFeatureExtractor:
         X = pd.DataFrame(features_rows)
         Y = pd.DataFrame(targets_rows)
 
-        print(f"? Extracted {len(X)} complete training samples")
-        print(f"   Features: {X.shape[1]} columns")
-        print(f"   Targets: {Y.shape[1]} horizons")
+        logger.info(
+            "Extracted momentum dataset",
+            extra={"samples": len(X), "features": X.shape[1], "targets": Y.shape[1]},
+        )
         for horizon in self.horizons:
             col = f"return_{horizon}d"
             mean_return = Y[col].mean()
             std_return = Y[col].std()
-            print(
-                f"   {col}: mean={mean_return:.4f} ({mean_return*100:.2f}%), "
-                f"std={std_return:.4f}"
+            logger.debug(
+                "Momentum target stats",
+                extra={
+                    "column": col,
+                    "mean": float(mean_return),
+                    "std": float(std_return),
+                    "mean_pct": float(mean_return * 100),
+                },
             )
 
         return X, Y
@@ -451,7 +469,7 @@ class MultiHorizonMomentumFeatureExtractor:
         direction = np.where(price_diff > 0, 1, np.where(price_diff < 0, -1, 0))
         obv = np.cumsum(direction * volumes)
         obv_series = pd.Series(obv)
-        obv_sma = obv_series.rolling(window=sma_period).mean().fillna(method="bfill")
+        obv_sma = obv_series.rolling(window=sma_period).mean().bfill()
         obv_trend = obv_series.diff().rolling(window=5).mean().fillna(0.0)
         price_trend = pd.Series(closes).diff().rolling(window=5).mean().fillna(0.0)
         return (
