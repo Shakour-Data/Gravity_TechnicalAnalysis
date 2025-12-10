@@ -63,7 +63,7 @@ class TestTechnicalIndicatorsWithTSEData:
 
         # Calculate RSI
         if avg_loss == 0:
-            rsi = 100
+            rsi = 100.0
         else:
             rs = avg_gain / avg_loss
             rsi = 100 - (100 / (1 + rs))
