@@ -30,12 +30,13 @@ Provides RESTful endpoints for:
 - Real-time pattern monitoring
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+from datetime import timezone
 
 logger = structlog.get_logger()
 
@@ -260,7 +261,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 confidence=getattr(pattern, 'confidence', None),
                 targets={'target1': target1, 'target2': target2},
                 stop_loss=stop_loss,
-                detected_at=datetime.utcnow().isoformat()
+                detected_at=datetime.now(timezone.utc).isoformat()
             )
             patterns_list.append(pattern_result)
 
