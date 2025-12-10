@@ -48,6 +48,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from gravity_tech.api.v1 import router as api_v1_router
+from gravity_tech.api.v1 import scenarios as scenarios_router
 from gravity_tech.config.settings import settings
 from gravity_tech.middleware.events import event_publisher
 from gravity_tech.middleware.logging import setup_logging
@@ -57,6 +58,8 @@ from gravity_tech.middleware.service_discovery import (
 )
 from gravity_tech.services.cache_service import cache_manager
 from gravity_tech.services.data_ingestor_service import start_data_ingestor, stop_data_ingestor
+from gravity_tech.api.v1.patterns import router as patterns_router
+from gravity_tech.api.v1.db_explorer import router as db_router
 from prometheus_client import make_asgi_app
 
 # Setup structured logging
@@ -178,12 +181,15 @@ async def log_requests(request: Request, call_next):
 # Include API routers
 app.include_router(api_v1_router, prefix="/api/v1")
 
-# Include Pattern Recognition & ML routers (Day 6)
-from gravity_tech.api.v1.ml import router as ml_router
-from gravity_tech.api.v1.patterns import router as patterns_router
-
+# Include Pattern Recognition router (not bundled in api_v1 router)
 app.include_router(patterns_router, prefix="/api/v1")
-app.include_router(ml_router, prefix="/api/v1")
+
+# Optional routers
+if settings.enable_scenarios:
+    app.include_router(scenarios_router.router, prefix="/api/v1")
+
+if settings.expose_db_explorer:
+    app.include_router(db_router, prefix="")
 
 # Prometheus metrics endpoint
 if settings.metrics_enabled:
