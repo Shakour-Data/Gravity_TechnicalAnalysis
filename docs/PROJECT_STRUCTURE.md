@@ -1,275 +1,67 @@
-# 📁 Gravity Technical Analysis - Project Structure
+# ساختار پروژه
 
-**Version:** 1.2.0  
-**Last Updated:** November 14, 2025  
-**Status:** Production Ready ✅
+**نسخه:** 1.0.0  
+**به‌روز شده:** 2025-12-10
 
----
-
-## 🎯 Overview
-
-این میکروسرویس یک سیستم تحلیل تکنیکال کامل با بیش از 60 اندیکاتور، الگوهای قیمتی، و سیستم توصیه ابزار مبتنی بر Machine Learning است.
-
----
-
-## 📂 Root Directory Structure
-
+## نمای کلی درخت
 ```
-Gravity_TechAnalysis/
-├── 📄 Configuration Files
-│   ├── .editorconfig         # Editor configuration
-│   ├── .env.example          # Environment variables template
-│   ├── .gitignore            # Git ignore rules
-│   ├── .yamllint             # YAML linting configuration
-│   ├── pyproject.toml        # Python project metadata & dependencies
-│   ├── requirements.txt      # Python dependencies
-│   └── VERSION               # Current version (1.2.0)
-│
-├── 📄 Docker & Deployment
-│   ├── Dockerfile            # Container image definition
-│   ├── docker-compose.yml    # Multi-container setup
-│   ├── k8s/                  # Kubernetes manifests (10 files)
-│   └── helm/                 # Helm charts (2 files)
-│
-├── 📄 Documentation
-│   ├── README.md             # Main documentation
-│   ├── CHANGELOG.md          # Version history
-│   ├── CONTRIBUTING.md       # Contribution guidelines
-│   ├── LICENSE               # MIT License
-│   ├── RELEASE_NOTES_v1.0.0.md
-│   ├── RELEASE_NOTES_v1.1.0.md
-│   ├── RELEASE_NOTES_v1.2.0.md
-│   └── docs/                 # Detailed documentation (39 files)
-│
-├── 📁 Source Code
-│   └── src/gravity_tech/     # Main application package (131 files)
-│
-├── 📁 Database
-│   ├── database/             # Database schemas & managers (2 files)
-│   └── setup_database.py     # Database initialization script
-│
-├── 📁 Machine Learning
-│   ├── ml/                   # ML modules (1 file)
-│   └── ml_models/            # Trained models (5 files)
-│
-├── 📁 Testing
-│   └── tests/                # Test suite (31 files)
-│
-├── 📁 Automation
-│   ├── .github/workflows/    # CI/CD pipelines (3 files)
-│   └── scripts/              # Utility scripts (4 files)
-│
-└── 📁 Data (gitignored)
-    └── data/                 # Local data storage
+Gravity_TechnicalAnalysis/
+├─ src/
+│  └─ gravity_tech/
+│     ├─ api/v1/          # مسیرهای FastAPI: analysis, patterns, ml, tools, backtest, db
+│     ├─ services/        # منطق کسب‌وکار: TechnicalAnalysisService، cache، ingestion، توصیه ابزار
+│     ├─ core/            # مدل‌ها و اندیکاتورها (trend/momentum/volume/volatility/cycle/SR)
+│     ├─ ml/              # خط لوله ۵بعدی، ماتریس حجم، multi-horizon، backtesting، مدل‌ها
+│     ├─ patterns/        # الگوهای شمعی/هارمونیک و امواج الیوت
+│     ├─ clients/         # DataServiceClient (HTTP + Redis cache)
+│     ├─ database/        # مدیریت اتصال، اکتشاف DB، schema helpers
+│     └─ middleware/      # لاگ ساختاری، discovery، رویدادها، CORS
+├─ database/              # اسکریپت‌های SQL و DatabaseManager
+├─ ml_models/             # فایل‌های مدل ML (مثلاً pattern_classifier_*.pkl)
+├─ scripts/               # ابزارهایی مثل populate_last90.py، به‌روزرسانی/تأیید migration
+├─ tests/                 # واحد/یکپارچه (پوشش اندیکاتورها و سرویس‌ها)
+├─ docs/                  # همین مستندات
+└─ data/                  # داده نمونه/SQLite (در .gitignore)
 ```
 
----
+## لایه‌ها و پوشه‌های کلیدی
+- **API (`src/gravity_tech/api/v1`)**:  
+  - `analysis.py` (تحلیل کامل + اندیکاتورهای انتخابی + لیست اندیکاتورها)  
+  - `patterns.py` (تشخیص هارمونیک + ML اختیاری)  
+  - `ml.py` (پیش‌بینی الگو، batch، اطلاعات مدل)  
+  - `tools.py` (توصیه ابزار، تحلیل سفارشی)  
+  - `backtest.py` (بک‌تست تشخیص الگو)  
+  - `db_explorer.py` (خواندن شِما/کوئری محدود)  
 
-## 🔍 Detailed Directory Breakdown
+- **Services (`src/gravity_tech/services`)**:  
+  - `analysis_service.py` (اورکستریتور اندیکاتورها + الگوهای شمعی + الیوت + فاز بازار)  
+  - `cache_service.py` (Redis async)  
+  - `data_ingestor_service.py` (ذخیره نتایج تحلیل؛ Kafka/RabbitMQ اختیاری)  
+  - `tool_recommendation_service.py`، `fast_indicators.py`, `signal_engine.py`
 
-### 1️⃣ **src/gravity_tech/** (131 files)
-**Purpose:** Main application source code
+- **Indicators (`src/gravity_tech/core/indicators`)**: ۶ دسته اندیکاتور پیاده‌سازی‌شده با سیگنال و confidence استاندارد (Trend، Momentum، Cycle، Volume، Volatility، Support/Resistance).
 
-```
-src/gravity_tech/
-├── analysis/              # Market analysis modules
-│   ├── market_phase.py
-│   └── scenario_analysis.py
-│
-├── api/                   # REST API endpoints
-│   └── v1/
-│       ├── analysis.py
-│       ├── health.py
-│       ├── indicators.py
-│       └── tools.py       # Tool recommendation API
-│
-├── indicators/            # 60+ Technical indicators
-│   ├── cycle.py
-│   ├── momentum.py
-│   ├── support_resistance.py
-│   ├── trend.py
-│   ├── volatility.py
-│   └── volume.py
-│
-├── ml/                    # Machine Learning components
-│   ├── ml_indicator_weights.py
-│   ├── ml_dimension_weights.py
-│   ├── ml_tool_recommender.py
-│   └── scenario_weight_optimizer.py
-│
-├── middleware/            # HTTP middleware
-│   ├── auth.py           # JWT authentication
-│   ├── events.py         # Event-driven messaging
-│   ├── logging.py        # Structured logging
-│   ├── resilience.py     # Circuit breaker, retry
-│   ├── security.py       # Rate limiting, CORS
-│   └── tracing.py        # OpenTelemetry
-│
-├── models/                # Data models
-│   ├── analysis_models.py
-│   ├── indicator_models.py
-│   └── response_models.py
-│
-├── patterns/              # Chart pattern detection
-│   ├── candlestick.py
-│   └── classical_patterns.py
-│
-├── services/              # Business logic
-│   ├── analysis_service.py
-│   ├── fast_indicators.py
-│   ├── performance_optimizer.py
-│   └── tool_recommendation_service.py
-│
-├── utils/                 # Utilities
-│   ├── cache.py
-│   ├── helpers.py
-│   └── validators.py
-│
-├── config/                # Configuration management
-│   └── settings.py
-│
-└── main.py               # FastAPI application entry point
-```
+- **ML (`src/gravity_tech/ml`)**:  
+  - `complete_analysis_pipeline.py`، `five_dimensional_decision_matrix.py`، `volume_dimension_matrix.py`  
+  - multi-horizon analyzers/feature extractors برای trend/momentum/volatility/cycle/SR  
+  - `pattern_classifier.py` و `backtesting.py`
 
-### 2️⃣ **database/** (2 files)
-- `historical_manager.py` - Historical data management
-- `tool_performance_history.sql` - PostgreSQL schema (optional)
-- **DatabaseManager** with auto-detection: PostgreSQL → SQLite → JSON
+- **Patterns (`src/gravity_tech/patterns`)**: شمعی، کلاسیک، هارمونیک، تحلیل موج الیوت.
 
-### 3️⃣ **ml_models/** (5 files)
-- Trained LightGBM/XGBoost models
-- Model metadata and versioning
-- Feature extractors
+- **Database (`database/` + `src/gravity_tech/database/`)**:  
+  - SQL schemaهای تاریخی، `DatabaseManager`، `HistoricalScoreManager`  
+  - پشتیبانی SQLite/PostgreSQL (وابسته به تنظیمات)
 
-### 4️⃣ **tests/** (31 files)
-```
-tests/
-├── unit/              # Unit tests (95%+ coverage)
-├── integration/       # Integration tests
-├── contract/          # API contract tests (Pact)
-└── load/              # Load tests (Locust)
-```
+- **Clients**: `clients/data_service_client.py` برای واکشی داده‌ی Adjusted با httpx + Redis cache.
 
-### 5️⃣ **docs/** (39 files)
-```
-docs/
-├── api/               # API documentation
-├── architecture/      # System design
-├── guides/            # User guides
-├── operations/        # DevOps & deployment
-└── team/              # Team workflows
-```
+- **Middleware**: لاگ ساختاری، CORS، discovery اختیاری، انتشار رویداد.
 
-### 6️⃣ **k8s/** (10 files)
-- `deployment.yaml` - Application deployment
-- `service.yaml` - Service definition
-- `ingress.yaml` - Ingress routing
-- `hpa.yaml` - Horizontal Pod Autoscaler
-- `configmap.yaml`, `secret.yaml`
-- `monitoring.yaml` - Prometheus/Grafana
-- `redis.yaml` - Redis cache
-- `namespace.yaml`, `rbac.yaml`
+- **Feature Flags (در settings)**:
+  - `enable_scenarios`: فعال‌سازی Router سناریو سه‌گانه (`/api/v1/scenarios/*`)
+  - `expose_db_explorer`: فعال‌سازی مسیرهای `/db/*` (فقط برای توسعه توصیه می‌شود)
 
-### 7️⃣ **scripts/** (4 files)
-- Database migration scripts
-- Data processing utilities
-- Development helpers
-
----
-
-## 🚀 Quick Start
-
-### Development
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup database (optional)
-python setup_database.py
-
-# Run locally
-cd src && uvicorn gravity_tech.main:app --reload
-```
-
-### Docker
-```bash
-docker-compose up -d
-```
-
-### Kubernetes
-```bash
-kubectl apply -f k8s/
-# or with Helm
-helm install gravity-tech helm/technical-analysis/
-```
-
----
-
-## 📊 Statistics
-
-| Metric | Count |
-|--------|-------|
-| **Total Files** | 228 |
-| **Source Files** | 131 |
-| **Test Files** | 31 |
-| **Documentation** | 39 |
-| **Configuration** | 27 |
-| **Technical Indicators** | 60+ |
-| **API Endpoints** | 15+ |
-| **ML Models** | 5 |
-
----
-
-## 🧹 Cleanup History
-
-**Removed in v1.2.0:**
-- ✅ `deprecated/` folder (3 files)
-- ✅ `examples/` folder (11 files)
-- ✅ 11 `DAY_*_COMPLETION_REPORT.md` files
-- ✅ 3 `CODE_REVIEW_v1.1.0_Day*.md` files
-- ✅ 8 temporary/release files
-- ✅ All `__pycache__/` directories
-- ✅ `.pytest_cache/`, `.coverage`
-- ✅ `test_complete_system.py` (moved to tests/)
-
-**Total Removed:** 37 files, 15,345 lines of code
-
----
-
-## 🎯 Production Readiness
-
-- ✅ Clean code structure
-- ✅ Comprehensive test coverage (95%+)
-- ✅ Docker & Kubernetes ready
-- ✅ CI/CD pipelines configured
-- ✅ Security middleware (JWT, rate limiting)
-- ✅ Observability (OpenTelemetry, Prometheus)
-- ✅ Database fallback system (PostgreSQL → SQLite → JSON)
-- ✅ ML-based tool recommendation
-- ✅ 60+ technical indicators optimized with Numba
-- ✅ API documentation (OpenAPI/Swagger)
-
----
-
-## 📝 Version Information
-
-- **Current Version:** 1.2.0
-- **Python:** 3.11+
-- **FastAPI:** Latest
-- **Database:** PostgreSQL (optional), SQLite (fallback), JSON (final)
-- **ML Stack:** LightGBM, XGBoost, scikit-learn
-- **Deployment:** Docker, Kubernetes, Helm
-
----
-
-## 📞 Support
-
-- **Documentation:** `/docs`
-- **API Docs:** `http://localhost:8000/docs`
-- **Health Check:** `http://localhost:8000/health`
-- **GitHub:** Gravity_TechAnalysis
-
----
-
-**Last Updated:** November 14, 2025  
-**Maintained By:** Gravity Tech Team
+## یادداشت‌ها
+- حداقل ورودی تحلیل: ۵۰ کندل؛ برخی اندیکاتورها به ۶۰ نیاز دارند.  
+- کش Redis و ingestion رویدادها اختیاری و با تنظیمات `.env` فعال می‌شوند.  
+- سناریوهای سه‌گانه در `api/v1/scenarios.py` موجود است ولی به‌صورت پیش‌فرض mount نشده است.  
+- مدل‌های ML باید در `ml_models/` موجود باشند تا endpointهای ML/Pattern با موفقیت پاسخ دهند.
