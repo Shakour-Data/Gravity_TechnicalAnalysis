@@ -28,11 +28,12 @@ Used by all 60+ indicators in the system.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 
 from .indicator_category import IndicatorCategory
 from .signal_strength import SignalStrength
+from datetime import timezone
 
 
 @dataclass(frozen=True)
@@ -55,10 +56,10 @@ class IndicatorResult:
     category: IndicatorCategory
     signal: SignalStrength
     value: float
-    additional_values: Optional[dict[str, float]] = None
+    additional_values: dict[str, float | None] = None
     confidence: float = 0.75
-    description: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    description: str | None = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self):
         """Validate indicator result data"""
