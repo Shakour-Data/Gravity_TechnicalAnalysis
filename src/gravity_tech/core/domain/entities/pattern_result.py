@@ -28,7 +28,7 @@ Represents the result of chart pattern detection (classical or candlestick).
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+
 
 from .pattern_type import PatternType
 from .signal_strength import SignalStrength
@@ -57,8 +57,8 @@ class PatternResult:
     start_time: datetime
     end_time: datetime
     description: str
-    price_target: Optional[float] = None
-    stop_loss: Optional[float] = None
+    price_target: float | None = None
+    stop_loss: float | None = None
 
     def __post_init__(self):
         """Validate pattern result data"""
