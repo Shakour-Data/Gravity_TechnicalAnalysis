@@ -10,7 +10,7 @@ License: MIT
 """
 
 import asyncio
-from typing import Optional
+
 
 import structlog
 
@@ -47,9 +47,9 @@ class ServiceDiscovery:
     """
 
     def __init__(self):
-        self.registry_type: Optional[str] = None
-        self.consul_client: Optional[object] = None  # Made generic to avoid import issues
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self.registry_type: str | None = None
+        self.consul_client: object | None = None  # Made generic to avoid import issues
+        self._heartbeat_task: asyncio.Task | None = None
 
     async def initialize(self):
         """راه‌اندازی اولیه Service Discovery"""
@@ -188,7 +188,7 @@ class ServiceDiscovery:
         except Exception as e:
             logger.error("deregistration_failed", error=str(e))
 
-    async def discover_service(self, service_name: str) -> Optional[dict]:
+    async def discover_service(self, service_name: str) -> dict | None:
         """
         کشف یک سرویس دیگر
 
