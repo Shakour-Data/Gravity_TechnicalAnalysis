@@ -17,7 +17,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -25,6 +25,7 @@ from fastapi import Request
 from gravity_tech.core.indicators import MomentumIndicators, TrendIndicators
 from gravity_tech.models.schemas import Candle, MarketData, SubscriptionType
 from sse_starlette.sse import EventSourceResponse
+from datetime import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,8 @@ class SSEConnectionManager:
         self.active_connections[client_id] = queue
         self.subscriptions[client_id] = set()
         self.client_data[client_id] = {
-            'connected_at': datetime.utcnow(),
-            'last_activity': datetime.utcnow(),
+            'connected_at': datetime.now(timezone.utc),
+            'last_activity': datetime.now(timezone.utc),
             'message_count': 0,
             'subscriptions': set()
         }
@@ -104,7 +105,7 @@ class SSEConnectionManager:
             # Track activity for the client when delivering broadcasts
             client_meta = self.client_data.get(client_id)
             if client_meta is not None:
-                client_meta['last_activity'] = datetime.utcnow()
+                client_meta['last_activity'] = datetime.now(timezone.utc)
                 client_meta['message_count'] += 1
 
     async def send_personal_message(self, client_id: str, message: dict[str, Any]) -> None:
@@ -112,7 +113,7 @@ class SSEConnectionManager:
         if client_id in self.active_connections:
             queue = self.active_connections[client_id]
             await queue.put(message)
-            self.client_data[client_id]['last_activity'] = datetime.utcnow()
+            self.client_data[client_id]['last_activity'] = datetime.now(timezone.utc)
             self.client_data[client_id]['message_count'] += 1
 
     def get_connection_stats(self) -> dict[str, Any]:
@@ -159,7 +160,7 @@ class SSEHandler:
                 "type": "connection_established",
                 "client_id": client_id,
                 "subscriptions": [s.value for s in subscriptions],
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
 
             while True:
@@ -171,7 +172,7 @@ class SSEHandler:
                     if message is None:
                         yield self._format_sse_message({
                             "type": "heartbeat",
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         })
                         continue
 
@@ -181,7 +182,7 @@ class SSEHandler:
                     # Send heartbeat
                     yield self._format_sse_message({
                         "type": "heartbeat",
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
 
         except Exception as e:
@@ -265,7 +266,7 @@ class SSEHandler:
             # Prepare market data message
             market_data = MarketData(
                 symbol=symbol,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 price=Decimal(str(candle.close)),
                 open_price=Decimal(str(candle.open)),
                 high_price=Decimal(str(candle.high)),
@@ -281,7 +282,7 @@ class SSEHandler:
                     "data": market_data.to_dict(),
                     "indicators": indicators,
                     "patterns": patterns,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             )
 
@@ -398,7 +399,7 @@ class SSEHandler:
         volume = random.randint(1000, 10000)
 
         return Candle(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             open=open_price,
             high=high,
             low=low,
