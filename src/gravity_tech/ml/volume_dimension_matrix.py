@@ -15,6 +15,7 @@ Volume-Dimension Matrix Analysis
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import List
 
 import numpy as np
 from gravity_tech.core.domain.entities import Candle
@@ -23,6 +24,8 @@ from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
 from gravity_tech.ml.multi_horizon_momentum_analysis import MomentumScore
 from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
 from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
+
+MIN_CANDLES = 60  # needs >=20 for metrics + buffer for stability
 
 
 class InteractionType(Enum):
@@ -85,26 +88,45 @@ class VolumeDimensionMatrix:
     def __init__(self, candles: list[Candle]):
         """
         Args:
-            candles: لیست کندل‌ها (حداقل 50 کندل برای محاسبات دقیق)
+            candles: لیست کندل‌ها (حداقل 60 کندل برای برآورد پایدار)
         """
-        self.candles = candles
+        self.candles = self._validate_candles(candles)
         self.volume_metrics = self._calculate_volume_metrics()
+
+    @staticmethod
+    def _validate_candles(candles: list[Candle]) -> list[Candle]:
+        """Ensure minimum length and finite OHLCV values"""
+        if len(candles) < MIN_CANDLES:
+            raise ValueError(f"VolumeDimensionMatrix requires at least {MIN_CANDLES} candles (got {len(candles)})")
+        for c in candles:
+            values = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
+            if not np.all(np.isfinite(values)):
+                raise ValueError("Candles contain non-finite OHLCV values")
+            if c.volume < 0:
+                raise ValueError("Volume must be non-negative")
+            if c.high < c.low:
+                raise ValueError("High must be >= Low for all candles")
+        return candles
 
     def _calculate_volume_metrics(self) -> VolumeMetrics:
         """محاسبه معیارهای پایه حجم"""
-        volumes = [c.volume for c in self.candles]
-        avg_volume = np.mean(volumes[-20:])  # میانگین 20 دوره
-        current_volume = volumes[-1]
+        volumes = np.asarray([float(c.volume) for c in self.candles], dtype=float)
+        if not np.all(np.isfinite(volumes)):
+            raise ValueError("Non-finite volume values detected")
+        recent = volumes[-20:]
+        avg_volume = float(np.mean(recent)) if recent.size else 0.0
+        avg_volume = max(avg_volume, 1e-6)
+        current_volume = float(volumes[-1])
 
         # نسبت حجم
-        volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
+        volume_ratio = current_volume / avg_volume
 
         # روند حجم (شیب خط رگرسیون)
-        x = np.arange(len(volumes[-20:]))
-        y = np.array(volumes[-20:])
+        x = np.arange(len(recent))
+        y = recent
         if len(x) > 1 and np.std(y) > 0:
             slope = np.polyfit(x, y, 1)[0]
-            volume_trend = slope / avg_volume  # نرمال‌سازی
+            volume_trend = float(slope / avg_volume)
         else:
             volume_trend = 0.0
 
@@ -841,43 +863,59 @@ class VolumeDimensionMatrix:
     # ═══════════════════════════════════════════════════════════════════
 
     def _estimate_rsi(self, period: int = 14) -> float:
-        """تخمین RSI از کندل‌ها"""
+        """تخمین RSI استاندارد بر اساس بسته شدن کندل‌ها"""
         if len(self.candles) < period + 1:
             return 50.0
 
-        gains = []
-        losses = []
+        closes = np.asarray([c.close for c in self.candles], dtype=float)
+        if not np.all(np.isfinite(closes)):
+            return 50.0
 
-        for i in range(len(self.candles) - period, len(self.candles)):
-            change = self.candles[i].close - self.candles[i-1].close
-            if change > 0:
-                gains.append(change)
-                losses.append(0)
-            else:
-                gains.append(0)
-                losses.append(abs(change))
+        deltas = np.diff(closes)
+        gains = np.clip(deltas, a_min=0, a_max=None)
+        losses = np.clip(-deltas, a_min=0, a_max=None)
 
-        avg_gain = np.mean(gains) if gains else 0
-        avg_loss = np.mean(losses) if losses else 0
+        gains = gains[-period:]
+        losses = losses[-period:]
+
+        avg_gain = np.mean(gains) if gains.size else 0.0
+        avg_loss = np.mean(losses) if losses.size else 0.0
 
         if avg_loss == 0:
-            return 100.0
+            return 100.0 if avg_gain > 0 else 50.0
 
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
-
-        return rsi
+        return float(np.clip(rsi, 0.0, 100.0))
 
     def _estimate_mfi(self, period: int = 14) -> float:
-        """تخمین Money Flow Index"""
-        # ساده‌سازی: از نسبت حجم در کندل‌های صعودی/نزولی
-        vm = self.volume_metrics
+        """محاسبه MFI ساده با قیمت معمولی و حجم"""
+        if len(self.candles) < period + 1:
+            return 50.0
 
-        # MFI تقریباً معادل RSI اما با حجم
-        # نسبت حجم صعودی به کل = تقریب MFI
-        mfi = vm.volume_in_bullish * 100
+        typical_prices = np.asarray(
+            [(c.high + c.low + c.close) / 3 for c in self.candles], dtype=float
+        )
+        volumes = np.asarray([c.volume for c in self.candles], dtype=float)
+        if not (np.all(np.isfinite(typical_prices)) and np.all(np.isfinite(volumes))):
+            return 50.0
 
-        return mfi
+        raw_money_flow = typical_prices * volumes
+        positive_flow = 0.0
+        negative_flow = 0.0
+
+        for i in range(1, period + 1):
+            if typical_prices[-i] > typical_prices[-i - 1]:
+                positive_flow += raw_money_flow[-i]
+            elif typical_prices[-i] < typical_prices[-i - 1]:
+                negative_flow += raw_money_flow[-i]
+
+        if negative_flow == 0:
+            return 100.0 if positive_flow > 0 else 50.0
+
+        mfr = positive_flow / negative_flow
+        mfi = 100 - (100 / (1 + mfr))
+        return float(np.clip(mfi, 0.0, 100.0))
 
     def _calculate_price_trend(self, period: int = 20) -> float:
         """محاسبه روند قیمت"""
@@ -950,6 +988,8 @@ class VolumeDimensionMatrix:
         candle = self.candles[-1]
 
         body = abs(candle.close - candle.open)
+        if body < 1e-6:
+            return False
         upper_shadow = candle.high - max(candle.open, candle.close)
         lower_shadow = min(candle.open, candle.close) - candle.low
 
