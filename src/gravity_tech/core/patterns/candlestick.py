@@ -37,7 +37,7 @@ This module recognizes major candlestick patterns:
 10. Marubozu
 """
 
-from typing import Optional
+
 
 from gravity_tech.core.domain.entities import Candle, PatternResult, PatternType
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
@@ -76,7 +76,7 @@ class CandlestickPatterns:
                 body > 0)
 
     @staticmethod
-    def is_engulfing(candle1: Candle, candle2: Candle) -> Optional[str]:
+    def is_engulfing(candle1: Candle, candle2: Candle) -> str | None:
         """
         Check for Engulfing pattern
         Returns: 'bullish', 'bearish', or None
@@ -96,7 +96,7 @@ class CandlestickPatterns:
         return None
 
     @staticmethod
-    def is_morning_evening_star(candles: list[Candle]) -> Optional[str]:
+    def is_morning_evening_star(candles: list[Candle]) -> str | None:
         """
         Check for Morning/Evening Star pattern (3 candles)
         Returns: 'morning', 'evening', or None
@@ -123,7 +123,7 @@ class CandlestickPatterns:
         return None
 
     @staticmethod
-    def is_harami(candle1: Candle, candle2: Candle) -> Optional[str]:
+    def is_harami(candle1: Candle, candle2: Candle) -> str | None:
         """
         Check for Harami pattern
         Returns: 'bullish', 'bearish', or None
@@ -145,7 +145,7 @@ class CandlestickPatterns:
         return None
 
     @staticmethod
-    def is_three_soldiers_crows(candles: list[Candle]) -> Optional[str]:
+    def is_three_soldiers_crows(candles: list[Candle]) -> str | None:
         """
         Check for Three White Soldiers / Three Black Crows
         Returns: 'soldiers', 'crows', or None
