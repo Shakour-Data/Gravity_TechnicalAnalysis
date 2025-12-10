@@ -5,7 +5,7 @@ Multi-Horizon Feature Extraction for Volatility
 import logging
 from collections import deque
 from dataclasses import dataclass
-from typing import Optional
+
 
 import numpy as np
 import pandas as pd
@@ -413,7 +413,7 @@ class MultiHorizonVolatilityFeatureExtractor:
         change_matrix: dict[int, np.ndarray],
         horizons: list[int],
         idx: int,
-    ) -> Optional[dict[str, float]]:
+    ) -> dict[str, float | None]:
         targets: dict[str, float] = {}
         for h in horizons:
             series = change_matrix.get(h)
