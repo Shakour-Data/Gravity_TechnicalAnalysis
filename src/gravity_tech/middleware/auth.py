@@ -12,7 +12,7 @@ License: MIT
 import time
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from typing import Optional
+
 
 import jwt
 import structlog
@@ -35,7 +35,7 @@ class TokenData(BaseModel):
     """داده‌های توکن"""
     username: str
     scopes: list[str] = []
-    exp: Optional[datetime] = None
+    exp: datetime | None = None
 
     def __getitem__(self, item):
         # برای سازگاری با تست‌ها
@@ -54,7 +54,7 @@ class TokenData(BaseModel):
         return item in ["sub", "scopes", "exp"]
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     ایجاد JWT token
 
@@ -134,8 +134,8 @@ def verify_token(token: str) -> TokenData:
 
 
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> Optional[TokenData]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security)
+) -> TokenData | None:
     """
     دریافت کاربر فعلی از توکن
 
@@ -267,8 +267,8 @@ class SecureAnalysisRequest(BaseModel):
     """
     symbol: str
     timeframe: str
-    candles: Optional[list] = None
-    max_candles: Optional[int] = 100
+    candles: list | None = None
+    max_candles: int | None = 100
 
     @field_validator('candles')
     @classmethod
