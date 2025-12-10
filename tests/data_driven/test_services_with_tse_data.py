@@ -22,17 +22,20 @@ from typing import Any
 
 import numpy as np
 import pytest
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.momentum import MomentumIndicators
 from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
 from gravity_tech.core.indicators.volume import VolumeIndicators
-from gravity_tech.models.schemas import Candle
 
 # ============================================================================
 # Database Connection & TSE Data Loading
 # ============================================================================
 
-TSE_DB_PATH = r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
+TSE_DB_PATH = os.getenv(
+    "TSE_DB_PATH",
+    r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
+)
 
 
 def get_tse_db_connection():
@@ -668,16 +671,6 @@ class TestServiceErrorHandlingWithTSE:
                 raise ValueError("Invalid price: negative value")
         except ValueError as e:
             print(f"✓ Correctly handled invalid candle: {str(e)}")
-
-    def test_handle_database_connection_error(self):
-        """Test handling of database connection errors"""
-        try:
-            # Try to connect to wrong path
-            fake_path = r"C:\fake\path\tse_data.db"
-            if not os.path.exists(fake_path):
-                raise ConnectionError(f"Database not found at {fake_path}")
-        except ConnectionError:
-            print("✓ Correctly handled database connection error")
 
 
 # ============================================================================
