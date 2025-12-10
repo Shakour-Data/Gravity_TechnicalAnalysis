@@ -9,7 +9,7 @@ Version: 1.0.0
 License: MIT
 """
 
-from typing import Optional
+
 
 
 def calculate_pattern_strength(
@@ -37,7 +37,7 @@ def calculate_pattern_strength(
     return min(base_strength + volume_bonus, 1.0)
 
 
-def get_reliability_score(pattern_name: str) -> Optional[float]:
+def get_reliability_score(pattern_name: str) -> float | None:
     """
     Get reliability score for a pattern type.
 
@@ -71,7 +71,7 @@ def get_reliability_score(pattern_name: str) -> Optional[float]:
     return reliability_scores.get(pattern_name.upper())
 
 
-def get_pattern_hierarchy(pattern_name: str) -> Optional[int]:
+def get_pattern_hierarchy(pattern_name: str) -> int | None:
     """
     Get pattern hierarchy level.
 
@@ -101,7 +101,7 @@ def get_pattern_hierarchy(pattern_name: str) -> Optional[int]:
     return hierarchy.get(pattern_name.upper())
 
 
-def validate_harmonic_ratios(ratios: list[float]) -> Optional[bool]:
+def validate_harmonic_ratios(ratios: list[float]) -> bool | None:
     """
     Validate harmonic ratios against Fibonacci levels.
 
@@ -126,7 +126,7 @@ def validate_harmonic_ratios(ratios: list[float]) -> Optional[bool]:
     return True
 
 
-def detect_pattern_multiframe(candles: list, timeframe: str) -> Optional[dict]:
+def detect_pattern_multiframe(candles: list, timeframe: str) -> dict | None:
     """
     Detect patterns across multiple timeframes.
 
@@ -141,7 +141,7 @@ def detect_pattern_multiframe(candles: list, timeframe: str) -> Optional[dict]:
     return None
 
 
-def detect_pattern(candles: list) -> Optional[dict]:
+def detect_pattern(candles: list) -> dict | None:
     """
     General pattern detection.
 
@@ -169,7 +169,7 @@ def detect_all_patterns(candles: list) -> list[dict]:
     return []
 
 
-def detect_rare_patterns(candles: list) -> Optional[list]:
+def detect_rare_patterns(candles: list) -> list | None:
     """
     Detect rare harmonic patterns.
 
