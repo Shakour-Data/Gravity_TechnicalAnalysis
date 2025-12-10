@@ -31,7 +31,7 @@ This module implements Elliott Wave counting and analysis:
 - Projects targets based on Fibonacci ratios
 """
 
-from typing import Optional
+
 
 from gravity_tech.core.domain.entities import Candle, ElliottWaveResult, WavePoint
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
@@ -184,7 +184,7 @@ class ElliottWaveAnalyzer:
 
     @staticmethod
     def identify_wave_pattern(candles: list[Candle],
-                             min_wave_size: int = 5) -> Optional[ElliottWaveResult]:
+                             min_wave_size: int = 5) -> ElliottWaveResult | None:
         """
         Identify Elliott Wave pattern in candle data
 
@@ -331,7 +331,7 @@ class ElliottWaveAnalyzer:
         return None
 
     @staticmethod
-    def analyze(candles: list[Candle]) -> Optional[ElliottWaveResult]:
+    def analyze(candles: list[Candle]) -> ElliottWaveResult | None:
         """
         Main analysis function
 
@@ -350,7 +350,7 @@ class ElliottWaveAnalyzer:
         return None
 
 
-def analyze_elliott_waves(candles: list[Candle]) -> Optional[ElliottWaveResult]:
+def analyze_elliott_waves(candles: list[Candle]) -> ElliottWaveResult | None:
     """
     Convenience function for Elliott Wave analysis
 
