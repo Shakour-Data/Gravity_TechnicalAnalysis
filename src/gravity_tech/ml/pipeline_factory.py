@@ -9,7 +9,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+
 
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.complete_analysis_pipeline import CompleteAnalysisPipeline
@@ -27,34 +27,34 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AnalyzerBundle:
-    trend: Optional[MultiHorizonAnalyzer]
-    momentum: Optional[MultiHorizonMomentumAnalyzer]
-    volatility: Optional[MultiHorizonVolatilityAnalyzer]
+    trend: MultiHorizonAnalyzer | None
+    momentum: MultiHorizonMomentumAnalyzer | None
+    volatility: MultiHorizonVolatilityAnalyzer | None
 
 
-def load_trend_analyzer(weights_path: str, model_path: Optional[str] = None) -> MultiHorizonAnalyzer:
+def load_trend_analyzer(weights_path: str, model_path: str | None = None) -> MultiHorizonAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonAnalyzer(learner)
 
 
-def load_momentum_analyzer(weights_path: str, model_path: Optional[str] = None) -> MultiHorizonMomentumAnalyzer:
+def load_momentum_analyzer(weights_path: str, model_path: str | None = None) -> MultiHorizonMomentumAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonMomentumAnalyzer(learner)
 
 
-def load_volatility_analyzer(weights_path: str, model_path: Optional[str] = None) -> MultiHorizonVolatilityAnalyzer:
+def load_volatility_analyzer(weights_path: str, model_path: str | None = None) -> MultiHorizonVolatilityAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonVolatilityAnalyzer(learner)
 
 
-def load_cycle_analyzer(weights_path: str, model_path: Optional[str] = None, *, lookback_period: int = 100) -> MultiHorizonCycleAnalyzer:
+def load_cycle_analyzer(weights_path: str, model_path: str | None = None, *, lookback_period: int = 100) -> MultiHorizonCycleAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonCycleAnalyzer(weight_learner=learner, lookback_period=lookback_period)
 
 
 def load_support_resistance_analyzer(
     weights_path: str,
-    model_path: Optional[str] = None,
+    model_path: str | None = None,
 ) -> MultiHorizonSupportResistanceAnalyzer:
     return MultiHorizonSupportResistanceAnalyzer(weights_path=weights_path, model_path=model_path)
 
@@ -65,15 +65,15 @@ def build_pipeline_from_weights(
     trend_weights_path: str,
     momentum_weights_path: str,
     volatility_weights_path: str,
-    trend_model_path: Optional[str] = None,
-    momentum_model_path: Optional[str] = None,
-    volatility_model_path: Optional[str] = None,
-    cycle_weights_path: Optional[str] = None,
-    cycle_model_path: Optional[str] = None,
-    sr_weights_path: Optional[str] = None,
-    sr_model_path: Optional[str] = None,
-    cycle_analyzer: Optional[MultiHorizonCycleAnalyzer] = None,
-    sr_analyzer: Optional[MultiHorizonSupportResistanceAnalyzer] = None,
+    trend_model_path: str | None = None,
+    momentum_model_path: str | None = None,
+    volatility_model_path: str | None = None,
+    cycle_weights_path: str | None = None,
+    cycle_model_path: str | None = None,
+    sr_weights_path: str | None = None,
+    sr_model_path: str | None = None,
+    cycle_analyzer: MultiHorizonCycleAnalyzer | None = None,
+    sr_analyzer: MultiHorizonSupportResistanceAnalyzer | None = None,
     feature_cache=None,
     **pipeline_kwargs,
 ) -> CompleteAnalysisPipeline:
@@ -123,7 +123,7 @@ def load_trend_analyzer_from_config(config_path: str) -> MultiHorizonAnalyzer:
     )
 
 
-def _load_weight_learner(weights_path: str, model_path: Optional[str]) -> MultiHorizonWeightLearner:
+def _load_weight_learner(weights_path: str, model_path: str | None) -> MultiHorizonWeightLearner:
     learner = MultiHorizonWeightLearner()
     learner.load_weights(weights_path)
 
