@@ -12,7 +12,7 @@ import logging
 import pickle
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional
+
 
 import numpy as np
 import pandas as pd
@@ -266,7 +266,7 @@ class MultiHorizonWeightLearner:
     def get_horizon_weights(
         self,
         horizon: str
-    ) -> Optional[HorizonWeights]:
+    ) -> HorizonWeights | None:
         """
         دریافت وزن‌های یک افق خاص
 
@@ -426,7 +426,7 @@ class MultiHorizonWeightLearner:
     def load(
         cls,
         weights_path: str,
-        model_path: Optional[str] = None,
+        model_path: str | None = None,
         **kwargs,
     ) -> "MultiHorizonWeightLearner":
         """
