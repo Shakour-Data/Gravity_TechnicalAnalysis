@@ -1,8 +1,7 @@
 """
 Data Connector for Historical Market Data
 
-Provides a resilient client for the historical-data microservice with retry/backoff
-and an optional mock-data fallback for offline development.
+Provides a resilient client for the historical-data microservice with retry/backoff.
 """
 
 from __future__ import annotations
@@ -10,13 +9,13 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-import numpy as np
 import requests
 from gravity_tech.config.settings import settings
 from gravity_tech.core.domain.entities import Candle
+from datetime import timezone
 
 try:
     from prometheus_client import Counter, Histogram
@@ -48,18 +47,16 @@ logger = logging.getLogger(__name__)
 
 
 class DataConnector:
-    """
-    Connects to the historical data microservice (or generates mock data if needed).
-    """
+    """Connects to the historical data microservice."""
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
+        base_url: str | None = None,
+        timeout: int | None = None,
+        max_retries: int | None = None,
         backoff_factor: float = 0.5,
         allow_mock_on_failure: bool = False,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
     ):
         self.base_url = (base_url or settings.DATA_SERVICE_URL).rstrip("/")
         self.timeout = timeout or settings.DATA_SERVICE_TIMEOUT
@@ -67,13 +64,12 @@ class DataConnector:
             0, max_retries if max_retries is not None else settings.DATA_SERVICE_MAX_RETRIES
         )
         self.backoff_factor = backoff_factor
-        self.allow_mock = allow_mock_on_failure
+        self.allow_mock = allow_mock_on_failure  # kept for backward compatibility; no-op
         self._session = session or requests.Session()
         self.last_data_source: str = "remote"
         # Telemetry counters
         self.success_count = 0
         self.failure_count = 0
-        self.mock_count = 0
         self.last_latency_ms: float | None = None
 
     # ------------------------------------------------------------------ #
@@ -82,12 +78,12 @@ class DataConnector:
     def fetch_daily_candles(
         self,
         symbol: str = "BTCUSDT",
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 1000,
     ) -> list[Candle]:
         """
-        Fetch daily candles from the remote data service (or mock fallback).
+        Fetch daily candles from the remote data service.
         """
         return self.fetch_candles(
             symbol=symbol,
@@ -101,8 +97,8 @@ class DataConnector:
         self,
         symbol: str = "BTCUSDT",
         interval: str = "1h",
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 500,
     ) -> list[Candle]:
         """
@@ -110,7 +106,7 @@ class DataConnector:
         """
         interval_delta = self._interval_to_timedelta(interval)
         if end_date is None:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
         if start_date is None:
             start_date = end_date - interval_delta * max(1, limit)
 
@@ -155,24 +151,18 @@ class DataConnector:
                     "error": str(exc),
                 },
             )
-            if not self.allow_mock:
-                raise
-
-        # Mock fallback for offline scenarios
-        self.last_data_source = "mock"
-        self.mock_count += 1
-        logger.info("data_connector.generating_mock_data", extra={"symbol": symbol})
-        mock_start = time.perf_counter()
-        candles = self._generate_mock_data(symbol, start_date, limit, interval_delta)
-        DATA_CONNECTOR_REQUESTS.labels("mock", "success", interval).inc()
-        DATA_CONNECTOR_LATENCY.labels("mock", interval).observe(time.perf_counter() - mock_start)
-        return candles
+            if self.allow_mock:
+                logger.info("data_connector.mock_fallback_enabled", symbol=symbol, interval=interval, limit=limit)
+                mock_candles = self._generate_mock_candles(symbol, interval, start_date, end_date, limit)
+                self.last_data_source = "mock"
+                return mock_candles
+            raise
 
     def fetch_multiple_symbols(
         self,
         symbols: list[str],
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 1000,
         max_workers: int = 4,
     ) -> dict[str, list[Candle]]:
@@ -208,7 +198,7 @@ class DataConnector:
     # ------------------------------------------------------------------ #
     def _perform_request(self, path: str, params: dict[str, Any]) -> dict:
         url = f"{self.base_url}{path}"
-        last_exc: Optional[requests.RequestException] = None
+        last_exc: requests.RequestException | None = None
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -245,56 +235,35 @@ class DataConnector:
             timestamp=datetime.fromisoformat(item["timestamp"]),
         )
 
-    def _generate_mock_data(
+    def _generate_mock_candles(
         self,
         symbol: str,
+        interval: str,
         start_date: datetime,
+        end_date: datetime,
         limit: int,
-        interval_delta: timedelta,
     ) -> list[Candle]:
-        steps = max(1, limit)
-        base_price = 40000.0
-
-        rng = np.random.default_rng(seed=42)
-        returns = rng.normal(0.001, 0.03, steps)
-        half = steps // 2
-        trend = np.concatenate(
-            [np.linspace(0, 0.002, half, endpoint=False), np.linspace(0.002, -0.001, steps - half)]
-        )
-        returns += trend
-
-        price_multipliers = np.cumprod(1 + returns)
-        closes = base_price * price_multipliers
-
+        """Generate simple mock candles when remote fetch is unavailable."""
+        step = self._interval_to_timedelta(interval)
         candles: list[Candle] = []
-        current_date = start_date
-
-        for close in closes:
-            daily_range = close * rng.uniform(0.02, 0.05)
-            open_price = close + rng.uniform(-daily_range / 2, daily_range / 2)
-            high = max(open_price, close) + rng.uniform(0, daily_range / 2)
-            low = min(open_price, close) - rng.uniform(0, daily_range / 2)
-
-            price_move = abs(close - open_price) / max(open_price, 1e-6)
-            base_volume = 25000 + rng.uniform(-5000, 5000)
-            volume = base_volume * (1 + price_move * 10)
-
+        current = start_date
+        for i in range(limit):
+            if current > end_date:
+                break
+            base = 100.0 + i
             candles.append(
                 Candle(
-                    open=round(open_price, 2),
-                    high=round(high, 2),
-                    low=round(low, 2),
-                    close=round(close, 2),
-                    volume=round(volume, 2),
-                    timestamp=current_date,
+                    timestamp=current,
+                    open=base,
+                    high=base + 1.0,
+                    low=base - 1.0,
+                    close=base + 0.5,
+                    volume=1_000 + i * 10,
+                    symbol=symbol,
+                    timeframe=interval,
                 )
             )
-            current_date += interval_delta
-
-        logger.info(
-            "data_connector.mock_data_ready",
-            extra={"symbol": symbol, "count": len(candles)},
-        )
+            current += step
         return candles
 
     @staticmethod
