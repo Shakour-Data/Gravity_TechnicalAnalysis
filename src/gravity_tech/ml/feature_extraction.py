@@ -12,7 +12,7 @@ Version: 1.0.0
 License: MIT
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -21,6 +21,7 @@ from gravity_tech.models.schemas import Candle
 from gravity_tech.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.classical import ClassicalPatterns
 from gravity_tech.patterns.elliott_wave import ElliottWaveAnalyzer
+from datetime import timezone
 
 
 class FeatureExtractor:
@@ -381,7 +382,7 @@ if __name__ == "__main__":
 
     # Fetch data
     connector = DataConnector()
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=365 * 2)  # 2 years
 
     candles = connector.fetch_daily_candles("BTCUSDT", start_date, end_date)
