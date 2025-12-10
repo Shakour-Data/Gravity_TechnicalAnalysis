@@ -59,6 +59,15 @@ class HistoricalScoreEntry:
     # قیمت
     price_at_analysis: float
 
+    # ابعاد تکمیلی
+    volume_score: float = 0.0
+    volatility_score: float = 0.0
+    cycle_score: float = 0.0
+    support_resistance_score: float = 0.0
+
+    # داده خام تحلیل (JSON)
+    raw_data: dict[str, Any] | None = None
+
     # اختیاری
     id: int | None = None
     created_at: datetime | None = None
@@ -136,7 +145,9 @@ class HistoricalScoreManager:
                     trend_weight, momentum_weight,
                     trend_signal, momentum_signal, combined_signal,
                     recommendation, action,
-                    price_at_analysis
+                    price_at_analysis,
+                    volume_score, volatility_score, cycle_score, support_resistance_score,
+                    raw_data
                 ) VALUES (
                     %(symbol)s, %(timestamp)s, %(timeframe)s,
                     %(trend_score)s, %(trend_confidence)s,
@@ -145,7 +156,9 @@ class HistoricalScoreManager:
                     %(trend_weight)s, %(momentum_weight)s,
                     %(trend_signal)s, %(momentum_signal)s, %(combined_signal)s,
                     %(recommendation)s, %(action)s,
-                    %(price_at_analysis)s
+                    %(price_at_analysis)s,
+                    %(volume_score)s, %(volatility_score)s, %(cycle_score)s, %(support_resistance_score)s,
+                    %(raw_data)s
                 )
                 ON CONFLICT (symbol, timestamp, timeframe)
                 DO UPDATE SET
@@ -154,7 +167,12 @@ class HistoricalScoreManager:
                     momentum_score = EXCLUDED.momentum_score,
                     momentum_confidence = EXCLUDED.momentum_confidence,
                     combined_score = EXCLUDED.combined_score,
-                    combined_confidence = EXCLUDED.combined_confidence
+                    combined_confidence = EXCLUDED.combined_confidence,
+                    volume_score = EXCLUDED.volume_score,
+                    volatility_score = EXCLUDED.volatility_score,
+                    cycle_score = EXCLUDED.cycle_score,
+                    support_resistance_score = EXCLUDED.support_resistance_score,
+                    raw_data = EXCLUDED.raw_data
                 RETURNING id
             """, asdict(score_entry))
 
@@ -226,15 +244,16 @@ class HistoricalScoreManager:
         data = [
             (
                 score_id,
-                ind['name'],
-                ind['category'],
+                ind.get('name'),
+                ind.get('category'),
                 json.dumps(ind.get('params', {})),
-                ind['score'],
-                ind['confidence'],
-                ind['signal'],
+                ind.get('score'),
+                ind.get('confidence'),
+                ind.get('signal'),
                 ind.get('raw_value')
             )
             for ind in indicator_scores
+            if ind.get('name')
         ]
 
         execute_values(
@@ -597,6 +616,11 @@ class HistoricalScoreManager:
                     trend_signal=row['trend_signal'],
                     momentum_signal=row['momentum_signal'],
                     combined_signal=row['combined_signal'],
+                    volume_score=row.get('volume_score', 0.0) or 0.0,
+                    volatility_score=row.get('volatility_score', 0.0) or 0.0,
+                    cycle_score=row.get('cycle_score', 0.0) or 0.0,
+                    support_resistance_score=row.get('support_resistance_score', 0.0) or 0.0,
+                    raw_data=row.get('raw_data'),
                     recommendation=row['recommendation'],
                     action=row['action'],
                     price_at_analysis=row['price_at_analysis'],
