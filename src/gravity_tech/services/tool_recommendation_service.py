@@ -10,18 +10,19 @@ from __future__ import annotations
 import json
 import random
 from collections import defaultdict
-from datetime import datetime, timedelta
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
+from uuid import uuid4
 
 import numpy as np
-
-from gravity_tech.config.settings import settings
 from gravity_tech.core.contracts.analysis import AnalysisRequest
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.momentum import MomentumIndicators
 from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
+from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.database.tse_data_source import tse_data_source
 from gravity_tech.ml.data_connector import DataConnector
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
@@ -92,7 +93,7 @@ class ToolRecommendationService:
             "timeframe": timeframe,
             "analysis_goal": analysis_goal,
             "trading_style": trading_style,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "market_context": market_context,
             "recommendations": ranked,
             "dynamic_strategy": self._build_dynamic_strategy(ranked, market_context),
@@ -104,6 +105,27 @@ class ToolRecommendationService:
                 "total_tools_analyzed": len(self.catalog),
             },
         }
+
+        # Best-effort persistence to recommendations log (does not alter API)
+        try:
+            request_id = str(uuid4())
+            dbm = DatabaseManager(auto_setup=True)
+            dbm.log_tool_recommendation(
+                request_id=request_id,
+                user_id=None,
+                symbol=symbol,
+                timeframe=timeframe,
+                analysis_goal=analysis_goal,
+                trading_style=trading_style,
+                market_regime=market_context.get("regime", "unknown"),
+                volatility_level=market_context.get("volatility"),
+                trend_strength=market_context.get("trend_strength"),
+                recommended_tools=ranked,
+                ml_weights=response["ml_metadata"],
+            )
+            dbm.close()
+        except Exception:
+            pass
         self._cache[cache_key] = response
         return response
 
@@ -173,7 +195,7 @@ class ToolRecommendationService:
             "ml_scoring": ml_scoring,
             "patterns_detected": patterns,
             "summary": summary,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     # ---------------------------------------------------------------- Utilities
@@ -193,7 +215,7 @@ class ToolRecommendationService:
             "total_tools": len(self.catalog),
             "total_categories": len(categories),
             "categories": categories,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     # ---------------------------------------------------------------- Internals
@@ -201,7 +223,7 @@ class ToolRecommendationService:
     def _load_catalog(self) -> list[dict[str, Any]]:
         if not self.catalog_path.exists():
             raise FileNotFoundError(f"Tool catalog not found at {self.catalog_path}")
-        with open(self.catalog_path, "r", encoding="utf-8") as fh:
+        with open(self.catalog_path, encoding="utf-8") as fh:
             return json.load(fh)
 
     async def _fetch_candles(self, symbol: str, timeframe: str, limit: int) -> list[Candle]:
@@ -209,7 +231,7 @@ class ToolRecommendationService:
 
         if tse_data_source:
             try:
-                end_date = datetime.utcnow().date()
+                end_date = datetime.now(UTC).date()
                 start_date = end_date - timedelta(days=max(limit, 30) * 2)
                 raw = tse_data_source.fetch_price_data(
                     ticker=symbol,
@@ -246,7 +268,7 @@ class ToolRecommendationService:
     def _generate_synthetic_candles(self, limit: int) -> list[Candle]:
         candles: list[Candle] = []
         current_price = 100.0
-        timestamp = datetime.utcnow() - timedelta(minutes=limit)
+        timestamp = datetime.now(UTC) - timedelta(minutes=limit)
 
         for _ in range(limit):
             drift = random.uniform(-1.5, 1.5)
