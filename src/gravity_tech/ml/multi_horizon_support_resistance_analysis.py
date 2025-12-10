@@ -17,7 +17,7 @@ import json
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+
 
 import numpy as np
 from gravity_tech.ml.multi_horizon_support_resistance_features import (
@@ -127,7 +127,7 @@ class MultiHorizonSupportResistanceAnalysis:
 class MultiHorizonSupportResistanceAnalyzer:
     """تحلیل‌گر ML-based Support & Resistance"""
 
-    def __init__(self, weights_path: Optional[str] = None, model_path: Optional[str] = None):
+    def __init__(self, weights_path: str | None = None, model_path: str | None = None):
         """
         Initialize analyzer
 
@@ -565,7 +565,7 @@ class MultiHorizonSupportResistanceAnalyzer:
 
         return "⚪ خنثی - منتظر شرایط بهتر"
 
-    def _load_weights(self, weights_path: Optional[str]) -> dict[str, dict[str, float]]:
+    def _load_weights(self, weights_path: str | None) -> dict[str, dict[str, float]]:
         """بارگذاری وزن‌های ML"""
         if weights_path and Path(weights_path).exists():
             with open(weights_path) as f:
@@ -608,7 +608,7 @@ class MultiHorizonSupportResistanceAnalyzer:
             }
         }
 
-    def _load_model_state(self, model_path: Optional[str]) -> dict[str, dict[str, list[float]]]:
+    def _load_model_state(self, model_path: str | None) -> dict[str, dict[str, list[float]]]:
         """Load pickled regression bundles if available."""
         if model_path and Path(model_path).exists():
             with open(model_path, 'rb') as fh:
