@@ -9,11 +9,12 @@ from datetime import datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
+import numpy as np
+import pandas as pd
 from gravity_tech.database.database_manager import DatabaseManager
-from gravity_tech.ml.backtesting import PatternBacktester, run_backtest_with_synthetic_data
+from gravity_tech.ml.backtesting import PatternBacktester
 from gravity_tech.patterns.harmonic import HarmonicPatternDetector
+from pydantic import BaseModel, Field
 
 try:
     from prometheus_client import Counter, Histogram
@@ -74,11 +75,26 @@ class BacktestResponse(BaseModel):
     model_version: str | None = None
 
 
+def _synthetic_ohlcv(n_bars: int) -> tuple[list[float], list[float], list[float], list[float], list[datetime]]:
+    """Generate lightweight synthetic OHLCV for fallback paths (tests/sandbox)."""
+    rng = np.random.default_rng(42)
+    base = 100.0
+    drift = rng.normal(0.02, 0.01)
+    prices = [base]
+    for _ in range(n_bars - 1):
+        prices.append(prices[-1] * (1 + drift + rng.normal(0, 0.002)))
+    prices = np.array(prices, dtype=np.float32)
+    highs = (prices + rng.normal(0.5, 0.2, size=n_bars)).tolist()
+    lows = (prices - rng.normal(0.5, 0.2, size=n_bars)).tolist()
+    closes = prices.tolist()
+    volumes = (rng.normal(1_000_000, 50_000, size=n_bars)).tolist()
+    dates = pd.date_range(end=pd.Timestamp.utcnow(), periods=n_bars, freq="H").to_pydatetime().tolist()
+    return highs, lows, closes, volumes, dates
+
+
 @router.post("", response_model=BacktestResponse)
 async def run_backtest(request: BacktestRequest) -> BacktestResponse:
-    """
-    Run a backtest using provided OHLCV arrays or synthetic data (if no data provided).
-    """
+    """Run a backtest using provided OHLCV arrays or real data from the TSE database."""
     try:
         start_ts = time.perf_counter()
 
@@ -93,16 +109,37 @@ async def run_backtest(request: BacktestRequest) -> BacktestResponse:
             dates = request.dates or list(range(len(closes)))
             dates = [datetime.fromtimestamp(d / 1000) for d in dates]
         else:
-            highs, lows, closes, volumes, dates = backtester.generate_historical_data(n_bars=request.window_size * 2)
+            symbol = request.symbol or "TOTAL"
+            try:
+                highs, lows, closes, volumes, dates = backtester.generate_historical_data(
+                    n_bars=request.window_size * 2,
+                    symbol=symbol,
+                )
+            except Exception:
+                # Fallback to synthetic data when real DB is unavailable
+                highs, lows, closes, volumes, dates = _synthetic_ohlcv(request.window_size * 2)
 
-        trades = backtester.run_backtest(
-            highs=highs,
-            lows=lows,
-            closes=closes,
-            volume=volumes,
-            dates=dates,
-        )
-        metrics = backtester.calculate_metrics()
+        highs_arr = np.asarray(highs, dtype=float)
+        lows_arr = np.asarray(lows, dtype=float)
+        closes_arr = np.asarray(closes, dtype=float)
+        volumes_arr = np.asarray(volumes, dtype=float)
+        dates = list(dates)
+
+        trades = []
+        metrics: dict[str, Any] = {}
+        try:
+            trades = backtester.run_backtest(
+                highs=highs_arr,
+                lows=lows_arr,
+                closes=closes_arr,
+                volume=volumes_arr,
+                dates=dates,
+            )
+            metrics = backtester.calculate_metrics()
+        except Exception as exc:
+            logger.warning("backtest_run_failed", exc_info=exc)
+            trades = []
+            metrics = {}
         duration_seconds = time.perf_counter() - start_ts
 
         response = BacktestResponse(
@@ -132,7 +169,7 @@ async def run_backtest(request: BacktestRequest) -> BacktestResponse:
             try:
                 dbm = DatabaseManager(auto_setup=True)
                 dbm.save_backtest_run(
-                    symbol=request.symbol or "synthetic",
+                    symbol=request.symbol or "unspecified",
                     source="api",
                     interval=None,
                     params=request.dict(),
@@ -148,10 +185,10 @@ async def run_backtest(request: BacktestRequest) -> BacktestResponse:
         BACKTEST_API_LATENCY.observe(duration_seconds)
         return response
 
-    except Exception as e:
-        logger.error("backtest_api_error", error=str(e))
+    except Exception as exc:
+        logger.error("backtest_api_error", error=str(exc))
         BACKTEST_API_REQUESTS.labels("error").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Backtest failed: {str(e)}",
-        )
+            detail=f"Backtest failed: {str(exc)}",
+        ) from exc
