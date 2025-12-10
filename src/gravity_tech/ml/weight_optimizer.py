@@ -11,9 +11,9 @@ License: MIT
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+
 
 import joblib
 import numpy as np
@@ -22,6 +22,7 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Lasso, Ridge
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler
+from datetime import timezone
 
 
 class MLWeightOptimizer:
@@ -86,7 +87,7 @@ class MLWeightOptimizer:
                         momentum_indicators: list[IndicatorResult],
                         cycle_indicators: list[IndicatorResult],
                         volume_indicators: list[IndicatorResult],
-                        market_phase: Optional[str] = None) -> np.ndarray:
+                        market_phase: str | None = None) -> np.ndarray:
         """
         Prepare feature vector from indicators
 
@@ -286,7 +287,7 @@ class MLWeightOptimizer:
             'n_features': X.shape[1],
             'model_type': self.model_type,
             'optimal_weights': self.optimal_weights,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
         return metrics
@@ -398,8 +399,8 @@ class AdaptiveWeightCalculator:
                                    momentum_indicators: list[IndicatorResult],
                                    cycle_indicators: list[IndicatorResult],
                                    volume_indicators: list[IndicatorResult],
-                                   market_phase: Optional[str] = None,
-                                   volatility: Optional[float] = None) -> dict[str, float]:
+                                   market_phase: str | None = None,
+                                   volatility: float | None = None) -> dict[str, float]:
         """
         Calculate adaptive weights based on market conditions
 
