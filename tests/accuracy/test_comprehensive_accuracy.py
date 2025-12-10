@@ -7,7 +7,7 @@ Version: 1.0
 License: MIT
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from gravity_tech.core.contracts.analysis import TechnicalAnalysisResult
 from gravity_tech.core.domain.entities import (
     IndicatorCategory,
@@ -15,6 +15,7 @@ from gravity_tech.core.domain.entities import (
     CoreSignalStrength as SignalStrength,
 )
 from gravity_tech.services.signal_engine import compute_overall_signals
+from datetime import timezone
 
 
 def create_indicator(name: str, category: IndicatorCategory, 
@@ -25,7 +26,7 @@ def create_indicator(name: str, category: IndicatorCategory,
         signal=signal,
         value=0.0,
         confidence=confidence,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 
 
