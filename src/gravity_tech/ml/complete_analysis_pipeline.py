@@ -25,6 +25,7 @@ Date: November 14, 2025
 Version: 1.0.0
 License: MIT
 """
+from __future__ import annotations
 
 import sys
 from pathlib import Path
@@ -32,7 +33,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 from datetime import datetime
-from typing import Optional
 
 # 5D Decision Matrix
 from gravity_tech.ml.five_dimensional_decision_matrix import (
@@ -92,18 +92,18 @@ class CompleteAnalysisPipeline:
         self,
         candles: list[Candle],
         use_volume_matrix: bool = True,
-        custom_weights: Optional[dict[str, float]] = None,
+        custom_weights: dict[str, float | None] = None,
         verbose: bool = True,
         *,
-        trend_analyzer: Optional[MultiHorizonAnalyzer] = None,
-        trend_learner: Optional[MultiHorizonWeightLearner] = None,
-        momentum_analyzer: Optional[MultiHorizonMomentumAnalyzer] = None,
-        momentum_learner: Optional[MultiHorizonWeightLearner] = None,
-        volatility_analyzer: Optional[MultiHorizonVolatilityAnalyzer] = None,
-        volatility_learner: Optional[MultiHorizonWeightLearner] = None,
-        cycle_analyzer: Optional[MultiHorizonCycleAnalyzer] = None,
-        sr_analyzer: Optional[MultiHorizonSupportResistanceAnalyzer] = None,
-        feature_cache: Optional['_FeatureCache'] = None,
+        trend_analyzer: MultiHorizonAnalyzer | None = None,
+        trend_learner: MultiHorizonWeightLearner | None = None,
+        momentum_analyzer: MultiHorizonMomentumAnalyzer | None = None,
+        momentum_learner: MultiHorizonWeightLearner | None = None,
+        volatility_analyzer: MultiHorizonVolatilityAnalyzer | None = None,
+        volatility_learner: MultiHorizonWeightLearner | None = None,
+        cycle_analyzer: MultiHorizonCycleAnalyzer | None = None,
+        sr_analyzer: MultiHorizonSupportResistanceAnalyzer | None = None,
+        feature_cache: _FeatureCache | None = None,
     ):
         """
         Args:
@@ -143,13 +143,13 @@ class CompleteAnalysisPipeline:
         self._feature_cache = feature_cache or _FeatureCache(self.candles)
 
         # نگهداری نتایج واسط
-        self._trend_score: Optional[TrendScore] = None
-        self._momentum_score: Optional[MomentumScore] = None
-        self._volatility_score: Optional[VolatilityScore] = None
-        self._cycle_score: Optional[CycleScore] = None
-        self._sr_score: Optional[SupportResistanceScore] = None
-        self._volume_interactions: Optional[dict] = None
-        self._final_decision: Optional[FiveDimensionalDecision] = None
+        self._trend_score: TrendScore | None = None
+        self._momentum_score: MomentumScore | None = None
+        self._volatility_score: VolatilityScore | None = None
+        self._cycle_score: CycleScore | None = None
+        self._sr_score: SupportResistanceScore | None = None
+        self._volume_interactions: dict | None = None
+        self._final_decision: FiveDimensionalDecision | None = None
 
         self._log("✅ Pipeline initialized")
         self._log(f"   Candles: {len(candles)}")
@@ -291,8 +291,8 @@ class CompleteAnalysisPipeline:
     def _resolve_analyzer(
         self,
         name: str,
-        analyzer: Optional[object],
-        learner: Optional[MultiHorizonWeightLearner],
+        analyzer: object | None,
+        learner: MultiHorizonWeightLearner | None,
         factory,
     ):
         """Ensure we have a callable analyzer for the requested dimension."""
@@ -321,37 +321,37 @@ class CompleteAnalysisPipeline:
     # Properties برای دسترسی آسان به نتایج
 
     @property
-    def trend_score(self) -> Optional[TrendScore]:
+    def trend_score(self) -> TrendScore | None:
         """نتیجه تحلیل روند"""
         return self._trend_score
 
     @property
-    def momentum_score(self) -> Optional[MomentumScore]:
+    def momentum_score(self) -> MomentumScore | None:
         """نتیجه تحلیل مومنتوم"""
         return self._momentum_score
 
     @property
-    def volatility_score(self) -> Optional[VolatilityScore]:
+    def volatility_score(self) -> VolatilityScore | None:
         """نتیجه تحلیل نوسان"""
         return self._volatility_score
 
     @property
-    def cycle_score(self) -> Optional[CycleScore]:
+    def cycle_score(self) -> CycleScore | None:
         """نتیجه تحلیل چرخه"""
         return self._cycle_score
 
     @property
-    def sr_score(self) -> Optional[SupportResistanceScore]:
+    def sr_score(self) -> SupportResistanceScore | None:
         """نتیجه تحلیل حمایت/مقاومت"""
         return self._sr_score
 
     @property
-    def volume_interactions(self) -> Optional[dict]:
+    def volume_interactions(self) -> dict | None:
         """تعاملات حجم-ابعاد"""
         return self._volume_interactions
 
     @property
-    def final_decision(self) -> Optional[FiveDimensionalDecision]:
+    def final_decision(self) -> FiveDimensionalDecision | None:
         """تصمیم نهایی 5 بُعدی"""
         return self._final_decision
 
@@ -381,9 +381,9 @@ class _FeatureCache:
             lookback_period=volatility_lookback
         )
 
-        self._trend_features: Optional[dict[str, float]] = None
-        self._momentum_features: Optional[dict[str, float]] = None
-        self._volatility_features: Optional[dict[str, float]] = None
+        self._trend_features: dict[str, float | None] = None
+        self._momentum_features: dict[str, float | None] = None
+        self._volatility_features: dict[str, float | None] = None
 
     @property
     def trend_features(self) -> dict[str, float]:
@@ -428,7 +428,7 @@ class PipelineResult:
         volatility_score: VolatilityScore,
         cycle_score: CycleScore,
         sr_score: SupportResistanceScore,
-        volume_interactions: Optional[dict],
+        volume_interactions: dict | None,
         decision: FiveDimensionalDecision
     ):
         self.timestamp = timestamp
