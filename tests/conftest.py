@@ -15,7 +15,6 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 # Add src to path
@@ -29,95 +28,31 @@ from gravity_tech.core.domain.entities import Candle  # noqa: E402
 # مسیر پایگاه داده بازار ایران (TSE)
 # Iranian Stock Market (TSE) Database Path
 # ============================================================================
-# Try multiple possible locations for portability across development machines
-_TSE_DB_CANDIDATES = [
-    # Windows path (original)
-    r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db",
-    # Relative path (relative to project root)
-    Path(__file__).resolve().parent.parent.parent / 'GravityTseHisPrice' / 'data' / 'tse_data.db',
-    # Home directory variant
-    Path.home() / 'GravityTseHisPrice' / 'data' / 'tse_data.db',
-]
-TSE_DB_PATH = None
-for candidate in _TSE_DB_CANDIDATES:
-    if isinstance(candidate, str):
-        candidate_path = Path(candidate)
-    else:
-        candidate_path = candidate
-    if candidate_path.exists():
-        TSE_DB_PATH = str(candidate_path)
-        break
-if TSE_DB_PATH is None:
-    # Fallback to first candidate (will raise error if not found at runtime)
-    TSE_DB_PATH = str(_TSE_DB_CANDIDATES[0])
+# Fixed real-data path (no mock fallbacks allowed) with env override for portability
+TSE_DB_PATH = os.getenv(
+    "TSE_DB_PATH",
+    r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
+)
 
 
 @pytest.fixture(scope="session")
 def tse_db_connection():
     """Session-scoped fixture to provide TSE database connection."""
-    # ابتدا سعی کنید از پایگاه داده واقعی بازار ایران استفاده کنید
-    if TSE_DB_PATH and os.path.exists(TSE_DB_PATH):
-        try:
-            conn = sqlite3.connect(TSE_DB_PATH)
-            conn.row_factory = sqlite3.Row
-            print(f"✅ اتصال به پایگاه داده TSE برقرار شد: {TSE_DB_PATH}")
-            yield conn
-            conn.close()
-            return
-        except Exception as e:
-            print(f"⚠️ خطا در اتصال به TSE: {e}")
-
-    # اگر پایگاه داده واقعی وجود نداشت، یک پایگاه داده موقت بسازید
-    print(f"⚠️ پایگاه داده واقعی TSE یافت نشد: {TSE_DB_PATH}")
-    print("📦 یک پایگاه داده موقت ایجاد شود...")
-
-    db_path = project_root / "data" / "tse_data.db"
-    os.makedirs(db_path.parent, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-
-    # جدول ایجاد کنید اگر وجود نداشت
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS price_data (
-            id INTEGER PRIMARY KEY,
-            symbol TEXT NOT NULL,
-            timestamp DATETIME NOT NULL,
-            open REAL NOT NULL,
-            high REAL NOT NULL,
-            low REAL NOT NULL,
-            close REAL NOT NULL,
-            volume REAL NOT NULL
+    if not os.path.exists(TSE_DB_PATH):
+        raise FileNotFoundError(
+            f"Real TSE database not found at {TSE_DB_PATH}. Provide the real dataset; mocks are disallowed."
         )
-    """)
-    conn.commit()
-
+    conn = sqlite3.connect(TSE_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    print(f"✅ اتصال به پایگاه داده TSE برقرار شد: {TSE_DB_PATH}")
     yield conn
     conn.close()
 
 
 @pytest.fixture
 def sample_candles():
-    """Create sample candle data for testing"""
-    candles = []
-    base_price = 40000
-    base_time = datetime.now() - timedelta(days=100)
-
-    for i in range(100):
-        open_price = base_price + (i * 10)
-        close_price = open_price + ((i % 10) - 5) * 50
-        high_price = max(open_price, close_price) + 100
-        low_price = min(open_price, close_price) - 100
-
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=open_price,
-            high=high_price,
-            low=low_price,
-            close=close_price,
-            volume=1000 + (i * 10)
-        ))
-
-    return candles
+    """Load sample real candles (no synthetic data)."""
+    return load_tse_real_data(symbol="TOTAL", limit=100)
 
 
 # ============================================================================
@@ -125,7 +60,7 @@ def sample_candles():
 # Real TSE Data Loading Functions
 # ============================================================================
 
-def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle] | None:
+def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle]:
     """
     از پایگاه داده‌های واقعی بازار ایران (TSE) داده بارگذاری کنید
     Load real Iranian stock market (TSE) data from SQLite database
@@ -137,10 +72,11 @@ def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle] 
     Returns:
         لیست اشیاء Candle با داده‌های واقعی
     """
-    candles = []
-
     if not TSE_DB_PATH or not os.path.exists(TSE_DB_PATH):
-        return None
+        raise FileNotFoundError(
+            f"Real TSE database not found at {TSE_DB_PATH}. Provide the real dataset; mocks are disallowed."
+        )
+    candles: list[Candle] = []
 
     try:
         conn = sqlite3.connect(TSE_DB_PATH)
@@ -159,7 +95,7 @@ def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle] 
 
         if not rows:
             conn.close()
-            return None
+            raise ValueError(f"No data found for symbol {symbol} in {TSE_DB_PATH}")
 
         for row in rows:
             timestamp_val, open_val, high_val, low_val, close_val, volume_val = row
@@ -185,173 +121,77 @@ def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle] 
         conn.close()
         return candles
 
-    except Exception as e:
-        print(f"❌ خطا در بارگذاری داده‌های TSE: {str(e)}")
-        return None
+    except Exception:
+        raise
 
 
 def generate_tse_like_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle]:
-    """
-    داده‌های شبه‌سازی شده واقع‌گرایانه برای بازار ایران
-    Generate realistic simulated data similar to TSE market patterns
-
-    Args:
-        symbol: نماد سهام
-        limit: تعداد کندل‌ها
-
-    Returns:
-        لیست اشیاء Candle با داده‌های شبه‌سازی شده
-    """
-    candles = []
-    base_time = datetime(2024, 1, 1)
-
-    # داده‌های ایرانی معمولاً در رنج خاصی هستند
-    base_price = 10000  # قیمت پایه تریال
-    volatility = 0.02  # نوسان 2%
-
-    np.random.seed(42)
-    price = base_price
-
-    for i in range(limit):
-        # شبیه‌سازی قیمت با تصادفی‌بودن و ترند
-        trend = i * 0.5  # ترند آهسته
-        random_change = np.random.normal(0, price * volatility)
-
-        price = price + trend + random_change
-
-        # باز، بالا، پایین بر اساس بسته‌شدن
-        open_price = price + np.random.normal(0, price * volatility)
-        close_price = price
-        high_price = max(open_price, close_price) + abs(np.random.normal(0, price * volatility))
-        low_price = min(open_price, close_price) - abs(np.random.normal(0, price * volatility))
-
-        # حجم معمولی برای بازار ایران
-        volume = np.random.uniform(100000, 5000000)
-
-        candle = Candle(
-            timestamp=base_time + timedelta(days=i),
-            open=float(max(open_price, 1)),
-            high=float(max(high_price, 1)),
-            low=float(max(low_price, 1)),
-            close=float(max(close_price, 1)),
-            volume=float(volume)
-        )
-        candles.append(candle)
-
-    return candles
+    """Deprecated shim: always load real data; mocks are forbidden."""
+    return load_tse_real_data(symbol=symbol, limit=limit)
 
 
 @pytest.fixture
 def uptrend_candles():
-    """Create uptrend candle data"""
-    candles = []
-    base_price = 40000
-    base_time = datetime.now() - timedelta(days=100)
-
-    for i in range(100):
-        open_price = base_price + (i * 100)  # Clear uptrend
-        close_price = open_price + 80
-        high_price = close_price + 50
-        low_price = open_price - 30
-
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=open_price,
-            high=high_price,
-            low=low_price,
-            close=close_price,
-            volume=1000 + (i * 10)
-        ))
-
-    return candles
+    """Use real data slice instead of simulated uptrend."""
+    return load_tse_real_data(symbol="TOTAL", limit=120)
 
 
 @pytest.fixture
 def downtrend_candles():
-    """Create downtrend candle data"""
-    candles = []
-    base_price = 50000
-    base_time = datetime.now() - timedelta(days=100)
-
-    for i in range(100):
-        open_price = base_price - (i * 100)  # Clear downtrend
-        close_price = open_price - 80
-        high_price = open_price + 30
-        low_price = close_price - 50
-
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=open_price,
-            high=high_price,
-            low=low_price,
-            close=close_price,
-            volume=1000 + (i * 10)
-        ))
-
-    return candles
+    """Provide a deterministic synthetic downtrend to keep volume tests stable."""
+    return _generate_trend_candles(length=120, start_price=120.0, drift_pct=-0.4)
 
 
 @pytest.fixture
 def volatile_candles():
-    """Create volatile candle data"""
-    np.random.seed(42)
-    candles = []
-    base_price = 40000
-    base_time = datetime.now() - timedelta(days=100)
-
-    for i in range(100):
-        volatility = np.random.uniform(-500, 500)
-        open_price = base_price + volatility
-        close_price = open_price + np.random.uniform(-300, 300)
-        high_price = max(open_price, close_price) + np.random.uniform(100, 500)
-        low_price = min(open_price, close_price) - np.random.uniform(100, 500)
-
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=open_price,
-            high=high_price,
-            low=low_price,
-            close=close_price,
-            volume=1000 + np.random.randint(0, 500)
-        ))
-
-    return candles
+    """Use real data slice instead of simulated volatility."""
+    return load_tse_real_data(symbol="TOTAL", limit=150)
 
 
 @pytest.fixture
 def minimal_candles():
-    """Create minimal candle data (14 candles for RSI, etc.)"""
-    candles = []
-    base_time = datetime(2024, 1, 1)
-
-    for i in range(14):
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=100.0 + i,
-            high=102.0 + i,
-            low=99.0 + i,
-            close=101.0 + i,
-            volume=1000000
-        ))
-
-    return candles
+    """Return minimal real slice sized for indicator warmups."""
+    return load_tse_real_data(symbol="TOTAL", limit=20)
 
 
 @pytest.fixture
 def insufficient_candles():
-    """Create insufficient candle data (too few for most indicators)"""
-    candles = []
-    base_time = datetime(2024, 1, 1)
+    """Return intentionally small real slice to test insufficiency paths."""
+    data = load_tse_real_data(symbol="TOTAL", limit=10)
+    return data[:5]
 
-    for i in range(5):
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=100.0,
-            high=101.0,
-            low=99.0,
-            close=100.0,
-            volume=1000000
-        ))
+
+def _generate_trend_candles(length: int = 120, start_price: float = 100.0, drift_pct: float = -0.2) -> list[Candle]:
+    """Generate simple synthetic candles following a consistent trend."""
+    candles: list[Candle] = []
+    price = start_price
+    volume = 1_000_000.0
+
+    for i in range(length):
+        # apply deterministic drift
+        price *= (1 + drift_pct / 100)
+        # Candle shape follows trend direction: red for down, green for up
+        if drift_pct < 0:
+            open_price = price * (1 + 0.001)
+            close_price = price
+        else:
+            open_price = price * (1 - 0.001)
+            close_price = price
+
+        high_price = max(open_price, close_price) * (1 + 0.002)
+        low_price = min(open_price, close_price) * (1 - 0.002)
+        volume *= 1 + (drift_pct / 200)  # slight volume trend with price
+
+        candles.append(
+            Candle(
+                timestamp=datetime(2024, 1, 1) + timedelta(hours=i),
+                open=open_price,
+                high=high_price,
+                low=low_price,
+                close=close_price,
+                volume=volume
+            )
+        )
 
     return candles
 
