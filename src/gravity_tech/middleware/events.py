@@ -15,7 +15,7 @@ import asyncio
 import json
 from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -78,14 +78,14 @@ class EventPublisher:
 
     def __init__(self):
         if TYPE_CHECKING:
-            self.kafka_producer: Optional[AIOKafkaProducer] = None
-            self.rabbitmq_connection_pool: Optional[Pool] = None  # type: ignore[valid-type]
-            self.rabbitmq_channel_pool: Optional[Pool] = None  # type: ignore[valid-type]
+            self.kafka_producer: AIOKafkaProducer | None = None
+            self.rabbitmq_connection_pool: Pool | None = None  # type: ignore[valid-type]
+            self.rabbitmq_channel_pool: Pool | None = None  # type: ignore[valid-type]
         else:
             self.kafka_producer = None
             self.rabbitmq_connection_pool = None
             self.rabbitmq_channel_pool = None
-        self.broker_type: Optional[str] = None
+        self.broker_type: str | None = None
 
     async def initialize(self, broker_type: str = "kafka"):
         """
@@ -127,18 +127,20 @@ class EventPublisher:
 
     async def _init_rabbitmq(self):
         """راه‌اندازی RabbitMQ Connection Pool"""
+        if not RABBITMQ_AVAILABLE:
+            raise RuntimeError("RabbitMQ dependencies not available")
         try:
             rabbitmq_url = getattr(settings, 'rabbitmq_url', 'amqp://guest:guest@localhost/')
 
             async def get_connection() -> Connection:  # type: ignore[valid-type]
-                return await connect_robust(rabbitmq_url)
+                return await connect_robust(rabbitmq_url)  # type: ignore
 
             async def get_channel() -> Channel:  # type: ignore[valid-type]
-                async with self.rabbitmq_connection_pool.acquire() as connection:
+                async with self.rabbitmq_connection_pool.acquire() as connection:  # type: ignore
                     return await connection.channel()
 
-            self.rabbitmq_connection_pool = Pool(get_connection, max_size=10)
-            self.rabbitmq_channel_pool = Pool(get_channel, max_size=100)
+            self.rabbitmq_connection_pool = Pool(get_connection, max_size=10)  # type: ignore
+            self.rabbitmq_channel_pool = Pool(get_channel, max_size=100)  # type: ignore
 
             logger.info("rabbitmq_connection_pool_created")
 
@@ -150,7 +152,7 @@ class EventPublisher:
         self,
         event_type: MessageType,
         data: dict[str, Any],
-        routing_key: Optional[str] = None
+        routing_key: str | None = None
     ):
         """
         انتشار یک event
@@ -219,9 +221,9 @@ class EventPublisher:
 
             # ارسال پیام
             await channel.default_exchange.publish(
-                Message(
+                Message(  # type: ignore
                     body=json.dumps(message).encode(),
-                    delivery_mode=DeliveryMode.PERSISTENT,
+                    delivery_mode=DeliveryMode.PERSISTENT,  # type: ignore
                     content_type='application/json',
                 ),
                 routing_key=routing_key
@@ -260,9 +262,9 @@ class EventConsumer:
     """
 
     def __init__(self):
-        self.kafka_consumer: Optional[AIOKafkaConsumer] = None
-        self.rabbitmq_connection_pool: Optional[Pool] = None  # type: ignore[valid-type]
-        self.broker_type: Optional[str] = None
+        self.kafka_consumer: AIOKafkaConsumer | None = None
+        self.rabbitmq_connection_pool: Pool | None = None  # type: ignore[valid-type]
+        self.broker_type: str | None = None
         self.handlers: dict[str, Callable] = {}
 
     async def initialize(self, broker_type: str = "kafka"):
@@ -292,9 +294,9 @@ class EventConsumer:
         rabbitmq_url = getattr(settings, 'rabbitmq_url', 'amqp://guest:guest@localhost/')
 
         async def get_connection() -> Connection:  # type: ignore[valid-type]
-            return await connect_robust(rabbitmq_url)
+            return await connect_robust(rabbitmq_url)  # type: ignore
 
-        self.rabbitmq_connection_pool = Pool(get_connection, max_size=10)
+        self.rabbitmq_connection_pool = Pool(get_connection, max_size=10)  # type: ignore
         logger.info("rabbitmq_consumer_initialized")
 
     async def subscribe(
@@ -312,7 +314,7 @@ class EventConsumer:
         self.handlers[event_type.value] = handler
 
         if self.broker_type == "kafka":
-            self.kafka_consumer.subscribe([event_type.value])
+            self.kafka_consumer.subscribe([event_type.value])  # type: ignore
 
         logger.info("subscribed_to_event", event_type=event_type.value)
 
@@ -325,7 +327,7 @@ class EventConsumer:
 
     async def _consume_kafka(self):
         """مصرف پیام‌ها از Kafka"""
-        async for message in self.kafka_consumer:
+        async for message in self.kafka_consumer:  # type: ignore
             event_type = message.topic
             data = message.value
 
@@ -342,7 +344,7 @@ class EventConsumer:
 
     async def _consume_rabbitmq(self):
         """مصرف پیام‌ها از RabbitMQ"""
-        async with self.rabbitmq_connection_pool.acquire() as connection:
+        async with self.rabbitmq_connection_pool.acquire() as connection:  # type: ignore
             channel = await connection.channel()
 
             for event_type, handler in self.handlers.items():
@@ -351,7 +353,7 @@ class EventConsumer:
                     durable=True
                 )
 
-                async def on_message(message):
+                async def on_message(message, handler=handler, event_type=event_type):
                     async with message.process():
                         data = json.loads(message.body.decode())
                         try:
