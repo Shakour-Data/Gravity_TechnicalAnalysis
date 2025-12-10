@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,6 +10,7 @@ from gravity_tech.ml.pipeline_factory import build_pipeline_from_weights
 from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
 from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
 from gravity_tech.models.schemas import SignalStrength
+from datetime import timezone
 
 pytestmark = pytest.mark.integration
 
@@ -128,7 +129,7 @@ def _write_weights(path: Path, feature_names: list[str]) -> Path:
 
 
 def _make_candles(count: int) -> list[Candle]:
-    base_time = datetime.utcnow() - timedelta(days=count)
+    base_time = datetime.now(timezone.utc) - timedelta(days=count)
     candles: list[Candle] = []
     price = 100.0
 
