@@ -10,7 +10,11 @@ import structlog
 from fastapi import APIRouter, HTTPException, status
 from gravity_tech.core.contracts.analysis import AnalysisRequest, TechnicalAnalysisResult
 from gravity_tech.core.domain.entities import Candle, IndicatorResult
+from gravity_tech.config.settings import settings
+from gravity_tech.middleware.events import MessageType, event_publisher
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
+from gravity_tech.services.ingestion_payload import build_ingestion_payload
+from gravity_tech.services.data_ingestor_service import data_ingestor
 
 from src.database import tse_data_source
 
@@ -49,7 +53,9 @@ async def analyze_historical(
         raise HTTPException(status_code=400, detail="Insufficient data for analysis (min 50 candles)")
 
     request = AnalysisRequest(symbol=symbol, timeframe=timeframe, candles=candles)
-    return await TechnicalAnalysisService.analyze(request)
+    result = await TechnicalAnalysisService.analyze(request)
+    await _maybe_publish_analysis_event(result, candles)
+    return result
 
 
 @router.post(
@@ -62,13 +68,14 @@ async def analyze_complete(request: AnalysisRequest) -> TechnicalAnalysisResult:
     """Perform complete technical analysis."""
     try:
         result = await TechnicalAnalysisService.analyze(request)
+        await _maybe_publish_analysis_event(result, request.candles)
         return result
     except Exception as e:
         logger.error("analysis_endpoint_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Analysis failed: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -93,7 +100,7 @@ async def analyze_specific_indicators(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Indicator calculation failed: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -212,6 +219,31 @@ async def list_indicators():
             "Trading Recommendations based on Phase",
         ],
     }
+
+
+async def _maybe_publish_analysis_event(result: TechnicalAnalysisResult, candles: list[Candle]) -> None:
+    """Publish ANALYSIS_COMPLETED or persist directly when ingestion is enabled."""
+    if not settings.enable_data_ingestion:
+        return
+
+    payload = build_ingestion_payload(result, candles)
+
+    # If no broker is configured, persist synchronously
+    if not (settings.kafka_enabled or settings.rabbitmq_enabled):
+        try:
+            data_ingestor.persist_direct(payload)
+        except Exception as exc:  # pragma: no cover - defensive guard for persistence issues
+            logger.warning("analysis_direct_persist_failed", error=str(exc))
+        return
+
+    # Otherwise, publish to the configured broker
+    try:
+        await event_publisher.publish(
+            MessageType.ANALYSIS_COMPLETED,
+            {"symbol": result.symbol, "timeframe": result.timeframe, "results": payload},
+        )
+    except Exception as exc:  # pragma: no cover - defensive guard for broker issues
+        logger.warning("analysis_event_publish_failed", error=str(exc))
 
 
 @router.get(
