@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     max_workers: int = 10
     use_fast_indicators: bool = True
 
+    # Feature toggles
+    enable_scenarios: bool = False          # Mount /api/v1/scenarios router when true
+    expose_db_explorer: bool = False        # Mount /db/* endpoints when true (use only in dev)
+
 
 settings = Settings()
 
