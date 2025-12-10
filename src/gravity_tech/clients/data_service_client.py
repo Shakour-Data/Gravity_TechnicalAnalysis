@@ -21,8 +21,8 @@ License: MIT
 - Adjustment calculations
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import httpx
 import structlog
@@ -78,7 +78,7 @@ class DataServiceClient:
         base_url: str = "http://localhost:8080",
         timeout: float = 30.0,
         max_retries: int = 3,
-        redis_url: Optional[str] = None,
+        redis_url: str | None = None,
         cache_ttl: int = 21600  # 6 hours
     ):
         """
@@ -103,7 +103,7 @@ class DataServiceClient:
         )
 
         # Redis cache (optional)
-        self.redis: Optional[aioredis.Redis] = None
+        self.redis: aioredis.Redis | None = None
         if redis_url:
             self.redis = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
 
@@ -119,8 +119,8 @@ class DataServiceClient:
         self,
         symbol: str,
         timeframe: str = "1d",
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         use_cache: bool = True
     ) -> list[CandleData]:
         """
@@ -142,7 +142,7 @@ class DataServiceClient:
         """
         # Default date range
         if end_date is None:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
         if start_date is None:
             start_date = end_date - timedelta(days=365)
 
@@ -248,7 +248,7 @@ class DataServiceClient:
 
         logger.debug("candle_validation_passed", count=len(candles))
 
-    async def _get_from_cache(self, key: str) -> Optional[list[CandleData]]:
+    async def _get_from_cache(self, key: str) -> list[CandleData] | None:
         """Get candles from Redis cache."""
         if not self.redis:
             return None
