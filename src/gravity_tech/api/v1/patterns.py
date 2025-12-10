@@ -31,16 +31,20 @@ Provides RESTful endpoints for:
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
+import hashlib
 
 import numpy as np
 import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
-from datetime import timezone
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["Pattern Recognition"], prefix="/patterns")
+MODEL_CACHE: dict[str, object] = {}
+MODEL_META: dict[str, str] = {}
+MAX_CANDLES = 5000
 
 
 # ============================================================================
@@ -60,8 +64,12 @@ class CandleData(BaseModel):
 class PatternDetectionRequest(BaseModel):
     """Request for pattern detection"""
     symbol: str = Field(..., description="Trading pair symbol (e.g., BTCUSDT)")
-    timeframe: str = Field(..., description="Timeframe (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)")
-    candles: list[CandleData] = Field(..., min_items=50, description="OHLCV candle data (minimum 50)")  # type: ignore[call-overload]
+    timeframe: str = Field(
+        ...,
+        description="Timeframe (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)",
+        pattern="^(1m|5m|15m|30m|1h|4h|1d|1w)$"
+    )
+    candles: list[CandleData] = Field(..., min_items=60, description="OHLCV candle data (minimum 60)")  # type: ignore[call-overload]
     pattern_types: list[str] | None = Field(
         default=None,
         description="Specific patterns to detect (if None, detect all). Options: gartley, butterfly, bat, crab"
@@ -100,6 +108,7 @@ class PatternDetectionResponse(BaseModel):
     patterns: list[PatternResult] = Field(..., description="Detected patterns")
     analysis_time_ms: float = Field(..., description="Analysis duration in milliseconds")
     ml_enabled: bool = Field(..., description="Whether ML scoring was used")
+    ml_status: str | None = Field(default=None, description="Model status: enabled/disabled/not_available/failed")
 
 
 class PatternStatsResponse(BaseModel):
@@ -157,6 +166,12 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
 
         start_time = time.time()
 
+        if len(request.candles) > MAX_CANDLES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Too many candles (max {MAX_CANDLES})"
+            )
+
         # Initialize detector
         detector = HarmonicPatternDetector(tolerance=request.tolerance)
 
@@ -177,80 +192,76 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 if p.pattern_type in request.pattern_types
             ]
 
+        # Validate chronological order
+        if len(timestamps) > 1 and not np.all(np.diff(timestamps) > 0):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Candles must be strictly increasing in time",
+            )
+
         # Apply ML scoring if enabled
         if request.use_ml:
             try:
-                import pickle
-                from pathlib import Path
+                classifier, version = _load_pattern_model()
+                extractor = PatternFeatureExtractor()
+                filtered_patterns = []
 
+                for pattern in detected_patterns:
+                    features = extractor.extract_features(
+                        pattern, highs, lows, closes, volumes
+                    )
+                    feature_array = extractor.features_to_array(features)
 
-                # Load ML model
-                model_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
-                if not model_path.exists():
-                    model_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
+                    if hasattr(classifier, 'predict_single'):
+                        prediction = classifier.predict_single(feature_array)
+                        confidence = prediction['confidence']
+                    else:
+                        probas = classifier.predict_proba(feature_array.reshape(1, -1))[0]
+                        confidence = float(np.max(probas))
 
-                if model_path.exists():
-                    with open(model_path, 'rb') as f:
-                        classifier = pickle.load(f)
+                    if confidence >= request.min_confidence:
+                        pattern.confidence = confidence
+                        filtered_patterns.append(pattern)
 
-                    extractor = PatternFeatureExtractor()
-                    filtered_patterns = []
+                detected_patterns = filtered_patterns
+                logger.info(
+                    "ml_scoring_applied",
+                    version=version,
+                    patterns_before=len(request.candles),
+                    patterns_after=len(filtered_patterns),
+                )
 
-                    for pattern in detected_patterns:
-                        # Extract features
-                        features = extractor.extract_features(
-                            pattern, highs, lows, closes, volumes
-                        )
-                        feature_array = extractor.features_to_array(features)
-
-                        # Get ML prediction
-                        if hasattr(classifier, 'predict_single'):
-                            prediction = classifier.predict_single(feature_array)
-                            confidence = prediction['confidence']
-                        else:
-                            # sklearn model
-                            probas = classifier.predict_proba(feature_array.reshape(1, -1))[0]
-                            confidence = float(np.max(probas))
-
-                        # Filter by confidence
-                        if confidence >= request.min_confidence:
-                            pattern.confidence = confidence
-                            filtered_patterns.append(pattern)
-
-                    detected_patterns = filtered_patterns
-                    logger.info("ml_scoring_applied",
-                               patterns_before=len(detected_patterns),
-                               patterns_after=len(filtered_patterns))
-                else:
-                    logger.warning("ml_model_not_found", path=str(model_path))
-
+            except FileNotFoundError as e:
+                logger.warning("ml_model_not_found", error=str(e))
+                request.use_ml = False  # reflect actual usage
+                ml_status = "not_available"
             except Exception as e:
                 logger.warning("ml_scoring_failed", error=str(e))
-                # Continue without ML scoring
+                request.use_ml = False  # reflect actual usage
+                ml_status = "failed"
 
         # Format response
-        patterns_list = []
-        for pattern in detected_patterns:
-            # Get pattern points with timestamps
-            points_dict = {}
-            for label, point in pattern.points.items():
-                points_dict[label] = PatternPoint(
+    patterns_list = []
+    ml_status = "enabled" if request.use_ml else "disabled"
+    for pattern in detected_patterns:
+        # Get pattern points with timestamps
+        points_dict = {}
+        for label, point in pattern.points.items():
+            points_dict[label] = PatternPoint(
                     label=label,
                     index=point.index,
                     price=point.price,
                     timestamp=int(timestamps[point.index])
                 )
 
-            # Calculate targets and stop-loss
-            d_price = pattern.points['D'].price
-            if pattern.direction == 'bullish':
-                target1 = d_price * 1.03  # 3% profit
-                target2 = d_price * 1.05  # 5% profit
-                stop_loss = d_price * 0.98  # 2% stop
-            else:
-                target1 = d_price * 0.97
-                target2 = d_price * 0.95
-                stop_loss = d_price * 1.02
+        # Calculate targets and stop-loss (ATR-like dynamic)
+        d_price = pattern.points['D'].price
+        target1, target2, stop_loss = _dynamic_targets(
+            highs=highs,
+            lows=lows,
+            completion_price=d_price,
+            is_bullish=(pattern.direction == 'bullish')
+        )
 
             pattern_result = PatternResult(
                 pattern_type=pattern.pattern_type.value if hasattr(pattern.pattern_type, 'value') else str(pattern.pattern_type),
@@ -273,7 +284,8 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
             patterns_found=len(patterns_list),
             patterns=patterns_list,
             analysis_time_ms=round(analysis_time, 2),
-            ml_enabled=request.use_ml
+            ml_enabled=request.use_ml,
+            ml_status=ml_status
         )
 
         logger.info("patterns_detected",
@@ -366,8 +378,6 @@ async def list_pattern_types():
 )
 async def pattern_service_health():
     """Check pattern detection service health"""
-    from pathlib import Path
-
     # Check if ML models are available
     model_v2_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
     model_v1_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"
@@ -389,3 +399,74 @@ async def pattern_service_health():
             "real_time_monitoring": True
         }
     }
+
+
+# ============================================================================
+# Helpers
+# ============================================================================
+
+def _hash_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _load_pattern_model():
+    """Load harmonic pattern classifier with caching and hash check."""
+    candidates = [
+        ("v2", Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"),
+        ("v1", Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_v1.pkl"),
+    ]
+
+    for version, path in candidates:
+        if not path.exists():
+            continue
+        file_hash = _hash_file(path)
+        cached = MODEL_CACHE.get(version)
+        cached_hash = MODEL_META.get(version)
+        if cached and cached_hash == file_hash:
+            return cached, version
+
+        import pickle
+
+        with path.open("rb") as f:
+            model = pickle.load(f)
+
+        MODEL_CACHE.clear()
+        MODEL_META.clear()
+        MODEL_CACHE[version] = model
+        MODEL_META[version] = file_hash
+        return model, version
+
+    raise FileNotFoundError("No pattern classifier model found in ml_models/")
+
+
+def _dynamic_targets(highs: np.ndarray, lows: np.ndarray, completion_price: float, is_bullish: bool):
+    """Compute dynamic targets using an ATR-like range."""
+    lookback = min(14, len(highs))
+    if lookback < 2:
+        return (
+            completion_price * (1.03 if is_bullish else 0.97),
+            completion_price * (1.05 if is_bullish else 0.95),
+            completion_price * (0.98 if is_bullish else 1.02),
+        )
+
+    high_tail = highs[-lookback:]
+    low_tail = lows[-lookback:]
+    prev_close = (high_tail[:-1] + low_tail[:-1]) / 2
+    tr = np.maximum.reduce([
+        high_tail[1:] - low_tail[1:],
+        np.abs(high_tail[1:] - prev_close),
+        np.abs(low_tail[1:] - prev_close),
+    ])
+    atr = float(np.mean(tr)) if len(tr) else float(np.std(high_tail - low_tail))
+    if atr <= 0:
+        atr = float(abs(completion_price) * 0.02)  # fallback 2%
+
+    direction = 1 if is_bullish else -1
+    target1 = completion_price + direction * atr
+    target2 = completion_price + direction * 2 * atr
+    stop_loss = completion_price - direction * 0.8 * atr
+    return target1, target2, stop_loss
