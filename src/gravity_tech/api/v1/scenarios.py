@@ -19,9 +19,17 @@ from gravity_tech.analysis.scenario_analysis import (
 )
 from gravity_tech.clients.data_service_client import DataServiceClient
 from gravity_tech.config.settings import get_settings
+from prometheus_client import Counter, Histogram
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/scenarios", tags=["Scenario Analysis"])
+
+SCENARIO_API_REQUESTS = Counter(
+    "api_scenario_requests_total", "Total scenario API requests", ["status"]
+)
+SCENARIO_API_LATENCY = Histogram(
+    "api_scenario_latency_seconds", "Scenario API latency in seconds"
+)
 
 
 def get_data_client() -> DataServiceClient:
@@ -122,12 +130,17 @@ async def analyze_scenarios(
     )
 
     try:
+        import time
+        start = time.perf_counter()
         # تحلیل سناریوها (داده از Data Service دریافت می‌شود)
         analysis = await analyzer.analyze_from_service(
             symbol=symbol,
             timeframe=timeframe,
             lookback_days=lookback_days
         )
+        duration = time.perf_counter() - start
+        SCENARIO_API_REQUESTS.labels("success").inc()
+        SCENARIO_API_LATENCY.observe(duration)
 
         logger.info(
             "scenario_analysis_completed",
@@ -140,10 +153,12 @@ async def analyze_scenarios(
         return analysis
 
     except ValueError as e:
+        SCENARIO_API_REQUESTS.labels("error").inc()
         logger.error("validation_error", symbol=symbol, error=str(e))
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     except Exception as e:
+        SCENARIO_API_REQUESTS.labels("error").inc()
         logger.error(
             "scenario_analysis_error",
             symbol=symbol,
