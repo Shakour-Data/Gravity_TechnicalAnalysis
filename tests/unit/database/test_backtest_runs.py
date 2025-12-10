@@ -33,6 +33,7 @@ def test_save_backtest_run_sqlite_persists_row():
         assert row["model_version"] == "v1"
         assert '"min_confidence": 0.6' in row["params"]
         assert '"total_trades": 3' in row["metrics"]
+        manager.close()
 
 
 def test_save_backtest_run_json_fallback():
