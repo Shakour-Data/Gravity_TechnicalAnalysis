@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     jwt_expiration_minutes: int = 1440  # 24 hours in minutes
 
     # Redis Cache
-    cache_enabled: bool = False  # disable by default; set True only when Redis is available
+    cache_enabled: bool = True  # enable by default; tests mock Redis connectivity
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost:5432/gravity_tech"
     database_pool_size: int = 10
     database_max_overflow: int = 20
-    sqlite_path: str = "data/tool_performance.db"
+    sqlite_path: str = "data/TechAnalysis.db"
     json_storage_path: str = "data/tool_performance.json"
 
     # Observability
