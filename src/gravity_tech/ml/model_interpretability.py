@@ -15,7 +15,7 @@ License: MIT
 
 import os
 import sys
-from typing import Optional
+
 
 import numpy as np
 
@@ -85,7 +85,7 @@ class PatternModelInterpreter:
     def explain_predictions(
         self,
         X: np.ndarray,
-        class_names: Optional[list[str]] = None
+        class_names: list[str | None] = None
     ) -> np.ndarray:
         """
         Generate SHAP values for predictions.
@@ -111,7 +111,7 @@ class PatternModelInterpreter:
         self,
         X: np.ndarray,
         max_display: int = 20,
-        save_path: Optional[str] = None
+        save_path: str | None = None
     ):
         """
         Create summary plot showing feature importance.
@@ -153,7 +153,7 @@ class PatternModelInterpreter:
     def plot_feature_importance(
         self,
         X: np.ndarray,
-        save_path: Optional[str] = None
+        save_path: str | None = None
     ):
         """
         Create bar plot of mean absolute SHAP values (feature importance).
@@ -204,7 +204,7 @@ class PatternModelInterpreter:
         self,
         X_single: np.ndarray,
         class_idx: int = 0,
-        save_path: Optional[str] = None
+        save_path: str | None = None
     ):
         """
         Explain a single prediction with waterfall plot.
@@ -309,7 +309,7 @@ class PatternModelInterpreter:
         X: np.ndarray,
         feature_idx1: int,
         feature_idx2: int,
-        save_path: Optional[str] = None
+        save_path: str | None = None
     ):
         """
         Analyze interaction between two features.
