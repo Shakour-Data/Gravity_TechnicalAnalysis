@@ -11,7 +11,7 @@ Multi-Horizon Cycle Analysis System
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+
 
 import numpy as np
 import pandas as pd
@@ -177,10 +177,10 @@ class MultiHorizonCycleAnalyzer:
     def __init__(
         self,
         lookback_period: int = 100,
-        weight_learner: Optional[MultiHorizonWeightLearner] = None,
-        weights_path: Optional[str] = None,
-        model_path: Optional[str] = None,
-        horizons: Optional[list[str]] = None,
+        weight_learner: MultiHorizonWeightLearner | None = None,
+        weights_path: str | None = None,
+        model_path: str | None = None,
+        horizons: list[str | None] = None,
     ):
         """
         Initialize analyzer
