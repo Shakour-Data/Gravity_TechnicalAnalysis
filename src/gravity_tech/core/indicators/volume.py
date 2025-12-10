@@ -456,23 +456,39 @@ def obv(candles: list[Candle]) -> IndicatorResult:
         obv_trend = obv_series.iloc[-5:].diff().mean()
         price_trend = df['close'].iloc[-5:].diff().mean()
 
-        # Check divergence
-        if obv_trend > 0 and price_trend > 0:
-            if obv_current > obv_sma_current * 1.1:
-                signal = SignalStrength.VERY_BULLISH
+        # Use full-period drift to avoid short-term whipsaw bias
+        overall_price_change = df['close'].iloc[-1] - df['close'].iloc[0]
+        overall_obv_change = obv_series.iloc[-1] - obv_series.iloc[0]
+
+        if overall_price_change < 0:
+            # Dominant downtrend in price
+            if overall_obv_change <= 0 or obv_trend <= 0:
+                # Volume confirming down move
+                signal = SignalStrength.VERY_BEARISH if obv_current < obv_sma_current else SignalStrength.BEARISH
             else:
-                signal = SignalStrength.BULLISH
-        elif obv_trend > 0 and price_trend < 0:
-            signal = SignalStrength.BULLISH_BROKEN  # Bullish divergence
-        elif obv_trend < 0 and price_trend < 0:
-            if obv_current < obv_sma_current * 0.9:
-                signal = SignalStrength.VERY_BEARISH
-            else:
-                signal = SignalStrength.BEARISH
-        elif obv_trend < 0 and price_trend > 0:
-            signal = SignalStrength.BEARISH_BROKEN  # Bearish divergence
+                # Divergence: price down but OBV rising
+                signal = SignalStrength.BEARISH_BROKEN
+        elif overall_price_change > 0 and overall_obv_change > 0:
+            # Clear uptrend alignment
+            signal = SignalStrength.VERY_BULLISH if obv_current > obv_sma_current else SignalStrength.BULLISH
         else:
-            signal = SignalStrength.NEUTRAL
+            # Short-term divergence-based logic
+            if obv_trend > 0 and price_trend > 0:
+                if obv_current > obv_sma_current * 1.1:
+                    signal = SignalStrength.VERY_BULLISH
+                else:
+                    signal = SignalStrength.BULLISH
+            elif obv_trend > 0 and price_trend < 0:
+                signal = SignalStrength.BULLISH_BROKEN  # Bullish divergence
+            elif obv_trend < 0 and price_trend < 0:
+                if obv_current < obv_sma_current * 0.9:
+                    signal = SignalStrength.VERY_BEARISH
+                else:
+                    signal = SignalStrength.BEARISH
+            elif obv_trend < 0 and price_trend > 0:
+                signal = SignalStrength.BEARISH_BROKEN  # Bearish divergence
+            else:
+                signal = SignalStrength.NEUTRAL
 
         confidence = 0.75
 
