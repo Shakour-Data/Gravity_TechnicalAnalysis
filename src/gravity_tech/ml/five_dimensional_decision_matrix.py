@@ -21,7 +21,7 @@ License: MIT
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+
 
 import numpy as np
 from gravity_tech.core.domain.entities import Candle
@@ -132,7 +132,7 @@ class FiveDimensionalDecisionMatrix:
     def __init__(
         self,
         candles: list[Candle],
-        dimension_weights: Optional[dict[str, float]] = None,
+        dimension_weights: dict[str, float | None] = None,
         use_volume_matrix: bool = True
     ):
         """
