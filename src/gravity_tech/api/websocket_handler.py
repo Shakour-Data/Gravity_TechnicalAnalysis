@@ -16,7 +16,7 @@ License: MIT
 import asyncio
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -29,6 +29,7 @@ from gravity_tech.core.domain.entities import (
 )
 from gravity_tech.core.indicators.momentum import MomentumIndicators
 from gravity_tech.core.indicators.trend import TrendIndicators
+from datetime import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +48,8 @@ class ConnectionManager:
         self.active_connections[client_id] = websocket
         self.subscriptions[client_id] = set()
         self.client_data[client_id] = {
-            'connected_at': datetime.utcnow(),
-            'last_activity': datetime.utcnow(),
+            'connected_at': datetime.now(timezone.utc),
+            'last_activity': datetime.now(timezone.utc),
             'message_count': 0
         }
         logger.info(f"Client {client_id} connected. Total connections: {len(self.active_connections)}")
@@ -98,7 +99,7 @@ class ConnectionManager:
         if client_id in self.active_connections:
             websocket = self.active_connections[client_id]
             await websocket.send_json(message)
-            self.client_data[client_id]['last_activity'] = datetime.utcnow()
+            self.client_data[client_id]['last_activity'] = datetime.now(timezone.utc)
             self.client_data[client_id]['message_count'] += 1
 
     def get_connection_stats(self) -> dict[str, Any]:
@@ -144,7 +145,7 @@ class WebSocketHandler:
                         {
                             "type": "subscription_confirmed",
                             "subscription_type": message.subscription_type.value if message.subscription_type else None,
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         }
                     )
 
@@ -158,7 +159,7 @@ class WebSocketHandler:
                         {
                             "type": "unsubscription_confirmed",
                             "subscription_type": message.subscription_type.value if message.subscription_type else None,
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         }
                     )
 
@@ -167,7 +168,7 @@ class WebSocketHandler:
                         client_id,
                         {
                             "type": "pong",
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         }
                     )
 
@@ -248,7 +249,7 @@ class WebSocketHandler:
                     "data": market_data.to_dict(),
                     "indicators": indicators,
                     "patterns": patterns,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             )
 
@@ -359,7 +360,7 @@ class WebSocketHandler:
         volume = random.randint(1000, 10000)
 
         return Candle(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             open=open_price,
             high=high,
             low=low,
