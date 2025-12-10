@@ -96,6 +96,10 @@ class DataServiceClient:
         self.max_retries = max_retries
         self.cache_ttl = cache_ttl
 
+        self._valid_timeframes = {"1m", "5m", "15m", "1h", "4h", "1d", "1w"}
+        self._min_candles = 30
+        self._max_days = 1095  # cap requests to ~3 years
+
         # HTTP client with retry
         self.client = httpx.AsyncClient(
             timeout=timeout,
@@ -146,8 +150,10 @@ class DataServiceClient:
         if start_date is None:
             start_date = end_date - timedelta(days=365)
 
+        self._validate_request(symbol, timeframe, start_date, end_date)
+
         # Generate cache key
-        cache_key = f"candles:{symbol}:{timeframe}:{start_date.date()}:{end_date.date()}"
+        cache_key = f"candles:{self.base_url}:{symbol}:{timeframe}:{start_date.isoformat()}:{end_date.isoformat()}"
 
         # Try cache first
         if use_cache and self.redis:
@@ -155,6 +161,7 @@ class DataServiceClient:
             if cached:
                 logger.info("cache_hit", symbol=symbol, timeframe=timeframe)
                 return cached
+            logger.debug("cache_miss", symbol=symbol, timeframe=timeframe)
 
         # Request from Data Service
         logger.info(
@@ -227,9 +234,20 @@ class DataServiceClient:
         """
         if not candles:
             raise ValueError("No candle data received")
+        if len(candles) < self._min_candles:
+            raise ValueError(f"Received only {len(candles)} candles (min {self._min_candles} required)")
 
         # Check for required fields
         for i, candle in enumerate(candles):
+            values = [
+                candle.adjusted_open,
+                candle.adjusted_high,
+                candle.adjusted_low,
+                candle.adjusted_close,
+                candle.adjusted_volume,
+            ]
+            if not all(np.isfinite(val) for val in values):
+                raise ValueError(f"Non-finite OHLCV at index {i}")
             if candle.adjusted_high < candle.adjusted_low:
                 raise ValueError(f"Invalid candle at index {i}: high < low")
             if not (candle.adjusted_low <= candle.adjusted_close <= candle.adjusted_high):
@@ -245,6 +263,19 @@ class DataServiceClient:
         for i in range(1, len(candles)):
             if candles[i].timestamp <= candles[i-1].timestamp:
                 raise ValueError(f"Candles not in chronological order at index {i}")
+
+    def _validate_request(self, symbol: str, timeframe: str, start_date: datetime, end_date: datetime) -> None:
+        """Validate request parameters before hitting the service."""
+        if not symbol or len(symbol) < 2:
+            raise ValueError("symbol is required and must be at least 2 characters")
+        if not all(ch.isalnum() or ch in "-_." for ch in symbol):
+            raise ValueError("symbol may only contain letters, numbers, '-', '_', '.'")
+        if timeframe not in self._valid_timeframes:
+            raise ValueError(f"timeframe must be one of {sorted(self._valid_timeframes)}")
+        if start_date >= end_date:
+            raise ValueError("start_date must be before end_date")
+        if (end_date - start_date).days > self._max_days:
+            raise ValueError(f"date range too large (>{self._max_days} days)")
 
         logger.debug("candle_validation_passed", count=len(candles))
 
