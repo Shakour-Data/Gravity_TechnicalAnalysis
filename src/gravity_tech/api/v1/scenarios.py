@@ -141,7 +141,7 @@ async def analyze_scenarios(
 
     except ValueError as e:
         logger.error("validation_error", symbol=symbol, error=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     except Exception as e:
         logger.error(
@@ -153,7 +153,7 @@ async def analyze_scenarios(
         raise HTTPException(
             status_code=503,
             detail=f"Failed to analyze scenarios: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/{symbol}/optimistic", response_model=ScenarioResult)
