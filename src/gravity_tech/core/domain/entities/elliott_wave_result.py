@@ -27,7 +27,7 @@ Represents complete Elliott Wave pattern analysis including all wave points.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+
 
 from .signal_strength import SignalStrength
 from .wave_point import WavePoint
@@ -53,7 +53,7 @@ class ElliottWaveResult:
     signal: SignalStrength
     confidence: float
     description: str
-    projected_target: Optional[float] = None
+    projected_target: float | None = None
 
     def __post_init__(self):
         """Validate Elliott Wave result data"""
