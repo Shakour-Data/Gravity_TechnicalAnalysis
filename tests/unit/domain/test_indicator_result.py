@@ -5,11 +5,12 @@ Tests IndicatorResult dataclass creation, validation, and properties.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch
 from gravity_tech.core.domain.entities.indicator_result import IndicatorResult
 from gravity_tech.core.domain.entities.indicator_category import IndicatorCategory
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
+from datetime import timezone
 
 
 class TestIndicatorResultCreation:
@@ -203,14 +204,14 @@ class TestIndicatorResultProperties:
 
     def test_indicator_result_timestamp_auto_generation(self):
         """Test automatic timestamp generation"""
-        before = datetime.utcnow()
+        before = datetime.now(timezone.utc)
         result = IndicatorResult(
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5
         )
-        after = datetime.utcnow()
+        after = datetime.now(timezone.utc)
         assert before <= result.timestamp <= after
 
 
