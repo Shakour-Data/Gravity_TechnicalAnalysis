@@ -12,14 +12,15 @@ Version: 1.0.0
 License: MIT
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, validator
 
 from gravity_tech.services.tool_recommendation_service import ToolRecommendationService
+from datetime import timezone
 
 
 router = APIRouter(prefix="/tools", tags=["tools"])
@@ -77,7 +78,7 @@ class ToolRecommendationRequest(BaseModel):
         default=AnalysisGoal.ENTRY_SIGNAL,
         description="هدف تحلیل"
     )
-    trading_style: Optional[TradingStyle] = Field(
+    trading_style: TradingStyle | None = Field(
         default=TradingStyle.SWING,
         description="سبک معامله‌گری"
     )
@@ -125,21 +126,21 @@ class CustomAnalysisRequest(BaseModel):
 
 class ToolFilterRequest(BaseModel):
     """فیلتر ابزارها"""
-    categories: Optional[list[ToolCategory]] = Field(
+    categories: list[ToolCategory] | None = Field(
         default=None,
         description="فیلتر بر اساس دسته"
     )
-    min_accuracy: Optional[float] = Field(
+    min_accuracy: float | None = Field(
         default=None,
         ge=0.0,
         le=1.0,
         description="حداقل دقت تاریخی"
     )
-    timeframe: Optional[str] = Field(
+    timeframe: str | None = Field(
         default=None,
         description="مناسب برای timeframe خاص"
     )
-    trading_style: Optional[TradingStyle] = Field(
+    trading_style: TradingStyle | None = Field(
         default=None,
         description="مناسب برای سبک معامله‌گری"
     )
@@ -155,7 +156,7 @@ class ToolInfo(BaseModel):
     parameters: dict[str, Any]
     best_for: list[str]
     timeframes: list[str]
-    historical_accuracy: Optional[float] = None
+    historical_accuracy: float | None = None
 
 
 class ToolRecommendation(BaseModel):
@@ -211,11 +212,11 @@ class CustomAnalysisResponse(BaseModel):
         ...,
         description="نتایج هر ابزار"
     )
-    ml_scoring: Optional[dict[str, Any]] = Field(
+    ml_scoring: dict[str, Any] | None = Field(
         default=None,
         description="امتیازدهی ML (اگر فعال باشد)"
     )
-    patterns_detected: Optional[list[dict[str, Any]]] = Field(
+    patterns_detected: list[dict[str, Any]] | None = Field(
         default=None,
         description="الگوهای شناسایی شده"
     )
@@ -255,9 +256,9 @@ def _tool_info_from_dict(entry: dict[str, Any]) -> ToolInfo:
     description="دریافت لیست کامل 95+ ابزار تحلیل تکنیکال با فیلتر"
 )
 async def list_tools(
-    category: Optional[ToolCategory] = Query(None, description="فیلتر بر اساس دسته"),
-    timeframe: Optional[str] = Query(None, description="مناسب برای timeframe"),
-    min_accuracy: Optional[float] = Query(None, ge=0.0, le=1.0, description="حداقل دقت"),
+    category: ToolCategory | None = Query(None, description="فیلتر بر اساس دسته"),
+    timeframe: str | None = Query(None, description="مناسب برای timeframe"),
+    min_accuracy: float | None = Query(None, ge=0.0, le=1.0, description="حداقل دقت"),
     limit: int = Query(100, ge=1, le=200, description="حداکثر تعداد")
 ):
     """
@@ -287,7 +288,7 @@ async def list_tools(
         total_tools=len(tools),
         categories=category_counts,
         tools=tool_infos,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
     )
 
 
@@ -327,7 +328,7 @@ async def recommend_tools(request: ToolRecommendationRequest):
             top_n=request.top_n,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to build recommendations: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to build recommendations: {exc}") from exc
 
 
 @router.post(
@@ -362,7 +363,7 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
             limit_candles=request.limit_candles,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to analyze custom tools: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze custom tools: {exc}") from exc
 
 
 @router.get(
@@ -438,7 +439,7 @@ async def list_categories():
         "total_tools": total,
         "total_categories": len(categories),
         "categories": categories,
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc)
     }
 
 
@@ -472,5 +473,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "tool_recommendation",
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc)
     }
