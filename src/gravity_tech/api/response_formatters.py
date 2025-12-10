@@ -11,6 +11,7 @@ Version: 1.0.0
 License: MIT
 """
 
+from datetime import timezone
 from typing import Any
 
 from gravity_tech.utils.display_formatters import (
@@ -23,41 +24,54 @@ from gravity_tech.utils.display_formatters import (
 
 def format_horizon_score(horizon_score, use_persian: bool = False) -> dict[str, Any]:
     """
-    فرمت کردن یک HorizonScore برای API
+    ???? ???? ?? HorizonScore ???? API
 
     Args:
-        horizon_score: شیء HorizonScore (از trend یا momentum)
-        use_persian: استفاده از برچسب‌های فارسی
+        horizon_score: ??? HorizonScore (?? trend ?? momentum)
+        use_persian: ??????? ?? ????????? ?????
 
     Returns:
-        دیکشنری فرمت شده برای API
+        ??????? ???? ??? ???? API
     """
+    def _safe_round(value: Any) -> Any:
+        try:
+            return round(value, 3)
+        except Exception:
+            return None
+
+    score_value = getattr(horizon_score, "score", None)
+    confidence_value = getattr(horizon_score, "confidence", None)
+
+    display_score = score_to_display(score_value) if score_value is not None else None
+    display_confidence = confidence_to_display(confidence_value) if confidence_value is not None else None
+
     return {
         "horizon": horizon_score.horizon,
-        "score": score_to_display(horizon_score.score),
-        "confidence": confidence_to_display(horizon_score.confidence),
-        "signal": get_signal_label(horizon_score.score, use_persian),
-        "confidence_quality": get_confidence_label(horizon_score.confidence, use_persian),
-        "raw_score": round(horizon_score.score, 3),  # برای debugging
-        "raw_confidence": round(horizon_score.confidence, 3)
+        "score": display_score,
+        "confidence": display_confidence,
+        "signal": get_signal_label(score_value if score_value is not None else 0, use_persian),
+        "confidence_quality": get_confidence_label(confidence_value if confidence_value is not None else 0, use_persian),
+        "raw_score": _safe_round(score_value),  # ???? debugging
+        "raw_confidence": _safe_round(confidence_value)
     }
 
 
 def format_trend_response(
     analysis_result,
     use_persian: bool = False,
-    include_raw: bool = False
+    include_raw: bool = False,
+    allow_partial: bool = False
 ) -> dict[str, Any]:
     """
-    فرمت کردن نتیجه تحلیل روند برای API
+    ???? ???? ????? ????? ???? ???? API
 
     Args:
-        analysis_result: نتیجه از MultiHorizonTrendAnalyzer.analyze()
-        use_persian: استفاده از برچسب‌های فارسی
-        include_raw: شامل کردن مقادیر خام [-1,+1] برای debugging
+        analysis_result: ????? ?? MultiHorizonTrendAnalyzer.analyze()
+        use_persian: ??????? ?? ????????? ?????
+        include_raw: ???? ???? ?????? ??? [-1,+1] ???? debugging
 
     Returns:
-        دیکشنری JSON-ready برای API response
+        ??????? JSON-ready ???? API response
 
     Example:
         ```python
@@ -67,7 +81,7 @@ def format_trend_response(
         result = analyzer.analyze(trend_features)
 
         api_response = format_trend_response(result, use_persian=False)
-        # → {
+        # ᚜ {
         #     "analysis_type": "TREND",
         #     "horizons": {
         #         "3d": {"score": 85, "confidence": 82, "signal": "VERY_BULLISH", ...},
@@ -84,28 +98,78 @@ def format_trend_response(
         ```
     """
     response = {
-        "analysis_type": "TREND" if not use_persian else "روند",
+        "type": "trend_analysis",
+        "analysis_type": "TREND" if not use_persian else "????",
         "horizons": {}
     }
 
-    # فرمت کردن هر horizon
-    for horizon_score in analysis_result:
-        horizon_key = f"{horizon_score.horizon}d"
+    explicit_attrs = getattr(analysis_result, "__dict__", {})
+
+    if not allow_partial:
+        for attr in ("score_3d", "score_7d", "score_30d"):
+            if attr not in explicit_attrs:
+                raise AttributeError(f"Missing required trend attribute: {attr}")
+
+    def _extract_horizons(obj) -> list[tuple[str, Any]]:
+        horizons: list[tuple[str, Any]] = []
+        # Preferred explicit attributes
+        for attr in ("score_3d", "score_7d", "score_30d"):
+            if allow_partial and attr not in explicit_attrs:
+                continue
+            if not allow_partial and attr not in explicit_attrs:
+                raise AttributeError(f"Missing required trend attribute: {attr}")
+            try:
+                hs = getattr(obj, attr)
+            except AttributeError:
+                if allow_partial:
+                    continue
+                raise
+            if hs is not None:
+                horizon_key = getattr(hs, "horizon", attr.replace("score_", ""))
+                horizons.append((str(horizon_key), hs))
+        if horizons:
+            return horizons
+        # Fallback: iterable
+        try:
+            return [
+                (getattr(hs, "horizon", str(idx)), hs)
+                for idx, hs in enumerate(obj)
+            ]
+        except TypeError:
+            return []
+
+    horizons = _extract_horizons(analysis_result)
+
+    if include_raw:
+        response["raw_data"] = {"horizons": {}}
+
+    # ???? ???? ?? horizon
+    for horizon_key, horizon_score in horizons:
         response["horizons"][horizon_key] = format_horizon_score(
             horizon_score,
             use_persian
         )
+        if include_raw:
+            response["raw_data"]["horizons"][horizon_key] = {
+                "score": getattr(horizon_score, "score", None),
+                "confidence": getattr(horizon_score, "confidence", None),
+            }
 
-    # محاسبه overall (میانگین وزن‌دار)
-    if len(analysis_result) > 0:
+    # ?????? overall (??????? ???????)
+    valid_horizons = [
+        hs for _, hs in horizons
+        if getattr(hs, "score", None) is not None and getattr(hs, "confidence", None) is not None
+    ]
+
+    if len(valid_horizons) > 0:
         total_weighted_score = sum(
-            hs.score * hs.confidence for hs in analysis_result
+            hs.score * hs.confidence for hs in valid_horizons
         )
-        total_confidence = sum(hs.confidence for hs in analysis_result)
+        total_confidence = sum(hs.confidence for hs in valid_horizons)
 
         if total_confidence > 0:
             overall_score = total_weighted_score / total_confidence
-            overall_confidence = total_confidence / len(analysis_result)
+            overall_confidence = total_confidence / len(valid_horizons)
 
             response["overall"] = {
                 "score": score_to_display(overall_score),
@@ -118,6 +182,15 @@ def format_trend_response(
             if include_raw:
                 response["overall"]["raw_score"] = round(overall_score, 3)
                 response["overall"]["raw_confidence"] = round(overall_confidence, 3)
+                response["raw_data"]["overall"] = {
+                    "score": overall_score,
+                    "confidence": overall_confidence,
+                }
+        elif include_raw:
+            response["raw_data"]["overall"] = None
+
+    elif include_raw:
+        response["raw_data"]["overall"] = None
 
     return response
 
@@ -128,26 +201,52 @@ def format_momentum_response(
     include_raw: bool = False
 ) -> dict[str, Any]:
     """
-    فرمت کردن نتیجه تحلیل مومنتوم برای API
+    ???? ???? ????? ????? ??????? ???? API
 
     Args:
-        analysis_result: نتیجه از MultiHorizonMomentumAnalyzer.analyze()
-        use_persian: استفاده از برچسب‌های فارسی
-        include_raw: شامل کردن مقادیر خام
+        analysis_result: ????? ?? MultiHorizonMomentumAnalyzer.analyze()
+        use_persian: ??????? ?? ????????? ?????
+        include_raw: ???? ???? ?????? ???
 
     Returns:
-        دیکشنری JSON-ready برای API response
+        ??????? JSON-ready ???? API response
     """
     response = {
-        "analysis_type": "MOMENTUM" if not use_persian else "مومنتوم",
+        "type": "momentum_analysis",
+        "analysis_type": "MOMENTUM" if not use_persian else "???????",
         "horizons": {}
     }
 
-    # فرمت کردن هر horizon
-    for momentum_score in analysis_result:
-        horizon_key = f"{momentum_score.horizon}d"
+    explicit_attrs = getattr(analysis_result, "__dict__", {})
+
+    def _extract_horizons(obj) -> list[tuple[str, Any]]:
+        horizons: list[tuple[str, Any]] = []
+        for attr in ("momentum_3d", "momentum_7d", "momentum_30d"):
+            if attr not in explicit_attrs:
+                continue
+            hs = getattr(obj, attr, None)
+            if hs is not None:
+                horizon_key = getattr(hs, "horizon", attr.replace("momentum_", ""))
+                horizons.append((str(horizon_key), hs))
+        if horizons:
+            return horizons
+        try:
+            return [
+                (getattr(ms, "horizon", str(idx)), ms)
+                for idx, ms in enumerate(obj)
+            ]
+        except TypeError:
+            return []
+
+    horizons = _extract_horizons(analysis_result)
+
+    if include_raw:
+        response["raw_data"] = {"horizons": {}}
+
+    # ???? ???? ?? horizon
+    for horizon_key, momentum_score in horizons:
         response["horizons"][horizon_key] = {
-            "horizon": momentum_score.horizon,
+            "horizon": horizon_key,
             "score": score_to_display(momentum_score.score),
             "confidence": confidence_to_display(momentum_score.confidence),
             "signal": get_signal_label(momentum_score.score, use_persian),
@@ -157,17 +256,25 @@ def format_momentum_response(
         if include_raw:
             response["horizons"][horizon_key]["raw_score"] = round(momentum_score.score, 3)
             response["horizons"][horizon_key]["raw_confidence"] = round(momentum_score.confidence, 3)
+            response["raw_data"]["horizons"][horizon_key] = {
+                "score": getattr(momentum_score, "score", None),
+                "confidence": getattr(momentum_score, "confidence", None),
+            }
 
-    # محاسبه overall
-    if len(analysis_result) > 0:
+    # ?????? overall
+    valid_horizons = [
+        ms for _, ms in horizons
+        if getattr(ms, "score", None) is not None and getattr(ms, "confidence", None) is not None
+    ]
+    if len(valid_horizons) > 0:
         total_weighted_score = sum(
-            ms.score * ms.confidence for ms in analysis_result
+            ms.score * ms.confidence for ms in valid_horizons
         )
-        total_confidence = sum(ms.confidence for ms in analysis_result)
+        total_confidence = sum(ms.confidence for ms in valid_horizons)
 
         if total_confidence > 0:
             overall_score = total_weighted_score / total_confidence
-            overall_confidence = total_confidence / len(analysis_result)
+            overall_confidence = total_confidence / len(valid_horizons)
 
             response["overall"] = {
                 "score": score_to_display(overall_score),
@@ -180,6 +287,15 @@ def format_momentum_response(
             if include_raw:
                 response["overall"]["raw_score"] = round(overall_score, 3)
                 response["overall"]["raw_confidence"] = round(overall_confidence, 3)
+                response["raw_data"]["overall"] = {
+                    "score": overall_score,
+                    "confidence": overall_confidence,
+                }
+        elif include_raw:
+            response["raw_data"]["overall"] = None
+
+    elif include_raw:
+        response["raw_data"]["overall"] = None
 
     return response
 
@@ -191,42 +307,37 @@ def format_combined_response(
     use_persian: bool = False
 ) -> dict[str, Any]:
     """
-    فرمت کردن نتیجه ترکیبی برای API
+    ???? ???? ????? ?????? ???? API
 
     Args:
-        combined_analysis: نتیجه تحلیل ترکیبی
-        trend_analysis: نتیجه تحلیل روند
-        momentum_analysis: نتیجه تحلیل مومنتوم
-        use_persian: استفاده از برچسب‌های فارسی
+        combined_analysis: ????? ????? ??????
+        trend_analysis: ????? ????? ????
+        momentum_analysis: ????? ????? ???????
+        use_persian: ??????? ?? ????????? ?????
 
     Returns:
-        دیکشنری فرمت شده برای API
+        ??????? ???? ??? ???? API
     """
     response = {
         "type": "combined_analysis",
         "recommendation": {
-            "action": combined_analysis.final_action,
-            "confidence": combined_analysis.final_confidence,
+            "action": getattr(combined_analysis.final_action, "value", combined_analysis.final_action),
+            "confidence": getattr(combined_analysis, "final_confidence", None),
             "scores": {
-                "3d": combined_analysis.combined_score_3d,
-                "7d": combined_analysis.combined_score_7d,
-                "30d": combined_analysis.combined_score_30d
+                "3d": getattr(combined_analysis, "combined_score_3d", None),
+                "7d": getattr(combined_analysis, "combined_score_7d", None),
+                "30d": getattr(combined_analysis, "combined_score_30d", None)
             }
         }
     }
 
     if trend_analysis:
-        response["trend_analysis"] = format_trend_response(trend_analysis, use_persian)
+        response["trend_analysis"] = format_trend_response(trend_analysis, use_persian, allow_partial=True)
 
     if momentum_analysis:
         response["momentum_analysis"] = format_momentum_response(momentum_analysis, use_persian)
 
     return response
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Helper Functions
-# ═══════════════════════════════════════════════════════════════════
 
 def _get_recommendation(score: float, use_persian: bool = False) -> str:
     """دریافت توصیه بر اساس امتیاز روند"""
@@ -361,7 +472,7 @@ def format_analysis_summary(summary: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "type": "analysis_summary",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "metrics": summary
     }
 
@@ -386,7 +497,7 @@ def format_error_response(
 
     error_response = {
         "type": "error",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "error": {
             "code": error_code,
             "message": message
