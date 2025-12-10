@@ -22,7 +22,7 @@ import logging
 import os
 import sqlite3
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -206,6 +206,9 @@ class DatabaseManager:
                     "ml_weights_history": [],
                     "tool_recommendations_log": [],
                     "historical_scores": [],
+                    "historical_indicator_scores": [],
+                    "market_data_cache": [],
+                    "pattern_detection_results": [],
                     "backtest_runs": [],
                 }
                 self._save_json()
@@ -229,6 +232,44 @@ class DatabaseManager:
         elif self.db_type == DatabaseType.JSON_FILE:
             # JSON doesn't need schema
             logger.info("✅ JSON schema (structure) ready")
+
+        # Ensure pattern_detection_results exists for PostgreSQL (not covered by bundled SQL files)
+        if self.db_type == DatabaseType.POSTGRESQL:
+            try:
+                conn = self.connection_pool.getconn()
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS pattern_detection_results (
+                        id SERIAL PRIMARY KEY,
+                        symbol VARCHAR(20) NOT NULL,
+                        timeframe VARCHAR(10) NOT NULL,
+                        timestamp TIMESTAMP NOT NULL,
+                        pattern_type VARCHAR(50) NOT NULL,
+                        pattern_name VARCHAR(100) NOT NULL,
+                        confidence DECIMAL(5,4),
+                        strength DECIMAL(5,4),
+                        start_time TIMESTAMP,
+                        end_time TIMESTAMP,
+                        start_price DECIMAL(15,8),
+                        end_price DECIMAL(15,8),
+                        prediction VARCHAR(50),
+                        target_price DECIMAL(15,8),
+                        stop_loss DECIMAL(15,8),
+                        metadata JSONB,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        UNIQUE(symbol, timeframe, timestamp, pattern_name)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_pattern_symbol ON pattern_detection_results(symbol);
+                    CREATE INDEX IF NOT EXISTS idx_pattern_type ON pattern_detection_results(pattern_type);
+                    CREATE INDEX IF NOT EXISTS idx_pattern_timestamp ON pattern_detection_results(timestamp);
+                    """
+                )
+                conn.commit()
+                cursor.close()
+                self.connection_pool.putconn(conn)
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to ensure pattern_detection_results table: {e}")
 
     def _setup_postgresql_schema(self):
         """ساخت schema برای PostgreSQL"""
@@ -490,6 +531,56 @@ class DatabaseManager:
         CREATE INDEX IF NOT EXISTS idx_indicator_score_id
             ON historical_indicator_scores(score_id);
 
+        -- Market Data Cache
+        CREATE TABLE IF NOT EXISTS market_data_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            open REAL NOT NULL,
+            high REAL NOT NULL,
+            low REAL NOT NULL,
+            close REAL NOT NULL,
+            volume REAL NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(symbol, timeframe, timestamp)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_market_data_symbol
+            ON market_data_cache(symbol);
+        CREATE INDEX IF NOT EXISTS idx_market_data_timeframe
+            ON market_data_cache(timeframe);
+        CREATE INDEX IF NOT EXISTS idx_market_data_timestamp
+            ON market_data_cache(timestamp);
+
+        -- Pattern Detection Results
+        CREATE TABLE IF NOT EXISTS pattern_detection_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            pattern_type TEXT NOT NULL,
+            pattern_name TEXT NOT NULL,
+            confidence REAL,
+            strength REAL,
+            start_time TEXT,
+            end_time TEXT,
+            start_price REAL,
+            end_price REAL,
+            prediction TEXT,
+            target_price REAL,
+            stop_loss REAL,
+            metadata TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pattern_symbol
+            ON pattern_detection_results(symbol);
+        CREATE INDEX IF NOT EXISTS idx_pattern_type
+            ON pattern_detection_results(pattern_type);
+        CREATE INDEX IF NOT EXISTS idx_pattern_timestamp
+            ON pattern_detection_results(timestamp);
+
         -- Backtest runs (summary-level)
         CREATE TABLE IF NOT EXISTS backtest_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -603,7 +694,7 @@ class DatabaseManager:
                 "period_start": start_ts,
                 "period_end": end_ts,
                 "model_version": model_version,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             }
             self.json_data.setdefault("backtest_runs", []).append(record)
             self._save_json()
@@ -789,6 +880,225 @@ class DatabaseManager:
             logger.error(f"❌ Failed to record performance: {e}")
             raise
 
+    # ------------------------------------------------------------------
+    # Market Data Cache
+    # ------------------------------------------------------------------
+    def upsert_market_data(self, rows: list[dict[str, Any]]) -> int:
+        """Upsert OHLCV rows into market_data_cache.
+
+        Each row requires keys: symbol, timeframe, timestamp, open, high, low, close, volume.
+
+        Returns: count of processed rows.
+        """
+
+        if not rows:
+            return 0
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            table = self.json_data.setdefault("market_data_cache", [])
+            index = {(r["symbol"], r["timeframe"], r["timestamp"]): i for i, r in enumerate(table)}
+            for r in rows:
+                key = (r["symbol"], r["timeframe"], r["timestamp"])
+                payload = {
+                    "symbol": r["symbol"],
+                    "timeframe": r["timeframe"],
+                    "timestamp": r["timestamp"],
+                    "open": float(r["open"]),
+                    "high": float(r["high"]),
+                    "low": float(r["low"]),
+                    "close": float(r["close"]),
+                    "volume": float(r["volume"]),
+                }
+                if key in index:
+                    table[index[key]].update(payload)
+                else:
+                    table.append(payload)
+            self._save_json()
+            return len(rows)
+
+        if self.db_type == DatabaseType.POSTGRESQL:
+            query = """
+                INSERT INTO market_data_cache (
+                    symbol, timeframe, timestamp, open, high, low, close, volume
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (symbol, timeframe, timestamp)
+                DO UPDATE SET
+                    open = EXCLUDED.open,
+                    high = EXCLUDED.high,
+                    low = EXCLUDED.low,
+                    close = EXCLUDED.close,
+                    volume = EXCLUDED.volume,
+                    created_at = NOW()
+            """
+            params = [
+                (
+                    r["symbol"], r["timeframe"], r["timestamp"],
+                    float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["volume"])
+                )
+                for r in rows
+            ]
+
+            conn = self.connection_pool.getconn()
+            try:
+                with conn.cursor() as cursor:
+                    cursor.executemany(query, params)
+                conn.commit()
+                return len(params)
+            finally:
+                self.connection_pool.putconn(conn)
+
+        if self.db_type == DatabaseType.SQLITE:
+            query = """
+                INSERT INTO market_data_cache (
+                    symbol, timeframe, timestamp, open, high, low, close, volume
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol, timeframe, timestamp)
+                DO UPDATE SET
+                    open = excluded.open,
+                    high = excluded.high,
+                    low = excluded.low,
+                    close = excluded.close,
+                    volume = excluded.volume,
+                    created_at = CURRENT_TIMESTAMP
+            """
+            params = [
+                (
+                    r["symbol"], r["timeframe"], r["timestamp"],
+                    float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["volume"])
+                )
+                for r in rows
+            ]
+
+            if self.sqlite_connection is None:
+                raise RuntimeError("SQLite connection not initialized")
+            cursor = self.sqlite_connection.cursor()
+            cursor.executemany(query, params)
+            self.sqlite_connection.commit()
+            return len(params)
+
+        raise RuntimeError(f"Unsupported db_type for market data: {self.db_type}")
+
+    # ------------------------------------------------------------------
+    # Pattern Detection Results
+    # ------------------------------------------------------------------
+    def save_pattern_detections(self, patterns: list[dict[str, Any]]) -> int:
+        """Persist pattern detections in bulk.
+
+        Expected keys per pattern (dict):
+        symbol, timeframe, timestamp, pattern_type, pattern_name,
+        confidence, strength, start_time, end_time, start_price,
+        end_price, prediction, target_price, stop_loss, metadata.
+        Missing optional fields are allowed.
+        """
+
+        if not patterns:
+            return 0
+
+        cleaned: list[dict[str, Any]] = []
+        for p in patterns:
+            if not (p.get("symbol") and p.get("timeframe") and p.get("timestamp") and p.get("pattern_name")):
+                continue
+            cleaned.append(p)
+
+        if not cleaned:
+            return 0
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            table = self.json_data.setdefault("pattern_detection_results", [])
+            for p in cleaned:
+                record = dict(p)
+                for key in ("timestamp", "start_time", "end_time"):
+                    value = record.get(key)
+                    if isinstance(value, datetime):
+                        record[key] = value.isoformat()
+                if record.get("metadata") is None:
+                    record["metadata"] = {}
+                table.append(record)
+            self._save_json()
+            return len(cleaned)
+
+        if self.db_type == DatabaseType.POSTGRESQL:
+            query = """
+                INSERT INTO pattern_detection_results (
+                    symbol, timeframe, timestamp, pattern_type, pattern_name,
+                    confidence, strength, start_time, end_time,
+                    start_price, end_price, prediction, target_price, stop_loss, metadata
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (symbol, timeframe, timestamp, pattern_name)
+                DO UPDATE SET
+                    confidence = EXCLUDED.confidence,
+                    strength = EXCLUDED.strength,
+                    start_time = EXCLUDED.start_time,
+                    end_time = EXCLUDED.end_time,
+                    start_price = EXCLUDED.start_price,
+                    end_price = EXCLUDED.end_price,
+                    prediction = EXCLUDED.prediction,
+                    target_price = EXCLUDED.target_price,
+                    stop_loss = EXCLUDED.stop_loss,
+                    metadata = EXCLUDED.metadata,
+                    created_at = NOW()
+            """
+
+            params = [
+                (
+                    p.get("symbol"), p.get("timeframe"), p.get("timestamp"), p.get("pattern_type"), p.get("pattern_name"),
+                    p.get("confidence"), p.get("strength"), p.get("start_time"), p.get("end_time"),
+                    p.get("start_price"), p.get("end_price"), p.get("prediction"), p.get("target_price"), p.get("stop_loss"),
+                    json.dumps(p.get("metadata", {})) if p.get("metadata") is not None else None,
+                )
+                for p in cleaned
+            ]
+
+            conn = self.connection_pool.getconn()
+            try:
+                with conn.cursor() as cursor:
+                    cursor.executemany(query, params)
+                conn.commit()
+                return len(params)
+            finally:
+                self.connection_pool.putconn(conn)
+
+        if self.db_type == DatabaseType.SQLITE:
+            query = """
+                INSERT INTO pattern_detection_results (
+                    symbol, timeframe, timestamp, pattern_type, pattern_name,
+                    confidence, strength, start_time, end_time,
+                    start_price, end_price, prediction, target_price, stop_loss, metadata
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol, timeframe, timestamp, pattern_name)
+                DO UPDATE SET
+                    confidence = excluded.confidence,
+                    strength = excluded.strength,
+                    start_time = excluded.start_time,
+                    end_time = excluded.end_time,
+                    start_price = excluded.start_price,
+                    end_price = excluded.end_price,
+                    prediction = excluded.prediction,
+                    target_price = excluded.target_price,
+                    stop_loss = excluded.stop_loss,
+                    metadata = excluded.metadata,
+                    created_at = CURRENT_TIMESTAMP
+            """
+
+            params = [
+                (
+                    p.get("symbol"), p.get("timeframe"), p.get("timestamp"), p.get("pattern_type"), p.get("pattern_name"),
+                    p.get("confidence"), p.get("strength"), p.get("start_time"), p.get("end_time"),
+                    p.get("start_price"), p.get("end_price"), p.get("prediction"), p.get("target_price"), p.get("stop_loss"),
+                    json.dumps(p.get("metadata", {})) if p.get("metadata") is not None else None,
+                )
+                for p in cleaned
+            ]
+
+            if self.sqlite_connection is None:
+                raise RuntimeError("SQLite connection not initialized")
+            cursor = self.sqlite_connection.cursor()
+            cursor.executemany(query, params)
+            self.sqlite_connection.commit()
+            return len(params)
+
+        raise RuntimeError(f"Unsupported db_type for patterns: {self.db_type}")
+
     def _record_tool_performance_json(
         self, tool_name, tool_category, symbol, timeframe, market_regime,
         prediction_type, confidence_score, volatility_level,
@@ -809,8 +1119,8 @@ class DatabaseManager:
             "prediction_type": prediction_type,
             "confidence_score": confidence_score,
             "metadata": metadata,
-            "prediction_timestamp": datetime.utcnow().isoformat(),
-            "created_at": datetime.utcnow().isoformat()
+            "prediction_timestamp": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(UTC).isoformat()
         }
 
         self.json_data["tool_performance_history"].append(record)
@@ -904,12 +1214,597 @@ class DatabaseManager:
             "avg_confidence": 0.0
         }
 
+    # ------------------------------------------------------------------
+    # Aggregation: tool_performance_stats
+    # ------------------------------------------------------------------
+    def aggregate_tool_performance_stats(
+        self,
+        *,
+        period_hours: int = 24,
+        now: datetime | None = None
+    ) -> int:
+        """Aggregate tool_performance_history into tool_performance_stats.
+
+        Aggregates by (tool_name, tool_category, market_regime, timeframe) over the
+        specified lookback window and upserts into tool_performance_stats.
+        """
+
+        current_time = now or datetime.now(UTC)
+        period_end = current_time
+        period_start = current_time - timedelta(hours=period_hours)
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            return self._aggregate_tool_performance_json(period_start, period_end)
+
+        query = (
+            """
+            SELECT tool_name, tool_category, market_regime, timeframe, symbol,
+                   prediction_type, success, confidence_score, actual_price_change
+            FROM tool_performance_history
+            WHERE prediction_timestamp BETWEEN %s AND %s
+            """
+            if self.db_type == DatabaseType.POSTGRESQL
+            else """
+            SELECT tool_name, tool_category, market_regime, timeframe, symbol,
+                   prediction_type, success, confidence_score, actual_price_change
+            FROM tool_performance_history
+            WHERE datetime(prediction_timestamp) BETWEEN datetime(?) AND datetime(?)
+            """
+        )
+
+        params = (
+            period_start,
+            period_end,
+        )
+
+        rows = self.execute_query(query, params, fetch=True) or []
+        aggregated = self._compute_tool_performance_stats(rows, period_start, period_end)
+
+        if not aggregated:
+            return 0
+
+        placeholders = (
+            "%s"
+            if self.db_type == DatabaseType.POSTGRESQL
+            else "?"
+        )
+
+        insert_query = (
+            f"""
+            INSERT INTO tool_performance_stats (
+                tool_name, tool_category, market_regime, timeframe,
+                period_start, period_end,
+                total_predictions, correct_predictions, accuracy,
+                avg_confidence, avg_actual_change,
+                bullish_predictions, bearish_predictions, neutral_predictions,
+                bullish_success_rate, bearish_success_rate, neutral_success_rate,
+                best_accuracy, worst_accuracy, best_symbol, worst_symbol,
+                last_updated
+            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders})
+            ON CONFLICT (tool_name, market_regime, timeframe, period_start, period_end)
+            DO UPDATE SET
+                total_predictions = EXCLUDED.total_predictions,
+                correct_predictions = EXCLUDED.correct_predictions,
+                accuracy = EXCLUDED.accuracy,
+                avg_confidence = EXCLUDED.avg_confidence,
+                avg_actual_change = EXCLUDED.avg_actual_change,
+                bullish_predictions = EXCLUDED.bullish_predictions,
+                bearish_predictions = EXCLUDED.bearish_predictions,
+                neutral_predictions = EXCLUDED.neutral_predictions,
+                bullish_success_rate = EXCLUDED.bullish_success_rate,
+                bearish_success_rate = EXCLUDED.bearish_success_rate,
+                neutral_success_rate = EXCLUDED.neutral_success_rate,
+                best_accuracy = EXCLUDED.best_accuracy,
+                worst_accuracy = EXCLUDED.worst_accuracy,
+                best_symbol = EXCLUDED.best_symbol,
+                worst_symbol = EXCLUDED.worst_symbol,
+                last_updated = CURRENT_TIMESTAMP
+            """
+            if self.db_type == DatabaseType.SQLITE
+            else f"""
+            INSERT INTO tool_performance_stats (
+                tool_name, tool_category, market_regime, timeframe,
+                period_start, period_end,
+                total_predictions, correct_predictions, accuracy,
+                avg_confidence, avg_actual_change,
+                bullish_predictions, bearish_predictions, neutral_predictions,
+                bullish_success_rate, bearish_success_rate, neutral_success_rate,
+                best_accuracy, worst_accuracy, best_symbol, worst_symbol,
+                last_updated
+            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      NOW())
+            ON CONFLICT (tool_name, market_regime, timeframe, period_start, period_end)
+            DO UPDATE SET
+                total_predictions = EXCLUDED.total_predictions,
+                correct_predictions = EXCLUDED.correct_predictions,
+                accuracy = EXCLUDED.accuracy,
+                avg_confidence = EXCLUDED.avg_confidence,
+                avg_actual_change = EXCLUDED.avg_actual_change,
+                bullish_predictions = EXCLUDED.bullish_predictions,
+                bearish_predictions = EXCLUDED.bearish_predictions,
+                neutral_predictions = EXCLUDED.neutral_predictions,
+                bullish_success_rate = EXCLUDED.bullish_success_rate,
+                bearish_success_rate = EXCLUDED.bearish_success_rate,
+                neutral_success_rate = EXCLUDED.neutral_success_rate,
+                best_accuracy = EXCLUDED.best_accuracy,
+                worst_accuracy = EXCLUDED.worst_accuracy,
+                best_symbol = EXCLUDED.best_symbol,
+                worst_symbol = EXCLUDED.worst_symbol,
+                last_updated = NOW()
+            """
+        )
+
+        params_to_insert = [
+            (
+                rec["tool_name"],
+                rec.get("tool_category"),
+                rec.get("market_regime"),
+                rec.get("timeframe"),
+                rec["period_start"],
+                rec["period_end"],
+                rec["total_predictions"],
+                rec["correct_predictions"],
+                rec.get("accuracy"),
+                rec.get("avg_confidence"),
+                rec.get("avg_actual_change"),
+                rec.get("bullish_predictions", 0),
+                rec.get("bearish_predictions", 0),
+                rec.get("neutral_predictions", 0),
+                rec.get("bullish_success_rate"),
+                rec.get("bearish_success_rate"),
+                rec.get("neutral_success_rate"),
+                rec.get("best_accuracy"),
+                rec.get("worst_accuracy"),
+                rec.get("best_symbol"),
+                rec.get("worst_symbol"),
+                datetime.now(UTC),
+            )
+            for rec in aggregated
+        ]
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.executemany(insert_query, params_to_insert)
+        conn.commit()
+        cursor.close()
+        self.release_connection(conn)
+
+        return len(params_to_insert)
+
+    def _aggregate_tool_performance_json(
+        self,
+        period_start: datetime,
+        period_end: datetime,
+    ) -> int:
+        """Aggregate stats when using JSON storage."""
+
+        history = self.json_data.get("tool_performance_history", [])
+        aggregated = self._compute_tool_performance_stats(history, period_start, period_end)
+
+        if not aggregated:
+            return 0
+
+        table = self.json_data.setdefault("tool_performance_stats", [])
+        key_fields = {"tool_name", "market_regime", "timeframe", "period_start", "period_end"}
+
+        def _same_bucket(existing: dict, candidate: dict) -> bool:
+            return all(existing.get(k) == candidate.get(k) for k in key_fields)
+
+        filtered = [rec for rec in table if not any(_same_bucket(rec, agg) for agg in aggregated)]
+        filtered.extend(aggregated)
+
+        # Normalize datetimes to ISO for JSON storage
+        for rec in filtered:
+            for key in ("period_start", "period_end", "last_updated"):
+                val = rec.get(key)
+                if isinstance(val, datetime):
+                    rec[key] = val.isoformat()
+
+        self.json_data["tool_performance_stats"] = filtered
+        self._save_json()
+        return len(aggregated)
+
+    def _compute_tool_performance_stats(
+        self,
+        rows: list[Any],
+        period_start: datetime,
+        period_end: datetime,
+    ) -> list[dict[str, Any]]:
+        """Compute aggregated stats from history rows (SQL rows or JSON dicts)."""
+
+        def _get(row: Any, key: str, idx: int):
+            if isinstance(row, dict):
+                return row.get(key)
+            if isinstance(row, sqlite3.Row):
+                return row[key]
+            try:
+                return row[idx]
+            except Exception:
+                return None
+
+        groups: dict[tuple[str, str | None, str | None, str | None], dict[str, Any]] = {}
+
+        for row in rows:
+            tool_name = _get(row, "tool_name", 0)
+            tool_category = _get(row, "tool_category", 1)
+            market_regime = _get(row, "market_regime", 2)
+            timeframe = _get(row, "timeframe", 3)
+            symbol = _get(row, "symbol", 4)
+            prediction_type = _get(row, "prediction_type", 5)
+            success = _get(row, "success", 6)
+            confidence = _get(row, "confidence_score", 7)
+            actual_change = _get(row, "actual_price_change", 8)
+
+            if not tool_name:
+                continue
+
+            key = (tool_name, tool_category, market_regime, timeframe)
+            bucket = groups.setdefault(key, {
+                "tool_name": tool_name,
+                "tool_category": tool_category,
+                "market_regime": market_regime,
+                "timeframe": timeframe,
+                "period_start": period_start,
+                "period_end": period_end,
+                "total_predictions": 0,
+                "correct_predictions": 0,
+                "confidence_sum": 0.0,
+                "confidence_count": 0,
+                "actual_sum": 0.0,
+                "actual_count": 0,
+                "bullish_predictions": 0,
+                "bearish_predictions": 0,
+                "neutral_predictions": 0,
+                "bullish_correct": 0,
+                "bearish_correct": 0,
+                "neutral_correct": 0,
+                "symbol_stats": {},
+            })
+
+            bucket["total_predictions"] += 1
+
+            normalized_pred = self._normalize_prediction_type(prediction_type)
+            if normalized_pred == "bullish":
+                bucket["bullish_predictions"] += 1
+                if success:
+                    bucket["bullish_correct"] += 1
+            elif normalized_pred == "bearish":
+                bucket["bearish_predictions"] += 1
+                if success:
+                    bucket["bearish_correct"] += 1
+            else:
+                bucket["neutral_predictions"] += 1
+                if success:
+                    bucket["neutral_correct"] += 1
+
+            if success:
+                bucket["correct_predictions"] += 1
+
+            if confidence is not None:
+                try:
+                    bucket["confidence_sum"] += float(confidence)
+                    bucket["confidence_count"] += 1
+                except (TypeError, ValueError):
+                    pass
+
+            if actual_change is not None:
+                try:
+                    bucket["actual_sum"] += float(actual_change)
+                    bucket["actual_count"] += 1
+                except (TypeError, ValueError):
+                    pass
+
+            if symbol:
+                stats = bucket["symbol_stats"].setdefault(symbol, {"total": 0, "correct": 0})
+                stats["total"] += 1
+                if success:
+                    stats["correct"] += 1
+
+        results: list[dict[str, Any]] = []
+        for bucket in groups.values():
+            total = bucket["total_predictions"]
+            correct = bucket["correct_predictions"]
+
+            confidence_avg = (
+                bucket["confidence_sum"] / bucket["confidence_count"]
+                if bucket["confidence_count"] > 0 else None
+            )
+            actual_avg = (
+                bucket["actual_sum"] / bucket["actual_count"]
+                if bucket["actual_count"] > 0 else None
+            )
+
+            bullish_sr = (
+                bucket["bullish_correct"] / bucket["bullish_predictions"]
+                if bucket["bullish_predictions"] > 0 else None
+            )
+            bearish_sr = (
+                bucket["bearish_correct"] / bucket["bearish_predictions"]
+                if bucket["bearish_predictions"] > 0 else None
+            )
+            neutral_sr = (
+                bucket["neutral_correct"] / bucket["neutral_predictions"]
+                if bucket["neutral_predictions"] > 0 else None
+            )
+
+            best_symbol = None
+            best_acc = None
+            worst_symbol = None
+            worst_acc = None
+            for sym, sym_stats in bucket["symbol_stats"].items():
+                if sym_stats["total"] == 0:
+                    continue
+                acc = sym_stats["correct"] / sym_stats["total"]
+                if best_acc is None or acc > best_acc:
+                    best_acc = acc
+                    best_symbol = sym
+                if worst_acc is None or acc < worst_acc:
+                    worst_acc = acc
+                    worst_symbol = sym
+
+            results.append(
+                {
+                    "tool_name": bucket["tool_name"],
+                    "tool_category": bucket.get("tool_category"),
+                    "market_regime": bucket.get("market_regime"),
+                    "timeframe": bucket.get("timeframe"),
+                    "period_start": bucket["period_start"],
+                    "period_end": bucket["period_end"],
+                    "total_predictions": total,
+                    "correct_predictions": correct,
+                    "accuracy": (correct / total) if total > 0 else None,
+                    "avg_confidence": confidence_avg,
+                    "avg_actual_change": actual_avg,
+                    "bullish_predictions": bucket["bullish_predictions"],
+                    "bearish_predictions": bucket["bearish_predictions"],
+                    "neutral_predictions": bucket["neutral_predictions"],
+                    "bullish_success_rate": bullish_sr,
+                    "bearish_success_rate": bearish_sr,
+                    "neutral_success_rate": neutral_sr,
+                    "best_accuracy": best_acc,
+                    "worst_accuracy": worst_acc,
+                    "best_symbol": best_symbol,
+                    "worst_symbol": worst_symbol,
+                    "last_updated": datetime.now(UTC),
+                }
+            )
+
+        return results
+
+    @staticmethod
+    def _normalize_prediction_type(label: Any) -> str:
+        """Normalize prediction label to bullish/bearish/neutral."""
+
+        if label is None:
+            return "neutral"
+        text = str(label).lower()
+        if any(word in text for word in ("bull", "buy", "long", "up")):
+            return "bullish"
+        if any(word in text for word in ("bear", "sell", "short", "down")):
+            return "bearish"
+        return "neutral"
+
+    # ------------------------------------------------------------------
+    # Tool Recommendations Log
+    # ------------------------------------------------------------------
+    def log_tool_recommendation(
+        self,
+        *,
+        request_id: str,
+        symbol: str,
+        timeframe: str,
+        analysis_goal: str,
+        trading_style: str,
+        market_regime: str,
+        volatility_level: float | None,
+        trend_strength: float | None,
+        recommended_tools: Any,
+        ml_weights: dict[str, Any] | None = None,
+        user_id: str | None = None,
+        user_feedback: str | None = None,
+        tools_actually_used: list[str] | None = None,
+        trade_result: dict[str, Any] | None = None,
+        feedback_at: datetime | None = None,
+    ) -> int | None:
+        """Persist a tool recommendation log entry."""
+
+        payload = {
+            "request_id": request_id,
+            "user_id": user_id,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "analysis_goal": analysis_goal,
+            "trading_style": trading_style,
+            "market_regime": market_regime,
+            "volatility_level": volatility_level,
+            "trend_strength": trend_strength,
+            "recommended_tools": recommended_tools,
+            "ml_weights": ml_weights or {},
+            "user_feedback": user_feedback,
+            "tools_actually_used": tools_actually_used,
+            "trade_result": trade_result,
+            "created_at": datetime.now(UTC).isoformat(),
+            "feedback_at": feedback_at.isoformat() if feedback_at else None,
+        }
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            table = self.json_data.setdefault("tool_recommendations_log", [])
+            record = dict(payload)
+            record["id"] = len(table) + 1
+            table.append(record)
+            self._save_json()
+            return record["id"]
+
+        placeholders = "%s" if self.db_type == DatabaseType.POSTGRESQL else "?"
+        insert_query = (
+            f"""
+            INSERT INTO tool_recommendations_log (
+                request_id, user_id, symbol, timeframe, analysis_goal, trading_style,
+                market_regime, volatility_level, trend_strength, recommended_tools,
+                ml_weights, user_feedback, tools_actually_used, trade_result,
+                feedback_at
+            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders}, {placeholders}, {placeholders})
+            """
+        )
+
+        params = (
+            payload["request_id"],
+            payload["user_id"],
+            payload["symbol"],
+            payload["timeframe"],
+            payload["analysis_goal"],
+            payload["trading_style"],
+            payload["market_regime"],
+            payload["volatility_level"],
+            payload["trend_strength"],
+            json.dumps(payload["recommended_tools"]),
+            json.dumps(payload["ml_weights"]),
+            payload["user_feedback"],
+            json.dumps(payload["tools_actually_used"] or []),
+            json.dumps(payload["trade_result"] or {}),
+            payload["feedback_at"],
+        )
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(insert_query, params)
+        record_id = cursor.lastrowid if self.db_type == DatabaseType.SQLITE else None
+        if self.db_type == DatabaseType.POSTGRESQL:
+            try:
+                fetched = cursor.fetchone()
+                if fetched:
+                    record_id = int(fetched[0])
+            except Exception:
+                record_id = None
+        conn.commit()
+        cursor.close()
+        self.release_connection(conn)
+        return record_id
+
+    # ------------------------------------------------------------------
+    # ML Weights History
+    # ------------------------------------------------------------------
+    def record_ml_weights_history(
+        self,
+        *,
+        model_name: str,
+        model_version: str,
+        weights: dict[str, Any],
+        market_regime: str | None = None,
+        timeframe: str | None = None,
+        training_accuracy: float | None = None,
+        validation_accuracy: float | None = None,
+        r2_score: float | None = None,
+        mae: float | None = None,
+        training_samples: int | None = None,
+        training_date: datetime | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> int:
+        """Persist ML weights training snapshot into ml_weights_history."""
+
+        training_dt = training_date or datetime.now(UTC)
+        weights_json = json.dumps(weights) if weights else json.dumps({})
+        metadata_json = json.dumps(metadata or {})
+
+        if self.db_type == DatabaseType.JSON_FILE:
+            table = self.json_data.setdefault("ml_weights_history", [])
+            record = {
+                "id": len(table) + 1,
+                "model_name": model_name,
+                "model_version": model_version,
+                "market_regime": market_regime,
+                "timeframe": timeframe,
+                "weights": weights,
+                "training_accuracy": training_accuracy,
+                "validation_accuracy": validation_accuracy,
+                "r2_score": r2_score,
+                "mae": mae,
+                "training_samples": training_samples,
+                "training_date": training_dt.isoformat(),
+                "metadata": metadata or {},
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+            table.append(record)
+            self._save_json()
+            return record["id"]
+
+        placeholders = "%s" if self.db_type == DatabaseType.POSTGRESQL else "?"
+        query = (
+            f"""
+            INSERT INTO ml_weights_history (
+                model_name, model_version, market_regime, timeframe, weights,
+                training_accuracy, validation_accuracy, r2_score, mae,
+                training_samples, training_date, metadata
+            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders})
+            RETURNING id
+            """
+            if self.db_type == DatabaseType.POSTGRESQL
+            else f"""
+            INSERT INTO ml_weights_history (
+                model_name, model_version, market_regime, timeframe, weights,
+                training_accuracy, validation_accuracy, r2_score, mae,
+                training_samples, training_date, metadata
+            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
+                      {placeholders}, {placeholders}, {placeholders})
+            """
+        )
+
+        params = (
+            model_name,
+            model_version,
+            market_regime,
+            timeframe,
+            weights_json,
+            training_accuracy,
+            validation_accuracy,
+            r2_score,
+            mae,
+            training_samples,
+            training_dt if self.db_type == DatabaseType.POSTGRESQL else training_dt.isoformat(),
+            metadata_json,
+        )
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+
+        record_id: int
+        if self.db_type == DatabaseType.POSTGRESQL:
+            result = cursor.fetchone()
+            if result is None:
+                raise RuntimeError("Failed to get inserted ml_weights_history ID")
+            record_id = int(result[0])
+        else:
+            record_id = cursor.lastrowid or 0
+        conn.commit()
+        cursor.close()
+        self.release_connection(conn)
+        return record_id
+
     def _get_tool_accuracy_json(
         self, tool_name: str, market_regime: str | None, days: int
     ) -> dict[str, Any]:
         """دریافت دقت از JSON"""
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         records = [
             r for r in self.json_data["tool_performance_history"]
@@ -1096,7 +1991,7 @@ class DatabaseManager:
     def create_backup(self, tables: list[str] | None = None) -> dict[str, Any]:
         """ایجاد backup از دیتابیس"""
         backup_data: dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "database_type": self.db_type.value if self.db_type else None,
             "data": {},
         }
@@ -1243,6 +2138,14 @@ class DatabaseManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager cleanup"""
         self.close()
+
+    def __del__(self):
+        """Ensure connections are released when the manager is garbage collected."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising during interpreter shutdown
+            pass
 
 
 # CLI tool for database setup
