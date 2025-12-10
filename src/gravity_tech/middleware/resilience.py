@@ -14,7 +14,7 @@ import time
 from collections.abc import Callable
 from enum import Enum
 from functools import wraps
-from typing import Optional
+
 
 import structlog
 
@@ -57,7 +57,7 @@ class CircuitBreaker:
         self.expected_exception = expected_exception
 
         self.failure_count = 0
-        self.last_failure_time: Optional[float] = None
+        self.last_failure_time: float | None = None
         self.state = CircuitState.CLOSED
 
     def __call__(self, func: Callable) -> Callable:
