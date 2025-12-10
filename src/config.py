@@ -29,4 +29,5 @@ if TSE_DB_FILE is None:
 
 # Internal Application Database (Output/Operational)
 # This database stores analysis results, user data, etc.
+# Tests expect the operational DB to be named tool_performance.db for portability.
 APP_DB_FILE = os.path.join(BASE_DIR, 'data', 'tool_performance.db')
