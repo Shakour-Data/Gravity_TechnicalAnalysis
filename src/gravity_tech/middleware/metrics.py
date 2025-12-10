@@ -10,7 +10,7 @@ License: MIT
 """
 
 import time
-from typing import Optional
+
 
 from prometheus_client import Counter, Gauge, Histogram, Info
 
@@ -135,7 +135,7 @@ class MetricsCollector:
         REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code=status_code).inc()
         REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(duration)
 
-    def record_analysis(self, analysis_type: str, symbol: str, timeframe: str, duration: float, error: Optional[str] = None):
+    def record_analysis(self, analysis_type: str, symbol: str, timeframe: str, duration: float, error: str | None = None):
         """Record analysis metrics"""
         ANALYSIS_COUNT.labels(analysis_type=analysis_type, symbol=symbol, timeframe=timeframe).inc()
         ANALYSIS_DURATION.labels(analysis_type=analysis_type).observe(duration)
@@ -150,7 +150,7 @@ class MetricsCollector:
         else:
             CACHE_MISSES.labels(cache_type=cache_type).inc()
 
-    def record_db_operation(self, db_type: str, query_type: str, duration: float, error: Optional[str] = None):
+    def record_db_operation(self, db_type: str, query_type: str, duration: float, error: str | None = None):
         """Record database operation metrics"""
         DB_QUERY_DURATION.labels(query_type=query_type).observe(duration)
 
