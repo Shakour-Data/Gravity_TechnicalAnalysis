@@ -33,7 +33,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+
 
 import numpy as np
 import structlog
@@ -49,8 +49,8 @@ class PredictionRecord:
     symbol: str
     timeframe: str
     predicted_signal: float  # -10 to +10
-    actual_return: Optional[float]  # Actual return percentage
-    prediction_error: Optional[float]  # Prediction error
+    actual_return: float | None  # Actual return percentage
+    prediction_error: float | None  # Prediction error
     market_phase: str
     weights_used: dict[str, float]
     indicators_used: dict[str, float]
@@ -201,7 +201,7 @@ class ContinuousLearner:
         self,
         symbol: str,
         actual_return: float,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
         max_age_hours: int = 24
     ) -> bool:
         """
@@ -355,7 +355,7 @@ class ContinuousLearner:
         except Exception as e:
             logger.error("retrain_model_failed", error=str(e))
 
-    def get_symbol_insights(self, symbol: str) -> Optional[dict]:
+    def get_symbol_insights(self, symbol: str) -> dict | None:
         """
         Get learning insights for a symbol
 
