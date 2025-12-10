@@ -12,7 +12,7 @@ Version: 1.0.0
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+
 
 import joblib
 import numpy as np
@@ -75,7 +75,7 @@ class ScenarioWeightOptimizer:
         ```
     """
 
-    def __init__(self, model_path: Optional[Path] = None):
+    def __init__(self, model_path: Path | None = None):
         """
         Initialize optimizer.
 
@@ -83,7 +83,7 @@ class ScenarioWeightOptimizer:
             model_path: مسیر مدل ذخیره شده (اختیاری)
         """
         self.model_path = model_path or Path("ml_models/scenario_weights.pkl")
-        self.models: Optional[dict[str, LGBMRegressor]] = None
+        self.models: dict[str, LGBMRegressor | None] = None
 
         # وزن‌های پیش‌فرض برای هر regime
         self.default_weights = {
@@ -397,7 +397,7 @@ class ScenarioWeightOptimizer:
 
 
 # Singleton instance
-_optimizer_instance: Optional[ScenarioWeightOptimizer] = None
+_optimizer_instance: ScenarioWeightOptimizer | None = None
 
 
 def get_scenario_weight_optimizer() -> ScenarioWeightOptimizer:
