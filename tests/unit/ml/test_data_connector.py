@@ -1,15 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import requests
 
 from gravity_tech.ml.data_connector import DataConnector
+from datetime import timezone
 
 
 def test_fetch_candles_passes_interval(monkeypatch):
     connector = DataConnector(allow_mock_on_failure=False, max_retries=0)
 
-    sample_ts = datetime.utcnow().isoformat()
+    sample_ts = datetime.now(timezone.utc).isoformat()
     payload = {
         "candles": [
             {
@@ -44,7 +45,7 @@ def test_fetch_candles_mock_fallback(monkeypatch):
         raise requests.RequestException("boom")
 
     monkeypatch.setattr(connector, "_perform_request", fake_request)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     candles = connector.fetch_candles(
         symbol="BTCUSDT",
         interval="30m",
