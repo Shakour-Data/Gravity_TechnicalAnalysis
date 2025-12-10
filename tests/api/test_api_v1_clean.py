@@ -11,7 +11,7 @@ Date: December 4, 2025
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from unittest.mock import Mock
 
@@ -19,6 +19,7 @@ from gravity_tech.api.v1.historical import HistoricalAnalysisRequest, Historical
 from gravity_tech.api.v1.patterns import PatternDetectionRequest, PatternDetectionResponse, PatternResult, CandleData
 from gravity_tech.api.v1.tools import ToolRecommendationRequest, ToolRecommendationResponse, ToolRecommendation, MarketContextInfo, DynamicStrategy, AnalysisGoal, TradingStyle, ToolPriority, ToolCategory
 from gravity_tech.models.schemas import Candle
+from datetime import timezone
 
 
 # ============================================================================
@@ -181,7 +182,7 @@ class TestPatternDetectionEndpoints:
             confidence=0.87,
             targets={"target1": 105.0, "target2": 107.5},
             stop_loss=99.0,
-            detected_at=datetime.utcnow().isoformat()
+            detected_at=datetime.now(timezone.utc).isoformat()
         )
 
         response = PatternDetectionResponse(
@@ -265,7 +266,7 @@ class TestToolRecommendationEndpoints:
                 expected_accuracy="84.0%"
             ),
             ml_metadata={"model_type": "lightgbm"},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         assert response.symbol == "BTCUSDT"
         assert len(response.recommendations["must_use"]) == 1
@@ -424,7 +425,7 @@ class TestAPIResponseValidation:
             confidence=0.87,
             targets={"target1": 105.0},
             stop_loss=99.0,
-            detected_at=datetime.utcnow().isoformat()
+            detected_at=datetime.now(timezone.utc).isoformat()
         )
 
         assert hasattr(result, 'pattern_type')
@@ -465,7 +466,7 @@ class TestAPIErrorHandling:
             confidence=0.45,
             targets={"target1": 105.0},
             stop_loss=99.0,
-            detected_at=datetime.utcnow().isoformat()
+            detected_at=datetime.now(timezone.utc).isoformat()
         )
 
         if result.confidence is not None:
@@ -483,7 +484,7 @@ class TestAPIErrorHandling:
                 confidence=0.85,
                 targets={"target1": 105.0},
                 stop_loss=99.0,
-                detected_at=datetime.utcnow().isoformat()
+                detected_at=datetime.now(timezone.utc).isoformat()
             ),
             PatternResult(
                 pattern_type="butterfly",
@@ -494,7 +495,7 @@ class TestAPIErrorHandling:
                 confidence=0.78,
                 targets={"target1": 105.0},
                 stop_loss=99.0,
-                detected_at=datetime.utcnow().isoformat()
+                detected_at=datetime.now(timezone.utc).isoformat()
             )
         ]
 
