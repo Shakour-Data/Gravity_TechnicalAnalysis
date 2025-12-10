@@ -39,7 +39,7 @@ All analysis adheres to Dow Theory principles:
 - Trends persist until definitive reversal signals appear
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 import numpy as np
@@ -47,6 +47,7 @@ from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.momentum import MomentumIndicators
 from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.volume import VolumeIndicators
+from datetime import timezone
 
 
 class MarketPhase(str, Enum):
@@ -446,7 +447,7 @@ class MarketPhaseAnalysis:
         recommendations = self._generate_recommendations(phase, strength, detailed)
 
         return {
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "market_phase": phase.value,
             "phase_strength": strength.value,
             "description": descriptions[phase],
