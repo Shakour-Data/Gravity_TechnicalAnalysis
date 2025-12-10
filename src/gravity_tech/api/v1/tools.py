@@ -20,11 +20,11 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, validator
 
 from gravity_tech.services.tool_recommendation_service import ToolRecommendationService
-from datetime import timezone
 
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 tool_service = ToolRecommendationService()
+VALID_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d", "1w"]
 
 
 # ==================== Enums ====================
@@ -84,9 +84,9 @@ class ToolRecommendationRequest(BaseModel):
     )
     limit_candles: int = Field(
         default=200,
-        ge=50,
+        ge=60,
         le=1000,
-        description="تعداد کندل برای تحلیل"
+        description="تعداد کندل برای تحلیل (min 60)"
     )
     top_n: int = Field(
         default=15,
@@ -121,7 +121,14 @@ class CustomAnalysisRequest(BaseModel):
         default=True,
         description="آیا الگوهای قیمتی شناسایی شوند؟"
     )
-    limit_candles: int = Field(default=200, ge=50, le=1000)
+    limit_candles: int = Field(default=200, ge=60, le=1000, description="تعداد کندل برای تحلیل (min 60)")
+
+    @validator('timeframe')
+    def validate_timeframe(cls, v):
+        if v not in VALID_TIMEFRAMES:
+            raise ValueError(f"Timeframe must be one of {VALID_TIMEFRAMES}")
+        return v
+
 
 
 class ToolFilterRequest(BaseModel):
@@ -247,6 +254,21 @@ def _tool_info_from_dict(entry: dict[str, Any]) -> ToolInfo:
     )
 
 
+def _validate_selected_tools(selected: list[str]) -> list[str]:
+    """Ensure requested tools exist in catalog, fail fast with HTTP 400"""
+    invalid = [tool for tool in selected if not tool_service.get_tool(tool)]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Invalid tool name(s): {', '.join(invalid)}")
+    return selected
+
+
+def _ensure_valid_limit_candles(limit_candles: int) -> int:
+    """Ensure candle window is within supported bounds"""
+    if limit_candles < 60 or limit_candles > 1000:
+        raise HTTPException(status_code=400, detail="limit_candles must be between 60 and 1000")
+    return limit_candles
+
+
 # ==================== API Endpoints ====================
 
 @router.get(
@@ -271,6 +293,9 @@ async def list_tools(
     - GET /api/v1/tools/?category=trend_indicators → فقط اندیکاتورهای ترند
     - GET /api/v1/tools/?min_accuracy=0.75 → ابزارهای با دقت بالا
     """
+
+    if timeframe and timeframe not in VALID_TIMEFRAMES:
+        raise HTTPException(status_code=400, detail=f"timeframe must be one of {VALID_TIMEFRAMES}")
 
     tools = tool_service.list_tools(
         category=category.value if category else None,
@@ -318,6 +343,8 @@ async def recommend_tools(request: ToolRecommendationRequest):
     }
     """
 
+    _ensure_valid_limit_candles(request.limit_candles)
+
     try:
         return await tool_service.build_recommendations(
             symbol=request.symbol,
@@ -327,6 +354,8 @@ async def recommend_tools(request: ToolRecommendationRequest):
             limit_candles=request.limit_candles,
             top_n=request.top_n,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to build recommendations: {exc}") from exc
 
@@ -353,6 +382,9 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
     }
     """
 
+    _validate_selected_tools(request.selected_tools)
+    _ensure_valid_limit_candles(request.limit_candles)
+
     try:
         return await tool_service.analyze_custom_tools(
             symbol=request.symbol,
@@ -362,6 +394,8 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
             include_patterns=request.include_patterns,
             limit_candles=request.limit_candles,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to analyze custom tools: {exc}") from exc
 
