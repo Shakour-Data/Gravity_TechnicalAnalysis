@@ -35,6 +35,7 @@ except ImportError:
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from datetime import timezone
 
 
 class DimensionWeightLearner:
@@ -528,7 +529,7 @@ if __name__ == "__main__":
     # Step 1: Fetch data
     print("\n📥 Step 1: Fetching Bitcoin historical data...")
     connector = DataConnector()
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=730)  # 2 years
 
     candles = connector.fetch_daily_candles("BTCUSDT", start_date, end_date)
