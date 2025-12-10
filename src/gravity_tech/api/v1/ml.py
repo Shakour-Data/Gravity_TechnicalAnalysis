@@ -33,9 +33,9 @@ Provides RESTful endpoints for:
 
 import pickle
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import structlog
@@ -144,11 +144,11 @@ class ModelInfoResponse(BaseModel):
     model_name: str
     model_version: str
     model_type: str
-    training_date: Optional[str]
-    accuracy: Optional[float]
+    training_date: str | None
+    accuracy: float | None
     features_count: int
     supported_patterns: list[str]
-    hyperparameters: Optional[dict[str, Any]]
+    hyperparameters: dict[str, Any] | None
 
 
 class BacktestRequest(BaseModel):
@@ -227,7 +227,7 @@ def load_ml_model():
             MODEL_META[version] = {
                 "path": str(path),
                 "hash": file_hash,
-                "loaded_at": datetime.utcnow().isoformat(),
+                "loaded_at": datetime.now(timezone.utc).isoformat(),
             }
             MODEL_CACHE_LOADS.labels(version).inc()
             return model, version
@@ -349,14 +349,14 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
-        )
+        ) from e
     except Exception as e:
         logger.error("ml_prediction_error", error=str(e))
         PREDICTION_REQUESTS.labels("predict", "error", version if "version" in locals() else "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Prediction failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.post(
@@ -471,14 +471,14 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
-        )
+        ) from e
     except Exception as e:
         logger.error("batch_prediction_error", error=str(e))
         PREDICTION_REQUESTS.labels("predict_batch", "error", version if "version" in locals() else "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch prediction failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.get(
@@ -535,13 +535,13 @@ async def get_model_info() -> ModelInfoResponse:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
-        )
+        ) from e
     except Exception as e:
         logger.error("model_info_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve model info: {str(e)}"
-        )
+        ) from e
 
 
 @router.get(
