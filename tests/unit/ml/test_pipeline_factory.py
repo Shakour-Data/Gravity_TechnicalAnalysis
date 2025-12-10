@@ -1,6 +1,6 @@
 import json
 import pickle
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,6 +14,7 @@ from gravity_tech.ml.pipeline_factory import (
     load_support_resistance_analyzer,
 )
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
+from datetime import timezone
 
 
 class DummyFeatureCache:
@@ -192,7 +193,7 @@ def _write_weights(path: Path, feature_names: list[str]) -> Path:
 
 
 def _make_candles(count: int) -> list[Candle]:
-    base_time = datetime.utcnow() - timedelta(days=count)
+    base_time = datetime.now(timezone.utc) - timedelta(days=count)
     candles: list[Candle] = []
     price = 100.0
 
