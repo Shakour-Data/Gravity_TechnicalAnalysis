@@ -16,7 +16,7 @@ import logging
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -267,10 +267,10 @@ class WalkForwardBacktester:
             # Return a minimal window with error info
             return WalkForwardWindow(
                 window_id=window_id,
-                in_sample_start=datetime.utcnow(),
-                in_sample_end=datetime.utcnow(),
-                out_sample_start=datetime.utcnow(),
-                out_sample_end=datetime.utcnow(),
+                in_sample_start=datetime.now(UTC),
+                in_sample_end=datetime.now(UTC),
+                out_sample_start=datetime.now(UTC),
+                out_sample_end=datetime.now(UTC),
                 optimized_parameters={},
                 in_sample_performance={'error': str(e)},
                 out_sample_performance={'error': str(e)},
