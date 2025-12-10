@@ -15,12 +15,13 @@ License: MIT
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+
 
 import numpy as np
 import pandas as pd
+from datetime import timezone
 
 try:
     import lightgbm as lgb
@@ -59,7 +60,7 @@ class MarketContext:
     volatility_level: float  # 0-100
     trend_strength: float  # 0-100
     volume_profile: str  # high, medium, low
-    trading_style: Optional[str] = "swing"  # scalp, day, swing, position
+    trading_style: str | None = "swing"  # scalp, day, swing, position
 
 
 class DynamicToolRecommender:
@@ -162,7 +163,7 @@ class DynamicToolRecommender:
     def recommend_tools(
         self,
         context: MarketContext,
-        ml_weights: Optional[dict[str, float]] = None,
+        ml_weights: dict[str, float | None] = None,
         top_n: int = 15
     ) -> list[ToolRecommendation]:
         """
@@ -523,7 +524,7 @@ class DynamicToolRecommender:
             "ml_metadata": {
                 "model_type": self.model_type,
                 "regime_weights": ml_weights,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         }
 
