@@ -87,6 +87,35 @@ class ScenarioAnalyzer:
         self.momentum_indicators = MomentumIndicators()
         self.volume_indicators = VolumeIndicators()
         self.data_client = data_service_client
+        self._min_candles = 120  # حداقل داده برای سناریو (20/50/100 پنجره‌ها)
+
+    def _validate_inputs(self, symbol: str, timeframe: str, lookback_days: int):
+        """Validate basic inputs before fetching data."""
+        if not symbol or len(symbol) < 2:
+            raise ValueError("symbol is required and must be at least 2 characters")
+        if not all(ch.isalnum() or ch in "-_." for ch in symbol):
+            raise ValueError("symbol may only contain letters, numbers, '-', '_', '.'")
+        valid_timeframes = {"1m", "5m", "15m", "1h", "4h", "1d", "1w"}
+        if timeframe not in valid_timeframes:
+            raise ValueError(f"timeframe must be one of {sorted(valid_timeframes)}")
+        if lookback_days < 30:
+            raise ValueError("lookback_days must be at least 30")
+
+    def _validate_candles(self, candles: list[Candle]) -> list[Candle]:
+        """Ensure minimum length and finite OHLCV values."""
+        if not candles:
+            raise ValueError("No candles provided for scenario analysis.")
+        if len(candles) < self._min_candles:
+            raise ValueError(f"At least {self._min_candles} candles are required for scenario analysis.")
+        for c in candles:
+            values = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
+            if not np.all(np.isfinite(values)):
+                raise ValueError("Candles contain non-finite OHLCV values.")
+            if c.high < c.low:
+                raise ValueError("Candle high must be >= low.")
+            if c.volume < 0:
+                raise ValueError("Candle volume must be non-negative.")
+        return candles
 
     async def analyze_from_service(
         self,
@@ -110,6 +139,7 @@ class ScenarioAnalyzer:
         """
         if not self.data_client:
             raise ValueError("Data service client not configured. Use analyze() with candles instead.")
+        self._validate_inputs(symbol, timeframe, lookback_days)
 
         logger.info(
             "fetching_data_for_scenario_analysis",
@@ -133,6 +163,7 @@ class ScenarioAnalyzer:
 
         # تبدیل CandleData به Candle objects
         candles = [self._convert_to_candle(c) for c in candle_data]
+        candles = self._validate_candles(candles)
 
         current_price = candles[-1].close
 
@@ -175,8 +206,7 @@ class ScenarioAnalyzer:
         Returns:
             ThreeScenarioAnalysis
         """
-        if not candles:
-            raise ValueError("No candles provided for scenario analysis.")
+        candles = self._validate_candles(candles)
 
         if current_price is None:
             current_price = candles[-1].close
