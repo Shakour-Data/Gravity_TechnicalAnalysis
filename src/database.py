@@ -365,10 +365,15 @@ class TSEDatabaseConnector:
 
         candles = []
         for row in rows:
-            try:
-                dt = datetime.strptime(row["date"], "%Y-%m-%d")
-            except ValueError:
-                # Handle potential different date formats or errors
+            dt = None
+            for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    dt = datetime.strptime(row["date"], fmt)
+                    break
+                except ValueError:
+                    continue
+            if dt is None:
+                # Skip rows with unrecognized dates
                 continue
 
             candles.append({
