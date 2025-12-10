@@ -17,7 +17,7 @@ License: MIT
 import os
 import sys
 from dataclasses import dataclass
-from typing import Optional
+
 
 import numpy as np
 
@@ -106,7 +106,7 @@ class PatternFeatureExtractor:
         highs: np.ndarray,
         lows: np.ndarray,
         closes: np.ndarray,
-        volume: Optional[np.ndarray] = None
+        volume: np.ndarray | None = None
     ) -> PatternFeatures:
         """
         Extract all features from a harmonic pattern.
@@ -478,7 +478,7 @@ def extract_pattern_features_batch(
     highs: np.ndarray,
     lows: np.ndarray,
     closes: np.ndarray,
-    volume: Optional[np.ndarray] = None
+    volume: np.ndarray | None = None
 ) -> tuple[np.ndarray, list[str]]:
     """
     Extract features from multiple patterns for batch ML processing.
