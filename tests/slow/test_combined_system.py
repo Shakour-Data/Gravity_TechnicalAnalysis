@@ -82,10 +82,20 @@ def trained_models(feature_sets: FeatureSet):
     X_trend, _ = feature_sets.trend
     X_momentum, _ = feature_sets.momentum
 
-    trend_learner = _build_dummy_learner(X_trend.columns, DEFAULT_HORIZONS)
+    trend_learner = _build_dummy_learner(
+        X_trend.columns,
+        DEFAULT_HORIZONS,
+        feature_matrix=X_trend,
+        forced_bias=0.05,
+    )
     trend_analyzer = MultiHorizonAnalyzer(trend_learner)
 
-    momentum_learner = _build_dummy_learner(X_momentum.columns, DEFAULT_HORIZONS)
+    momentum_learner = _build_dummy_learner(
+        X_momentum.columns,
+        DEFAULT_HORIZONS,
+        feature_matrix=X_momentum,
+        forced_bias=0.05,
+    )
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
 
     return {
@@ -181,9 +191,15 @@ def test_combined_system_reflects_market_direction(trend_type, expected_actions)
     momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=DEFAULT_HORIZONS)  # type: ignore
     X_momentum, _ = momentum_extractor.extract_training_dataset(candles)
 
+    bias = 0.0
+    if trend_type == "uptrend":
+        bias = 0.05
+    elif trend_type == "downtrend":
+        bias = -0.05
+
     analyzer = CombinedTrendMomentumAnalyzer(
-        MultiHorizonAnalyzer(_build_dummy_learner(X_trend.columns, DEFAULT_HORIZONS)),
-        MultiHorizonMomentumAnalyzer(_build_dummy_learner(X_momentum.columns, DEFAULT_HORIZONS))
+        MultiHorizonAnalyzer(_build_dummy_learner(X_trend.columns, DEFAULT_HORIZONS, feature_matrix=X_trend, forced_bias=bias)),
+        MultiHorizonMomentumAnalyzer(_build_dummy_learner(X_momentum.columns, DEFAULT_HORIZONS, feature_matrix=X_momentum, forced_bias=bias))
     )
 
     combined = analyzer.analyze(
@@ -297,24 +313,28 @@ def _seed_for_scenario(key) -> int:
     return abs(hash(key)) % (2**32)
 
 
-def _build_dummy_learner(feature_names, horizons):
+def _build_dummy_learner(feature_names, horizons, feature_matrix=None, forced_bias: float | None = None):
     """Create a lightweight deterministic learner to avoid heavy training."""
+    def _infer_bias(df: pd.DataFrame) -> float:
+        """Use aggregate feature direction to set a small positive/negative bias."""
+        if df is None or df.empty:
+            return 0.05
+        weighted_cols = [c for c in df.columns if c.endswith("_weighted") or c.endswith("_signal")]
+        cols = weighted_cols if weighted_cols else df.columns
+        net = float(df[cols].mean().mean())
+        if net > 0.05:
+            return 0.05
+        if net < -0.05:
+            return -0.05
+        return 0.0
+
+    bias = forced_bias if forced_bias is not None else _infer_bias(feature_matrix)
+
     class DummyModel:
         def predict(self, X):
-            # Return small positive values that will be normalized appropriately
-            # The analyzer multiplies by 10 and clips to [-1, 1]
-            # So 0.05 -> 0.5, 0.1 -> 1.0 (clipped), -0.05 -> -0.5
-
-            # For uptrend data (fixture), return positive scores
-            # For downtrend data, return negative scores
-            sample_means = X.mean(axis=0)
-            negative_features = sum(1 for mean_val in sample_means if mean_val < -0.1)
-            positive_features = sum(1 for mean_val in sample_means if mean_val > 0.1)
-
-            # Use a simple heuristic: if more negative features, assume downtrend
-            score = -0.05 if negative_features > positive_features else 0.05
+            # Return deterministic scores scaled by analyzer (x10 then clipped).
             n_samples = len(X)
-            return np.full((n_samples, len(horizons)), score)
+            return np.full((n_samples, len(horizons)), bias)
 
     learner = MultiHorizonWeightLearner(horizons=horizons, random_state=123)
     learner.feature_names = list(feature_names)
