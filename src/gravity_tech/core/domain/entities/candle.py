@@ -28,10 +28,12 @@ Represents a single price candle (candlestick) in the market.
 This is a core domain entity that encapsulates all price action data.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+
 
 
 class CandleType(Enum):
@@ -172,7 +174,7 @@ class Candle:
         """
         return (self.high + self.low + self.close) / 3
 
-    def true_range(self, previous_candle: Optional['Candle'] = None) -> float:
+    def true_range(self, previous_candle: Candle | None = None) -> float:
         """
         Calculate True Range for ATR
 
