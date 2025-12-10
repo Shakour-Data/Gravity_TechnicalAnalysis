@@ -11,7 +11,7 @@ License: MIT
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -22,6 +22,7 @@ from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.indicators.volume import VolumeIndicators
 from gravity_tech.models.schemas import Candle
 from gravity_tech.patterns.classical import ClassicalPatterns
+from datetime import timezone
 
 logger = structlog.get_logger()
 
@@ -119,7 +120,7 @@ class ScenarioAnalyzer:
 
         # دریافت داده از Data Service
         from datetime import timedelta
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=lookback_days)
 
         candle_data = await self.data_client.get_candles(
