@@ -11,9 +11,10 @@ Usage:
 
 import argparse
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.ml.data_connector import DataConnector
 from gravity_tech.ml.feature_extraction import FeatureExtractor
 from gravity_tech.ml.ml_dimension_weights import DimensionWeightLearner
@@ -64,7 +65,7 @@ class MLTrainingPipeline:
         print("📥 STEP 1: Fetching Historical Data")
         print("=" * 70)
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=self.days)
 
         print(f"\nSymbol: {self.symbol}")
@@ -90,6 +91,7 @@ class MLTrainingPipeline:
         """
         Step 2: Train Level 1 - 10 Indicator Weights
         """
+        assert self.candles is not None, "Candles not loaded. Run step1_fetch_data first."
         print("\n" + "=" * 70)
         print("🎓 STEP 2: Training Level 1 - 10 Indicator Weights")
         print("=" * 70)
@@ -134,6 +136,7 @@ class MLTrainingPipeline:
         """
         Step 3: Train Level 2 - 4 Dimension Weights
         """
+        assert self.candles is not None, "Candles not loaded. Run step1_fetch_data first."
         print("\n" + "=" * 70)
         print("🎓 STEP 3: Training Level 2 - 4 Dimension Weights")
         print("=" * 70)
@@ -178,12 +181,13 @@ class MLTrainingPipeline:
         """
         Step 4: Generate training summary
         """
+        assert self.candles is not None, "Candles not loaded. Run step1_fetch_data first."
         print("\n" + "=" * 70)
         print("📋 STEP 4: Training Summary")
         print("=" * 70)
 
         summary = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'symbol': self.symbol,
             'days': self.days,
             'model_type': self.model_type,
@@ -202,6 +206,37 @@ class MLTrainingPipeline:
             json.dump(summary, f, indent=2)
 
         print(f"\n💾 Saved training summary: {summary_path}")
+
+        # Persist weights snapshot to database (best-effort)
+        try:
+            dbm = DatabaseManager(auto_setup=True)
+            dbm.record_ml_weights_history(
+                model_name=self.model_type,
+                model_version="v1",
+                market_regime=None,
+                timeframe=f"{self.forward_days}d" if self.forward_days else None,
+                weights={
+                    "level1_weights": summary['level1_weights'],
+                    "level2_weights": summary['level2_weights'],
+                },
+                training_accuracy=metrics_level2.get('train_r2'),
+                validation_accuracy=metrics_level2.get('test_r2'),
+                r2_score=metrics_level2.get('test_r2'),
+                mae=metrics_level2.get('test_mae'),
+                training_samples=len(self.candles) if self.candles is not None else None,
+                training_date=datetime.now(UTC),
+                metadata={
+                    "symbol": self.symbol,
+                    "lookback": self.lookback_period,
+                    "days": self.days,
+                    "indicator_metrics": metrics_level1,
+                    "dimension_metrics": metrics_level2,
+                },
+            )
+            dbm.close()
+            print("💾 Saved ml_weights_history snapshot")
+        except Exception as exc:
+            print(f"⚠️ Failed to persist ml_weights_history: {exc}")
 
         # Display summary
         print("\n📊 Training Results:")
