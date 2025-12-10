@@ -9,7 +9,7 @@ of the application no longer relies on the deprecated module.
 from __future__ import annotations
 
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 
 from gravity_tech.core.domain.entities import (
     Candle,
@@ -21,6 +21,7 @@ from gravity_tech.core.domain.entities import (
     CoreSignalStrength as SignalStrength,
 )
 from pydantic import BaseModel, Field
+from datetime import timezone
 
 __all__ = [
     "AnalysisRequest",
@@ -80,7 +81,7 @@ class MarketPhaseResult(BaseModel):
         default_factory=dict, description="Detailed scores for different aspects"
     )
     dow_theory_compliance: bool = Field(default=True, description="Confirms analysis follows Dow Theory principles")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Analysis timestamp")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Analysis timestamp")
 
 
 class TechnicalAnalysisResult(BaseModel):
@@ -121,7 +122,7 @@ class TechnicalAnalysisResult(BaseModel):
     ml_weights: dict[str, float] | None = Field(default=None, description="ML-predicted optimal weights")
     weights_source: str | None = Field(default="default", description="Source of weights: 'default', 'ml', 'adaptive'")
 
-    analysis_timestamp: datetime = Field(default_factory=datetime.utcnow, description="Analysis timestamp")
+    analysis_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Analysis timestamp")
 
     def calculate_overall_signal(self):
         """
