@@ -10,10 +10,11 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .subscription_type import SubscriptionType
+from datetime import timezone
 
 
 @dataclass(frozen=True)
@@ -76,7 +77,7 @@ class SSEMessage:
             event_type="data",
             subscription_type=subscription_type,
             client_id=client_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data=data,
             event_id=event_id
         )
@@ -103,7 +104,7 @@ class SSEMessage:
             event_type="error",
             subscription_type=None,
             client_id=client_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={},
             event_id=event_id,
             error_message=error_message
@@ -121,7 +122,7 @@ class SSEMessage:
             event_type="ping",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={}
         )
 
@@ -147,7 +148,7 @@ class SSEMessage:
             event_type="system",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={"event": system_event, **data},
             event_id=event_id
         )
