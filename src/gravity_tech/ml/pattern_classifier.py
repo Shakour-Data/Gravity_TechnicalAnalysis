@@ -15,7 +15,7 @@ License: MIT
 
 import os
 import pickle
-from typing import Optional
+
 
 import numpy as np
 import xgboost as xgb
@@ -82,7 +82,7 @@ class PatternClassifier:
         self,
         X: np.ndarray,
         y_type: list[str],
-        y_success: Optional[np.ndarray] = None,
+        y_success: np.ndarray | None = None,
         test_size: float = 0.2,
         verbose: bool = True
     ) -> dict:
@@ -355,8 +355,8 @@ class PatternConfidenceScorer:
 def train_pattern_classifier(
     X_train: np.ndarray,
     y_train: list[str],
-    y_success: Optional[np.ndarray] = None,
-    save_path: Optional[str] = None
+    y_success: np.ndarray | None = None,
+    save_path: str | None = None
 ) -> PatternClassifier:
     """
     Convenience function to train and optionally save pattern classifier.
