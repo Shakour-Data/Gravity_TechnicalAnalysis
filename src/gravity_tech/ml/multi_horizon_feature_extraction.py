@@ -12,7 +12,7 @@ import logging
 import logging
 from collections import deque
 from dataclasses import dataclass
-from typing import Optional
+
 
 import numpy as np
 import pandas as pd
@@ -374,7 +374,7 @@ class MultiHorizonFeatureExtractor:
         self,
         return_matrix: dict[int, np.ndarray],
         idx: int,
-    ) -> Optional[dict[str, float]]:
+    ) -> dict[str, float | None]:
         targets: dict[str, float] = {}
         for horizon in self.horizons:
             series = return_matrix.get(horizon)
