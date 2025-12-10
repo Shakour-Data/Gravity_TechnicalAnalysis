@@ -4,6 +4,7 @@ Simple test for Elliott Wave analysis
 from datetime import datetime, timedelta, timezone
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.patterns.elliott_wave import analyze_elliott_waves
+from datetime import timezone
 
 # Generate sample candles with wave pattern
 candles = []
