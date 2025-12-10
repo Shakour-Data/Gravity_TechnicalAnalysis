@@ -11,7 +11,6 @@ License: MIT
 """
 
 import json
-from pathlib import Path
 
 import joblib
 import numpy as np
@@ -30,6 +29,9 @@ try:
 except ImportError:
     XGBOOST_AVAILABLE = False
     print("⚠️ XGBoost not available. Install with: pip install xgboost")
+
+from datetime import UTC, datetime
+from pathlib import Path
 
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -139,12 +141,12 @@ class IndicatorWeightLearner:
 
         # Calculate metrics
         metrics = {
-            'train_mse': mean_squared_error(y_train, y_train_pred),
-            'test_mse': mean_squared_error(y_test, y_test_pred),
-            'train_mae': mean_absolute_error(y_train, y_train_pred),
-            'test_mae': mean_absolute_error(y_test, y_test_pred),
-            'train_r2': r2_score(y_train, y_train_pred),
-            'test_r2': r2_score(y_test, y_test_pred)
+            'train_mse': mean_squared_error(y_train, y_train_pred),  # type: ignore[reportArgumentType]
+            'test_mse': mean_squared_error(y_test, y_test_pred),  # type: ignore[reportArgumentType]
+            'train_mae': mean_absolute_error(y_train, y_train_pred),  # type: ignore[reportArgumentType]
+            'test_mae': mean_absolute_error(y_test, y_test_pred),  # type: ignore[reportArgumentType]
+            'train_r2': r2_score(y_train, y_train_pred),  # type: ignore[reportArgumentType]
+            'test_r2': r2_score(y_test, y_test_pred)  # type: ignore[reportArgumentType]
         }
 
         print("\n📊 Training Results:")
@@ -154,7 +156,7 @@ class IndicatorWeightLearner:
         print(f"   Test MAE:  {metrics['test_mae']:.6f}")
 
         # Extract feature importance
-        self._extract_feature_importance(X.columns)
+        self._extract_feature_importance(list(X.columns))
 
         # Calculate learned weights
         self._calculate_weights_from_importance()
@@ -165,6 +167,7 @@ class IndicatorWeightLearner:
         """
         Extract feature importance from trained model
         """
+        assert self.model is not None
         if self.model_type in ["lightgbm", "xgboost"]:
             importance = self.model.feature_importances_
         else:
@@ -267,11 +270,11 @@ class IndicatorWeightLearner:
         import numpy as np
         from sklearn.metrics import mean_absolute_error, r2_score
 
-        r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)  # type: ignore[reportArgumentType]
+        mae = mean_absolute_error(y_test, y_pred)  # type: ignore[reportArgumentType]
 
         # Calculate residuals for confidence intervals
-        residuals = y_test - y_pred
+        residuals = y_test - y_pred  # type: ignore[reportOperatorIssue]
         std_residual = np.std(residuals)
 
         # 95% confidence interval
@@ -321,7 +324,7 @@ class IndicatorWeightLearner:
         weights_data = {
             'weights': self.learned_weights,
             'feature_importance': self.feature_importance,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'model_type': self.model_type
         }
 
@@ -368,13 +371,14 @@ class IndicatorWeightLearner:
         """
         Compare ML weights vs equal weights (baseline)
         """
+        assert self.model is not None
         print("\n📊 Comparison: ML Weights vs Equal Weights")
         print("=" * 60)
 
         # ML predictions
         y_pred_ml = self.model.predict(X)
-        ml_r2 = r2_score(y, y_pred_ml)
-        ml_mae = mean_absolute_error(y, y_pred_ml)
+        ml_r2 = r2_score(y, y_pred_ml)  # type: ignore[reportArgumentType]
+        ml_mae = mean_absolute_error(y, y_pred_ml)  # type: ignore[reportArgumentType]
 
         # Equal weights baseline: simple average of all weighted signals
         weighted_features = [f'{ind}_weighted' for ind in self.INDICATORS]
@@ -450,8 +454,8 @@ class IndicatorWeightLearner:
         width = 0.35
 
         fig, ax = plt.subplots(figsize=(12, 6))
-        ax.bar(x - width/2, ml_weights, width, label='ML Learned Weights', color='steelblue')
-        ax.bar(x + width/2, equal_weights, width, label='Equal Weights', color='coral')
+        ax.bar(x - width/2, ml_weights, width, label='ML Learned Weights', color='steelblue')  # type: ignore[reportOperatorIssue]
+        ax.bar(x + width/2, equal_weights, width, label='Equal Weights', color='coral')  # type: ignore[reportOperatorIssue]
 
         ax.set_xlabel('Indicator')
         ax.set_ylabel('Weight')
@@ -470,7 +474,7 @@ class IndicatorWeightLearner:
 
 # Example usage and testing
 if __name__ == "__main__":
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     from gravity_tech.ml.data_connector import DataConnector
     from gravity_tech.ml.feature_extraction import FeatureExtractor
@@ -482,7 +486,7 @@ if __name__ == "__main__":
     # Step 1: Fetch data
     print("\n📥 Step 1: Fetching Bitcoin historical data...")
     connector = DataConnector()
-    end_date = datetime.utcnow()
+    end_date = datetime.now(UTC)
     start_date = end_date - timedelta(days=730)  # 2 years
 
     candles = connector.fetch_daily_candles("BTCUSDT", start_date, end_date)
