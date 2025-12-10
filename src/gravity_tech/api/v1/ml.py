@@ -33,8 +33,11 @@ Provides RESTful endpoints for:
 
 import pickle
 import time
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+import threading
 from typing import Any
 
 import numpy as np
@@ -63,6 +66,12 @@ logger = structlog.get_logger()
 router = APIRouter(tags=["Machine Learning"], prefix="/ml")
 MODEL_CACHE: dict[str, Any] = {}
 MODEL_META: dict[str, Any] = {}
+MODEL_LOCK = threading.Lock()
+MAX_BATCH = 256
+PREDICTION_TIMEOUT_SECONDS = 2.0
+BATCH_TIMEOUT_SECONDS = 5.0
+
+_EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 # Prometheus metrics
 MODEL_CACHE_HITS = Counter("ml_model_cache_hits_total", "ML model cache hits", ["version"])
@@ -109,15 +118,50 @@ class PatternFeatures(BaseModel):
     macd_at_d: float
     momentum_divergence: float
 
+    @classmethod
+    def _validate_finite(cls, v: float, field_name: str) -> float:
+        if not np.isfinite(v):
+            raise ValueError(f"{field_name} must be finite")
+        return float(v)
+
+    @classmethod
+    def _validate_range(cls, v: float, field_name: str) -> float:
+        # Soft clamp check to catch extreme/unscaled inputs
+        if abs(v) > 1e6:
+            raise ValueError(f"{field_name} value too large (>|1e6|)")
+        return v
+
+    def model_post_init(self, __context):
+        for fname, value in self.__dict__.items():
+            self._validate_finite(value, fname)
+            self._validate_range(value, fname)
+
 
 class PredictionRequest(BaseModel):
     """Request for pattern prediction"""
     features: PatternFeatures = Field(..., description="21-dimensional feature vector")
+    timeout_seconds: float | None = Field(
+        default=None,
+        ge=0.1,
+        le=30.0,
+        description="Optional per-request timeout; defaults to 2s"
+    )
 
 
 class BatchPredictionRequest(BaseModel):
     """Request for batch predictions"""
-    features_list: list[PatternFeatures] = Field(..., description="List of feature vectors")
+    features_list: list[PatternFeatures] = Field(
+        ...,
+        min_items=1,
+        max_items=MAX_BATCH,
+        description=f"List of feature vectors (max {MAX_BATCH})"
+    )
+    timeout_seconds: float | None = Field(
+        default=None,
+        ge=0.1,
+        le=60.0,
+        description="Optional timeout for entire batch request; defaults to 5s"
+    )
 
 
 class PredictionResponse(BaseModel):
@@ -201,8 +245,51 @@ def _hash_file(path: Path) -> str:
     return h.hexdigest()
 
 
+async def _predict_with_timeout(model: Any, feature_array: np.ndarray, timeout: float) -> dict[str, Any]:
+    """Run model prediction in a thread with timeout."""
+
+    def _predict_blocking():
+        if hasattr(model, 'predict_single'):
+            return model.predict_single(feature_array)
+        pred = model.predict(feature_array.reshape(1, -1))[0]
+        probas = model.predict_proba(feature_array.reshape(1, -1))[0]
+        class_names = ['gartley', 'butterfly', 'bat', 'crab']
+        predicted_class = class_names[pred]
+        confidence = float(np.max(probas))
+        probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
+        return {
+            "pattern_type": predicted_class,
+            "confidence": confidence,
+            "probabilities": probabilities,
+        }
+
+    loop = asyncio.get_running_loop()
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(_EXECUTOR, _predict_blocking),
+            timeout=timeout
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Prediction exceeded timeout ({timeout}s)"
+        ) from exc
+
+
+class _DummyPatternModel:
+    """Fallback model when no classifier is available."""
+
+    def predict_single(self, features: np.ndarray) -> dict[str, Any]:
+        probs = {"gartley": 0.25, "butterfly": 0.25, "bat": 0.25, "crab": 0.25}
+        return {
+            "pattern_type": "unknown",
+            "confidence": 0.0,
+            "probabilities": probs,
+        }
+
+
 def load_ml_model():
-    """Load the latest ML model (cached)"""
+    """Load the latest ML model (cached). Falls back to dummy model if missing."""
     global MODEL_CACHE, MODEL_META
 
     model_v2_path = Path(__file__).parent.parent.parent / "ml_models" / "pattern_classifier_advanced_v2.pkl"
@@ -210,29 +297,43 @@ def load_ml_model():
 
     candidates = [("v2", model_v2_path), ("v1", model_v1_path)]
 
-    for version, path in candidates:
-        if not path.exists():
-            continue
-        file_hash = _hash_file(path)
-        cached = MODEL_CACHE.get(version)
-        cached_meta = MODEL_META.get(version)
-        if cached and cached_meta and cached_meta.get("hash") == file_hash:
-            MODEL_CACHE_HITS.labels(version).inc()
-            return cached, version
+    with MODEL_LOCK:
+        for version, path in candidates:
+            if not path.exists():
+                continue
+            file_hash = _hash_file(path)
+            cached = MODEL_CACHE.get(version)
+            cached_meta = MODEL_META.get(version)
+            if cached and cached_meta and cached_meta.get("hash") == file_hash:
+                MODEL_CACHE_HITS.labels(version).inc()
+                return cached, version
 
-        with open(path, "rb") as f:
-            data = pickle.load(f)
-            model = data["model"] if isinstance(data, dict) else data
-            MODEL_CACHE[version] = model
-            MODEL_META[version] = {
-                "path": str(path),
-                "hash": file_hash,
-                "loaded_at": datetime.now(timezone.utc).isoformat(),
-            }
-            MODEL_CACHE_LOADS.labels(version).inc()
-            return model, version
+            with open(path, "rb") as f:
+                data = pickle.load(f)
+                model = data["model"] if isinstance(data, dict) else data
+                MODEL_CACHE.clear()
+                MODEL_META.clear()
+                MODEL_CACHE[version] = model
+                MODEL_META[version] = {
+                    "path": str(path),
+                    "hash": file_hash,
+                    "loaded_at": datetime.now(timezone.utc).isoformat(),
+                }
+                MODEL_CACHE_LOADS.labels(version).inc()
+                return model, version
 
-    raise FileNotFoundError("No ML model found. Please train a model first.")
+        # Fallback dummy model (uniform probabilities) to keep service responsive
+        dummy = _DummyPatternModel()
+        MODEL_CACHE.clear()
+        MODEL_META.clear()
+        MODEL_CACHE["fallback"] = dummy
+        MODEL_META["fallback"] = {
+            "path": "fallback",
+            "hash": "fallback",
+            "loaded_at": datetime.now(timezone.utc).isoformat(),
+        }
+        logger.warning("ml_model_fallback_used")
+        return dummy, "fallback"
 
 
 # ============================================================================
@@ -280,7 +381,7 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
         meta = MODEL_META.get(version, {})
 
         # Prepare features
-        feature_dict = request.features.dict()
+        feature_dict = request.features.model_dump()
         feature_array = np.array([
             feature_dict['xab_ratio_accuracy'],
             feature_dict['abc_ratio_accuracy'],
@@ -305,22 +406,12 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
             feature_dict['momentum_divergence']
         ])
 
-        # Make prediction
-        if hasattr(model, 'predict_single'):
-            # PatternClassifier
-            prediction = model.predict_single(feature_array)
-            predicted_class = prediction['pattern_type']
-            confidence = prediction['confidence']
-            probabilities = prediction['probabilities']
-        else:
-            # sklearn model
-            pred = model.predict(feature_array.reshape(1, -1))[0]
-            probas = model.predict_proba(feature_array.reshape(1, -1))[0]
-
-            class_names = ['gartley', 'butterfly', 'bat', 'crab']
-            predicted_class = class_names[pred]
-            confidence = float(np.max(probas))
-            probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
+        # Make prediction (with timeout)
+        timeout = request.timeout_seconds or PREDICTION_TIMEOUT_SECONDS
+        prediction = await _predict_with_timeout(model, feature_array, timeout)
+        predicted_class = prediction['pattern_type']
+        confidence = prediction['confidence']
+        probabilities = prediction['probabilities']
 
         duration_seconds = time.perf_counter() - start_ts
         inference_time = duration_seconds * 1000
@@ -346,10 +437,16 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
 
     except FileNotFoundError as e:
         PREDICTION_REQUESTS.labels("predict", "model_missing", "unknown").inc()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e)
-        ) from e
+        # fallback response with ml_enabled=false semantic via model_version=fallback
+        return PredictionResponse(
+            predicted_pattern="unknown",
+            confidence=0.0,
+            probabilities={"gartley": 0.25, "butterfly": 0.25, "bat": 0.25, "crab": 0.25},
+            model_version="fallback",
+            inference_time_ms=0.0,
+            model_hash=None,
+            model_loaded_at=None,
+        )
     except Exception as e:
         logger.error("ml_prediction_error", error=str(e))
         PREDICTION_REQUESTS.labels("predict", "error", version if "version" in locals() else "unknown").inc()
@@ -389,66 +486,69 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
         predictions = []
         confidences = []
 
+        errors = 0
         for features in request.features_list:
             feature_start = time.perf_counter()
+            try:
+                feature_dict = features.model_dump()
+                feature_array = np.array([
+                    feature_dict['xab_ratio_accuracy'],
+                    feature_dict['abc_ratio_accuracy'],
+                    feature_dict['bcd_ratio_accuracy'],
+                    feature_dict['xad_ratio_accuracy'],
+                    feature_dict['pattern_symmetry'],
+                    feature_dict['pattern_slope'],
+                    feature_dict['xa_angle'],
+                    feature_dict['ab_angle'],
+                    feature_dict['bc_angle'],
+                    feature_dict['cd_angle'],
+                    feature_dict['pattern_duration'],
+                    feature_dict['xa_magnitude'],
+                    feature_dict['ab_magnitude'],
+                    feature_dict['bc_magnitude'],
+                    feature_dict['cd_magnitude'],
+                    feature_dict['volume_at_d'],
+                    feature_dict['volume_trend'],
+                    feature_dict['volume_confirmation'],
+                    feature_dict['rsi_at_d'],
+                    feature_dict['macd_at_d'],
+                    feature_dict['momentum_divergence']
+                ])
 
-            # Prepare features
-            feature_dict = features.dict()
-            feature_array = np.array([
-                feature_dict['xab_ratio_accuracy'],
-                feature_dict['abc_ratio_accuracy'],
-                feature_dict['bcd_ratio_accuracy'],
-                feature_dict['xad_ratio_accuracy'],
-                feature_dict['pattern_symmetry'],
-                feature_dict['pattern_slope'],
-                feature_dict['xa_angle'],
-                feature_dict['ab_angle'],
-                feature_dict['bc_angle'],
-                feature_dict['cd_angle'],
-                feature_dict['pattern_duration'],
-                feature_dict['xa_magnitude'],
-                feature_dict['ab_magnitude'],
-                feature_dict['bc_magnitude'],
-                feature_dict['cd_magnitude'],
-                feature_dict['volume_at_d'],
-                feature_dict['volume_trend'],
-                feature_dict['volume_confirmation'],
-                feature_dict['rsi_at_d'],
-                feature_dict['macd_at_d'],
-                feature_dict['momentum_divergence']
-            ])
+                # Make prediction
+                if hasattr(model, 'predict_single'):
+                    prediction = model.predict_single(feature_array)
+                    predicted_class = prediction['pattern_type']
+                    confidence = prediction['confidence']
+                    probabilities = prediction['probabilities']
+                else:
+                    pred = model.predict(feature_array.reshape(1, -1))[0]
+                    probas = model.predict_proba(feature_array.reshape(1, -1))[0]
 
-            # Make prediction
-            if hasattr(model, 'predict_single'):
-                prediction = model.predict_single(feature_array)
-                predicted_class = prediction['pattern_type']
-                confidence = prediction['confidence']
-                probabilities = prediction['probabilities']
-            else:
-                pred = model.predict(feature_array.reshape(1, -1))[0]
-                probas = model.predict_proba(feature_array.reshape(1, -1))[0]
+                    class_names = ['gartley', 'butterfly', 'bat', 'crab']
+                    predicted_class = class_names[pred]
+                    confidence = float(np.max(probas))
+                    probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
 
-                class_names = ['gartley', 'butterfly', 'bat', 'crab']
-                predicted_class = class_names[pred]
-                confidence = float(np.max(probas))
-                probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
+                feature_inference_time = (time.perf_counter() - feature_start) * 1000
 
-            feature_inference_time = (time.perf_counter() - feature_start) * 1000
-
-            predictions.append(PredictionResponse(
-                predicted_pattern=predicted_class,
-                confidence=confidence,
-                probabilities=probabilities,
-                model_version=version,
-                inference_time_ms=round(feature_inference_time, 2),
-                model_hash=meta.get("hash") if meta else None,
-                model_loaded_at=meta.get("loaded_at") if meta else None,
-            ))
-            confidences.append(confidence)
+                predictions.append(PredictionResponse(
+                    predicted_pattern=predicted_class,
+                    confidence=confidence,
+                    probabilities=probabilities,
+                    model_version=version,
+                    inference_time_ms=round(feature_inference_time, 2),
+                    model_hash=meta.get("hash") if meta else None,
+                    model_loaded_at=meta.get("loaded_at") if meta else None,
+                ))
+                confidences.append(confidence)
+            except Exception as exc:
+                errors += 1
+                logger.warning("batch_prediction_item_failed", error=str(exc), error_type=type(exc).__name__)
 
         duration_seconds = time.perf_counter() - start_ts
         total_time = duration_seconds * 1000
-        avg_confidence = float(np.mean(confidences))
+        avg_confidence = float(np.mean(confidences)) if confidences else 0.0
 
         response = BatchPredictionResponse(
             predictions=predictions,
@@ -460,7 +560,8 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
         logger.info("batch_prediction",
                    count=len(predictions),
                    avg_confidence=avg_confidence,
-                   total_time_ms=round(total_time, 2))
+                   total_time_ms=round(total_time, 2),
+                   errors=errors)
         PREDICTION_REQUESTS.labels("predict_batch", "success", version).inc()
         PREDICTION_LATENCY.labels("predict_batch", version).observe(duration_seconds)
 
