@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import math
 
 sys.path.append(str(Path(__file__).parent))
 
@@ -66,6 +67,8 @@ from gravity_tech.ml.multi_horizon_support_resistance_analysis import (
     SupportResistanceScore,
 )
 from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
+
+MIN_PIPELINE_CANDLES = 120  # حداقل کندل برای پوشش پنجره‌های 100/120 و حجم
 
 
 class CompleteAnalysisPipeline:
@@ -107,12 +110,12 @@ class CompleteAnalysisPipeline:
     ):
         """
         Args:
-            candles: لیست کندل‌ها (حداقل 100 کندل توصیه می‌شود)
+            candles: لیست کندل‌ها (حداقل 120 کندل الزامی برای پنجره‌های 100/120)
             use_volume_matrix: فعال‌سازی تعدیلات حجم
             custom_weights: وزن‌های سفارشی برای ابعاد
             verbose: نمایش پیام‌های وضعیت
         """
-        self.candles = candles
+        self.candles = self._sanitize_candles(candles)
         self.use_volume_matrix = use_volume_matrix
         self.custom_weights = custom_weights
         self.verbose = verbose
@@ -154,6 +157,21 @@ class CompleteAnalysisPipeline:
         self._log("✅ Pipeline initialized")
         self._log(f"   Candles: {len(candles)}")
         self._log(f"   Volume Matrix: {'Enabled' if use_volume_matrix else 'Disabled'}")
+
+    @staticmethod
+    def _sanitize_candles(candles: list[Candle]) -> list[Candle]:
+        """Validate minimum length and finite OHLCV values"""
+        if len(candles) < MIN_PIPELINE_CANDLES:
+            raise ValueError(f"Pipeline requires at least {MIN_PIPELINE_CANDLES} candles (got {len(candles)})")
+        for c in candles:
+            values = [c.open, c.high, c.low, c.close, c.volume]
+            if not all(math.isfinite(float(v)) for v in values):
+                raise ValueError("Candles contain non-finite OHLCV values")
+            if c.high < c.low:
+                raise ValueError("Candle high must be >= low")
+            if c.volume < 0:
+                raise ValueError("Candle volume must be non-negative")
+        return candles
 
     def _log(self, message: str):
         """چاپ پیام اگر verbose فعال باشد"""
