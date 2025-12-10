@@ -21,6 +21,7 @@ License: MIT
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import List
 
 
 import numpy as np
@@ -31,6 +32,8 @@ from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
 from gravity_tech.ml.multi_horizon_momentum_analysis import MomentumScore
 from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
 from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
+
+MIN_CANDLES = 120  # برای پوشش پنجره‌های 100/120
 
 
 class DecisionSignal(Enum):
@@ -137,17 +140,35 @@ class FiveDimensionalDecisionMatrix:
     ):
         """
         Args:
-            candles: لیست کندل‌ها
+            candles: لیست کندل‌ها (حداقل 120 کندل برای پوشش پنجره‌های 100/120)
             dimension_weights: وزن‌های سفارشی برای dimensions
             use_volume_matrix: استفاده از Volume-Dimension Matrix
         """
-        self.candles = candles
+        self.candles = self._validate_candles(candles)
         self.weights = dimension_weights or self.DEFAULT_WEIGHTS
         self.use_volume_matrix = use_volume_matrix
 
         # نرمال‌سازی وزن‌ها
         total_weight = sum(self.weights.values())
+        if total_weight <= 0:
+            self.weights = self.DEFAULT_WEIGHTS
+            total_weight = sum(self.weights.values())
         self.weights = {k: v/total_weight for k, v in self.weights.items()}
+
+    @staticmethod
+    def _validate_candles(candles: list[Candle]) -> list[Candle]:
+        """Ensure minimum length and finite OHLCV"""
+        if len(candles) < MIN_CANDLES:
+            raise ValueError(f"FiveDimensionalDecisionMatrix requires at least {MIN_CANDLES} candles (got {len(candles)})")
+        for c in candles:
+            vals = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
+            if not np.all(np.isfinite(vals)):
+                raise ValueError("Non-finite OHLCV detected in candles")
+            if c.high < c.low:
+                raise ValueError("High must be >= Low for all candles")
+            if c.volume < 0:
+                raise ValueError("Volume must be non-negative")
+        return candles
 
     def analyze(
         self,
@@ -325,15 +346,15 @@ class FiveDimensionalDecisionMatrix:
         cycle: CycleScore,
         sr: SupportResistanceScore
     ) -> dict[str, DimensionState]:
-        """
-        اعمال تعدیلات حجم از Volume-Dimension Matrix
-
-        این متد از ml/volume_dimension_matrix.py استفاده می‌کند
-        """
-        try:
-            from gravity_tech.ml.volume_dimension_matrix import VolumeDimensionMatrix
-
-            vol_matrix = VolumeDimensionMatrix(self.candles)
+        """                                                                                               
+        اعمال تعدیلات حجم از Volume-Dimension Matrix                                                          
+                                                                                                              
+        این متد از ml/volume_dimension_matrix.py استفاده می‌کند                                              
+        """                                                                                               
+        try:                                                                                               
+            from gravity_tech.ml.volume_dimension_matrix import VolumeDimensionMatrix                        
+                                                                                                              
+            vol_matrix = VolumeDimensionMatrix(self.candles)                                                 
 
             # محاسبه interactions برای هر dimension
             interactions = vol_matrix.calculate_all_interactions(
@@ -356,17 +377,18 @@ class FiveDimensionalDecisionMatrix:
                     confidence_multiplier = self._get_confidence_multiplier(
                         interaction.interaction_type
                     )
-                    dim.confidence = np.clip(
-                        dim.confidence * confidence_multiplier,
-                        0.0, 1.0
-                    )
+                    dim.confidence = np.clip(                                                               
+                        max(0.1, dim.confidence) * confidence_multiplier,                                    
+                        0.0, 1.0                                                                            
+                    )                                                                                       
 
                     # به‌روزرسانی description
                     dim.description += f" (حجم: {interaction.interaction_type.value})"
 
-        except ImportError:
-            # اگر ماژول Volume Matrix موجود نیست، بدون تعدیل ادامه بده
-            pass
+        except Exception as exc:                                                                            
+            # اگر ماتریس حجم دردسترس نباشد یا اعتبارسنجی شکست بخورد، یادداشت کن                              
+            for dim in dimensions.values():                                                                 
+                dim.description += f" (حجم غیرفعال: {exc})"                                                  
 
         return dimensions
 
@@ -390,9 +412,9 @@ class FiveDimensionalDecisionMatrix:
     ) -> dict[str, DimensionState]:
         """محاسبه وزن‌های داینامیک بر اساس confidence"""
 
-        # محاسبه weighted confidence
+        # محاسبه weighted confidence با کف 0.1 برای جلوگیری از حذف کامل یک بعد
         weighted_confidences = {
-            name: dim.weight * dim.confidence
+            name: dim.weight * max(0.1, dim.confidence)
             for name, dim in dimensions.items()
         }
 
@@ -421,14 +443,16 @@ class FiveDimensionalDecisionMatrix:
         scores = [dim.volume_adjusted_score for dim in dimensions.values()]
         confidences = [dim.confidence for dim in dimensions.values()]
 
-        # Agreement: چقدر dimensions هماهنگ هستند؟
+        # Agreement: چقدر dimensions هماهنگ هستند؟ (در حالت خنثی تنبیه سنگین نمی‌شود)
         if len(scores) > 1:
-            agreement = 1.0 - (np.std(scores) / 2.0)  # تقسیم بر 2 چون range [-1,+1]
+            mean_abs = abs(np.mean(scores))
+            agreement = 1.0 - (np.std(scores) / (mean_abs + 0.5))
         else:
             agreement = 1.0
+        agreement = float(np.clip(agreement, 0.0, 1.0))
 
         # Accuracy: میانگین confidence
-        avg_accuracy = np.mean(confidences)
+        avg_accuracy = float(np.clip(np.mean(confidences), 0.0, 1.0))
 
         # ترکیب (60% agreement + 40% accuracy)
         final_confidence = (agreement * 0.6) + (avg_accuracy * 0.4)
