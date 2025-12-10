@@ -10,10 +10,11 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .subscription_type import SubscriptionType
+from datetime import timezone
 
 
 @dataclass(frozen=True)
@@ -78,7 +79,7 @@ class WebSocketMessage:
             message_type="data",
             subscription_type=subscription_type,
             client_id=client_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data=data,
             sequence_number=sequence_number,
             correlation_id=correlation_id
@@ -106,7 +107,7 @@ class WebSocketMessage:
             message_type="error",
             subscription_type=None,
             client_id=client_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={},
             correlation_id=correlation_id,
             error_message=error_message
@@ -124,7 +125,7 @@ class WebSocketMessage:
             message_type="ping",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={}
         )
 
@@ -140,7 +141,7 @@ class WebSocketMessage:
             message_type="pong",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={}
         )
 
@@ -164,7 +165,7 @@ class WebSocketMessage:
             message_type="system",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             data={"event": system_event, **data}
         )
 
