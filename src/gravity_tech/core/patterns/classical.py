@@ -45,7 +45,7 @@ Continuation Patterns:
 14. Rectangle
 """
 
-from typing import Optional
+
 
 import numpy as np
 from gravity_tech.core.domain.entities import Candle, PatternResult, PatternType
@@ -85,7 +85,7 @@ class ClassicalPatterns:
         }
 
     @staticmethod
-    def detect_head_and_shoulders(candles: list[Candle], min_pattern_bars: int = 20) -> Optional[PatternResult]:
+    def detect_head_and_shoulders(candles: list[Candle], min_pattern_bars: int = 20) -> PatternResult | None:
         """
         Detect Head and Shoulders pattern (bearish reversal)
 
@@ -174,7 +174,7 @@ class ClassicalPatterns:
         )
 
     @staticmethod
-    def detect_inverse_head_and_shoulders(candles: list[Candle], min_pattern_bars: int = 20) -> Optional[PatternResult]:
+    def detect_inverse_head_and_shoulders(candles: list[Candle], min_pattern_bars: int = 20) -> PatternResult | None:
         """
         Detect Inverse Head and Shoulders pattern (bullish reversal)
 
@@ -257,7 +257,7 @@ class ClassicalPatterns:
         )
 
     @staticmethod
-    def detect_double_top(candles: list[Candle], tolerance: float = 0.02) -> Optional[PatternResult]:
+    def detect_double_top(candles: list[Candle], tolerance: float = 0.02) -> PatternResult | None:
         """
         Detect Double Top pattern (bearish reversal)
 
@@ -332,7 +332,7 @@ class ClassicalPatterns:
         )
 
     @staticmethod
-    def detect_double_bottom(candles: list[Candle], tolerance: float = 0.02) -> Optional[PatternResult]:
+    def detect_double_bottom(candles: list[Candle], tolerance: float = 0.02) -> PatternResult | None:
         """
         Detect Double Bottom pattern (bullish reversal)
 
@@ -407,7 +407,7 @@ class ClassicalPatterns:
         )
 
     @staticmethod
-    def detect_ascending_triangle(candles: list[Candle], min_touches: int = 2) -> Optional[PatternResult]:
+    def detect_ascending_triangle(candles: list[Candle], min_touches: int = 2) -> PatternResult | None:
         """
         Detect Ascending Triangle pattern (bullish continuation)
 
@@ -486,7 +486,7 @@ class ClassicalPatterns:
         )
 
     @staticmethod
-    def detect_descending_triangle(candles: list[Candle], min_touches: int = 2) -> Optional[PatternResult]:
+    def detect_descending_triangle(candles: list[Candle], min_touches: int = 2) -> PatternResult | None:
         """
         Detect Descending Triangle pattern (bearish continuation)
 
@@ -565,7 +565,7 @@ class ClassicalPatterns:
         )
 
     @staticmethod
-    def detect_symmetrical_triangle(candles: list[Candle]) -> Optional[PatternResult]:
+    def detect_symmetrical_triangle(candles: list[Candle]) -> PatternResult | None:
         """
         Detect Symmetrical Triangle pattern (continuation in trend direction)
 
