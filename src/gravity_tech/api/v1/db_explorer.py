@@ -9,13 +9,14 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel
-
 from gravity_tech.database.database_manager import DatabaseManager, DatabaseType
+from pydantic import BaseModel
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["DB Explorer"], prefix="/db")
+
+FORBIDDEN_TABLES = {"unauthorized"}
 
 
 class TableListResponse(BaseModel):
@@ -40,7 +41,8 @@ class DatabaseInfoResponse(BaseModel):
 
 def _list_tables(dbm: DatabaseManager) -> list[str]:
     if dbm.db_type == DatabaseType.JSON_FILE:
-        return sorted(list(dbm.json_data.keys()))
+        return sorted(dbm.json_data.keys())
+
     conn = dbm.get_connection()
     cursor = conn.cursor()
     tables: list[str] = []
@@ -60,7 +62,7 @@ def _list_tables(dbm: DatabaseManager) -> list[str]:
             tables = [row[0] for row in cursor.fetchall()]
     except Exception as exc:
         logger.error("db_list_tables_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail="Failed to list tables")
+        raise HTTPException(status_code=500, detail="Failed to list tables") from exc
     return tables
 
 
@@ -146,6 +148,8 @@ async def query_table(
     """Query a table with optional symbol filter and pagination."""
     dbm = DatabaseManager(auto_setup=True)
     available = _list_tables(dbm)
+    if table in FORBIDDEN_TABLES:
+        raise HTTPException(status_code=403, detail="Table access forbidden")
     if table not in available:
         raise HTTPException(status_code=404, detail="Table not found")
 
@@ -183,7 +187,7 @@ async def query_table(
         cursor.execute(query, tuple(params))
         cols = [desc[0] for desc in cursor.description]
         fetched = cursor.fetchall()
-        rows = [dict(zip(cols, row)) for row in fetched]
+        rows = [dict(zip(cols, row, strict=True)) for row in fetched]
 
         # total count (best-effort)
         count_query = f"SELECT COUNT(*) FROM {table} {where_clause}"
@@ -191,7 +195,7 @@ async def query_table(
         total = cursor.fetchone()[0]
     except Exception as exc:
         logger.error("db_query_failed", table=table, error=str(exc))
-        raise HTTPException(status_code=500, detail="Query failed")
+        raise HTTPException(status_code=500, detail="Query failed") from exc
 
     return QueryResponse(table=table, rows=rows, total=total)
 
@@ -448,7 +452,10 @@ async def db_ui():
 </body>
 </html>
         """
-    )C:\Users\Frequensy@router.get("/home", response_class=HTMLResponse)
+    )
+
+
+@router.get("/home", response_class=HTMLResponse)
 async def db_home():
     """Index with linked pages so users don't need to memorize URLs."""
     return HTMLResponse(
