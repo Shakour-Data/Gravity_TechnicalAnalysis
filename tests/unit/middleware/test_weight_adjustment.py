@@ -1,13 +1,14 @@
 """
 Advanced test to show how accuracy affects actual weights distribution
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from gravity_tech.core.domain.entities import (
     IndicatorResult,
     IndicatorCategory,
     CoreSignalStrength as SignalStrength
 )
 from gravity_tech.models.schemas import TechnicalAnalysisResult
+from datetime import timezone
 
 
 def create_indicator(name: str, category: IndicatorCategory, 
@@ -19,7 +20,7 @@ def create_indicator(name: str, category: IndicatorCategory,
         signal=signal,
         value=0.0,
         confidence=confidence,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 
 
