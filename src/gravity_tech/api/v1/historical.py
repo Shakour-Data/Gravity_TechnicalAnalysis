@@ -13,13 +13,13 @@ License: MIT
 import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
 from gravity_tech.database.historical_manager import HistoricalScoreManager
 from pydantic import BaseModel, Field
+from datetime import timezone
 
 logger = structlog.get_logger()
 
@@ -37,8 +37,8 @@ class HistoricalAnalysisRequest(BaseModel):
     """درخواست تحلیل historical"""
     symbol: str = Field(..., description="نماد معاملاتی")
     timeframe: str = Field(..., description="تایم‌فریم")
-    start_date: Optional[datetime] = Field(default=None, description="تاریخ شروع")
-    end_date: Optional[datetime] = Field(default=None, description="تاریخ پایان")
+    start_date: datetime | None = Field(default=None, description="تاریخ شروع")
+    end_date: datetime | None = Field(default=None, description="تاریخ پایان")
     limit: int = Field(100, description="حداکثر تعداد نتایج", ge=1, le=1000)
 
 
@@ -87,7 +87,7 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
         manager = HistoricalScoreManager(database_url)
 
         # تنظیم تاریخ‌ها اگر مشخص نشده
-        end_date = request.end_date or datetime.utcnow()
+        end_date = request.end_date or datetime.now(timezone.utc)
         start_date = request.start_date or (end_date - timedelta(days=30))
 
         # اجرای synchronous database query در thread pool
@@ -131,7 +131,7 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Historical analysis failed: {str(e)}"
-        )
+        ) from e
 
 
 @router.get(
@@ -159,7 +159,7 @@ async def get_available_symbols():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get symbols: {str(e)}"
-        )
+        ) from e
 
 
 @router.get(
@@ -167,7 +167,7 @@ async def get_available_symbols():
     summary="Available Timeframes",
     description="دریافت لیست تایم‌فریم‌های موجود در historical data"
 )
-async def get_available_timeframes(symbol: Optional[str] = None):
+async def get_available_timeframes(symbol: str | None = None):
     """دریافت لیست تایم‌فریم‌های موجود"""
     try:
         database_url = os.getenv("DATABASE_URL")
@@ -187,7 +187,7 @@ async def get_available_timeframes(symbol: Optional[str] = None):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get timeframes: {str(e)}"
-        )
+        ) from e
 
 
 @router.get(
@@ -195,7 +195,7 @@ async def get_available_timeframes(symbol: Optional[str] = None):
     summary="Symbol Statistics",
     description="آمار historical برای یک نماد"
 )
-async def get_symbol_stats(symbol: str, timeframe: Optional[str] = None):
+async def get_symbol_stats(symbol: str, timeframe: str | None = None):
     """دریافت آمار historical برای یک نماد"""
     try:
         database_url = os.getenv("DATABASE_URL")
@@ -215,7 +215,7 @@ async def get_symbol_stats(symbol: str, timeframe: Optional[str] = None):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get statistics: {str(e)}"
-        )
+        ) from e
 
 
 @router.delete(
@@ -238,7 +238,7 @@ async def cleanup_old_data(days: int = Query(90, description="تعداد روز 
 
         deleted_count = await loop.run_in_executor(executor, lambda: manager.cleanup_old_data(days))
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         logger.info("historical_data_cleaned", deleted_count=deleted_count, cutoff_date=cutoff_date)
 
         return {
@@ -251,4 +251,4 @@ async def cleanup_old_data(days: int = Query(90, description="تعداد روز 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Cleanup failed: {str(e)}"
-        )
+        ) from e
