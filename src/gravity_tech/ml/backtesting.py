@@ -169,7 +169,9 @@ class PatternBacktester:
         lows: np.ndarray,
         closes: np.ndarray,
         volume: np.ndarray,
-        dates: pd.DatetimeIndex
+        dates: pd.DatetimeIndex,
+        window_size: int = 200,
+        step_size: int = 50,
     ) -> list[TradeResult]:
         """
         Run backtest on historical data.
@@ -177,6 +179,8 @@ class PatternBacktester:
         Args:
             highs, lows, closes, volume: Price data
             dates: Date index
+            window_size: Sliding window size for detection
+            step_size: Step size to move the window
 
         Returns:
             List of trade results
@@ -187,8 +191,8 @@ class PatternBacktester:
         self.trades = []
 
         # Sliding window for pattern detection
-        window_size = 200  # Look at 200 bars at a time
-        step_size = 50     # Move forward 50 bars each time
+        window_size = max(50, window_size)
+        step_size = max(1, step_size)
 
         for start_idx in range(0, len(closes) - window_size, step_size):
             end_idx = start_idx + window_size
