@@ -15,15 +15,13 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from math import sqrt
-from typing import Iterable, Set
 
 import pandas as pd
-
 from gravity_tech.database.database_manager import DatabaseManager
-from src.database import tse_data_source
-from datetime import timezone
+from gravity_tech.database.tse_data_source import tse_data_source
 
 
 def _compute_indicators(df: pd.DataFrame) -> dict:
@@ -129,7 +127,7 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
     """
 
     ts_iso = summary["last_timestamp"].isoformat() if isinstance(summary["last_timestamp"], datetime) else str(summary["last_timestamp"])
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     params = (
         symbol,
@@ -181,7 +179,7 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
                   {placeholders}, {placeholders}, {placeholders},
                   {placeholders}, {placeholders}, {placeholders}, {placeholders})
     """
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     ts_iso = summary["last_timestamp"].isoformat() if isinstance(summary["last_timestamp"], datetime) else str(summary["last_timestamp"])
     rows = [
         (
@@ -382,7 +380,7 @@ def ingest_full_history(manager: DatabaseManager, symbol: str, timeframe: str):
         vol_z = float((row["volume"] - vol_mean) / vol_std)
         vol_score = max(-3.0, min(3.0, vol_z))
         volat = float(df["return"].rolling(window=20, min_periods=5).std().iloc[_] or 0.0)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         rows.append(
             (
                 symbol,
@@ -496,7 +494,7 @@ def main():
     if not symbols:
         raise SystemExit("No symbols found to ingest.")
 
-    already: Set[str] = set()
+    already: set[str] = set()
     if args.resume:
         try:
             rows = manager.execute_query(
