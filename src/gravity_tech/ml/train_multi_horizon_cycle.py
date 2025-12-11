@@ -13,11 +13,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from gravity_tech.core.domain.entities import Candle
+from gravity_tech.database.tse_data_source import tse_data_source
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
 from src.config import TSE_DB_FILE
-from src.database import tse_data_source
 
 
 def create_realistic_cycle_data(
