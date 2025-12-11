@@ -33,10 +33,13 @@ flowchart LR
     Analysis --> Payload["ingestion payload"]
     Payload -->|event broker?| Broker["Kafka/RabbitMQ (اختیاری)"]
     Payload -->|direct| DB[(Historical DB)]
-    Broker --> Ingestor["DataIngestorService"] --> DB
+    Broker --> Ingestor["DataIngestorService
+(validations + dedup + metrics)"] --> DB
 ```
-- با `ENABLE_DATA_INGESTION=true` فعال است؛ در نبود بروکر، ذخیره‌سازی مستقیم انجام می‌شود.
-
+- ولیدیشن payload: نماد معتبر، تایم‌فریم 1m..1w، نبود NaN/Inf، حد سقف حجم داده (10MB)، کندل‌های مرتب و مثبت؛ در نقض، event رد می‌شود.
+- Dedup ساده: کلید یکتا (symbol/timeframe/timestamp) در حافظهٔ کوتاه‌مدت نگه داشته می‌شود تا تکراری‌ها ذخیره نشوند.
+- متریک‌ها: شمارنده/هیستوگرام موفق/خطا/تاخیر، شمارش retries و circuit-breaker.
+- FallBack direct: اگر broker نباشد، ذخیره‌سازی مستقیم با ولیدیشن/احراز/تلاش مجدد انجام می‌شود؛ خطاها گزارش می‌شود.
 ## 10) سلامت و متریک
 - `/health`, `/health/live`: وضعیت پایه سرویس.  
 - `/health/ready`: چک Redis در صورت فعال بودن؛ در نبود Redis می‌توان `CACHE_ENABLED=false` کرد.  
