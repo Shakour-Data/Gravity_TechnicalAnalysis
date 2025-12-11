@@ -78,8 +78,12 @@ def build_ingestion_payload(
     """
     Convert a TechnicalAnalysisResult into the compact payload expected
     by the DataIngestor/Database layer.
+    Includes size optimization by limiting large arrays.
     """
     price_at_analysis = candles[-1].close if candles else 0.0
+
+    # Limit candles to last 100 for size control
+    limited_candles = candles[-100:] if len(candles) > 100 else candles
 
     trend_score, trend_conf, trend_signal = _aggregate_category(result.trend_indicators)
     momentum_score, momentum_conf, momentum_signal = _aggregate_category(result.momentum_indicators)
@@ -94,7 +98,6 @@ def build_ingestion_payload(
         + (cycle_score * 0.25)
         + (volume_score * 0.20)
     )
-    combined_signal = SignalStrength.from_value(combined_score).name
 
     combined_confidence = (
         result.overall_confidence
@@ -111,11 +114,20 @@ def build_ingestion_payload(
         )
     )
 
+    # Limit indicator lists to top 50 for size
+    limited_trend = result.trend_indicators[:50] if len(result.trend_indicators) > 50 else result.trend_indicators
+    limited_momentum = result.momentum_indicators[:50] if len(result.momentum_indicators) > 50 else result.momentum_indicators
+    limited_cycle = result.cycle_indicators[:50] if len(result.cycle_indicators) > 50 else result.cycle_indicators
+    limited_volume = result.volume_indicators[:50] if len(result.volume_indicators) > 50 else result.volume_indicators
+    limited_volatility = result.volatility_indicators[:50] if len(result.volatility_indicators) > 50 else result.volatility_indicators
+    limited_support = result.support_resistance_indicators[:50] if len(result.support_resistance_indicators) > 50 else result.support_resistance_indicators
+
     return {
         "symbol": result.symbol,
         "timeframe": result.timeframe,
         "analysis_timestamp": getattr(result, "analysis_timestamp", datetime.now(UTC)),
         "price_at_analysis": price_at_analysis,
+        "candles": [{"timestamp": c.timestamp, "open": c.open, "high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in limited_candles],
         "trend_score": trend_score,
         "trend_confidence": trend_conf,
         "momentum_score": momentum_score,
@@ -137,13 +149,13 @@ def build_ingestion_payload(
         "volatility_signal": vol_signal,
         "support_resistance_signal": support_signal,
         "indicator_scores": _normalize_indicators(
-            result.trend_indicators
-            + result.momentum_indicators
-            + result.cycle_indicators
-            + result.volume_indicators
-            + result.volatility_indicators
-            + result.support_resistance_indicators
+            limited_trend
+            + limited_momentum
+            + limited_cycle
+            + limited_volume
+            + limited_volatility
+            + limited_support
         ),
-        "classical_patterns": _normalize_patterns(result.classical_patterns),
-        "candlestick_patterns": _normalize_patterns(result.candlestick_patterns),
+        "classical_patterns": _normalize_patterns(result.classical_patterns[:20] if len(result.classical_patterns) > 20 else result.classical_patterns),
+        "candlestick_patterns": _normalize_patterns(result.candlestick_patterns[:20] if len(result.candlestick_patterns) > 20 else result.candlestick_patterns),
     }
