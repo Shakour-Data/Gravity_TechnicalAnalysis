@@ -87,7 +87,7 @@ class ScenarioAnalyzer:
         self.momentum_indicators = MomentumIndicators()
         self.volume_indicators = VolumeIndicators()
         self.data_client = data_service_client
-        self._min_candles = 120  # حداقل داده برای سناریو (20/50/100 پنجره‌ها)
+        self._min_candles = 120  # حداقل داده پیشنهادی برای سناریو (20/50/100 پنجره‌ها)
 
     def _validate_inputs(self, symbol: str, timeframe: str, lookback_days: int):
         """Validate basic inputs before fetching data."""
@@ -106,7 +106,11 @@ class ScenarioAnalyzer:
         if not candles:
             raise ValueError("No candles provided for scenario analysis.")
         if len(candles) < self._min_candles:
-            raise ValueError(f"At least {self._min_candles} candles are required for scenario analysis.")
+            logger.warning(
+                "insufficient_candles_for_scenario",
+                received=len(candles),
+                minimum=self._min_candles
+            )
         for c in candles:
             values = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
             if not np.all(np.isfinite(values)):
