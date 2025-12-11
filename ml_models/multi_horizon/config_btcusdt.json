@@ -1,7 +1,7 @@
 {
   "symbol": "BTCUSDT",
   "interval": "1d",
-  "training_date": "2025-12-09T21:38:17.631836",
+  "training_date": "2025-12-11T06:59:58.023590",
   "lookback_days": 365,
   "horizons": [
     3,
