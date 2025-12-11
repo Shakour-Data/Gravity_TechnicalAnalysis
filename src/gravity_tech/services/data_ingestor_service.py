@@ -11,6 +11,11 @@ License: MIT
 """
 
 import asyncio
+import hashlib
+import json
+import math
+import time
+from collections import deque
 from datetime import UTC, datetime
 from typing import Any
 
@@ -19,8 +24,30 @@ from gravity_tech.config.settings import settings
 from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.database.historical_manager import HistoricalScoreManager
 from gravity_tech.middleware.events import EventConsumer, MessageType
+from prometheus_client import Counter, Histogram
 
 logger = structlog.get_logger()
+
+INGEST_EVENTS = Counter(
+    "data_ingestion_events_total",
+    "Total ingestion events handled",
+    ["status", "mode"],  # status: success|error|skipped, mode: broker|direct
+)
+INGEST_LATENCY = Histogram(
+    "data_ingestion_latency_seconds",
+    "Latency of ingestion handling",
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5),
+)
+INGEST_RETRIES = Counter(
+    "data_ingestion_retries_total",
+    "Total retries for ingestion",
+    ["reason"],
+)
+INGEST_CIRCUIT_BREAKER = Counter(
+    "data_ingestion_circuit_breaker_total",
+    "Circuit breaker activations",
+    ["state"],
+)
 
 
 class DataIngestorService:
@@ -35,6 +62,112 @@ class DataIngestorService:
         self.consumer: EventConsumer | None = None
         self.database_url: str | None = None
         self.running = False
+        self.circuit_breaker_failures = 0
+        self.max_failures = 5  # Circuit breaker threshold
+        self._recent_keys: deque[str] = deque(maxlen=500)  # simple dedup window
+
+    def _validate_payload(self, data: dict[str, Any]) -> bool:
+        """
+        Validate incoming payload for required fields and data integrity.
+        """
+        required_fields = ["symbol", "timeframe"]
+        for field in required_fields:
+            if field not in data:
+                logger.warning("missing_required_field", field=field)
+                return False
+
+        symbol = data["symbol"]
+        timeframe = data["timeframe"]
+
+        # Validate symbol format (basic check)
+        if not isinstance(symbol, str) or len(symbol) == 0 or len(symbol) > 10:
+            logger.warning("invalid_symbol", symbol=symbol)
+            return False
+
+        # Validate timeframe (align with API)
+        valid_timeframes = {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"}
+        if timeframe not in valid_timeframes:
+            logger.warning("invalid_timeframe", timeframe=timeframe)
+            return False
+
+        # Check for NaN/Inf in numeric fields
+        numeric_fields = [
+            "trend_score", "momentum_score", "combined_score",
+            "price_at_analysis", "trend_confidence", "momentum_confidence"
+        ]
+        for field in numeric_fields:
+            value = data.get(field)
+            if value is not None:
+                if not isinstance(value, int | float) or math.isnan(value) or math.isinf(value):
+                    logger.warning("invalid_numeric_value", field=field, value=value)
+                    return False
+
+        # Validate candles if present
+        candles = data.get("candles", [])
+        if candles:
+            for i, candle in enumerate(candles):
+                if not isinstance(candle, dict):
+                    logger.warning("invalid_candle_format", index=i)
+                    return False
+                for price_field in ["open", "high", "low", "close"]:
+                    price = candle.get(price_field)
+                    if price is None or not isinstance(price, int | float) or price <= 0 or math.isnan(price) or math.isinf(price):
+                        logger.warning("invalid_candle_price", index=i, field=price_field, value=price)
+                        return False
+                # Check chronological order
+                if i > 0 and candle.get("timestamp") <= candles[i-1].get("timestamp"):
+                    logger.warning("non_chronological_candles", index=i)
+                    return False
+
+        # Ensure results section exists
+        if not data.get("results") and "results" in data:
+            logger.warning("empty_results_section")
+            return False
+
+        # Size limit check (10MB max)
+        payload_size = len(json.dumps(data).encode('utf-8'))
+        if payload_size > 10 * 1024 * 1024:
+            logger.warning("payload_too_large", size=payload_size)
+            return False
+
+        return True
+
+    def _generate_unique_key(self, data: dict[str, Any]) -> str:
+        """
+        Generate a unique key for deduplication based on symbol, timeframe, and analysis timestamp.
+        """
+        key_data = {
+            "symbol": data["symbol"],
+            "timeframe": data["timeframe"],
+            "timestamp": data.get("analysis_timestamp", datetime.now(UTC).isoformat())
+        }
+        key_str = json.dumps(key_data, sort_keys=True)
+        return hashlib.sha256(key_str.encode()).hexdigest()
+
+    def _authenticate_request(self, payload: dict[str, Any]) -> bool:
+        """
+        Authenticate incoming request using a simple token check.
+        In production, use proper JWT or OAuth.
+        """
+        expected_token = settings.ingestion_auth_token
+        # If no token configured, skip auth (internal usage)
+        if not expected_token:
+            return True
+        token = payload.get("auth_token")
+        if token != expected_token:
+            logger.warning("invalid_auth_token")
+            return False
+        return True
+
+    def _check_deduplication(self, unique_key: str) -> bool:
+        """
+        Simple in-memory deduplication window.
+        Returns True if key already seen recently.
+        """
+        if unique_key in self._recent_keys:
+            return True
+        self._recent_keys.append(unique_key)
+        return False
 
     async def initialize(self):
         """راه‌اندازی سرویس"""
@@ -55,11 +188,27 @@ class DataIngestorService:
             # راه‌اندازی historical manager
             self.database_url = settings.database_url
 
+            # Health check for database
+            await self._check_database_health()
+
             logger.info("data_ingestor_service_initialized")
 
         except Exception as e:
             logger.error("data_ingestor_initialization_failed", error=str(e))
             raise
+
+    async def _check_database_health(self):
+        """Check database connectivity and basic operations."""
+        if not self.database_url:
+            raise RuntimeError("Database URL not configured")
+
+        try:
+            # Test connection by initializing HistoricalScoreManager
+            HistoricalScoreManager(self.database_url)
+            logger.info("database_health_check_passed")
+        except Exception as e:
+            logger.error("database_health_check_failed", error=str(e))
+            raise RuntimeError(f"Database health check failed: {e}") from e
 
     async def start_consuming(self):
         """شروع مصرف eventها"""
@@ -104,12 +253,33 @@ class DataIngestorService:
         """
         try:
             data = message.get("data", {})
+
+            # Validate payload
+            if not self._validate_payload(data):
+                INGEST_EVENTS.labels(status="skipped", mode="broker").inc()
+                logger.warning("payload_validation_failed", message_keys=list(message.keys()))
+                return
+
             symbol = data.get("symbol")
             timeframe = data.get("timeframe")
             results = data.get("results", {})
 
             if not symbol or not results:
                 logger.warning("invalid_analysis_event_data", data_keys=list(data.keys()))
+                INGEST_EVENTS.labels(status="skipped", mode="broker").inc()
+                return
+
+            # Check deduplication
+            unique_key = self._generate_unique_key(data)
+            if self._check_deduplication(unique_key):
+                logger.info("duplicate_analysis_skipped", symbol=symbol, timeframe=timeframe)
+                INGEST_EVENTS.labels(status="skipped", mode="broker").inc()
+                return
+
+            # Circuit breaker check
+            if self.circuit_breaker_failures >= self.max_failures:
+                INGEST_CIRCUIT_BREAKER.labels(state="open").inc()
+                logger.warning("circuit_breaker_open", failures=self.circuit_breaker_failures)
                 return
 
             # تبدیل نتایج به HistoricalScoreEntry
@@ -143,6 +313,10 @@ class DataIngestorService:
                 )
             )
 
+            # Reset circuit breaker on success
+            self.circuit_breaker_failures = 0
+            INGEST_EVENTS.labels(status="success", mode="broker").inc()
+
             logger.info(
                 "analysis_result_saved",
                 symbol=symbol,
@@ -151,6 +325,8 @@ class DataIngestorService:
             )
 
         except Exception as e:
+            self.circuit_breaker_failures += 1
+            INGEST_EVENTS.labels(status="error", mode="broker").inc()
             logger.error(
                 "analysis_event_handling_failed",
                 error=str(e),
@@ -257,37 +433,73 @@ class DataIngestorService:
         Persist analysis results directly without the event broker.
 
         Useful when enable_data_ingestion=True but Kafka/RabbitMQ are disabled.
+        Includes validation, deduplication, and retry logic.
         """
+        # Authenticate
+        if not self._authenticate_request(payload):
+            raise ValueError("Authentication failed")
+
         data = payload.get("results") if "results" in payload else payload
+
+        # Validate payload
+        if not self._validate_payload(data):
+            INGEST_EVENTS.labels(status="skipped", mode="direct").inc()
+            logger.warning("payload_validation_failed_direct", payload_keys=list(payload.keys()))
+            raise ValueError("Invalid payload data")
+
         symbol = data.get("symbol")
         timeframe = data.get("timeframe")
-        results = data
 
         if not symbol or not timeframe:
             logger.warning("persist_direct_missing_keys", keys=list(data.keys()))
+            raise ValueError("Missing required fields: symbol or timeframe")
+
+        # Check deduplication
+        unique_key = self._generate_unique_key(data)
+        if self._check_deduplication(unique_key):
+            logger.info("duplicate_analysis_skipped_direct", symbol=symbol, timeframe=timeframe)
+            INGEST_EVENTS.labels(status="skipped", mode="direct").inc()
             return
 
-        entry = self._convert_to_historical_entry(symbol, timeframe, results)
-        horizon_scores = results.get("horizon_scores") or results.get("multi_horizon_scores")
-        indicator_scores = (
-            results.get("indicator_scores")
-            or results.get("indicators")
-            or self._build_indicator_scores(results)
-        )
-        patterns = results.get("patterns")
-        volume_analysis = results.get("volume_analysis") or results.get("volume")
-        price_targets = results.get("price_targets")
-        pattern_detections = self._build_pattern_detections(symbol, timeframe, results)
+        # Retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                entry = self._convert_to_historical_entry(symbol, timeframe, data)
+                horizon_scores = data.get("horizon_scores") or data.get("multi_horizon_scores")
+                indicator_scores = (
+                    data.get("indicator_scores")
+                    or data.get("indicators")
+                    or self._build_indicator_scores(data)
+                )
+                patterns = data.get("patterns")
+                volume_analysis = data.get("volume_analysis") or data.get("volume")
+                price_targets = data.get("price_targets")
+                pattern_detections = self._build_pattern_detections(symbol, timeframe, data)
 
-        self._persist_entry(
-            entry,
-            horizon_scores=horizon_scores,
-            indicator_scores=indicator_scores,
-            patterns=patterns,
-            volume_analysis=volume_analysis,
-            price_targets=price_targets,
-            pattern_detections=pattern_detections,
-        )
+                self._persist_entry(
+                    entry,
+                    horizon_scores=horizon_scores,
+                    indicator_scores=indicator_scores,
+                    patterns=patterns,
+                    volume_analysis=volume_analysis,
+                    price_targets=price_targets,
+                    pattern_detections=pattern_detections,
+                )
+
+                INGEST_EVENTS.labels(status="success", mode="direct").inc()
+                logger.info("direct_persist_success", symbol=symbol, timeframe=timeframe)
+                return
+
+            except Exception as e:
+                INGEST_RETRIES.labels(reason="persistence_error").inc()
+                if attempt == max_retries - 1:
+                    INGEST_EVENTS.labels(status="error", mode="direct").inc()
+                    logger.error("direct_persist_failed_after_retries", error=str(e), attempts=max_retries)
+                    raise
+                else:
+                    logger.warning("direct_persist_retry", attempt=attempt+1, error=str(e))
+                    time.sleep(1)  # Simple backoff
 
     def _build_indicator_scores(self, results: dict[str, Any]) -> list[dict] | None:
         """Extract indicator scores from analysis result structure.
