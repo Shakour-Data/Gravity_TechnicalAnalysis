@@ -37,35 +37,35 @@ def main():
     print("  - اگر SQLite موجود نباشد → از JSON فایل استفاده می‌کند")
     print()
     print("-" * 70)
-    
+
     try:
         # Initialize database with auto-detection
         db = DatabaseManager(auto_setup=True)
-        
+
         print()
         print("✅ دیتابیس با موفقیت راه‌اندازی شد!")
         print(f"   نوع: {db.db_type.value}")
-        
+
         if db.db_type.value == "postgresql":
-            print(f"   🐘 PostgreSQL")
-            print(f"   ✓ Connection pool: Active")
-            print(f"   ✓ Schema: Created")
+            print("   🐘 PostgreSQL")
+            print("   ✓ Connection pool: Active")
+            print("   ✓ Schema: Created")
         elif db.db_type.value == "sqlite":
-            print(f"   💾 SQLite")
+            print("   💾 SQLite")
             print(f"   ✓ Path: {db.sqlite_path}")
-            print(f"   ✓ Schema: Created")
+            print("   ✓ Schema: Created")
         elif db.db_type.value == "json_file":
-            print(f"   📄 JSON File Storage")
+            print("   📄 JSON File Storage")
             print(f"   ✓ Path: {db.json_path}")
-            print(f"   ✓ Structure: Ready")
-        
+            print("   ✓ Structure: Ready")
+
         print()
         print("📊 جداول ایجاد شده:")
         print("   - tool_performance_history")
         print("   - tool_performance_stats")
         print("   - ml_weights_history")
         print("   - tool_recommendations_log")
-        
+
         # Test write
         print()
         print("🧪 تست نوشتن داده...")
@@ -85,12 +85,12 @@ def main():
         
         # Close connection
         db.close()
-        
+
         print()
         print("=" * 70)
         print("✅ همه چیز آماده است! سیستم می‌تواند از دیتابیس استفاده کند.")
         print("=" * 70)
-        
+
         return 0
         
     except Exception as e:

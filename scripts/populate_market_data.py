@@ -5,6 +5,7 @@ This script loads market data from the external TSE database and populates
 the market_data_cache table in the internal TechAnalysis.db database.
 """
 
+import importlib
 import os
 import sys
 from pathlib import Path
@@ -15,8 +16,6 @@ os.chdir(ROOT / "src")  # Change to src directory
 sys.path.insert(0, str(ROOT / "src"))
 
 # Now import after directory change
-import importlib
-
 config = importlib.import_module('config')
 database = importlib.import_module('database')
 gravity_tech_db = importlib.import_module('gravity_tech.database.database_manager')

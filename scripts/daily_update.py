@@ -5,10 +5,12 @@ This script processes data day by day, calculating indicators, patterns,
 backtests, and tool performance for each day and symbol combination.
 """
 
+import importlib
 import json
 import os
 import sqlite3
 import sys
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -17,18 +19,24 @@ ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT / "src")
 sys.path.insert(0, str(ROOT / "src"))
 
-from collections import defaultdict
+# Import local modules after path setup
+gravity_tech_core_domain = importlib.import_module('gravity_tech.core.domain.entities')
+gravity_tech_indicators_cycle = importlib.import_module('gravity_tech.core.indicators.cycle')
+gravity_tech_indicators_momentum = importlib.import_module('gravity_tech.core.indicators.momentum')
+gravity_tech_indicators_support_resistance = importlib.import_module('gravity_tech.core.indicators.support_resistance')
+gravity_tech_indicators_trend = importlib.import_module('gravity_tech.core.indicators.trend')
+gravity_tech_indicators_volatility = importlib.import_module('gravity_tech.core.indicators.volatility')
+gravity_tech_indicators_volume = importlib.import_module('gravity_tech.core.indicators.volume')
 
-from gravity_tech.core.domain.entities import Candle
-from gravity_tech.core.indicators.cycle import CycleIndicators
-from gravity_tech.core.indicators.momentum import MomentumIndicators
-from gravity_tech.core.indicators.support_resistance import SupportResistanceIndicators
-from gravity_tech.core.indicators.trend import TrendIndicators
-from gravity_tech.core.indicators.volatility import (
-    VolatilityIndicators,
-    convert_volatility_to_indicator_result,
-)
-from gravity_tech.core.indicators.volume import VolumeIndicators
+# Extract classes/functions for easier use
+Candle = gravity_tech_core_domain.Candle
+CycleIndicators = gravity_tech_indicators_cycle.CycleIndicators
+MomentumIndicators = gravity_tech_indicators_momentum.MomentumIndicators
+SupportResistanceIndicators = gravity_tech_indicators_support_resistance.SupportResistanceIndicators
+TrendIndicators = gravity_tech_indicators_trend.TrendIndicators
+VolatilityIndicators = gravity_tech_indicators_volatility.VolatilityIndicators
+convert_volatility_to_indicator_result = gravity_tech_indicators_volatility.convert_volatility_to_indicator_result
+VolumeIndicators = gravity_tech_indicators_volume.VolumeIndicators
 
 
 def collect_indicator_results(candles: list[Candle]) -> list:
