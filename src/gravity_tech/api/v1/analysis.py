@@ -8,15 +8,14 @@ from datetime import datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
+from gravity_tech.config.settings import settings
 from gravity_tech.core.contracts.analysis import AnalysisRequest, TechnicalAnalysisResult
 from gravity_tech.core.domain.entities import Candle, IndicatorResult
-from gravity_tech.config.settings import settings
+from gravity_tech.database.tse_data_source import tse_data_source
 from gravity_tech.middleware.events import MessageType, event_publisher
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
-from gravity_tech.services.ingestion_payload import build_ingestion_payload
 from gravity_tech.services.data_ingestor_service import data_ingestor
-
-from src.database import tse_data_source
+from gravity_tech.services.ingestion_payload import build_ingestion_payload
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
@@ -39,7 +38,7 @@ class IndicatorAnalysisRequest(BaseModel):
     symbol: str = Field(..., description="Trading symbol")
     timeframe: str = Field(..., description="Timeframe", pattern="^(1m|5m|15m|30m|1h|4h|1d|1w)$")
     candles: list[IndicatorCandle] = Field(..., min_length=60, description="OHLCV data (min 60 candles)")
-    indicator_names: list[str] = Field(..., min_items=1, description="List of indicator names to calculate")
+    indicator_names: list[str] = Field(..., min_length=1, description="List of indicator names to calculate")
 
 
 @router.get(
@@ -109,7 +108,7 @@ async def analyze_complete(request: AnalysisRequest) -> TechnicalAnalysisResult:
     description="Calculate specific indicators only",
 )
 async def analyze_specific_indicators(
-    request: "IndicatorAnalysisRequest",
+    request: IndicatorAnalysisRequest,
 ) -> list[IndicatorResult]:
     """Calculate specific indicators."""
     if len(request.candles) < 60:
