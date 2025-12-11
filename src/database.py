@@ -3,8 +3,7 @@ import sqlite3
 from typing import Any
 
 import pandas as pd
-
-from src.config import TSE_DB_FILE
+from config import TSE_DB_FILE
 
 logger = logging.getLogger(__name__)
 
