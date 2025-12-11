@@ -30,9 +30,10 @@ Provides RESTful endpoints for:
 - Real-time pattern monitoring
 """
 
-from datetime import datetime, timezone
-from pathlib import Path
 import hashlib
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import structlog
@@ -158,30 +159,34 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
     }
     ```
     """
+    detected_patterns = []
+    start_time = 0.0
+    highs = lows = closes = volumes = timestamps = np.array([])
+    ml_status = "enabled" if request.use_ml else "disabled"
+    import time
+
+    from gravity_tech.ml.pattern_features import PatternFeatureExtractor
+    from gravity_tech.patterns.harmonic import HarmonicPatternDetector
+
+    start_time = time.time()
+
+    if len(request.candles) > MAX_CANDLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Too many candles (max {MAX_CANDLES})"
+        )
+
+    # Initialize detector
+    detector = HarmonicPatternDetector(tolerance=request.tolerance)
+
+    # Prepare data
+    highs = np.array([c.high for c in request.candles])
+    lows = np.array([c.low for c in request.candles])
+    closes = np.array([c.close for c in request.candles])
+    volumes = np.array([c.volume for c in request.candles])
+    timestamps = np.array([c.timestamp for c in request.candles])
+
     try:
-        import time
-
-        from gravity_tech.ml.pattern_features import PatternFeatureExtractor
-        from gravity_tech.patterns.harmonic import HarmonicPatternDetector
-
-        start_time = time.time()
-
-        if len(request.candles) > MAX_CANDLES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Too many candles (max {MAX_CANDLES})"
-            )
-
-        # Initialize detector
-        detector = HarmonicPatternDetector(tolerance=request.tolerance)
-
-        # Prepare data
-        highs = np.array([c.high for c in request.candles])
-        lows = np.array([c.low for c in request.candles])
-        closes = np.array([c.close for c in request.candles])
-        volumes = np.array([c.volume for c in request.candles])
-        timestamps = np.array([c.timestamp for c in request.candles])
-
         # Detect patterns
         detected_patterns = detector.detect_patterns(highs, lows, closes)
 
@@ -205,6 +210,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 classifier, version = _load_pattern_model()
                 extractor = PatternFeatureExtractor()
                 filtered_patterns = []
+                clf: Any = classifier
 
                 for pattern in detected_patterns:
                     features = extractor.extract_features(
@@ -212,11 +218,11 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                     )
                     feature_array = extractor.features_to_array(features)
 
-                    if hasattr(classifier, 'predict_single'):
-                        prediction = classifier.predict_single(feature_array)
+                    if hasattr(clf, 'predict_single'):
+                        prediction = clf.predict_single(feature_array)
                         confidence = prediction['confidence']
                     else:
-                        probas = classifier.predict_proba(feature_array.reshape(1, -1))[0]
+                        probas = clf.predict_proba(feature_array.reshape(1, -1))[0]
                         confidence = float(np.max(probas))
 
                     if confidence >= request.min_confidence:
@@ -240,19 +246,25 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 request.use_ml = False  # reflect actual usage
                 ml_status = "failed"
 
-        # Format response
+    except Exception as e:
+        logger.error("pattern_detection_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Pattern detection failed: {str(e)}"
+        ) from e
+
+    # Format response
     patterns_list = []
-    ml_status = "enabled" if request.use_ml else "disabled"
     for pattern in detected_patterns:
         # Get pattern points with timestamps
         points_dict = {}
         for label, point in pattern.points.items():
             points_dict[label] = PatternPoint(
-                    label=label,
-                    index=point.index,
-                    price=point.price,
-                    timestamp=int(timestamps[point.index])
-                )
+                label=label,
+                index=point.index,
+                price=point.price,
+                timestamp=int(timestamps[point.index])
+            )
 
         # Calculate targets and stop-loss (ATR-like dynamic)
         d_price = pattern.points['D'].price
@@ -263,46 +275,40 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
             is_bullish=(pattern.direction == 'bullish')
         )
 
-            pattern_result = PatternResult(
-                pattern_type=pattern.pattern_type.value if hasattr(pattern.pattern_type, 'value') else str(pattern.pattern_type),
-                direction=pattern.direction.value if hasattr(pattern.direction, 'value') else str(pattern.direction),
-                points=points_dict,
-                ratios=pattern.ratios,
-                completion_price=d_price,
-                confidence=getattr(pattern, 'confidence', None),
-                targets={'target1': target1, 'target2': target2},
-                stop_loss=stop_loss,
-                detected_at=datetime.now(timezone.utc).isoformat()
-            )
-            patterns_list.append(pattern_result)
-
-        analysis_time = (time.time() - start_time) * 1000  # Convert to ms
-
-        response = PatternDetectionResponse(
-            symbol=request.symbol,
-            timeframe=request.timeframe,
-            patterns_found=len(patterns_list),
-            patterns=patterns_list,
-            analysis_time_ms=round(analysis_time, 2),
-            ml_enabled=request.use_ml,
-            ml_status=ml_status
+        pattern_result = PatternResult(
+            pattern_type=pattern.pattern_type.value if hasattr(pattern.pattern_type, 'value') else str(pattern.pattern_type),
+            direction=pattern.direction.value if hasattr(pattern.direction, 'value') else str(pattern.direction),
+            points=points_dict,
+            ratios=pattern.ratios,
+            completion_price=d_price,
+            confidence=getattr(pattern, 'confidence', None),
+            targets={'target1': target1, 'target2': target2},
+            stop_loss=stop_loss,
+            detected_at=datetime.now(UTC).isoformat()
         )
+        patterns_list.append(pattern_result)
 
-        logger.info("patterns_detected",
-                   symbol=request.symbol,
-                   timeframe=request.timeframe,
-                   patterns_found=len(patterns_list),
-                   analysis_time_ms=round(analysis_time, 2))
+    analysis_time = (time.time() - start_time) * 1000  # Convert to ms
 
-        return response
+    response = PatternDetectionResponse(
+        symbol=request.symbol,
+        timeframe=request.timeframe,
+        patterns_found=len(patterns_list),
+        patterns=patterns_list,
+        analysis_time_ms=round(analysis_time, 2),
+        ml_enabled=request.use_ml,
+        ml_status=ml_status
+    )
 
-    except Exception as e:
-        logger.error("pattern_detection_error", error=str(e), symbol=request.symbol)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Pattern detection failed: {str(e)}"
-        ) from e
+    logger.info(
+        "patterns_detected",
+        symbol=request.symbol,
+        timeframe=request.timeframe,
+        patterns_found=len(patterns_list),
+        analysis_time_ms=round(analysis_time, 2)
+    )
 
+    return response
 
 @router.get(
     "/types",
