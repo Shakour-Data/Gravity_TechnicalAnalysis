@@ -20,9 +20,11 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from database.database_manager import DatabaseManager
+from gravity_tech.database.database_manager import DatabaseManager
+
 
 def main():
     print("=" * 70)
