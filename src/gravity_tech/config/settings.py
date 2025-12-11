@@ -76,6 +76,7 @@ class Settings(BaseSettings):
 
     # Data Ingestion (Hybrid Architecture)
     enable_data_ingestion: bool = True  # Enable automatic saving of analysis results to database
+    ingestion_auth_token: str = "default_ingestion_token"  # Token for ingestion authentication
 
     # Database Configuration
     database_url: str = "postgresql://user:password@localhost:5432/gravity_tech"
