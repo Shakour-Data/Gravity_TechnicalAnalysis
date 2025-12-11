@@ -49,6 +49,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from gravity_tech.api.v1 import router as api_v1_router
 from gravity_tech.api.v1 import scenarios as scenarios_router
+from gravity_tech.api.v1.auth import router as auth_router
+from gravity_tech.api.v1.db_explorer import router as db_router
+from gravity_tech.api.v1.patterns import router as patterns_router
 from gravity_tech.config.settings import settings
 from gravity_tech.middleware.events import event_publisher
 from gravity_tech.middleware.logging import setup_logging
@@ -58,8 +61,6 @@ from gravity_tech.middleware.service_discovery import (
 )
 from gravity_tech.services.cache_service import cache_manager
 from gravity_tech.services.data_ingestor_service import start_data_ingestor, stop_data_ingestor
-from gravity_tech.api.v1.patterns import router as patterns_router
-from gravity_tech.api.v1.db_explorer import router as db_router
 from prometheus_client import make_asgi_app
 
 # Setup structured logging
@@ -183,6 +184,9 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 # Include Pattern Recognition router (not bundled in api_v1 router)
 app.include_router(patterns_router, prefix="/api/v1")
+
+# Auth router at root level
+app.include_router(auth_router, prefix="/api")
 
 # Optional routers
 if settings.enable_scenarios:
