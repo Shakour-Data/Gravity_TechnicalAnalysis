@@ -124,6 +124,7 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
             recommendation, action, price_at_analysis, raw_data,
             created_at, updated_at
         ) VALUES ({phs})
+        {"RETURNING id" if manager.db_type.name == "POSTGRESQL" else ""}
     """
 
     ts_iso = summary["last_timestamp"].isoformat() if isinstance(summary["last_timestamp"], datetime) else str(summary["last_timestamp"])
@@ -158,13 +159,27 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
 
     conn = manager.get_connection()
     cursor = conn.cursor()
-    cursor.execute(query, params)
-    score_id = cursor.lastrowid
-    conn.commit()
-    cursor.close()
-    if manager.db_type.name == "POSTGRESQL":  # pragma: no cover
-        manager.release_connection(conn)
-    return int(score_id)
+    try:
+        cursor.execute(query, params)
+        if manager.db_type.name == "POSTGRESQL":  # pragma: no cover
+            fetched = cursor.fetchone()
+            if not fetched:
+                raise RuntimeError("Failed to fetch inserted id for historical_scores")
+            score_id = fetched[0]
+        else:
+            score_id = cursor.lastrowid
+        conn.commit()
+        return int(score_id)
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        if manager.db_type.name == "POSTGRESQL":  # pragma: no cover
+            try:
+                manager.release_connection(conn)
+            except Exception:
+                pass
 
 
 def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str, timeframe: str, summary: dict):
@@ -321,8 +336,9 @@ def ingest_symbol(manager: DatabaseManager, symbol: str, limit: int, timeframe: 
 
 def get_last_score_ts(manager: DatabaseManager, symbol: str, timeframe: str) -> datetime | None:
     """Return last ingested timestamp for a symbol/timeframe."""
+    placeholder = manager.get_sql_placeholder()
     rows = manager.execute_query(
-        "SELECT MAX(timestamp) AS ts FROM historical_scores WHERE symbol = ? AND timeframe = ?",
+        f"SELECT MAX(timestamp) AS ts FROM historical_scores WHERE symbol = {placeholder} AND timeframe = {placeholder}",
         (symbol, timeframe),
         fetch=True,
     )
@@ -468,6 +484,12 @@ def parse_args() -> argparse.Namespace:
         help="Skip symbols already ingested (based on tool_performance_history).",
     )
     parser.add_argument(
+        "--no-resume",
+        dest="resume",
+        action="store_false",
+        help="Disable resume; reprocess all symbols.",
+    )
+    parser.add_argument(
         "--full-history",
         action="store_true",
         help="Also write per-candle historical_scores for all candles (resume-aware).",
@@ -478,7 +500,8 @@ def parse_args() -> argparse.Namespace:
 def main():
     args = parse_args()
 
-    manager = DatabaseManager(auto_setup=True)
+    # Auto-setup is disabled because schema is provisioned separately for Postgres
+    manager = DatabaseManager(auto_setup=False)
     if args.reset:
         print("⏳ Resetting project database tables ...")
         reset_tables(manager)

@@ -136,11 +136,13 @@ def _synthetic_ohlcv(n_bars: int) -> tuple[list[float], list[float], list[float]
     for _ in range(n_bars - 1):
         prices.append(prices[-1] * (1 + drift + rng.normal(0, 0.002)))
     prices = np.array(prices, dtype=np.float32)
-    highs = (prices + rng.normal(0.5, 0.2, size=n_bars)).tolist()
-    lows = (prices - rng.normal(0.5, 0.2, size=n_bars)).tolist()
+    # Ensure highs/lows always bracket closes to satisfy validation
+    spread = np.abs(rng.normal(0.6, 0.15, size=n_bars)) + 0.05
+    highs = (prices + spread).tolist()
+    lows = (prices - spread).tolist()
     closes = prices.tolist()
     volumes = (rng.normal(1_000_000, 50_000, size=n_bars)).tolist()
-    dates = pd.date_range(end=pd.Timestamp.utcnow(), periods=n_bars, freq="H").to_pydatetime().tolist()
+    dates = pd.date_range(end=pd.Timestamp.utcnow(), periods=n_bars, freq="h").to_pydatetime().tolist()
     return highs, lows, closes, volumes, dates
 
 

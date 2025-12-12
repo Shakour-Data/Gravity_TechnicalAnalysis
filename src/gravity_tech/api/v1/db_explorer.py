@@ -9,6 +9,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
+from gravity_tech.config.settings import settings
 from gravity_tech.database.database_manager import DatabaseManager, DatabaseType
 from pydantic import BaseModel
 
@@ -39,7 +40,15 @@ class DatabaseInfoResponse(BaseModel):
     stats: dict[str, int]
 
 
+def _ensure_db_explorer_enabled() -> None:
+    if not settings.expose_db_explorer:
+        raise HTTPException(status_code=403, detail="DB Explorer is disabled")
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="DB Explorer disabled in production")
+
+
 def _list_tables(dbm: DatabaseManager) -> list[str]:
+    _ensure_db_explorer_enabled()
     if dbm.db_type == DatabaseType.JSON_FILE:
         return sorted(dbm.json_data.keys())
 
@@ -63,10 +72,18 @@ def _list_tables(dbm: DatabaseManager) -> list[str]:
     except Exception as exc:
         logger.error("db_list_tables_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to list tables") from exc
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        if dbm.db_type == DatabaseType.POSTGRESQL:
+            dbm.release_connection(conn)
     return tables
 
 
 def _get_table_columns(dbm: DatabaseManager, table: str) -> list[str]:
+    _ensure_db_explorer_enabled()
     if dbm.db_type == DatabaseType.JSON_FILE:
         records = dbm.json_data.get(table, [])
         if records and isinstance(records, list) and isinstance(records[0], dict):
@@ -107,6 +124,7 @@ def _get_table_columns(dbm: DatabaseManager, table: str) -> list[str]:
 @router.get("/tables", response_model=TableListResponse)
 async def list_tables() -> TableListResponse:
     """Return tables available for UI browsing (all tables)."""
+    _ensure_db_explorer_enabled()
     dbm = DatabaseManager(auto_setup=True)
     return TableListResponse(tables=_list_tables(dbm))
 
@@ -114,12 +132,14 @@ async def list_tables() -> TableListResponse:
 @router.get("/info", response_model=DatabaseInfoResponse)
 async def db_info() -> DatabaseInfoResponse:
     """Return database info + per-table row counts."""
+    _ensure_db_explorer_enabled()
     dbm = DatabaseManager(auto_setup=True)
     return DatabaseInfoResponse(info=dbm.get_database_info(), stats=dbm.get_statistics())
 
 
 @router.get("/schema", response_model=TableSchemaResponse)
 async def table_schema(table: str = Query(..., description="Table name")) -> TableSchemaResponse:
+    _ensure_db_explorer_enabled()
     dbm = DatabaseManager(auto_setup=True)
     available = _list_tables(dbm)
     if table not in available:
@@ -128,10 +148,19 @@ async def table_schema(table: str = Query(..., description="Table name")) -> Tab
 
 
 @router.get("/backup")
-async def download_backup(tables: list[str] | None = Query(None, description="Optional list of tables")):
+async def download_backup(
+    tables: list[str] | None = Query(None, description="Optional list of tables"),
+    max_rows_per_table: int = Query(
+        settings.db_backup_row_limit,
+        ge=100,
+        le=50000,
+        description="Max rows per table to include in backup",
+    ),
+):
     """Download a backup (JSON payload)."""
+    _ensure_db_explorer_enabled()
     dbm = DatabaseManager(auto_setup=True)
-    backup_data = dbm.create_backup(tables)
+    backup_data = dbm.create_backup(tables, row_limit=max_rows_per_table)
     return JSONResponse(
         content=backup_data,
         headers={"Content-Disposition": "attachment; filename=gravity_db_backup.json"},
@@ -146,10 +175,13 @@ async def query_table(
     symbol: str | None = Query(None, description="Optional symbol filter"),
 ) -> QueryResponse:
     """Query a table with optional symbol filter and pagination."""
+    _ensure_db_explorer_enabled()
+    table_normalized = table.strip().lower()
+    if table_normalized in FORBIDDEN_TABLES:
+        raise HTTPException(status_code=403, detail="Table access forbidden")
+
     dbm = DatabaseManager(auto_setup=True)
     available = _list_tables(dbm)
-    if table in FORBIDDEN_TABLES:
-        raise HTTPException(status_code=403, detail="Table access forbidden")
     if table not in available:
         raise HTTPException(status_code=404, detail="Table not found")
 
@@ -196,6 +228,16 @@ async def query_table(
     except Exception as exc:
         logger.error("db_query_failed", table=table, error=str(exc))
         raise HTTPException(status_code=500, detail="Query failed") from exc
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        if dbm.db_type == DatabaseType.POSTGRESQL:
+            try:
+                dbm.release_connection(conn)
+            except Exception:
+                pass
 
     return QueryResponse(table=table, rows=rows, total=total)
 
@@ -205,6 +247,7 @@ async def db_ui():
     """
     Minimal DB explorer UI (vanilla JS) for browsing tables, schema, stats, backup.
     """
+    _ensure_db_explorer_enabled()
     return HTMLResponse(
         """
 <!DOCTYPE html>
