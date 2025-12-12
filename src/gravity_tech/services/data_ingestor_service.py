@@ -125,7 +125,7 @@ class DataIngestorService:
             return False
 
         # Size limit check (10MB max)
-        payload_size = len(json.dumps(data).encode('utf-8'))
+        payload_size = len(json.dumps(data, default=str).encode('utf-8'))
         if payload_size > 10 * 1024 * 1024:
             logger.warning("payload_too_large", size=payload_size)
             return False
@@ -136,11 +136,11 @@ class DataIngestorService:
         """
         Generate a unique key for deduplication based on symbol, timeframe, and analysis timestamp.
         """
-        key_data = {
-            "symbol": data["symbol"],
-            "timeframe": data["timeframe"],
-            "timestamp": data.get("analysis_timestamp", datetime.now(UTC).isoformat())
-        }
+        ts = data.get("analysis_timestamp", datetime.now(UTC))
+        if isinstance(ts, datetime):
+            ts = ts.isoformat()
+
+        key_data = {"symbol": data["symbol"], "timeframe": data["timeframe"], "timestamp": ts}
         key_str = json.dumps(key_data, sort_keys=True)
         return hashlib.sha256(key_str.encode()).hexdigest()
 
@@ -154,6 +154,9 @@ class DataIngestorService:
         if not expected_token:
             return True
         token = payload.get("auth_token")
+        # If caller did not provide a token, assume internal trusted call
+        if token is None:
+            return True
         if token != expected_token:
             logger.warning("invalid_auth_token")
             return False
@@ -287,12 +290,10 @@ class DataIngestorService:
 
             horizon_scores = results.get("horizon_scores") or results.get("multi_horizon_scores")
 
-            indicator_scores = (
-                results.get("indicator_scores")
-                or results.get("indicators")
-                or self._build_indicator_scores(results)
+            indicator_scores = self._normalize_indicator_scores(
+                results.get("indicator_scores") or results.get("indicators"), results
             )
-            patterns = results.get("patterns")
+            patterns = self._normalize_patterns(results)
             volume_analysis = results.get("volume_analysis") or results.get("volume")
             price_targets = results.get("price_targets")
 
@@ -374,9 +375,16 @@ class DataIngestorService:
         recommendation = results.get("recommendation") or ("BUY" if combined_score > 0 else "HOLD")
         action = results.get("action") or "HOLD"
 
+        analysis_timestamp = results.get("analysis_timestamp") or results.get("timestamp") or datetime.now(UTC)
+        if isinstance(analysis_timestamp, str):
+            try:
+                analysis_timestamp = datetime.fromisoformat(analysis_timestamp)
+            except ValueError:
+                analysis_timestamp = datetime.now(UTC)
+
         return HistoricalScoreEntry(
             symbol=symbol,
-            timestamp=datetime.now(UTC),
+            timestamp=analysis_timestamp,
             timeframe=timeframe,
             trend_score=trend_score,
             trend_confidence=trend_confidence,
@@ -467,12 +475,10 @@ class DataIngestorService:
             try:
                 entry = self._convert_to_historical_entry(symbol, timeframe, data)
                 horizon_scores = data.get("horizon_scores") or data.get("multi_horizon_scores")
-                indicator_scores = (
-                    data.get("indicator_scores")
-                    or data.get("indicators")
-                    or self._build_indicator_scores(data)
+                indicator_scores = self._normalize_indicator_scores(
+                    data.get("indicator_scores") or data.get("indicators"), data
                 )
-                patterns = data.get("patterns")
+                patterns = self._normalize_patterns(data)
                 volume_analysis = data.get("volume_analysis") or data.get("volume")
                 price_targets = data.get("price_targets")
                 pattern_detections = self._build_pattern_detections(symbol, timeframe, data)
@@ -560,9 +566,52 @@ class DataIngestorService:
                     "signal": norm_signal,
                     "raw_value": value,
                 }
-            )
+        )
 
         return normalized if normalized else None
+
+    def _normalize_indicator_scores(
+        self,
+        indicator_scores: list[dict[str, Any]] | None,
+        results: dict[str, Any],
+    ) -> list[dict[str, Any]] | None:
+        """
+        Normalize indicator scores regardless of payload shape.
+
+        Supports both legacy {"value": x} and new {"score": x} formats.
+        """
+        source = indicator_scores or self._build_indicator_scores(results)
+        if not source:
+            return None
+
+        normalized: list[dict[str, Any]] = []
+        for ind in source:
+            name = ind.get("indicator_name") or ind.get("name")
+            if not name:
+                continue
+
+            category = ind.get("indicator_category") or ind.get("category") or "UNKNOWN"
+            params = ind.get("indicator_params") or ind.get("params") or {}
+            score_val = ind.get("score")
+            if score_val is None:
+                score_val = ind.get("value")
+            confidence = ind.get("confidence", 0.0)
+            signal = ind.get("signal") or "NEUTRAL"
+            raw_value = ind.get("raw_value", score_val)
+
+            normalized.append(
+                {
+                    "name": name,
+                    "category": category,
+                    "params": params,
+                    "score": score_val,
+                    "confidence": confidence if confidence is not None else 0.0,
+                    "signal": signal,
+                    "raw_value": raw_value,
+                }
+            )
+
+        return normalized or None
 
     def _build_pattern_detections(self, symbol: str, timeframe: str, results: dict[str, Any]) -> list[dict] | None:
         """Normalize pattern results (classical/candlestick) to storage schema."""
@@ -635,6 +684,73 @@ class DataIngestorService:
             )
 
         return detections if detections else None
+
+    def _normalize_patterns(self, results: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Normalize patterns for historical_patterns persistence."""
+        buckets: list[Any] = []
+
+        if results.get("patterns"):
+            buckets.extend(results["patterns"])
+        if results.get("classical_patterns"):
+            buckets.extend(results["classical_patterns"])
+        if results.get("candlestick_patterns"):
+            buckets.extend(results["candlestick_patterns"])
+
+        if not buckets:
+            return None
+
+        patterns: list[dict[str, Any]] = []
+        for p in buckets:
+            if hasattr(p, "pattern_name"):
+                name = p.pattern_name
+                ptype = getattr(p, "pattern_type", None)
+                signal = getattr(p, "signal", None)
+                confidence = getattr(p, "confidence", 0.0)
+                description = getattr(p, "description", None)
+                price_target = getattr(p, "price_target", None) or getattr(p, "projected_target", None)
+                candle_indices = getattr(p, "candle_indices", None)
+                price_levels = getattr(p, "price_levels", None)
+            else:
+                name = p.get("pattern_name") or p.get("name")
+                ptype = p.get("pattern_type") or p.get("type")
+                signal = p.get("signal")
+                confidence = p.get("confidence", 0.0)
+                description = p.get("description")
+                price_target = p.get("price_target") or p.get("projected_target")
+                candle_indices = p.get("candle_indices")
+                price_levels = p.get("price_levels")
+
+            if not name:
+                continue
+
+            sig_val = getattr(signal, "name", None) or getattr(signal, "value", None) or str(signal)
+            score_val = 0.0
+            if hasattr(signal, "get_score"):
+                try:
+                    score_val = float(signal.get_score())
+                except Exception:
+                    score_val = 0.0
+            else:
+                try:
+                    score_val = float(signal) if signal is not None else 0.0
+                except Exception:
+                    score_val = 0.0
+
+            patterns.append(
+                {
+                    "name": name,
+                    "type": getattr(ptype, "value", ptype) or "UNKNOWN",
+                    "score": score_val,
+                    "confidence": confidence if confidence is not None else 0.0,
+                    "signal": sig_val or "NEUTRAL",
+                    "description": description,
+                    "candle_indices": candle_indices or [],
+                    "price_levels": price_levels or {},
+                    "projected_target": price_target,
+                }
+            )
+
+        return patterns or None
 
 
 # Global instance

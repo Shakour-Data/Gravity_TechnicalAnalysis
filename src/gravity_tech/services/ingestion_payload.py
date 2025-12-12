@@ -28,6 +28,8 @@ def _aggregate_category(indicators: list[IndicatorResult]) -> tuple[float, float
         total_conf += ind.confidence
 
     normalized_score = (weighted / total_conf / 2.0) if total_conf else 0.0
+    # Clamp to avoid runaway values (e.g., mis-scaled indicators)
+    normalized_score = max(-1.0, min(1.0, normalized_score))
     avg_conf = (total_conf / len(indicators)) if indicators else 0.0
     signal = SignalStrength.from_value(normalized_score).name
     return normalized_score, avg_conf, signal
