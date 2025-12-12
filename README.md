@@ -27,6 +27,17 @@ uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
 - راهنمای کامل: `docs/guides/QUICK_START.md`
 - فایل مدل برای endpointهای ML/Pattern باید در `ml_models/pattern_classifier_*.pkl` باشد، در غیر این صورت پاسخ «model missing» می‌گیرید.
 
+
+## Full pipeline (TSE DB -> TechAnalysis.db)
+```bash
+python scripts/run_full_pipeline.py \
+  --source-db "E:\\Shakour\\MyProjects\\GravityTseHisPrice\\data\\tse_data.db" \
+  --target-db data/TechAnalysis.db \
+  --limit 500
+```
+- Reads OHLCV data from the TSE SQLite source, runs the multi-horizon analysis pipeline, and writes summarized results into `analysis_results` in `data/TechAnalysis.db`.
+- Use `--symbols IRO1ABCD0001,XYZ` or `--max-symbols 50` to limit the run.
+
 ## اندپوینت‌های اصلی (خلاصه)
 - `/api/v1/analyze` تحلیل کامل اندیکاتورها + الگوهای شمعی + الیوت + فاز بازار
 - `/api/v1/patterns/detect` تشخیص الگوهای هارمونیک + امتیاز ML
@@ -34,7 +45,7 @@ uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
 - `/api/v1/tools/*` توصیه ابزار و تحلیل سفارشی
 - `/api/v1/backtest` بک‌تست تشخیص الگو
 - `/api/v1/scenarios/*` تحلیل سناریو (در صورت `ENABLE_SCENARIOS=true`)
-- `/db/*` اکسپلورر دیتابیس (در صورت `EXPOSE_DB_EXPLORER=true`)
+- `/api/v1/db/*` اکسپلورر دیتابیس (در صورت `EXPOSE_DB_EXPLORER=true`)
 - `/api/v1/patterns/detect` اکنون هدف/حدضرر داینامیک و `ml_status` بازمی‌گرداند.
 
 جزئیات کامل در `docs/guides/API_REFERENCE.md`.
