@@ -46,7 +46,7 @@ def test_analyze_endpoint_persists_when_broker_disabled(monkeypatch):
     monkeypatch.setattr(data_ingestor, "persist_direct", fake_persist_direct)
     monkeypatch.setattr(event_publisher, "publish", fake_publish)
 
-    # Build 50 candles to satisfy request validation
+    # Build 60 candles to satisfy request validation (API enforces >=60)
     now = datetime.now(timezone.utc)
     candles = [
         {
@@ -59,7 +59,7 @@ def test_analyze_endpoint_persists_when_broker_disabled(monkeypatch):
             "symbol": "BTCUSDT",
             "timeframe": "1h",
         }
-        for i in range(50)
+        for i in range(60)
     ]
 
     client = TestClient(api_app)
