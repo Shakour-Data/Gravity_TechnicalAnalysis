@@ -37,7 +37,8 @@ def suggest_params(
     else:
         conn = manager.get_connection()
         cursor = conn.cursor()
-        clause_interval = "AND interval = ?" if interval else ""
+        placeholder = manager.get_sql_placeholder()
+        clause_interval = f"AND interval = {placeholder}" if interval else ""
         params: list[Any] = [symbol]
         if interval:
             params.append(interval)
@@ -45,21 +46,29 @@ def suggest_params(
             f"""
             SELECT params, metrics, interval
             FROM backtest_runs
-            WHERE symbol = ?
+            WHERE symbol = {placeholder}
             {clause_interval}
             ORDER BY created_at DESC
             """,
             tuple(params),
         )
         rows = cursor.fetchall()
-        runs = [
-            {
-                "params": row["params"],
-                "metrics": row["metrics"],
-                "interval": row["interval"],
-            }
-            for row in rows
-        ]
+        # psycopg2 returns tuples; sqlite returns Row mapping. Normalize:
+        runs = []
+        for row in rows:
+            if isinstance(row, dict) or hasattr(row, "keys"):
+                runs.append(
+                    {
+                        "params": row.get("params"),
+                        "metrics": row.get("metrics"),
+                        "interval": row.get("interval"),
+                        "source": row.get("source") if isinstance(row, dict) else None,
+                    }
+                )
+            else:
+                # tuple ordering params, metrics, interval
+                params_val, metrics_val, interval_val = row[0], row[1], row[2] if len(row) > 2 else None
+                runs.append({"params": params_val, "metrics": metrics_val, "interval": interval_val})
 
     best_min_conf = default_min_confidence
     best_limit = None

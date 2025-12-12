@@ -12,7 +12,6 @@ Multi-Horizon Cycle Analysis System
 from dataclasses import dataclass
 from datetime import datetime
 
-
 import numpy as np
 import pandas as pd
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor

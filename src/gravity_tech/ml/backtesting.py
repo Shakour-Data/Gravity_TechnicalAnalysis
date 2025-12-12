@@ -14,7 +14,6 @@ License: MIT
 """
 
 import os
-import sqlite3
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -22,49 +21,31 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from config import TSE_DB_FILE
 from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.ml.data_connector import DataConnector
 from gravity_tech.ml.pattern_features import PatternFeatureExtractor
 from gravity_tech.patterns.harmonic import HarmonicPattern, HarmonicPatternDetector
+from database import TSEDatabaseConnector
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-TSE_DB_PATH = r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
-
 
 def _load_real_ohlcv(symbol: str, limit: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DatetimeIndex]:
-    """Load OHLCV from the real TSE SQLite database; no synthetic data allowed."""
+    """Load OHLCV from the real TSE database (Postgres or SQLite via connector)."""
 
-    if not os.path.exists(TSE_DB_PATH):
-        raise FileNotFoundError(
-            f"Real TSE database not found at {TSE_DB_PATH}. Provide the dataset; mocks are disallowed."
-        )
-
-    conn = sqlite3.connect(TSE_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT timestamp, open, high, low, close, volume
-        FROM candles
-        WHERE symbol = ?
-        ORDER BY timestamp ASC
-        LIMIT ?
-        """,
-        (symbol, limit),
-    )
-    rows = cursor.fetchall()
-    conn.close()
-
+    connector = TSEDatabaseConnector(TSE_DB_FILE)
+    rows = connector.fetch_price_data(symbol)  # returns list[dict] sorted asc by date
     if not rows:
-        raise ValueError(f"No rows found for symbol {symbol} in {TSE_DB_PATH}")
+        raise ValueError(f"No rows found for symbol {symbol} in TSE database")
+    rows = rows[:limit] if limit and len(rows) > limit else rows
 
-    highs = np.array([float(row[2]) for row in rows], dtype=np.float32)
-    lows = np.array([float(row[3]) for row in rows], dtype=np.float32)
-    closes = np.array([float(row[4]) for row in rows], dtype=np.float32)
-    volume = np.array([float(row[5]) for row in rows], dtype=np.float32)
-    dates = pd.to_datetime([row[0] for row in rows])
+    highs = np.array([float(r["high"]) for r in rows], dtype=np.float32)
+    lows = np.array([float(r["low"]) for r in rows], dtype=np.float32)
+    closes = np.array([float(r["close"]) for r in rows], dtype=np.float32)
+    volume = np.array([float(r["volume"]) for r in rows], dtype=np.float32)
+    dates = pd.to_datetime([r["timestamp"] for r in rows])
 
     return highs, lows, closes, volume, dates
 

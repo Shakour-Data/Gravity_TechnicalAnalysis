@@ -85,7 +85,9 @@ class MultiHorizonCycleFeatureExtractor:
         cycle_results = CycleIndicators.calculate_all(candles[-self.lookback_period:])
 
         # استخراج ویژگی از هر اندیکاتور
-        for indicator_key, result in cycle_results.items():
+        for result in cycle_results:
+            indicator_key = result.indicator_name.lower().replace(' ', '_')
+
             # Signal (normalized to [-1, 1])
             signal_value = self._signal_to_numeric(result.signal)
             features[f"{indicator_key}_signal"] = signal_value
@@ -96,14 +98,14 @@ class MultiHorizonCycleFeatureExtractor:
             # Weighted signal
             features[f"{indicator_key}_weighted"] = signal_value * result.confidence
 
-            # Normalized value [-1, 1]
-            features[f"{indicator_key}_normalized"] = result.normalized
+            # Normalized value [-1, 1] - use signal score as approximation
+            features[f"{indicator_key}_normalized"] = signal_value
 
-            # Phase [0, 360]
-            features[f"{indicator_key}_phase"] = result.phase
+            # Phase [0, 360] - placeholder
+            features[f"{indicator_key}_phase"] = 0.0
 
-            # Cycle period
-            features[f"{indicator_key}_cycle_period"] = float(result.cycle_period)
+            # Cycle period - placeholder
+            features[f"{indicator_key}_cycle_period"] = 20.0  # Default period
 
         # ویژگی‌های ترکیبی
         features.update(self._extract_combined_features(cycle_results))
@@ -128,24 +130,24 @@ class MultiHorizonCycleFeatureExtractor:
         signal_str = str(signal).split('.')[-1] if hasattr(signal, 'name') else str(signal)
         return signal_map.get(signal_str, 0.0)
 
-    def _extract_combined_features(self, cycle_results: dict) -> dict[str, float]:
+    def _extract_combined_features(self, cycle_results: list) -> dict[str, float]:
         """ویژگی‌های ترکیبی از چندین اندیکاتور"""
         features = {}
 
         # میانگین سیگنال همه اندیکاتورها
-        signals = [self._signal_to_numeric(r.signal) for r in cycle_results.values()]
+        signals = [self._signal_to_numeric(r.signal) for r in cycle_results]
         features['cycle_avg_signal'] = np.mean(signals)
         features['cycle_signal_std'] = np.std(signals)
 
         # میانگین confidence
-        confidences = [r.confidence for r in cycle_results.values()]
+        confidences = [r.confidence for r in cycle_results]
         features['cycle_avg_confidence'] = np.mean(confidences)
         features['cycle_confidence_std'] = np.std(confidences)
 
         # Weighted average signal
         weighted_signals = [
             self._signal_to_numeric(r.signal) * r.confidence
-            for r in cycle_results.values()
+            for r in cycle_results
         ]
         total_confidence = sum(confidences)
         if total_confidence > 0:
@@ -161,11 +163,12 @@ class MultiHorizonCycleFeatureExtractor:
 
         return features
 
-    def _extract_phase_features(self, cycle_results: dict) -> dict[str, float]:
+    def _extract_phase_features(self, cycle_results: list) -> dict[str, float]:
         """ویژگی‌های مربوط به فاز سیکل"""
         features = {}
 
-        phases = [r.phase for r in cycle_results.values()]
+        # Since IndicatorResult doesn't have phase, use placeholder values
+        phases = [0.0] * len(cycle_results)  # Placeholder phases
 
         # میانگین فاز
         # از sin/cos استفاده می‌کنیم چون فاز دورانی است (0=360)
@@ -178,34 +181,26 @@ class MultiHorizonCycleFeatureExtractor:
 
         features['cycle_avg_phase'] = avg_phase
 
-        # Phase quadrant distribution
-        # 0-90 (Accumulation), 90-180 (Markup), 180-270 (Distribution), 270-360 (Markdown)
-        q1 = sum(1 for p in phases if 0 <= p < 90) / len(phases)
-        q2 = sum(1 for p in phases if 90 <= p < 180) / len(phases)
-        q3 = sum(1 for p in phases if 180 <= p < 270) / len(phases)
-        q4 = sum(1 for p in phases if 270 <= p < 360) / len(phases)
+        # Phase quadrant distribution - all zero since no phase data
+        features['cycle_phase_q1_accumulation'] = 0.0
+        features['cycle_phase_q2_markup'] = 0.0
+        features['cycle_phase_q3_distribution'] = 0.0
+        features['cycle_phase_q4_markdown'] = 0.0
 
-        features['cycle_phase_q1_accumulation'] = q1
-        features['cycle_phase_q2_markup'] = q2
-        features['cycle_phase_q3_distribution'] = q3
-        features['cycle_phase_q4_markdown'] = q4
+        # Dominant quadrant - placeholder
+        features['cycle_dominant_quadrant'] = 1.0
 
-        # Dominant quadrant
-        quadrants = [q1, q2, q3, q4]
-        dominant_quadrant = quadrants.index(max(quadrants)) + 1
-        features['cycle_dominant_quadrant'] = float(dominant_quadrant)
-
-        # Phase dispersion (اختلاف فازها - نشان‌دهنده توافق)
-        phase_dispersion = np.std(np.sin(phase_rads))**2 + np.std(np.cos(phase_rads))**2
-        features['cycle_phase_dispersion'] = phase_dispersion
+        # Phase dispersion - placeholder
+        features['cycle_phase_dispersion'] = 0.0
 
         return features
 
-    def _extract_period_features(self, cycle_results: dict) -> dict[str, float]:
+    def _extract_period_features(self, cycle_results: list) -> dict[str, float]:
         """ویژگی‌های مربوط به دوره سیکل"""
         features = {}
 
-        periods = [r.cycle_period for r in cycle_results.values()]
+        # Since IndicatorResult doesn't have cycle_period, use placeholder values
+        periods = [20.0] * len(cycle_results)  # Default period
 
         # میانگین دوره سیکل
         features['cycle_avg_period'] = np.mean(periods)
@@ -219,16 +214,10 @@ class MultiHorizonCycleFeatureExtractor:
         else:
             features['cycle_period_cv'] = 0.0
 
-        # دسته‌بندی دوره
-        # Fast: < 15, Normal: 15-30, Slow: > 30
-        fast_count = sum(1 for p in periods if p < 15)
-        normal_count = sum(1 for p in periods if 15 <= p <= 30)
-        slow_count = sum(1 for p in periods if p > 30)
-        total = len(periods)
-
-        features['cycle_fast_ratio'] = fast_count / total
-        features['cycle_normal_ratio'] = normal_count / total
-        features['cycle_slow_ratio'] = slow_count / total
+        # دسته‌بندی دوره - all normal since placeholder
+        features['cycle_fast_ratio'] = 0.0
+        features['cycle_normal_ratio'] = 1.0
+        features['cycle_slow_ratio'] = 0.0
 
         return features
 

@@ -21,17 +21,15 @@ License: MIT
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List
-
 
 import numpy as np
 from gravity_tech.core.domain.entities import Candle
-from gravity_tech.models.schemas import SignalStrength
 from gravity_tech.ml.multi_horizon_analysis import TrendScore
 from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
 from gravity_tech.ml.multi_horizon_momentum_analysis import MomentumScore
 from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
 from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
+from gravity_tech.models.schemas import SignalStrength
 
 MIN_CANDLES = 120  # برای پوشش پنجره‌های 100/120
 
@@ -135,7 +133,7 @@ class FiveDimensionalDecisionMatrix:
     def __init__(
         self,
         candles: list[Candle],
-        dimension_weights: dict[str, float | None] = None,
+        dimension_weights: dict[str, float] | None = None,
         use_volume_matrix: bool = True
     ):
         """
@@ -329,13 +327,24 @@ class FiveDimensionalDecisionMatrix:
                 name='Support/Resistance',
                 score=sr.score,
                 confidence=sr.accuracy,
-                signal=sr.signal,
+                signal=self._map_sr_signal_to_signal_strength(sr.signal),
                 weight=self.weights['support_resistance'],
                 volume_adjusted_score=sr.score,
                 volume_adjustment=0.0,
                 description=f"نزدیک {sr.nearest_level_type if sr.nearest_level_type else 'سطح'}"
             )
         }
+
+    def _map_sr_signal_to_signal_strength(self, sr_signal: str) -> SignalStrength:
+        """Map S/R signal string to SignalStrength enum"""
+        mapping = {
+            "NEAR_SUPPORT": SignalStrength.BULLISH,
+            "NEAR_RESISTANCE": SignalStrength.BEARISH,
+            "AT_SUPPORT": SignalStrength.VERY_BULLISH,
+            "AT_RESISTANCE": SignalStrength.VERY_BEARISH,
+            "NEUTRAL": SignalStrength.NEUTRAL,
+        }
+        return mapping.get(sr_signal, SignalStrength.NEUTRAL)
 
     def _apply_volume_adjustments(
         self,
@@ -346,15 +355,15 @@ class FiveDimensionalDecisionMatrix:
         cycle: CycleScore,
         sr: SupportResistanceScore
     ) -> dict[str, DimensionState]:
-        """                                                                                               
-        اعمال تعدیلات حجم از Volume-Dimension Matrix                                                          
-                                                                                                              
-        این متد از ml/volume_dimension_matrix.py استفاده می‌کند                                              
-        """                                                                                               
-        try:                                                                                               
-            from gravity_tech.ml.volume_dimension_matrix import VolumeDimensionMatrix                        
-                                                                                                              
-            vol_matrix = VolumeDimensionMatrix(self.candles)                                                 
+        """
+        اعمال تعدیلات حجم از Volume-Dimension Matrix
+
+        این متد از ml/volume_dimension_matrix.py استفاده می‌کند
+        """
+        try:
+            from gravity_tech.ml.volume_dimension_matrix import VolumeDimensionMatrix
+
+            vol_matrix = VolumeDimensionMatrix(self.candles)
 
             # محاسبه interactions برای هر dimension
             interactions = vol_matrix.calculate_all_interactions(
@@ -377,18 +386,18 @@ class FiveDimensionalDecisionMatrix:
                     confidence_multiplier = self._get_confidence_multiplier(
                         interaction.interaction_type
                     )
-                    dim.confidence = np.clip(                                                               
-                        max(0.1, dim.confidence) * confidence_multiplier,                                    
-                        0.0, 1.0                                                                            
-                    )                                                                                       
+                    dim.confidence = np.clip(
+                        max(0.1, dim.confidence) * confidence_multiplier,
+                        0.0, 1.0
+                    )
 
                     # به‌روزرسانی description
                     dim.description += f" (حجم: {interaction.interaction_type.value})"
 
-        except Exception as exc:                                                                            
-            # اگر ماتریس حجم دردسترس نباشد یا اعتبارسنجی شکست بخورد، یادداشت کن                              
-            for dim in dimensions.values():                                                                 
-                dim.description += f" (حجم غیرفعال: {exc})"                                                  
+        except Exception as exc:
+            # اگر ماتریس حجم دردسترس نباشد یا اعتبارسنجی شکست بخورد، یادداشت کن
+            for dim in dimensions.values():
+                dim.description += f" (حجم غیرفعال: {exc})"
 
         return dimensions
 
@@ -498,7 +507,7 @@ class FiveDimensionalDecisionMatrix:
         conflicting = len(bullish) > 0 and len(bearish) > 0
 
         return DimensionAgreement(
-            overall_agreement=overall_agreement,
+            overall_agreement=float(overall_agreement),
             bullish_dimensions=bullish,
             bearish_dimensions=bearish,
             neutral_dimensions=neutral,
@@ -515,10 +524,6 @@ class FiveDimensionalDecisionMatrix:
         """تعیین سیگنال نهایی بر اساس score و agreement"""
 
         # بررسی توافق کامل
-        total_dims = (len(agreement.bullish_dimensions) +
-                     len(agreement.bearish_dimensions) +
-                     len(agreement.neutral_dimensions))
-
         # Very Strong Signals: همه dimensions موافق
         if final_score > 0.7 and agreement.overall_agreement > 0.9:
             return DecisionSignal.VERY_STRONG_BUY
@@ -729,7 +734,6 @@ class FiveDimensionalDecisionMatrix:
         """پیشنهاد استاپ لاس"""
 
         sr_dim = dimensions.get('support_resistance')
-        vol_dim = dimensions.get('volatility')
 
         if signal in [DecisionSignal.VERY_STRONG_BUY, DecisionSignal.STRONG_BUY, DecisionSignal.BUY]:
             if sr_dim and sr_dim.score > 0:

@@ -27,46 +27,46 @@ License: MIT
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 import math
-
-sys.path.append(str(Path(__file__).parent))
-
+import sys
+from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
+from typing import TypeVar
 
-# 5D Decision Matrix
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.five_dimensional_decision_matrix import (
     FiveDimensionalDecision,
     FiveDimensionalDecisionMatrix,
 )
-
-# Base Dimensions - استفاده از تحلیل‌گرهای Multi-Horizon
 from gravity_tech.ml.multi_horizon_analysis import MultiHorizonAnalyzer, TrendScore
-from gravity_tech.ml.multi_horizon_cycle_analysis import MultiHorizonCycleAnalyzer
+from gravity_tech.ml.multi_horizon_cycle_analysis import (
+    CycleScore,
+    MultiHorizonCycleAnalyzer,
+)
 from gravity_tech.ml.multi_horizon_feature_extraction import MultiHorizonFeatureExtractor
-from gravity_tech.ml.multi_horizon_momentum_analysis import MultiHorizonMomentumAnalyzer
+from gravity_tech.ml.multi_horizon_momentum_analysis import (
+    MomentumScore,
+    MultiHorizonMomentumAnalyzer,
+)
 from gravity_tech.ml.multi_horizon_momentum_features import MultiHorizonMomentumFeatureExtractor
 from gravity_tech.ml.multi_horizon_support_resistance_analysis import (
     MultiHorizonSupportResistanceAnalyzer,
+    SupportResistanceScore,
 )
-from gravity_tech.ml.multi_horizon_volatility_analysis import MultiHorizonVolatilityAnalyzer
+from gravity_tech.ml.multi_horizon_volatility_analysis import (
+    MultiHorizonVolatilityAnalyzer,
+    VolatilityScore,
+)
 from gravity_tech.ml.multi_horizon_volatility_features import (
     MultiHorizonVolatilityFeatureExtractor,
 )
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
-
-# Volume Matrix
 from gravity_tech.ml.volume_dimension_matrix import VolumeDimensionMatrix
 
-# Models
-from gravity_tech.core.domain.entities import Candle
-from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
-from gravity_tech.ml.multi_horizon_momentum_analysis import MomentumScore
-from gravity_tech.ml.multi_horizon_support_resistance_analysis import (
-    SupportResistanceScore,
-)
-from gravity_tech.ml.multi_horizon_volatility_analysis import VolatilityScore
+sys.path.append(str(Path(__file__).parent))
+
+TAnalyzer = TypeVar("TAnalyzer")
 
 MIN_PIPELINE_CANDLES = 120  # حداقل کندل برای پوشش پنجره‌های 100/120 و حجم
 
@@ -95,7 +95,7 @@ class CompleteAnalysisPipeline:
         self,
         candles: list[Candle],
         use_volume_matrix: bool = True,
-        custom_weights: dict[str, float | None] = None,
+        custom_weights: dict[str, float] | None = None,
         verbose: bool = True,
         *,
         trend_analyzer: MultiHorizonAnalyzer | None = None,
@@ -121,29 +121,29 @@ class CompleteAnalysisPipeline:
         self.verbose = verbose
 
         # Analyzer wiring (trend/momentum/volatility require trained learners)
-        self._trend_analyzer = self._resolve_analyzer(
+        self._trend_analyzer: MultiHorizonAnalyzer | None = self._resolve_analyzer(
             "trend",
             analyzer=trend_analyzer,
             learner=trend_learner,
             factory=MultiHorizonAnalyzer,
         )
-        self._momentum_analyzer = self._resolve_analyzer(
+        self._momentum_analyzer: MultiHorizonMomentumAnalyzer | None = self._resolve_analyzer(
             "momentum",
             analyzer=momentum_analyzer,
             learner=momentum_learner,
             factory=MultiHorizonMomentumAnalyzer,
         )
-        self._volatility_analyzer = self._resolve_analyzer(
+        self._volatility_analyzer: MultiHorizonVolatilityAnalyzer | None = self._resolve_analyzer(
             "volatility",
             analyzer=volatility_analyzer,
             learner=volatility_learner,
             factory=MultiHorizonVolatilityAnalyzer,
         )
-        self._cycle_analyzer = cycle_analyzer or MultiHorizonCycleAnalyzer()
-        self._sr_analyzer = sr_analyzer or MultiHorizonSupportResistanceAnalyzer()
+        self._cycle_analyzer: MultiHorizonCycleAnalyzer = cycle_analyzer or MultiHorizonCycleAnalyzer()
+        self._sr_analyzer: MultiHorizonSupportResistanceAnalyzer = sr_analyzer or MultiHorizonSupportResistanceAnalyzer()
 
         # Cache expensive feature computations for trend/momentum/volatility
-        self._feature_cache = feature_cache or _FeatureCache(self.candles)
+        self._feature_cache: _FeatureCache = feature_cache or _FeatureCache(self.candles)
 
         # نگهداری نتایج واسط
         self._trend_score: TrendScore | None = None
@@ -178,7 +178,7 @@ class CompleteAnalysisPipeline:
         if self.verbose:
             print(message)
 
-    def analyze(self) -> 'PipelineResult':
+    def analyze(self) -> PipelineResult:
         """
         اجرای تحلیل کامل
 
@@ -205,16 +205,19 @@ class CompleteAnalysisPipeline:
         self._make_final_decision()
 
         # ساخت نتیجه
+        trend_score, momentum_score, volatility_score, cycle_score, sr_score = self._require_scores()
+        decision = self._require_final_decision()
+
         result = PipelineResult(
             timestamp=datetime.now(),
             candles_count=len(self.candles),
-            trend_score=self._trend_score,
-            momentum_score=self._momentum_score,
-            volatility_score=self._volatility_score,
-            cycle_score=self._cycle_score,
-            sr_score=self._sr_score,
+            trend_score=trend_score,
+            momentum_score=momentum_score,
+            volatility_score=volatility_score,
+            cycle_score=cycle_score,
+            sr_score=sr_score,
             volume_interactions=self._volume_interactions,
-            decision=self._final_decision
+            decision=decision
         )
 
         self._log("\n" + "=" * 80)
@@ -226,7 +229,11 @@ class CompleteAnalysisPipeline:
     def _calculate_base_dimensions(self):
         """?????? 5 ???? ????"""
 
-        if not all([self._trend_analyzer, self._momentum_analyzer, self._volatility_analyzer]):
+        trend_analyzer = self._trend_analyzer
+        momentum_analyzer = self._momentum_analyzer
+        volatility_analyzer = self._volatility_analyzer
+
+        if trend_analyzer is None or momentum_analyzer is None or volatility_analyzer is None:
             raise ValueError(
                 "Trend, momentum, and volatility analyzers (or learners) must be provided."
             )
@@ -234,52 +241,58 @@ class CompleteAnalysisPipeline:
         # Trend
         self._log("   ? Trend Analysis...")
         trend_features = self._feature_cache.trend_features
-        trend_result = self._trend_analyzer.analyze(trend_features)
-        self._trend_score = trend_result.to_trend_score()
-        self._log(f"      Score: {self._trend_score.score:+.3f}, Signal: {self._trend_score.signal.value}")
+        trend_result = trend_analyzer.analyze(trend_features)
+        trend_score = trend_result.to_trend_score()
+        self._trend_score = trend_score
+        self._log(f"      Score: {trend_score.score:+.3f}, Signal: {trend_score.signal.value}")
 
         # Momentum
         self._log("   ? Momentum Analysis...")
         momentum_features = self._feature_cache.momentum_features
-        momentum_result = self._momentum_analyzer.analyze(momentum_features)
-        self._momentum_score = self._select_best_momentum_score(momentum_result)
-        self._log(f"      Score: {self._momentum_score.score:+.3f}, Signal: {self._momentum_score.signal.value}")
+        momentum_result = momentum_analyzer.analyze(momentum_features)
+        momentum_score = self._select_best_momentum_score(momentum_result)
+        self._momentum_score = momentum_score
+        self._log(f"      Score: {momentum_score.score:+.3f}, Signal: {momentum_score.signal.value}")
 
         # Volatility
         self._log("   ? Volatility Analysis...")
         volatility_features = self._feature_cache.volatility_features
-        volatility_result = self._volatility_analyzer.analyze(volatility_features)
-        self._volatility_score = self._select_best_volatility_score(volatility_result)
-        self._log(f"      Score: {self._volatility_score.score:+.3f}, Signal: {self._volatility_score.signal.value}")
+        volatility_result = volatility_analyzer.analyze(volatility_features)
+        volatility_score = self._select_best_volatility_score(volatility_result)
+        self._volatility_score = volatility_score
+        self._log(f"      Score: {volatility_score.score:+.3f}, Signal: {volatility_score.signal.value}")
 
         # Cycle
         self._log("   ? Cycle Analysis...")
         cycle_result = self._cycle_analyzer.analyze(self.candles)
-        self._cycle_score = self._select_best_cycle_score(cycle_result)
-        self._log(f"      Score: {self._cycle_score.score:+.3f}, Phase: {self._cycle_score.phase}")
+        cycle_score = self._select_best_cycle_score(cycle_result)
+        self._cycle_score = cycle_score
+        self._log(f"      Score: {cycle_score.score:+.3f}, Phase: {cycle_score.phase}")
 
         # Support/Resistance
         self._log("   ? Support/Resistance Analysis...")
         sr_result = self._sr_analyzer.analyze(self.candles)
-        self._sr_score = self._select_best_sr_score(sr_result)
-        sr_signal = getattr(self._sr_score.signal, "value", self._sr_score.signal)
-        self._log(f"      Score: {self._sr_score.score:+.3f}, Pattern: {sr_signal}")
+        sr_score = self._select_best_sr_score(sr_result)
+        self._sr_score = sr_score
+        sr_signal = getattr(sr_score.signal, "value", sr_score.signal)
+        self._log(f"      Score: {sr_score.score:+.3f}, Pattern: {sr_signal}")
 
     def _calculate_volume_interactions(self):
         """محاسبه تعاملات حجم-ابعاد"""
 
+        trend_score, momentum_score, volatility_score, cycle_score, sr_score = self._require_scores()
         volume_matrix = VolumeDimensionMatrix(self.candles)
         self._volume_interactions = volume_matrix.calculate_all_interactions(
-            trend_score=self._trend_score,
-            momentum_score=self._momentum_score,
-            volatility_score=self._volatility_score,
-            cycle_score=self._cycle_score,
-            sr_score=self._sr_score
+            trend_score=trend_score,
+            momentum_score=momentum_score,
+            volatility_score=volatility_score,
+            cycle_score=cycle_score,
+            sr_score=sr_score
         )
 
         # نمایش خلاصه
         for name, interaction in self._volume_interactions.items():
-            self._log(f"   → {name}: {interaction.type.value} "
+            self._log(f"   → {name}: {interaction.interaction_type.value} "
                       f"({interaction.interaction_score:+.3f})")
 
     def _make_final_decision(self):
@@ -291,28 +304,30 @@ class CompleteAnalysisPipeline:
             use_volume_matrix=self.use_volume_matrix
         )
 
-        self._final_decision = matrix.analyze(
-            trend_score=self._trend_score,
-            momentum_score=self._momentum_score,
-            volatility_score=self._volatility_score,
-            cycle_score=self._cycle_score,
-            sr_score=self._sr_score
+        trend_score, momentum_score, volatility_score, cycle_score, sr_score = self._require_scores()
+        decision = matrix.analyze(
+            trend_score=trend_score,
+            momentum_score=momentum_score,
+            volatility_score=volatility_score,
+            cycle_score=cycle_score,
+            sr_score=sr_score
         )
+        self._final_decision = decision
 
         # نمایش خلاصه
-        self._log(f"   → Final Score: {self._final_decision.final_score:+.3f}")
-        self._log(f"   → Final Signal: {self._final_decision.final_signal.value}")
-        self._log(f"   → Confidence: {self._final_decision.final_confidence * 100:.1f}%")
-        self._log(f"   → Risk Level: {self._final_decision.risk_level.value}")
-        self._log(f"   → Agreement: {self._final_decision.agreement.overall_agreement * 100:.1f}%")
+        self._log(f"   → Final Score: {decision.final_score:+.3f}")
+        self._log(f"   → Final Signal: {decision.final_signal.value}")
+        self._log(f"   → Confidence: {decision.final_confidence * 100:.1f}%")
+        self._log(f"   → Risk Level: {decision.risk_level.value}")
+        self._log(f"   → Agreement: {decision.agreement.overall_agreement * 100:.1f}%")
 
     def _resolve_analyzer(
         self,
-        name: str,
-        analyzer: object | None,
+        _name: str,
+        analyzer: TAnalyzer | None,
         learner: MultiHorizonWeightLearner | None,
-        factory,
-    ):
+        factory: Callable[[MultiHorizonWeightLearner], TAnalyzer],
+    ) -> TAnalyzer | None:
         """Ensure we have a callable analyzer for the requested dimension."""
         if analyzer is not None:
             return analyzer
@@ -335,6 +350,30 @@ class CompleteAnalysisPipeline:
     def _select_best_sr_score(self, analysis) -> SupportResistanceScore:
         candidates = [analysis.score_3d, analysis.score_7d, analysis.score_30d]
         return max(candidates, key=lambda score: score.confidence)
+
+    def _require_scores(self) -> tuple[TrendScore, MomentumScore, VolatilityScore, CycleScore, SupportResistanceScore]:
+        """Ensure all base scores are available and return them."""
+        if (
+            self._trend_score is None
+            or self._momentum_score is None
+            or self._volatility_score is None
+            or self._cycle_score is None
+            or self._sr_score is None
+        ):
+            raise RuntimeError("Base dimension scores have not been calculated.")
+        return (
+            self._trend_score,
+            self._momentum_score,
+            self._volatility_score,
+            self._cycle_score,
+            self._sr_score,
+        )
+
+    def _require_final_decision(self) -> FiveDimensionalDecision:
+        """Ensure the final decision exists before access."""
+        if self._final_decision is None:
+            raise RuntimeError("Final decision has not been computed.")
+        return self._final_decision
 
     # Properties برای دسترسی آسان به نتایج
 
@@ -399,9 +438,9 @@ class _FeatureCache:
             lookback_period=volatility_lookback
         )
 
-        self._trend_features: dict[str, float | None] = None
-        self._momentum_features: dict[str, float | None] = None
-        self._volatility_features: dict[str, float | None] = None
+        self._trend_features: dict[str, float] | None = None
+        self._momentum_features: dict[str, float] | None = None
+        self._volatility_features: dict[str, float] | None = None
 
     @property
     def trend_features(self) -> dict[str, float]:
@@ -414,14 +453,14 @@ class _FeatureCache:
     def momentum_features(self) -> dict[str, float]:
         if self._momentum_features is None:
             window = self._window(self._momentum_lookback)
-            self._momentum_features = self._momentum_extractor.extract_momentum_features(window)
+            self._momentum_features = self._trend_extractor.extract_indicator_features(window)
         return self._momentum_features
 
     @property
     def volatility_features(self) -> dict[str, float]:
         if self._volatility_features is None:
             window = self._window(self._volatility_lookback)
-            self._volatility_features = self._volatility_extractor.extract_volatility_features(window)
+            self._volatility_features = self._trend_extractor.extract_indicator_features(window)
         return self._volatility_features
 
     def _window(self, length: int) -> list[Candle]:
@@ -536,9 +575,9 @@ class PipelineResult:
                 },
                 'support_resistance': {
                     'score': self.sr_score.score,
-                    'signal': self.sr_score.signal.value,
+                    'signal': getattr(self.sr_score.signal, "value", self.sr_score.signal),
                     'nearest_level_type': self.sr_score.nearest_level_type,
-                    'nearest_level_distance': self.sr_score.nearest_level_distance,
+                    'nearest_level_distance': getattr(self.sr_score, "distance_to_key_level", None),
                     'accuracy': self.sr_score.accuracy
                 }
             },
