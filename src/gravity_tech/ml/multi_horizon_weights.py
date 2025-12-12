@@ -10,9 +10,8 @@ Multi-Horizon Weight Learning with Multi-Output Regression
 import json
 import logging
 import pickle
-from pathlib import Path
 from dataclasses import dataclass
-
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -195,7 +194,7 @@ class MultiHorizonWeightLearner:
             # ذخیره
             self.horizon_weights[horizon_name] = HorizonWeights(
                 horizon=horizon_name,
-                weights=dict(zip(self.feature_names, weights)),
+                weights=dict(zip(self.feature_names, weights, strict=True)),
                 metrics={
                     'r2_train': r2_train,
                     'r2_test': r2_test,
@@ -208,7 +207,7 @@ class MultiHorizonWeightLearner:
             # نمایش Top 5 Features
             if verbose:
                 top_features = sorted(
-                    zip(self.feature_names, weights),
+                    zip(self.feature_names, weights, strict=True),
                     key=lambda x: abs(x[1]),
                     reverse=True
                 )[:5]
@@ -286,6 +285,9 @@ class MultiHorizonWeightLearner:
             DataFrame با ستون‌های [pred_3d, pred_7d, pred_30d]
         """
         if self.model is not None:
+            # Ensure columns are in the correct order
+            if self.feature_names:
+                X = X[self.feature_names]
             predictions = self.model.predict(X)
             return pd.DataFrame(
                 predictions,

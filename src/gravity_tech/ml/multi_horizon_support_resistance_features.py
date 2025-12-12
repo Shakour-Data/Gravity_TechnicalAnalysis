@@ -86,7 +86,7 @@ class MultiHorizonSupportResistanceFeatureExtractor:
         pivot_result = self.sr_indicators.pivot_points(candles)
         fib_result = self.sr_indicators.fibonacci_retracement(candles, lookback=50)
         camarilla_result = self.sr_indicators.camarilla_pivots(candles)
-        sr_levels_result = self.sr_indicators.support_resistance_levels(candles, lookback=50)
+        sr_levels_result = self.sr_indicators.support_resistance_levels(candles, window=50)
 
         # === Pivot Features ===
         pivot_price = pivot_result.value
@@ -96,9 +96,9 @@ class MultiHorizonSupportResistanceFeatureExtractor:
 
         # === Resistance Features ===
         # از Pivot Points
-        r1 = pivot_result.additional_values['R1']
-        r2 = pivot_result.additional_values['R2']
-        r3 = pivot_result.additional_values['R3']
+        r1 = pivot_result.additional_values['r1']
+        r2 = pivot_result.additional_values['r2']
+        r3 = pivot_result.additional_values['r3']
         resistances_pivot = [r for r in [r1, r2, r3] if r > current_price]
 
         # از Camarilla
@@ -133,9 +133,9 @@ class MultiHorizonSupportResistanceFeatureExtractor:
             resistance_strength_avg = 0.0
 
         # === Support Features ===
-        s1 = pivot_result.additional_values['S1']
-        s2 = pivot_result.additional_values['S2']
-        s3 = pivot_result.additional_values['S3']
+        s1 = pivot_result.additional_values['s1']
+        s2 = pivot_result.additional_values['s2']
+        s3 = pivot_result.additional_values['s3']
         supports_pivot = [s for s in [s1, s2, s3] if s < current_price]
 
         cam_s1 = camarilla_result.additional_values['S1']

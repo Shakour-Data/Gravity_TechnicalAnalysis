@@ -6,7 +6,6 @@ import logging
 from collections import deque
 from dataclasses import dataclass
 
-
 import numpy as np
 import pandas as pd
 from gravity_tech.core.domain.entities import Candle
@@ -103,8 +102,9 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['atr_signal'] = atr_result.signal.get_score() / 2.0  # نرمال به [-1, 1]
             features['atr_confidence'] = atr_result.confidence
             features['atr_weighted'] = features['atr_signal'] * features['atr_confidence']
-            features['atr_normalized'] = atr_result.normalized
-            features['atr_percentile'] = atr_result.percentile
+            # Note: normalized and percentile not available in IndicatorResult
+            features['atr_normalized'] = 0.0  # Placeholder
+            features['atr_percentile'] = 50.0  # Placeholder
         except Exception as e:
             logger.warning("ATR calculation error", exc_info=e)
             features.update({
@@ -121,8 +121,9 @@ class MultiHorizonVolatilityFeatureExtractor:
             features['bollinger_bands_signal'] = bb_result.signal.get_score() / 2.0
             features['bollinger_bands_confidence'] = bb_result.confidence
             features['bollinger_bands_weighted'] = features['bollinger_bands_signal'] * features['bollinger_bands_confidence']
-            features['bollinger_bands_normalized'] = bb_result.normalized
-            features['bollinger_bands_percentile'] = bb_result.percentile
+            # Note: normalized and percentile not available in IndicatorResult
+            features['bollinger_bands_normalized'] = 0.0  # Placeholder
+            features['bollinger_bands_percentile'] = 50.0  # Placeholder
         except Exception as e:
             logger.warning("Bollinger Bands calculation error", exc_info=e)
             features.update({

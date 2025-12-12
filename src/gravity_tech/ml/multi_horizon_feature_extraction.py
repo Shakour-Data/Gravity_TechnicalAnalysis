@@ -9,10 +9,8 @@ Multi-Horizon Feature Extraction for ML Weight Learning
 
 
 import logging
-import logging
 from collections import deque
 from dataclasses import dataclass
-
 
 import numpy as np
 import pandas as pd
@@ -136,7 +134,10 @@ class MultiHorizonFeatureExtractor:
                 TrendIndicators.adx(candles)
             ]
 
-            weighted_sum = sum(ind.signal.get_score() * ind.confidence for ind in indicator_results)
+            weighted_sum = sum(
+                (ind.signal.get_score() if ind.signal is not None else 0.0) * ind.confidence
+                for ind in indicator_results
+            )
             total_weight = sum(ind.confidence for ind in indicator_results)
 
             dim1_score = weighted_sum / total_weight if total_weight > 0 else 0.0
@@ -183,8 +184,12 @@ class MultiHorizonFeatureExtractor:
         try:
             elliott = ElliottWaveAnalyzer.analyze(candles)
 
-            dim3_score = elliott.signal.get_score() / 2.0
-            dim3_confidence = elliott.confidence
+            if elliott is not None:
+                dim3_score = elliott.signal.get_score() / 2.0
+                dim3_confidence = elliott.confidence
+            else:
+                dim3_score = 0.0
+                dim3_confidence = 0.5
 
         except Exception as e:
             logger.warning("Elliott Wave error", exc_info=e)
@@ -300,7 +305,6 @@ class MultiHorizonFeatureExtractor:
         )
 
         for offset in range(usable_length):
-            start = offset
             end = offset + self.lookback_period
             current_idx = end - 1
 
@@ -374,7 +378,7 @@ class MultiHorizonFeatureExtractor:
         self,
         return_matrix: dict[int, np.ndarray],
         idx: int,
-    ) -> dict[str, float | None]:
+    ) -> dict[str, float] | None:
         targets: dict[str, float] = {}
         for horizon in self.horizons:
             series = return_matrix.get(horizon)

@@ -15,7 +15,6 @@ Volume-Dimension Matrix Analysis
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
 
 import numpy as np
 from gravity_tech.core.domain.entities import Candle
@@ -215,9 +214,8 @@ class VolumeDimensionMatrix:
         # تعیین جهت روند
         is_bullish = trend_score.score > 0.2
         is_bearish = trend_score.score < -0.2
-        is_neutral = not is_bullish and not is_bearish
 
-        if is_neutral:
+        if not is_bullish and not is_bearish:
             return VolumeDimensionInteraction(
                 dimension="Trend",
                 volume_metrics=vm,
@@ -371,7 +369,6 @@ class VolumeDimensionMatrix:
         # تعیین وضعیت مومنتوم
         is_overbought = rsi > 70 or mfi > 80
         is_oversold = rsi < 30 or mfi < 20
-        is_neutral = not is_overbought and not is_oversold
 
         momentum_strength = abs(momentum_score.score)
 
@@ -619,15 +616,6 @@ class VolumeDimensionMatrix:
         phase = self._estimate_phase(cycle_score)
 
         cycle_strength = abs(cycle_score.score)
-
-        # ═══ الگوهای حجم مورد انتظار در هر فاز ═══
-
-        expected_volume = {
-            "ACCUMULATION": "LOW",       # حجم پایین
-            "MARKUP": "HIGH_BULLISH",    # حجم بالا در کندل‌های صعودی
-            "DISTRIBUTION": "MEDIUM",    # حجم متوسط
-            "MARKDOWN": "HIGH_BEARISH"   # حجم بالا در کندل‌های نزولی
-        }
 
         # ═══ محاسبه امتیاز interaction ═══
 
@@ -945,7 +933,7 @@ class VolumeDimensionMatrix:
         bb_width = (2 * std) / sma
 
         # squeeze: bb_width < 0.04 (4%)
-        return bb_width < 0.04
+        return bool(bb_width < 0.04)
 
     def _estimate_phase(self, cycle_score: CycleScore) -> str:
         """تخمین فاز بازار از cycle_score"""
