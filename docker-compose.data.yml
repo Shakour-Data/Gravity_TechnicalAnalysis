@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  gravity-data-postgres:
+    image: postgres:16
+    container_name: gravity-data-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gravity
+      POSTGRES_PASSWORD: gravity_db_pass
+      POSTGRES_DB: gravity_tech
+    volumes:
+      - gravity_data_pg:/var/lib/postgresql/data
+    ports:
+      - "5544:5432"   # adjust if port is taken
+    networks:
+      - gravity_data_net
+
+networks:
+  gravity_data_net:
+    driver: bridge
+
+volumes:
+  gravity_data_pg:
+    driver: local

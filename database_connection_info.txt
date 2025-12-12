@@ -1,0 +1,254 @@
+# اطلاعات اتصال به دیتابیس PostgreSQL
+
+## اطلاعات اتصال کانتینر PostgreSQL
+- **آدرس کانتینر**: 127.0.0.1:5544
+- **POSTGRES_USER**: gravity
+- **POSTGRES_PASSWORD**: gravity
+- **POSTGRES_DB**: tech_analysis
+- **DSN کامل**: postgresql://gravity:gravity@127.0.0.1:5544/tech_analysis
+
+## جداول ورودی (TSE Database) - ساختار اصلی
+
+### 1. sectors
+```sql
+CREATE TABLE sectors (
+    sector_id INTEGER PRIMARY KEY,
+    sector_name TEXT UNIQUE,
+    sector_name_en TEXT,
+    us_sector TEXT
+);
+```
+
+### 2. markets
+```sql
+CREATE TABLE markets (
+    market_id INTEGER PRIMARY KEY,
+    market_name TEXT UNIQUE
+);
+```
+
+### 3. panels
+```sql
+CREATE TABLE panels (
+    panel_id INTEGER PRIMARY KEY,
+    panel_name TEXT UNIQUE
+);
+```
+
+### 4. companies
+```sql
+CREATE TABLE companies (
+    company_id TEXT PRIMARY KEY,
+    ticker TEXT UNIQUE,
+    name TEXT,
+    sector_id INTEGER,
+    panel_id INTEGER,
+    market_id INTEGER,
+    FOREIGN KEY(sector_id) REFERENCES sectors(sector_id),
+    FOREIGN KEY(panel_id) REFERENCES panels(panel_id),
+    FOREIGN KEY(market_id) REFERENCES markets(market_id)
+);
+```
+
+### 5. price_data (OHLCV)
+```sql
+CREATE TABLE price_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT,         -- YYYY-MM-DD (Gregorian)
+    j_date TEXT,       -- YYYY-MM-DD (Jalali)
+    adj_open REAL,
+    adj_high REAL,
+    adj_low REAL,
+    adj_close REAL,
+    adj_final REAL,
+    adj_volume REAL,
+    ticker TEXT,
+    company_id TEXT,
+    FOREIGN KEY(company_id) REFERENCES companies(company_id),
+    UNIQUE(ticker, date)
+);
+```
+
+### 6. market_indices
+```sql
+CREATE TABLE market_indices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    index_code TEXT NOT NULL,
+    j_date TEXT NOT NULL,
+    date TEXT NOT NULL,
+    open REAL,
+    high REAL,
+    low REAL,
+    close REAL,
+    FOREIGN KEY(index_code) REFERENCES indices_info(index_code),
+    UNIQUE(index_code, date)
+);
+```
+
+### 7. sector_indices
+```sql
+CREATE TABLE sector_indices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sector_code TEXT NOT NULL,
+    j_date TEXT NOT NULL,
+    date TEXT NOT NULL,
+    open REAL,
+    high REAL,
+    low REAL,
+    close REAL,
+    FOREIGN KEY(sector_code) REFERENCES sectors(sector_id),
+    UNIQUE(sector_code, date)
+);
+```
+
+### 8. usd_prices
+```sql
+CREATE TABLE usd_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT,
+    j_date TEXT,
+    open REAL,
+    high REAL,
+    low REAL,
+    close REAL,
+    final REAL,
+    UNIQUE(date)
+);
+```
+
+## جداول خروجی (Analysis Results)
+
+### historical_scores
+```sql
+CREATE TABLE historical_scores (
+    id BIGINT PRIMARY KEY,
+    symbol VARCHAR(20) NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+    timeframe VARCHAR(10) NOT NULL,
+    trend_score NUMERIC(5,3) NOT NULL,
+    trend_confidence NUMERIC(5,3) NOT NULL,
+    momentum_score NUMERIC(5,3) NOT NULL,
+    momentum_confidence NUMERIC(5,3) NOT NULL,
+    combined_score NUMERIC(5,3) NOT NULL,
+    combined_confidence NUMERIC(5,3) NOT NULL,
+    trend_weight NUMERIC(4,3) NOT NULL,
+    momentum_weight NUMERIC(4,3) NOT NULL,
+    trend_signal VARCHAR(20) NOT NULL,
+    momentum_signal VARCHAR(20) NOT NULL,
+    combined_signal VARCHAR(20) NOT NULL,
+    recommendation VARCHAR(20) NOT NULL,
+    action VARCHAR(20) NOT NULL,
+    price_at_analysis NUMERIC(20,8) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
+## قرارداد API (REST)
+
+### Endpointهای اصلی
+- `POST /api/v1/analyze` - تحلیل کامل تکنیکال
+- `GET /api/v1/analyze/historical/{symbol}` - تحلیل از دیتابیس TSE
+- `POST /api/v1/patterns/detect` - تشخیص الگوهای هارمونیک
+- `POST /api/v1/ml/predict` - پیش‌بینی ML
+- `GET /api/v1/tools/` - فهرست ابزارها
+- `POST /api/v1/tools/recommend` - توصیه ابزار
+- `POST /api/v1/backtest` - بک‌تست
+
+### نمونه درخواست تحلیل
+```json
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "candles": [
+    {
+      "timestamp": "2024-01-01T00:00:00Z",
+      "open": 43000,
+      "high": 43500,
+      "low": 42800,
+      "close": 43250,
+      "volume": 120000
+    }
+  ]
+}
+```
+
+## قرارداد WebSocket
+
+### انواع Subscription
+- `market_data` - داده‌های بازار实时
+- `candle_data` - داده‌های کندل OHLCV
+- `technical_analysis` - نتایج تحلیل تکنیکال
+- `pattern_recognition` - تشخیص الگو
+- `trend_indicators` - اندیکاتورهای روند
+- `momentum_indicators` - اندیکاتورهای momentum
+- `volatility_indicators` - اندیکاتورهای نوسان
+- `volume_indicators` - اندیکاتورهای حجم
+- `cycle_indicators` - اندیکاتورهای چرخه
+- `support_resistance` - سطوح حمایت و مقاومت
+
+### ساختار پیام WebSocket
+```json
+{
+  "message_type": "subscribe|unsubscribe|ping|data",
+  "subscription_type": "market_data",
+  "client_id": "unique-client-id",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "data": {
+    // payload based on subscription type
+  },
+  "sequence_number": 123,
+  "correlation_id": "request-id"
+}
+```
+
+### نمونه پیام داده بازار
+```json
+{
+  "type": "market_data",
+  "data": {
+    "symbol": "BTCUSDT",
+    "timestamp": "2024-01-01T00:00:00Z",
+    "open": 43000,
+    "high": 43500,
+    "low": 42800,
+    "close": 43250,
+    "volume": 120000
+  },
+  "indicators": {
+    "trend": {...},
+    "momentum": {...}
+  },
+  "patterns": [...]
+}
+```
+
+## مسیرهای Backend API
+- **Base URL**: http://localhost:8000/api/v1
+- **WebSocket URL**: ws://localhost:8000/ws/{client_id}
+- **Health Check**: http://localhost:8000/health
+- **Docs**: http://localhost:8000/api/docs
+
+## تنظیمات Environment
+```bash
+# Database
+DATABASE_URL=postgresql://gravity:gravity@127.0.0.1:5544/tech_analysis
+TSE_DATABASE_URL=postgresql://gravity:gravity@127.0.0.1:5544/tech_analysis
+
+# Application
+APP_NAME=technical-analysis-service
+APP_VERSION=1.0.0
+ENVIRONMENT=development
+DEBUG=True
+
+# Server
+HOST=0.0.0.0
+PORT=8000
+WORKERS=4
+
+# Redis (اختیاری برای کش)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+CACHE_ENABLED=True
+CACHE_TTL=300
+```</content>
+<parameter name="filePath">e:\Shakour\GravityProjects\Gravity_TechnicalAnalysis\database_connection_info.txt
