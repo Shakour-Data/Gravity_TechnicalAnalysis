@@ -5,18 +5,39 @@ from typing import Any
 import pandas as pd
 from config import TSE_DB_FILE
 
+try:
+    import psycopg2
+except ImportError:  # pragma: no cover - optional dependency
+    psycopg2 = None
+
 logger = logging.getLogger(__name__)
+
 
 class TSEDatabaseConnector:
     """
     Connector for the External TSE Database (Input Source).
-    This class handles reading market data from the pre-built SQLite database.
+    Supports both SQLite file input and PostgreSQL DSN (when TSE_DATABASE_URL is set).
     """
     def __init__(self, db_file: str):
         self.db_file = db_file
+        is_pg = False
+        if isinstance(db_file, str):
+            lowered = db_file.lower()
+            is_pg = lowered.startswith("postgresql://") or lowered.startswith("postgres://")
+        self.backend = "postgres" if is_pg else "sqlite"
+        if self.backend == "postgres" and not psycopg2:
+            raise RuntimeError("psycopg2 is required for Postgres TSE input but is not installed")
+
+        # Table/column naming differs between SQLite source and Postgres schema
+        self.price_table = "tse_input.price_data" if self.backend == "postgres" else "price_data"
+        self.market_idx_table = "tse_input.market_indices" if self.backend == "postgres" else "market_indices"
+        self.sector_idx_table = "tse_input.sector_indices" if self.backend == "postgres" else "sector_indices"
+        self.date_col = "trading_date" if self.backend == "postgres" else "date"
 
     def get_connection(self) -> sqlite3.Connection:
-        """Creates and returns a database connection with foreign keys enabled."""
+        """Creates and returns a database connection."""
+        if self.backend == "postgres":
+            return psycopg2.connect(self.db_file)
         conn = sqlite3.connect(self.db_file)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
@@ -277,12 +298,30 @@ class TSEDatabaseConnector:
         Return tickers available in price_data with a minimum number of rows.
         Useful for sampling symbols with enough history.
         """
+        if self.backend == "postgres":
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""
+                SELECT symbol
+                FROM {self.price_table}
+                GROUP BY symbol
+                HAVING COUNT(*) >= %s
+                ORDER BY COUNT(*) DESC
+                LIMIT %s
+                """,
+                (min_rows, limit),
+            )
+            tickers = [row[0] for row in cursor.fetchall() if row[0]]
+            conn.close()
+            return tickers
+
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT ticker
-            FROM price_data
+            FROM {self.price_table}
             GROUP BY ticker
             HAVING COUNT(*) >= ?
             ORDER BY COUNT(*) DESC
@@ -298,12 +337,29 @@ class TSEDatabaseConnector:
         """
         Return available market index codes that have data.
         """
+        if self.backend == "postgres":
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""
+                SELECT index_code
+                FROM {self.market_idx_table}
+                GROUP BY index_code
+                ORDER BY COUNT(*) DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            codes = [row[0] for row in cursor.fetchall() if row[0]]
+            conn.close()
+            return codes
+
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT index_code
-            FROM market_indices
+            FROM {self.market_idx_table}
             GROUP BY index_code
             ORDER BY COUNT(*) DESC
             LIMIT ?
@@ -318,12 +374,29 @@ class TSEDatabaseConnector:
         """
         Return sector codes that have associated sector index data.
         """
+        if self.backend == "postgres":
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""
+                SELECT sector_code
+                FROM {self.sector_idx_table}
+                GROUP BY sector_code
+                ORDER BY COUNT(*) DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            sectors = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+            conn.close()
+            return sectors
+
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT sector_code
-            FROM sector_indices
+            FROM {self.sector_idx_table}
             GROUP BY sector_code
             ORDER BY COUNT(*) DESC
             LIMIT ?
@@ -339,24 +412,68 @@ class TSEDatabaseConnector:
         Fetches price data for a given ticker.
         Returns a list of dictionaries compatible with Candle schema.
         """
-        from datetime import datetime
+        from datetime import date, datetime, time
+
+        if self.backend == "postgres":
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            query = (
+                f"SELECT {self.date_col}, adj_open, adj_high, adj_low, adj_close, adj_volume "
+                f"FROM {self.price_table} WHERE symbol = %s"
+            )
+            params: list[Any] = [ticker]
+            if start_date:
+                query += f" AND {self.date_col} >= %s"
+                params.append(start_date)
+            if end_date:
+                query += f" AND {self.date_col} <= %s"
+                params.append(end_date)
+            query += f" ORDER BY {self.date_col} ASC"
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+            conn.close()
+
+            candles = []
+            for r in rows:
+                dval = r[0]
+                if isinstance(dval, datetime):
+                    dt = dval
+                elif isinstance(dval, date):
+                    dt = datetime.combine(dval, time.min)
+                else:
+                    # fallback parse string
+                    try:
+                        dt = datetime.fromisoformat(str(dval))
+                    except Exception:
+                        continue
+                candles.append(
+                    {
+                        "timestamp": dt,
+                        "open": r[1],
+                        "high": r[2],
+                        "low": r[3],
+                        "close": r[4],
+                        "volume": r[5],
+                    }
+                )
+            return candles
 
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT date, adj_open, adj_high, adj_low, adj_close, adj_volume FROM price_data WHERE ticker = ?"
+        query = f"SELECT {self.date_col}, adj_open, adj_high, adj_low, adj_close, adj_volume FROM {self.price_table} WHERE ticker = ?"
         params = [ticker]
 
         if start_date:
-            query += " AND date >= ?"
+            query += f" AND {self.date_col} >= ?"
             params.append(start_date)
 
         if end_date:
-            query += " AND date <= ?"
+            query += f" AND {self.date_col} <= ?"
             params.append(end_date)
 
-        query += " ORDER BY date ASC"
+        query += f" ORDER BY {self.date_col} ASC"
 
         cursor.execute(query, params)
         rows = cursor.fetchall()
@@ -367,9 +484,9 @@ class TSEDatabaseConnector:
             dt = None
             for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
                 try:
-                    dt = datetime.strptime(row["date"], fmt)
+                    dt = datetime.strptime(row[self.date_col], fmt)
                     break
-                except ValueError:
+                except (ValueError, TypeError):
                     continue
             if dt is None:
                 # Skip rows with unrecognized dates
@@ -390,24 +507,65 @@ class TSEDatabaseConnector:
         """
         Fetches market index data (e.g., CWI).
         """
-        from datetime import datetime
+        from datetime import date, datetime, time
+
+        if self.backend == "postgres":
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            query = (
+                f"SELECT {self.date_col}, open, high, low, close "
+                f"FROM {self.market_idx_table} WHERE index_code = %s"
+            )
+            params = [index_code]
+            if start_date:
+                query += f" AND {self.date_col} >= %s"
+                params.append(start_date)
+            if end_date:
+                query += f" AND {self.date_col} <= %s"
+                params.append(end_date)
+            query += f" ORDER BY {self.date_col} ASC"
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+            conn.close()
+
+            candles = []
+            for r in rows:
+                dval = r[0]
+                if isinstance(dval, datetime):
+                    dt = dval
+                elif isinstance(dval, date):
+                    dt = datetime.combine(dval, time.min)
+                else:
+                    try:
+                        dt = datetime.fromisoformat(str(dval))
+                    except Exception:
+                        continue
+                candles.append({
+                    "timestamp": dt,
+                    "open": r[1],
+                    "high": r[2],
+                    "low": r[3],
+                    "close": r[4],
+                    "volume": 0
+                })
+            return candles
 
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT date, open, high, low, close FROM market_indices WHERE index_code = ?"
+        query = f"SELECT {self.date_col}, open, high, low, close FROM {self.market_idx_table} WHERE index_code = ?"
         params = [index_code]
 
         if start_date:
-            query += " AND date >= ?"
+            query += f" AND {self.date_col} >= ?"
             params.append(start_date)
 
         if end_date:
-            query += " AND date <= ?"
+            query += f" AND {self.date_col} <= ?"
             params.append(end_date)
 
-        query += " ORDER BY date ASC"
+        query += f" ORDER BY {self.date_col} ASC"
 
         cursor.execute(query, params)
         rows = cursor.fetchall()
@@ -416,8 +574,8 @@ class TSEDatabaseConnector:
         candles = []
         for row in rows:
             try:
-                dt = datetime.strptime(row["date"], "%Y-%m-%d")
-            except ValueError:
+                dt = datetime.strptime(row[self.date_col], "%Y-%m-%d")
+            except (ValueError, TypeError):
                 continue
 
             candles.append({
@@ -435,24 +593,65 @@ class TSEDatabaseConnector:
         """
         Fetches sector index data using the sector_code (sector_id).
         """
-        from datetime import datetime
+        from datetime import date, datetime, time
+
+        if self.backend == "postgres":
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            query = (
+                f"SELECT {self.date_col}, open, high, low, close "
+                f"FROM {self.sector_idx_table} WHERE sector_code = %s"
+            )
+            params = [sector_code]
+            if start_date:
+                query += f" AND {self.date_col} >= %s"
+                params.append(start_date)
+            if end_date:
+                query += f" AND {self.date_col} <= %s"
+                params.append(end_date)
+            query += f" ORDER BY {self.date_col} ASC"
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+            conn.close()
+
+            candles = []
+            for r in rows:
+                dval = r[0]
+                if isinstance(dval, datetime):
+                    dt = dval
+                elif isinstance(dval, date):
+                    dt = datetime.combine(dval, time.min)
+                else:
+                    try:
+                        dt = datetime.fromisoformat(str(dval))
+                    except Exception:
+                        continue
+                candles.append({
+                    "timestamp": dt,
+                    "open": r[1],
+                    "high": r[2],
+                    "low": r[3],
+                    "close": r[4],
+                    "volume": 0,
+                })
+            return candles
 
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT date, open, high, low, close FROM sector_indices WHERE sector_code = ?"
+        query = f"SELECT {self.date_col}, open, high, low, close FROM {self.sector_idx_table} WHERE sector_code = ?"
         params = [sector_code]
 
         if start_date:
-            query += " AND date >= ?"
+            query += f" AND {self.date_col} >= ?"
             params.append(start_date)
 
         if end_date:
-            query += " AND date <= ?"
+            query += f" AND {self.date_col} <= ?"
             params.append(end_date)
 
-        query += " ORDER BY date ASC"
+        query += f" ORDER BY {self.date_col} ASC"
 
         cursor.execute(query, params)
         rows = cursor.fetchall()
@@ -461,8 +660,8 @@ class TSEDatabaseConnector:
         candles = []
         for row in rows:
             try:
-                dt = datetime.strptime(row["date"], "%Y-%m-%d")
-            except ValueError:
+                dt = datetime.strptime(row[self.date_col], "%Y-%m-%d")
+            except (ValueError, TypeError):
                 continue
 
             candles.append({

@@ -35,7 +35,6 @@ from datetime import datetime
 from enum import Enum
 
 
-
 class CandleType(Enum):
     """Type of candle based on price action"""
     BULLISH = "BULLISH"      # Close > Open (green/white)
@@ -154,7 +153,7 @@ class Candle:
         """Check if candle is a doji (small body)"""
         return self.candle_type == CandleType.DOJI
 
-    def _replace(self, **changes) -> 'Candle':
+    def _replace(self, **changes) -> Candle:
         """Return a new Candle with updated fields (dataclass-like _replace).
 
         Tests expect a `_replace` method similar to namedtuple; this helper uses

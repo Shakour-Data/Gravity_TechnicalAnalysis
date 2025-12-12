@@ -193,7 +193,7 @@ if settings.enable_scenarios:
     app.include_router(scenarios_router.router, prefix="/api/v1")
 
 if settings.expose_db_explorer:
-    app.include_router(db_router, prefix="")
+    app.include_router(db_router, prefix="/api/v1")
 
 # Prometheus metrics endpoint
 if settings.metrics_enabled:

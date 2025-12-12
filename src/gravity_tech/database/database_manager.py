@@ -68,7 +68,8 @@ class DatabaseManager:
         connection_string: str | None = None,
         sqlite_path: str | None = None,
         json_path: str | None = None,
-        auto_setup: bool = True
+        auto_setup: bool = True,
+        allow_fallback: bool | None = None,
     ):
         """
         Initialize Database Manager
@@ -80,8 +81,18 @@ class DatabaseManager:
             json_path: مسیر فایل JSON (برای fallback)
             auto_setup: آیا خودکار schema را بسازد؟
         """
+        # Default: enforce Postgres (no silent fallback) unless explicitly allowed
+        if allow_fallback is not None:
+            self.allow_fallback = allow_fallback
+        else:
+            self.allow_fallback = False
         self.db_type = db_type
-        self.connection_string = connection_string
+        self.connection_string = (
+            connection_string
+            or os.getenv("DATABASE_URL")
+            or os.getenv("POSTGRES_URL")
+            or settings.database_url
+        )
         default_sqlite = settings.sqlite_path or "data/tool_performance.db"
         default_json = settings.json_storage_path or "data/tool_performance.json"
         self.sqlite_path = sqlite_path or default_sqlite
@@ -114,32 +125,30 @@ class DatabaseManager:
         3. JSON file (fallback نهایی)
         """
 
-        # Check for PostgreSQL
-        if POSTGRES_AVAILABLE and psycopg2 and self.connection_string:
-            try:
-                # Test connection
-                conn = psycopg2.connect(self.connection_string)
-                conn.close()
-                logger.info("✅ PostgreSQL detected and available")
-                return DatabaseType.POSTGRESQL
-            except Exception as e:
-                logger.warning(f"⚠️ PostgreSQL connection failed: {e}")
+        # Check for PostgreSQL using the configured connection string
+        if self.connection_string:
+            if POSTGRES_AVAILABLE and psycopg2:
+                try:
+                    # Test connection
+                    conn = psycopg2.connect(self.connection_string)
+                    conn.close()
+                    logger.info("✅ PostgreSQL detected and available")
+                    return DatabaseType.POSTGRESQL
+                except Exception as e:
+                    logger.error(f"⚠️ PostgreSQL connection failed: {e}")
+                    if not self.allow_fallback:
+                        raise RuntimeError("PostgreSQL connection failed and fallback disabled") from e
+            else:
+                msg = "PostgreSQL driver not available while connection string is set"
+                logger.error(f"⚠️ {msg}")
+                if not self.allow_fallback:
+                    raise RuntimeError(msg)
 
-        # Check for environment variable
-        postgres_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
-        if POSTGRES_AVAILABLE and psycopg2 and postgres_url:
-            try:
-                conn = psycopg2.connect(postgres_url)
-                conn.close()
-                self.connection_string = postgres_url
-                logger.info("✅ PostgreSQL from env variable")
-                return DatabaseType.POSTGRESQL
-            except Exception as e:
-                logger.warning(f"⚠️ PostgreSQL from env failed: {e}")
+        if not self.allow_fallback:
+            raise RuntimeError("No PostgreSQL connection_string provided and fallback disabled")
 
         # Fallback to SQLite
         try:
-            # Create directory if needed
             Path(self.sqlite_path).parent.mkdir(parents=True, exist_ok=True)
             conn = sqlite3.connect(self.sqlite_path)
             conn.close()
@@ -166,6 +175,8 @@ class DatabaseManager:
         """راه‌اندازی PostgreSQL با connection pool"""
         if not POSTGRES_AVAILABLE or not pool:
             raise RuntimeError("PostgreSQL not available")
+        if not self.connection_string:
+            raise RuntimeError("PostgreSQL connection string is not set")
         try:
             self.connection_pool = pool.SimpleConnectionPool(
                 minconn=1,
@@ -1988,8 +1999,9 @@ class DatabaseManager:
         logger.info("✅ No pending migrations")
         return []
 
-    def create_backup(self, tables: list[str] | None = None) -> dict[str, Any]:
+    def create_backup(self, tables: list[str] | None = None, row_limit: int | None = None) -> dict[str, Any]:
         """ایجاد backup از دیتابیس"""
+        max_rows = row_limit if row_limit is not None else settings.db_backup_row_limit
         backup_data: dict[str, Any] = {
             "timestamp": datetime.now(UTC).isoformat(),
             "database_type": self.db_type.value if self.db_type else None,
@@ -2001,14 +2013,24 @@ class DatabaseManager:
 
             if self.db_type == DatabaseType.JSON_FILE:
                 for table in table_list:
-                    backup_data["data"][table] = json.loads(
+                    rows = json.loads(
                         json.dumps(self.json_data.get(table, []), default=str)
                     )
+                    if max_rows and len(rows) > max_rows:
+                        rows = rows[:max_rows]
+                        logger.warning(f"⚠️ Backup truncated for table={table} at {max_rows} rows (JSON storage)")
+                    backup_data["data"][table] = rows
                 logger.info("✅ Backup created successfully (JSON storage)")
                 return backup_data
 
             for table in table_list:
-                backup_data["data"][table] = list(self.stream_table_records(table))
+                rows: list[dict[str, Any]] = []
+                for idx, row in enumerate(self.stream_table_records(table)):
+                    if max_rows and idx >= max_rows:
+                        logger.warning(f"⚠️ Backup truncated for table={table} at {max_rows} rows")
+                        break
+                    rows.append(row)
+                backup_data["data"][table] = rows
             logger.info("✅ Backup created successfully")
         except Exception as e:
             logger.error(f"❌ Failed to create backup: {e}")

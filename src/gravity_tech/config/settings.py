@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     ingestion_auth_token: str = "default_ingestion_token"  # Token for ingestion authentication
 
     # Database Configuration
-    database_url: str = "postgresql://user:password@localhost:5432/gravity_tech"
+    database_url: str = "postgresql://gravity:gravity@localhost:5432/tech_analysis"
     database_pool_size: int = 10
     database_max_overflow: int = 20
     sqlite_path: str = "data/TechAnalysis.db"
@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     # Feature toggles
     enable_scenarios: bool = False          # Mount /api/v1/scenarios router when true
     expose_db_explorer: bool = False        # Mount /db/* endpoints when true (use only in dev)
+
+    # Database safety limits
+    db_backup_row_limit: int = 5000         # Max rows per table when exporting backups via DB explorer
 
 
 settings = Settings()
