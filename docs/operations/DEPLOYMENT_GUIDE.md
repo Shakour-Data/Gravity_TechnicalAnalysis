@@ -16,7 +16,7 @@
 - `DATA_SERVICE_URL` اگر از سرویس داده خارجی استفاده می‌کنید
 - `METRICS_ENABLED`, `EUREKA_ENABLED` (در صورت نیاز)
 - `ENABLE_SCENARIOS` برای فعال کردن `/api/v1/scenarios/*`
-- `EXPOSE_DB_EXPLORER` فقط در توسعه برای `/db/*`
+- `EXPOSE_DB_EXPLORER` فقط در توسعه برای `/api/v1/db/*`
 
 ## اجرای محلی (توسعه)
 ```bash
@@ -43,7 +43,7 @@ uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level
 1. `GET /health` → `{"status":"healthy"}`
 2. `GET /health/ready` → چک Redis در صورت فعال بودن
 3. `GET /api/v1/indicators/list` → تأیید بارگذاری اندیکاتورها
-4. (اختیاری) `GET /patterns/health` و `/ml/health` → بررسی وجود مدل‌ها
+4. (اختیاری) `GET /api/v1/patterns/health` و `/api/v1/ml/health` → بررسی وجود مدل‌ها
 
 ## نکات دیباگ
 - خطای Redis: `CACHE_ENABLED=false` را تنظیم کنید و سرویس را بدون کش بالا بیاورید.

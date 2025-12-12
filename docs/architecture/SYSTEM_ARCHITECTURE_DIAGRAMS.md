@@ -3,7 +3,7 @@
 این سند نمای کلی اجزا و نحوه عبور درخواست‌ها در نسخه 1.0.0 را توضیح می‌دهد.
 
 ## اجزا
-- **FastAPI (`gravity_tech.main`)**: ثبت Routerهای `analysis`, `patterns`, `ml`, `tools`, `backtest`, `db`.
+- **FastAPI (`gravity_tech.main`)**: ثبت Routerهای `/api/v1/analyze`, `/api/v1/patterns`, `/api/v1/ml`, `/api/v1/tools`, `/api/v1/backtest`, `/api/v1/db`.
 - **Core Services**: `TechnicalAnalysisService` برای اندیکاتورها و سیگنال نهایی؛ `ToolRecommendationService` برای توصیه ابزار؛ `PatternBacktester`.
 - **کش اختیاری**: `cache_service` با Redis (TTL پیش‌فرض ۵ دقیقه).
 - **دیتابیس**: SQLite/PostgreSQL از طریق `DatabaseManager` و `HistoricalScoreManager` (برای ذخیره نتایج در صورت فعال‌سازی ingestion).
@@ -15,12 +15,12 @@
 ```mermaid
 flowchart LR
     Client["Client / SDK / cURL"] --> API["FastAPI\nRouters v1"]
-    API -->|/analyze| Analysis["TechnicalAnalysisService\n(indicators, patterns, market phase)"]
-    API -->|/patterns| Pattern["Harmonic Detector\n+ ML scorer"]
-    API -->|/ml| ML["ML Inference\n(model cache)"]
-    API -->|/tools| Tools["ToolRecommendationService"]
-    API -->|/backtest| Backtest["PatternBacktester"]
-    API -->|/db| DBExplorer["DB Explorer (read-only)"]
+    API -->|/api/v1/analyze| Analysis["TechnicalAnalysisService\n(indicators, patterns, market phase)"]
+    API -->|/api/v1/patterns| Pattern["Harmonic Detector\n+ ML scorer"]
+    API -->|/api/v1/ml| ML["ML Inference\n(model cache)"]
+    API -->|/api/v1/tools| Tools["ToolRecommendationService"]
+    API -->|/api/v1/backtest| Backtest["PatternBacktester"]
+    API -->|/api/v1/db| DBExplorer["DB Explorer (read-only)"]
 
     Analysis --> Cache[(Redis Cache?)]
     Pattern --> Cache
@@ -52,7 +52,7 @@ sequenceDiagram
     participant R as Redis (اختیاری)
     participant D as DataIngestor/DB (اختیاری)
 
-    C->>A: POST /api/v1/analyze (candles>=50)
+    C->>A: POST /api/v1/analyze (candles>=60)
     A->>S: فراخوانی analyze(request)
     S->>S: محاسبه اندیکاتورها و الگوهای شمعی/الیوت
     S->>S: محاسبه فاز بازار + سیگنال کلی

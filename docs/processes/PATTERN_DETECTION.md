@@ -20,7 +20,7 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant A as /patterns/detect
+    participant A as /api/v1/patterns/detect
     participant D as HarmonicPatternDetector
     participant M as Pattern Classifier (optional)
 

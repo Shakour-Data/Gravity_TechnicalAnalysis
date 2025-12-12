@@ -66,6 +66,17 @@ async def main():
 asyncio.run(main())
 ```
 
+
+## Full pipeline (TSE DB -> TechAnalysis.db)
+```bash
+python scripts/run_full_pipeline.py \
+  --source-db "E:\\Shakour\\MyProjects\\GravityTseHisPrice\\data\\tse_data.db" \
+  --target-db data/TechAnalysis.db \
+  --limit 500
+```
+- Pulls OHLCV data from the TSE SQLite source and writes summarized results into `analysis_results` in `data/TechAnalysis.db`.
+- Add `--symbols` or `--max-symbols` to scope the run.
+
 ## ۵) نکات داده
 - حداقل کندل: ۶۰ (برای برخی اندیکاتورها به همین مقدار نیاز است).
 - ورودی‌ها باید **adjusted** باشند اگر از سرویس داده خارجی می‌آیند.

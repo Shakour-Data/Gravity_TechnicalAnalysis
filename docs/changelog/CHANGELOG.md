@@ -22,11 +22,11 @@
 - Router سناریوها به‌صورت مشروط mount می‌شود؛ DB Explorer فقط در صورت فعال بودن پرچم mount می‌شود.
 - حذف دوباره‌گنجانی Router ML و هم‌ترازی README/API_REFERENCE/QUICK_START/PROJECT_STRUCTURE با رفتار واقعی.
 - حداقل کندل در endpointهای تحلیل به ۶۰ ارتقا یافت و `analyze/indicators` اکنون دارای اعتبارسنجی بدنه است.
-- حداقل کندل در `/patterns/detect` و مسیرهای ابزار به ۶۰ افزایش یافت.
+- حداقل کندل در `/api/v1/patterns/detect` و مسیرهای ابزار به ۶۰ افزایش یافت.
 
 ## [1.0.0] - 2025-12-10
 ### افزوده شده
-- سرویس FastAPI با مسیرهای `/api/v1/analyze`, `/patterns`, `/ml`, `/tools`, `/backtest`, `/db`.
+- سرویس FastAPI با مسیرهای `/api/v1/analyze`, `/api/v1/patterns`, `/api/v1/ml`, `/api/v1/tools`, `/api/v1/backtest`, `/api/v1/db`.
 - موتور تحلیل کلاسیک با ۶ دسته اندیکاتور، الگوهای شمعی، امواج الیوت، تحلیل فاز بازار و سیگنال نهایی.
 - تشخیص الگوهای هارمونیک (Gartley/Butterfly/Bat/Crab) و امتیازدهی ML اختیاری (مدل cache شده).
 - توصیه ابزار و تحلیل سفارشی بر پایه کاتالوگ ۹۵+ ابزار و وزن‌دهی ML.
