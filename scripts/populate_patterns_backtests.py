@@ -28,14 +28,15 @@ import numpy as np
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.append(str(ROOT / "src"))
+from _paths import REPO_ROOT, extend_sys_path
+
+extend_sys_path()
 
 from gravity_tech.core.domain.entities import Candle, CoreSignalStrength, PatternType  # noqa: E402
 from gravity_tech.core.patterns.candlestick import CandlestickPatterns  # noqa: E402
 from gravity_tech.core.patterns.classical import ClassicalPatterns  # noqa: E402
 
-DB_PATH = ROOT / "data" / "TechAnalysis.db"
+DB_PATH = REPO_ROOT / "data" / "TechAnalysis.db"
 TIMEFRAME = "1d"
 WINDOW_DAYS = 120
 PATTERN_LOOKBACK = 200
