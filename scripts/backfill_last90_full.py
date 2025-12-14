@@ -14,14 +14,14 @@ import json
 import math
 import os
 import sqlite3
-import sys
 from pathlib import Path
 from typing import Iterable, Sequence
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.append(str(ROOT / "src"))
+from _paths import ANALYSIS_SRC, REPO_ROOT, extend_sys_path
+
+extend_sys_path()
 
 from gravity_tech.core.contracts.analysis import AnalysisRequest  # noqa: E402
 from gravity_tech.core.domain.entities import (  # noqa: E402
@@ -32,7 +32,7 @@ from gravity_tech.core.domain.entities import (  # noqa: E402
 from gravity_tech.services.analysis_service import TechnicalAnalysisService  # noqa: E402
 from gravity_tech.services.ingestion_payload import build_ingestion_payload  # noqa: E402
 
-DB_PATH = ROOT / "data" / "TechAnalysis.db"
+DB_PATH = REPO_ROOT / "data" / "TechAnalysis.db"
 TIMEFRAME = "1d"
 WINDOW_DAYS = 90
 LOOKBACK_BUFFER_DAYS = 240
