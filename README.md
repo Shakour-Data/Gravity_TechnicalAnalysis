@@ -18,7 +18,7 @@
 ```bash
 pip install -r requirements.txt
 copy .env.example .env
-set PYTHONPATH=src
+set PYTHONPATH=apps/analysis_api/src
 uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 - مستندات تعاملی: `http://localhost:8000/api/docs`
@@ -78,3 +78,4 @@ pytest
 - تصمیم‌گیر ۵بعدی: `docs/guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md`
 - ماتریس حجم: `docs/guides/VOLUME_MATRIX_GUIDE.md`
 - استقرار: `docs/operations/DEPLOYMENT_GUIDE.md`
+
