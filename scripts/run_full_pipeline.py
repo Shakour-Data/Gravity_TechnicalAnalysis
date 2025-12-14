@@ -12,12 +12,10 @@ import argparse
 import logging
 import sys
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
-# Ensure local imports work when running as a script
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "src"))
+from _paths import ANALYSIS_MODELS, REPO_ROOT, extend_sys_path
+
+extend_sys_path()
 
 from config import TSE_DB_FILE  # type: ignore  # noqa: E402
 from database import TSEDatabaseConnector  # type: ignore  # noqa: E402
@@ -35,9 +33,9 @@ from gravity_tech.ml.pipeline_factory import (  # type: ignore  # noqa: E402
     load_volatility_analyzer,
 )
 
-DEFAULT_WEIGHTS = ROOT / "ml_models" / "multi_horizon" / "indicator_weights_btcusdt.json"
-DEFAULT_MODEL = ROOT / "ml_models" / "multi_horizon" / "indicator_weights_btcusdt.pkl"
-DEFAULT_TARGET_DB = ROOT / "data" / "TechAnalysis.db"
+DEFAULT_WEIGHTS = ANALYSIS_MODELS / "multi_horizon" / "indicator_weights_btcusdt.json"
+DEFAULT_MODEL = ANALYSIS_MODELS / "multi_horizon" / "indicator_weights_btcusdt.pkl"
+DEFAULT_TARGET_DB = REPO_ROOT / "data" / "TechAnalysis.db"
 
 logger = logging.getLogger("full_pipeline")
 
