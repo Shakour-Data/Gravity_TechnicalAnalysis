@@ -7,17 +7,13 @@ backtests, and tool performance for each day and symbol combination.
 
 import importlib
 import json
-import os
 import sqlite3
-import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
-# Ensure local package imports work
-ROOT = Path(__file__).resolve().parent.parent
-os.chdir(ROOT / "src")
-sys.path.insert(0, str(ROOT / "src"))
+from _paths import extend_sys_path
+
+extend_sys_path()
 
 # Import local modules after path setup
 gravity_tech_core_domain = importlib.import_module('gravity_tech.core.domain.entities')
