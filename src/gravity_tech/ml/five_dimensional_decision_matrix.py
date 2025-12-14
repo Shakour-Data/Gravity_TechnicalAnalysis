@@ -121,6 +121,18 @@ class FiveDimensionalDecisionMatrix:
     این کلاس تمام 5 dimension را تحلیل و ترکیب می‌کند و یک تصمیم نهایی ارائه می‌دهد.
     """
 
+    @staticmethod
+    def _scale_score_100(value: float) -> float:
+        """Scale/clip any score to [-100, 100]. Keeps internal logic on [-1, 1] but returns 100-based."""
+        return float(np.clip(value * 100.0, -100.0, 100.0))
+
+    def _scale_dimensions_100(self, dimensions: dict[str, DimensionState]) -> dict[str, DimensionState]:
+        """Return dimensions with scores scaled to [-100, 100] for output."""
+        for dim in dimensions.values():
+            dim.score = self._scale_score_100(dim.score)
+            dim.volume_adjusted_score = self._scale_score_100(dim.volume_adjusted_score)
+        return dimensions
+
     # وزن‌های پایه هر dimension (قابل یادگیری با ML)
     DEFAULT_WEIGHTS = {
         'trend': 0.30,
@@ -253,10 +265,14 @@ class FiveDimensionalDecisionMatrix:
             dimensions, agreement, final_signal
         )
 
+        # خروجی امتیازها در مقیاس [-100, 100]
+        dimensions = self._scale_dimensions_100(dimensions)
+        final_score_out = self._scale_score_100(final_score)
+
         return FiveDimensionalDecision(
             timestamp=datetime.now(),
             dimensions=dimensions,
-            final_score=final_score,
+            final_score=final_score_out,
             final_confidence=final_confidence,
             final_signal=final_signal,
             signal_strength=signal_strength,

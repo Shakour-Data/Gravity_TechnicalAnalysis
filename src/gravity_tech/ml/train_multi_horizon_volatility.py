@@ -191,10 +191,10 @@ def train_volatility_model(
         for horizon in horizons:
             weights_info = learner.get_horizon_weights(horizon)
             print(f"\n{horizon.upper()}:")
-            print(f"  R² Score:   {weights_info.metrics['r2_score']:.3f}")
-            print(f"  MAE:        {weights_info.metrics['mae']:.4f}")
-            print(f"  RMSE:       {weights_info.metrics['rmse']:.4f}")
-            print(f"  Confidence: {weights_info.confidence:.2f}")
+            print(f"  R² Score (test):  {weights_info.metrics.get('r2_test', 0):.3f}")
+            print(f"  MAE (test):       {weights_info.metrics.get('mae_test', 0):.4f}")
+            print(f"  MAE (train):      {weights_info.metrics.get('mae_train', 0):.4f}")
+            print(f"  Confidence:       {weights_info.confidence:.2f}")
 
             # نمایش top features
             top_features = sorted(

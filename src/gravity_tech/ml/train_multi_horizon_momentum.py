@@ -8,6 +8,7 @@ import os
 
 import numpy as np
 import pandas as pd
+from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.multi_horizon_momentum_features import MultiHorizonMomentumFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
@@ -68,7 +69,7 @@ def create_realistic_market_data(
 
 
 def train_momentum_model(
-    candles: pd.DataFrame,
+    candles: list,
     horizons: list[str] = None,
     test_size: float = 0.2,
     output_dir: str = 'models/momentum',
@@ -98,6 +99,20 @@ def train_momentum_model(
     # استخراج ویژگی‌ها
     if verbose:
         print("\n🔍 Extracting momentum features...")
+
+    # Ensure we have Candle objects
+    if isinstance(candles, pd.DataFrame):
+        candles = [
+            Candle(
+                timestamp=row['timestamp'],
+                open=float(row['open']),
+                high=float(row['high']),
+                low=float(row['low']),
+                close=float(row['close']),
+                volume=float(row['volume']),
+            )
+            for _, row in candles.iterrows()
+        ]
 
     extractor = MultiHorizonMomentumFeatureExtractor(horizons=horizons)
     X, Y = extractor.extract_training_dataset(candles)

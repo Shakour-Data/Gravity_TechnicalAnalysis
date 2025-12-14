@@ -9,7 +9,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
-from gravity_tech.config.settings import settings
+from gravity_tech.config.settings import Settings, settings
 from gravity_tech.database.database_manager import DatabaseManager, DatabaseType
 from pydantic import BaseModel
 
@@ -41,10 +41,11 @@ class DatabaseInfoResponse(BaseModel):
 
 
 def _ensure_db_explorer_enabled() -> None:
-    if not settings.expose_db_explorer:
-        raise HTTPException(status_code=403, detail="DB Explorer is disabled")
-    if settings.environment == "production":
-        raise HTTPException(status_code=403, detail="DB Explorer disabled in production")
+  enabled = getattr(settings, 'expose_db_explorer', False) or getattr(Settings, 'expose_db_explorer', False)
+  if not enabled:
+    raise HTTPException(status_code=403, detail="DB Explorer is disabled")
+  if getattr(settings, 'environment', None) == "production":
+    raise HTTPException(status_code=403, detail="DB Explorer disabled in production")
 
 
 def _list_tables(dbm: DatabaseManager) -> list[str]:

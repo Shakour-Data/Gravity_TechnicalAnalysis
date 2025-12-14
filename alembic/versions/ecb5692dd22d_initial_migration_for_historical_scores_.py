@@ -1,21 +1,21 @@
 """Initial migration for historical_scores table
 
 Revision ID: ecb5692dd22d
-Revises: 
+Revises:
 Create Date: 2025-11-20 13:06:53.194008
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'ecb5692dd22d'
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -44,19 +44,17 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('symbol', 'timestamp', 'timeframe', name='unique_score_entry')
     )
-    
+
     # Create indexes
     op.create_index('idx_historical_scores_symbol_time', 'historical_scores', ['symbol', 'timestamp'], unique=False)
     op.create_index('idx_historical_scores_timeframe', 'historical_scores', ['timeframe'], unique=False)
-    op.create_index('idx_historical_scores_date', 'historical_scores', [sa.text('DATE(timestamp)')], unique=False)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # Drop indexes
-    op.drop_index('idx_historical_scores_date', table_name='historical_scores')
     op.drop_index('idx_historical_scores_timeframe', table_name='historical_scores')
     op.drop_index('idx_historical_scores_symbol_time', table_name='historical_scores')
-    
+
     # Drop table
     op.drop_table('historical_scores')

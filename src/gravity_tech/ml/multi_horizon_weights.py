@@ -47,6 +47,22 @@ class MultiHorizonWeightLearner:
     یادگیرنده وزن برای چندین افق زمانی
     """
 
+    @staticmethod
+    def _normalize_horizon_name(horizon: str) -> str:
+        """
+        Normalize horizon labels coming from different target column names.
+
+        Accepts variations like 'return_3d', 'target_3d', 'pred_3d' and returns
+        the canonical horizon string (e.g., '3d').
+        """
+        if horizon is None:
+            return ''
+        cleaned = horizon
+        for prefix in ("return_", "target_", "pred_", "horizon_"):
+            if cleaned.startswith(prefix):
+                cleaned = cleaned[len(prefix):]
+        return cleaned
+
     def __init__(
         self,
         horizons: list[str] = None,
@@ -163,7 +179,7 @@ class MultiHorizonWeightLearner:
 
         # حلقه روی افق‌ها
         for i, horizon_col in enumerate(Y_train.columns):
-            horizon_name = horizon_col.replace('return_', '')
+            horizon_name = self._normalize_horizon_name(horizon_col)
 
             if verbose:
                 print(f"\n🎯 Horizon: {horizon_name}")
@@ -192,8 +208,9 @@ class MultiHorizonWeightLearner:
             weights = self._normalize_weights(feature_importances)
 
             # ذخیره
-            self.horizon_weights[horizon_name] = HorizonWeights(
-                horizon=horizon_name,
+            normalized_horizon = self._normalize_horizon_name(horizon_name)
+            self.horizon_weights[normalized_horizon] = HorizonWeights(
+                horizon=normalized_horizon,
                 weights=dict(zip(self.feature_names, weights, strict=True)),
                 metrics={
                     'r2_train': r2_train,
@@ -304,6 +321,33 @@ class MultiHorizonWeightLearner:
         """
         Lightweight fallback that approximates predictions using stored feature weights.
         """
+        def _clean_value(name: str, val: float | int | None) -> float:
+            """
+            Clamp/normalize feature values so dot-products do not explode to 1.0 after clipping.
+            - *_signal, *_weighted, *_normalized are expected to be in [-1, 1] → clip there.
+            - *_percentile is roughly [0, 100]; center and scale to [-1, 1].
+            - everything else is squashed with tanh to avoid huge magnitudes.
+            """
+            if val is None:
+                return 0.0
+            try:
+                v = float(val)
+            except (TypeError, ValueError):
+                return 0.0
+
+            if np.isnan(v):
+                return 0.0
+
+            if name.endswith("_percentile"):
+                v = (v - 50.0) / 50.0  # 50 -> 0, 0/100 -> -1/+1
+            elif name.endswith("_normalized") or name.endswith("_signal") or name.endswith("_weighted"):
+                pass  # already in a reasonable range, just clip below
+            else:
+                # squash arbitrary values to [-1, 1]
+                v = np.tanh(v)
+
+            return float(np.clip(v, -1.0, 1.0))
+
         rows: list[dict[str, float]] = []
         for _, row in X.iterrows():
             horizon_preds: dict[str, float] = {}
@@ -316,7 +360,7 @@ class MultiHorizonWeightLearner:
                 numerator = 0.0
                 weight_norm = 0.0
                 for feature_name, weight in horizon_weights.weights.items():
-                    value = row.get(feature_name, 0.0)
+                    value = _clean_value(feature_name, row.get(feature_name, 0.0))
                     numerator += value * weight
                     weight_norm += abs(weight)
 
@@ -358,20 +402,21 @@ class MultiHorizonWeightLearner:
         with open(filepath, encoding='utf-8') as f:
             data = json.load(f)
 
-        self.horizons = data['horizons']
+        self.horizons = [self._normalize_horizon_name(h) for h in data['horizons']]
         self.feature_names = data['feature_names']
 
         self.horizon_weights = {}
         for horizon, w_dict in data['weights'].items():
-            self.horizon_weights[horizon] = HorizonWeights(
-                horizon=w_dict['horizon'],
+            normalized_horizon = self._normalize_horizon_name(horizon)
+            self.horizon_weights[normalized_horizon] = HorizonWeights(
+                horizon=self._normalize_horizon_name(w_dict.get('horizon', normalized_horizon)),
                 weights=w_dict['weights'],
                 metrics=w_dict['metrics'],
                 confidence=w_dict['confidence']
             )
 
-        print(f"✅ Weights loaded from: {filepath}")
-        print(f"   Horizons: {self.horizons}")
+        print(f"[OK] Weights loaded from: {filepath}")
+        print(f"     Horizons: {self.horizons}")
 
     def save_model_state(
         self,

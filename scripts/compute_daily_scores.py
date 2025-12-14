@@ -85,6 +85,69 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
     conn = manager.get_connection()
     placeholder = manager.get_sql_placeholder()
 
+    def fetch_candles(sym: str):
+        """Fetch OHLCV for a symbol or synthetic index symbol (IDX_*, SEC_*)."""
+        # Synthetic market index (IDX_<code>)
+        if sym.upper().startswith("IDX_"):
+            code = sym[4:]
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT trading_date, open, high, low, close
+                    FROM tse_input.market_indices
+                    WHERE index_code = %s
+                    ORDER BY trading_date ASC
+                    """,
+                    (code,),
+                )
+                rows = cur.fetchall()
+            candles = []
+            for r in rows:
+                dt = datetime.combine(r[0], time.min, tzinfo=timezone.utc)
+                candles.append(
+                    {
+                        "timestamp": dt,
+                        "open": float(r[1]) if r[1] is not None else None,
+                        "high": float(r[2]) if r[2] is not None else None,
+                        "low": float(r[3]) if r[3] is not None else None,
+                        "close": float(r[4]) if r[4] is not None else None,
+                        "volume": 0.0,  # no volume for indices
+                    }
+                )
+            return candles
+
+        # Synthetic sector index (SEC_<code>)
+        if sym.upper().startswith("SEC_"):
+            code = sym[4:]
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT trading_date, open, high, low, close
+                    FROM tse_input.sector_indices
+                    WHERE sector_code = %s
+                    ORDER BY trading_date ASC
+                    """,
+                    (code,),
+                )
+                rows = cur.fetchall()
+            candles = []
+            for r in rows:
+                dt = datetime.combine(r[0], time.min, tzinfo=timezone.utc)
+                candles.append(
+                    {
+                        "timestamp": dt,
+                        "open": float(r[1]) if r[1] is not None else None,
+                        "high": float(r[2]) if r[2] is not None else None,
+                        "low": float(r[3]) if r[3] is not None else None,
+                        "close": float(r[4]) if r[4] is not None else None,
+                        "volume": 0.0,  # no volume for indices
+                    }
+                )
+            return candles
+
+        # Default: regular symbol from price_data
+        return connector.fetch_price_data(sym)
+
     def clean_num(val):
         if val is None:
             return None
@@ -95,6 +158,20 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
         if pd.isna(f):
             return None
         return f
+
+    def clean_score(val):
+        """
+        Normalize any numeric score to [-100, 100]:
+        - If already in [-100, 100], keep it.
+        - If in [-1, 1], scale by 100.
+        - Otherwise clip to [-100, 100].
+        """
+        f = clean_num(val)
+        if f is None:
+            return None
+        if -1.0 <= f <= 1.0:
+            return float(f * 100.0)
+        return float(np.clip(f, -100.0, 100.0))
 
     # Prepare insert/upsert statements for daily tables
     dim_insert = f"""
@@ -128,7 +205,7 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
     """
 
     for sym in symbols:
-        raw = connector.fetch_price_data(sym)
+        raw = fetch_candles(sym)
         if not raw:
             continue
 
@@ -154,28 +231,28 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
             ts_val = _ts_from_date(row["timestamp"])
             # Indicators per dimension (sample set)
             # Trend
-            ind_rows.append((sym, "1d", ts_val, "trend", "sma_20", None, clean_num(row["sma_20"]), clean_num(row["trend_score"]), None, 0.5, None, 20))
-            ind_rows.append((sym, "1d", ts_val, "trend", "ema_20", None, clean_num(row["ema_20"]), clean_num(row["trend_score"]), None, 0.5, None, 20))
+            ind_rows.append((sym, "1d", ts_val, "trend", "sma_20", None, clean_num(row["sma_20"]), clean_score(row["trend_score"]), None, 0.5, None, 20))
+            ind_rows.append((sym, "1d", ts_val, "trend", "ema_20", None, clean_num(row["ema_20"]), clean_score(row["trend_score"]), None, 0.5, None, 20))
             # Momentum
-            ind_rows.append((sym, "1d", ts_val, "momentum", "rsi_14", None, clean_num(row["rsi_14"]), clean_num(row["momentum_score"]), None, 0.5, None, 14))
+            ind_rows.append((sym, "1d", ts_val, "momentum", "rsi_14", None, clean_num(row["rsi_14"]), clean_score(row["momentum_score"]), None, 0.5, None, 14))
             ind_rows.append((sym, "1d", ts_val, "momentum", "macd", None, clean_num(row["macd"]), None, None, 0.5, None, None))
             ind_rows.append((sym, "1d", ts_val, "momentum", "macd_signal", None, clean_num(row["macd_signal"]), None, None, 0.5, None, None))
             ind_rows.append((sym, "1d", ts_val, "momentum", "macd_hist", None, clean_num(row["macd_hist"]), None, None, 0.5, None, None))
             # Volatility
-            ind_rows.append((sym, "1d", ts_val, "volatility", "atr_14", None, clean_num(row["atr_14"]), clean_num(row["volatility_score"]), None, 0.5, None, 14))
+            ind_rows.append((sym, "1d", ts_val, "volatility", "atr_14", None, clean_num(row["atr_14"]), clean_score(row["volatility_score"]), None, 0.5, None, 14))
             vol_std_val = df["return"].rolling(20, min_periods=5).std().loc[_]
             ind_rows.append((sym, "1d", ts_val, "volatility", "return_std_20", None,
                              clean_num(vol_std_val),
-                             clean_num(row["volatility_score"]), None, 0.5, None, 20))
+                             clean_score(row["volatility_score"]), None, 0.5, None, 20))
             # Volume
-            ind_rows.append((sym, "1d", ts_val, "volume", "vol_zscore_20", None, clean_num(row["volume_score"]), clean_num(row["volume_score"]), None, 0.5, None, 20))
+            ind_rows.append((sym, "1d", ts_val, "volume", "vol_zscore_20", None, clean_num(row["volume_score"]), clean_score(row["volume_score"]), None, 0.5, None, 20))
 
             # Dimension scores (simple aggregates for now)
             dim_rows.extend([
-                (sym, "1d", ts_val, "trend", clean_num(row["trend_score"]), 0.5, None, "BULLISH" if clean_num(row["trend_score"]) and clean_num(row["trend_score"]) > 0 else "BEARISH" if clean_num(row["trend_score"]) and clean_num(row["trend_score"]) < 0 else "NEUTRAL", None),
-                (sym, "1d", ts_val, "momentum", clean_num(row["momentum_score"]), 0.5, None, "BULLISH" if clean_num(row["momentum_score"]) and clean_num(row["momentum_score"]) > 0 else "BEARISH" if clean_num(row["momentum_score"]) and clean_num(row["momentum_score"]) < 0 else "NEUTRAL", None),
-                (sym, "1d", ts_val, "volatility", clean_num(row["volatility_score"]), 0.5, None, "HIGH" if clean_num(row["volatility_score"]) and clean_num(row["volatility_score"]) > 0.05 else "NORMAL", None),
-                (sym, "1d", ts_val, "volume", clean_num(row["volume_score"]), 0.5, None, "HIGH" if clean_num(row["volume_score"]) and clean_num(row["volume_score"]) > 0 else "LOW", None),
+                (sym, "1d", ts_val, "trend", clean_score(row["trend_score"]), 0.5, None, "BULLISH" if clean_num(row["trend_score"]) and clean_num(row["trend_score"]) > 0 else "BEARISH" if clean_num(row["trend_score"]) and clean_num(row["trend_score"]) < 0 else "NEUTRAL", None),
+                (sym, "1d", ts_val, "momentum", clean_score(row["momentum_score"]), 0.5, None, "BULLISH" if clean_num(row["momentum_score"]) and clean_num(row["momentum_score"]) > 0 else "BEARISH" if clean_num(row["momentum_score"]) and clean_num(row["momentum_score"]) < 0 else "NEUTRAL", None),
+                (sym, "1d", ts_val, "volatility", clean_score(row["volatility_score"]), 0.5, None, "HIGH" if clean_num(row["volatility_score"]) and clean_num(row["volatility_score"]) > 0.05 else "NORMAL", None),
+                (sym, "1d", ts_val, "volume", clean_score(row["volume_score"]), 0.5, None, "HIGH" if clean_num(row["volume_score"]) and clean_num(row["volume_score"]) > 0 else "LOW", None),
             ])
 
         with conn.cursor() as cur:

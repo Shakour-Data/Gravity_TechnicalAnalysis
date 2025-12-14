@@ -712,6 +712,71 @@ def benchmark_performance():
     print(f"✅ CPU utilization: {mp.cpu_count()} cores")
 
 
+# Compatibility wrappers expected by legacy tests
+def calculate_sma_numba(prices: np.ndarray, period: int) -> np.ndarray:
+    """Compatibility wrapper that returns SMA with NaNs for the warm-up period."""
+    prices = np.asarray(prices, dtype=float)
+    n = len(prices)
+    if period <= 0 or n == 0:
+        return np.array([])
+    result = np.full(n, np.nan)
+    if n >= period:
+        cumsum = np.cumsum(prices)
+        result[period - 1] = (cumsum[period - 1]) / period
+        for i in range(period, n):
+            result[i] = (cumsum[i] - cumsum[i - period]) / period
+
+    return result
+
+
+def calculate_rsi_numba(prices: np.ndarray, period: int = 14) -> float:
+    """Compatibility wrapper that returns the latest RSI value as a float."""
+    prices = np.asarray(prices, dtype=float)
+    if len(prices) < 2:
+        return float(50.0)
+
+    deltas = np.diff(prices)
+    seed = deltas[:period]
+    up = seed[seed >= 0].sum() / period
+    down = -seed[seed < 0].sum() / period
+    rs = up / down if down != 0 else float('inf')
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+
+    # Smooth over the rest of the series
+    up_avg = up
+    down_avg = down
+    for delta in deltas[period:]:
+        up_val = max(delta, 0.0)
+        down_val = -min(delta, 0.0)
+        up_avg = (up_avg * (period - 1) + up_val) / period
+        down_avg = (down_avg * (period - 1) + down_val) / period
+        rs = up_avg / down_avg if down_avg != 0 else float('inf')
+        rsi = 100.0 - (100.0 / (1.0 + rs))
+
+    return float(rsi)
+
+
+def calculate_macd_numba(prices: np.ndarray, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9):
+    """Compatibility wrapper that returns MACD and signal lines as numpy arrays."""
+    prices = np.asarray(prices, dtype=float)
+    if len(prices) == 0:
+        return np.array([]), np.array([])
+
+    def ema(series: np.ndarray, period: int) -> np.ndarray:
+        alpha = 2.0 / (period + 1.0)
+        out = np.empty(len(series), dtype=float)
+        out[0] = series[0]
+        for i in range(1, len(series)):
+            out[i] = alpha * series[i] + (1 - alpha) * out[i - 1]
+        return out
+
+    fast = ema(prices, fast_period)
+    slow = ema(prices, slow_period)
+    macd = fast - slow
+    signal = ema(macd, signal_period)
+    return macd, signal
+
+
 @njit(cache=True, parallel=True)
 def fast_donchian_channels(highs: np.ndarray, lows: np.ndarray, period: int) -> tuple:
     """

@@ -18,9 +18,10 @@ License: MIT
 import json
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
+import numpy as np
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
 
@@ -73,10 +74,65 @@ class HistoricalScoreEntry:
     created_at: datetime | None = None
 
 
+@dataclass
+class DailyWeightEntry:
+    """وزن‌های روزانه برای هر افق و نوع تحلیل."""
+    as_of_date: date
+    analysis_type: str   # trend | momentum | volatility
+    horizon: str         # '3d' | '7d' | '30d'
+    feature_names: list[str]
+    feature_weights: dict[str, float]
+    metrics: dict[str, Any] | None
+    confidence: float
+    symbol: str = "GLOBAL"  # در صورت نیاز به وزن اختصاصی نماد
+
+
 class HistoricalScoreManager:
     """
     مدیریت ذخیره و بازیابی امتیازهای تاریخی
     """
+
+    @staticmethod
+    def _clip_score(val: Any) -> Any:
+        """
+        Normalize score-like values to [-100, 100]:
+        - If already in [-100, 100], keep it.
+        - If in [-1, 1], scale to [-100, 100].
+        - Otherwise clip to [-100, 100].
+        """
+        if val is None:
+            return None
+        try:
+            fval = float(val)
+        except (TypeError, ValueError):
+            return val
+        if -1.0 <= fval <= 1.0:
+            return float(fval * 100.0)
+        return max(-100.0, min(100.0, fval))
+
+    def _normalize_score_entry(self, entry: HistoricalScoreEntry) -> dict[str, Any]:
+        """Convert dataclass to dict and clamp score fields."""
+        payload = asdict(entry)
+        # Align DB column name (ts) with model attribute (timestamp)
+        payload["ts"] = payload.pop("timestamp")
+        # Convert numpy scalar types to native Python numbers for psycopg
+        for key, val in list(payload.items()):
+            if isinstance(val, np.generic):
+                payload[key] = val.item()
+        for key in [
+            "trend_score",
+            "momentum_score",
+            "combined_score",
+            "volume_score",
+            "volatility_score",
+            "cycle_score",
+            "support_resistance_score",
+        ]:
+            payload[key] = self._clip_score(payload.get(key))
+        # Serialize raw_data (dict) to JSON string for DB storage
+        if payload.get("raw_data") is not None:
+            payload["raw_data"] = json.dumps(payload["raw_data"], ensure_ascii=False)
+        return payload
 
     def __init__(self, connection_string: str):
         """
@@ -90,6 +146,8 @@ class HistoricalScoreManager:
         """اتصال به دیتابیس"""
         if self._connection is None or self._connection.closed:
             self._connection = psycopg2.connect(self.connection_string)
+            # Keep writes committed even when called repeatedly from batch jobs
+            self._connection.autocommit = True
         return self._connection
 
     def close(self):
@@ -134,11 +192,13 @@ class HistoricalScoreManager:
         conn = self.connect()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
+        normalized_entry = self._normalize_score_entry(score_entry)
+
         try:
             # 1. ذخیره امتیاز اصلی
             cursor.execute("""
                 INSERT INTO historical_scores (
-                    symbol, timestamp, timeframe,
+                    symbol, ts, timeframe,
                     trend_score, trend_confidence,
                     momentum_score, momentum_confidence,
                     combined_score, combined_confidence,
@@ -149,7 +209,7 @@ class HistoricalScoreManager:
                     volume_score, volatility_score, cycle_score, support_resistance_score,
                     raw_data
                 ) VALUES (
-                    %(symbol)s, %(timestamp)s, %(timeframe)s,
+                    %(symbol)s, %(ts)s, %(timeframe)s,
                     %(trend_score)s, %(trend_confidence)s,
                     %(momentum_score)s, %(momentum_confidence)s,
                     %(combined_score)s, %(combined_confidence)s,
@@ -160,7 +220,7 @@ class HistoricalScoreManager:
                     %(volume_score)s, %(volatility_score)s, %(cycle_score)s, %(support_resistance_score)s,
                     %(raw_data)s
                 )
-                ON CONFLICT (symbol, timestamp, timeframe)
+                ON CONFLICT (symbol, ts, timeframe)
                 DO UPDATE SET
                     trend_score = EXCLUDED.trend_score,
                     trend_confidence = EXCLUDED.trend_confidence,
@@ -174,7 +234,7 @@ class HistoricalScoreManager:
                     support_resistance_score = EXCLUDED.support_resistance_score,
                     raw_data = EXCLUDED.raw_data
                 RETURNING id
-            """, asdict(score_entry))
+            """, normalized_entry)
 
             score_id_row = cursor.fetchone()
             if score_id_row is None:
@@ -187,7 +247,14 @@ class HistoricalScoreManager:
 
             # 3. ذخیره indicator scores
             if indicator_scores:
-                self._save_indicator_scores(cursor, score_id, indicator_scores)
+                self._save_indicator_scores(
+                    cursor,
+                    score_id,
+                    indicator_scores,
+                    symbol=score_entry.symbol,
+                    ts=normalized_entry["ts"],
+                    timeframe=score_entry.timeframe,
+                )
 
             # 4. ذخیره patterns
             if patterns:
@@ -220,7 +287,7 @@ class HistoricalScoreManager:
                 score_id,
                 h['horizon'],
                 h['analysis_type'],
-                h['score'],
+                self._clip_score(h.get('score')),
                 h['confidence'],
                 h['signal']
             )
@@ -239,29 +306,50 @@ class HistoricalScoreManager:
             data
         )
 
-    def _save_indicator_scores(self, cursor, score_id: int, indicator_scores: list[dict]):
+    def _save_indicator_scores(
+        self,
+        cursor,
+        score_id: int,
+        indicator_scores: list[dict],
+        *,
+        symbol: str,
+        ts,
+        timeframe: str,
+    ):
         """ذخیره امتیازهای تک تک اندیکاتورها"""
-        data = [
-            (
-                score_id,
-                ind.get('name'),
-                ind.get('category'),
-                json.dumps(ind.get('params', {})),
-                ind.get('score'),
-                ind.get('confidence'),
-                ind.get('signal'),
-                ind.get('raw_value')
+        data = []
+        for ind in indicator_scores:
+            name = ind.get('name')
+            if not name:
+                continue
+            confidence = ind.get('confidence')
+            if isinstance(confidence, np.generic):
+                confidence = confidence.item()
+            data.append(
+                (
+                    score_id,
+                    symbol,
+                    ts,
+                    timeframe,
+                    name,
+                    ind.get('category'),
+                    json.dumps(ind.get('params', {})),
+                    self._clip_score(ind.get('score')),
+                    ind.get('signal'),
+                    confidence,
+                )
             )
-            for ind in indicator_scores
-            if ind.get('name')
-        ]
+
+        if not data:
+            return
 
         execute_values(
             cursor,
             """
             INSERT INTO historical_indicator_scores
-                (score_id, indicator_name, indicator_category, indicator_params,
-                 score, confidence, signal, raw_value)
+                (score_id, symbol, ts, timeframe,
+                 indicator_name, indicator_category, indicator_params,
+                 value, signal, confidence)
             VALUES %s
             """,
             data
@@ -274,7 +362,7 @@ class HistoricalScoreManager:
                 score_id,
                 p['type'],
                 p['name'],
-                p['score'],
+                self._clip_score(p.get('score')),
                 p['confidence'],
                 p['signal'],
                 p.get('description'),
@@ -311,7 +399,8 @@ class HistoricalScoreManager:
                 volume_confidence = EXCLUDED.volume_confidence
         """, {
             'score_id': score_id,
-            **volume
+            **volume,
+            'volume_score': self._clip_score(volume.get('volume_score')),
         })
 
     def _save_price_targets(self, cursor, score_id: int, targets: list[dict]):
@@ -338,18 +427,137 @@ class HistoricalScoreManager:
             data
         )
 
+    # ═══════════════════════════════════════════════════════════════════
+    # Daily weights (per day, per analysis type)
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _ensure_daily_weights_table(self, cursor):
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS daily_weights (
+                id BIGSERIAL PRIMARY KEY,
+                as_of_date date NOT NULL,
+                analysis_type text NOT NULL,
+                horizon text NOT NULL,
+                feature_names jsonb NOT NULL,
+                feature_weights jsonb NOT NULL,
+                metrics jsonb,
+                confidence numeric,
+                symbol text DEFAULT 'GLOBAL',
+                created_at timestamptz DEFAULT now(),
+                UNIQUE(as_of_date, analysis_type, horizon, symbol)
+            )
+            """
+        )
+
+    def save_daily_weights(self, entry: DailyWeightEntry):
+        conn = self.connect()
+        cursor = conn.cursor()
+        try:
+            self._ensure_daily_weights_table(cursor)
+            # sanitize numpy types
+            def _to_float_dict(d: dict[str, Any]) -> dict[str, float]:
+                return {k: float(v) for k, v in d.items()}
+
+            feature_weights = _to_float_dict(entry.feature_weights)
+            metrics = {k: float(v) if isinstance(v, (int, float, np.generic)) else v for k, v in (entry.metrics or {}).items()}
+            confidence = float(entry.confidence) if entry.confidence is not None else None
+
+            cursor.execute(
+                """
+                INSERT INTO daily_weights (
+                    as_of_date, analysis_type, horizon, feature_names, feature_weights,
+                    metrics, confidence, symbol
+                )
+                VALUES (%(as_of_date)s, %(analysis_type)s, %(horizon)s,
+                        %(feature_names)s, %(feature_weights)s,
+                        %(metrics)s, %(confidence)s, %(symbol)s)
+                ON CONFLICT (as_of_date, analysis_type, horizon, symbol)
+                DO UPDATE SET
+                    feature_names = EXCLUDED.feature_names,
+                    feature_weights = EXCLUDED.feature_weights,
+                    metrics = EXCLUDED.metrics,
+                    confidence = EXCLUDED.confidence,
+                    created_at = now()
+                """,
+                {
+                    "as_of_date": entry.as_of_date,
+                    "analysis_type": entry.analysis_type,
+                    "horizon": entry.horizon,
+                    "feature_names": json.dumps(entry.feature_names, ensure_ascii=False),
+                    "feature_weights": json.dumps(feature_weights, ensure_ascii=False),
+                    "metrics": json.dumps(metrics, ensure_ascii=False),
+                    "confidence": confidence,
+                    "symbol": entry.symbol,
+                },
+            )
+        finally:
+            cursor.close()
+
+    def load_daily_weights(
+        self,
+        as_of_date: date,
+        analysis_type: str,
+        symbol: str = "GLOBAL",
+    ) -> list[DailyWeightEntry]:
+        """
+        Load daily weights for the latest date <= as_of_date.
+        """
+        conn = self.connect()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            self._ensure_daily_weights_table(cursor)
+            cursor.execute(
+                """
+                SELECT as_of_date, analysis_type, horizon, feature_names,
+                       feature_weights, metrics, confidence, symbol
+                FROM daily_weights
+                WHERE analysis_type = %s
+                  AND symbol = %s
+                  AND as_of_date = (
+                        SELECT max(as_of_date)
+                        FROM daily_weights
+                        WHERE analysis_type = %s AND symbol = %s AND as_of_date <= %s
+                  )
+                ORDER BY horizon
+                """,
+                (analysis_type, symbol, analysis_type, symbol, as_of_date),
+            )
+            rows = cursor.fetchall()
+            entries: list[DailyWeightEntry] = []
+            for r in rows:
+                entries.append(
+                    DailyWeightEntry(
+                        as_of_date=r["as_of_date"],
+                        analysis_type=r["analysis_type"],
+                        horizon=r["horizon"],
+                        feature_names=r["feature_names"],
+                        feature_weights=r["feature_weights"],
+                        metrics=r.get("metrics") or {},
+                        confidence=float(r["confidence"]) if r["confidence"] is not None else 0.0,
+                        symbol=r.get("symbol") or "GLOBAL",
+                    )
+                )
+            return entries
+        finally:
+            cursor.close()
+
     def _update_metadata(self, cursor, symbol: str, timeframe: str, score_id: int):
         """به‌روزرسانی metadata"""
-        cursor.execute("""
-            INSERT INTO analysis_metadata (symbol, timeframe, last_analysis_at, last_score_id, total_analyses)
-            VALUES (%(symbol)s, %(timeframe)s, NOW(), %(score_id)s, 1)
-            ON CONFLICT (symbol, timeframe)
-            DO UPDATE SET
-                last_analysis_at = NOW(),
-                last_score_id = %(score_id)s,
-                total_analyses = analysis_metadata.total_analyses + 1,
-                updated_at = NOW()
-        """, {'symbol': symbol, 'timeframe': timeframe, 'score_id': score_id})
+        try:
+            cursor.execute("""
+                INSERT INTO analysis_metadata (symbol, timeframe, last_analysis_at, last_score_id, total_analyses)
+                VALUES (%(symbol)s, %(timeframe)s, NOW(), %(score_id)s, 1)
+                ON CONFLICT (symbol, timeframe)
+                DO UPDATE SET
+                    last_analysis_at = NOW(),
+                    last_score_id = %(score_id)s,
+                    total_analyses = analysis_metadata.total_analyses + 1,
+                    updated_at = NOW()
+            """, {'symbol': symbol, 'timeframe': timeframe, 'score_id': score_id})
+        except psycopg2.errors.UndefinedTable:
+            # Metadata table not present in this database; safely skip.
+            return
 
     # ═══════════════════════════════════════════════════════════════════
     # بازیابی امتیازها (Retrieve)

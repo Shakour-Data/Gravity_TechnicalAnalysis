@@ -32,7 +32,9 @@ def suggest_params(
     """
     manager = db_manager or DatabaseManager(auto_setup=True)
 
-    if manager.db_type == manager.db_type.JSON_FILE:
+    # Support both DB-backed and JSON file backtest stores. The tests may
+    # provide a mock manager with a `.json_data` attribute.
+    if hasattr(manager, "json_data") and manager.json_data is not None:
         runs = manager.json_data.get("backtest_runs", [])
     else:
         conn = manager.get_connection()

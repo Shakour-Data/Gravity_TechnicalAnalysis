@@ -20,7 +20,9 @@
 از ریشه مخزن اجرا کنید:
 ```bash
 set PYTHONPATH=src
-uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn gravity_tech.main:app --host 127.0.0.1 --port 8002 --reload
+# Or to bind to all interfaces:
+# uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8002 --reload
 ```
 - مستندات تعاملی: `http://localhost:8000/api/docs`
 - سلامت: `http://localhost:8000/health`

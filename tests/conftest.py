@@ -497,7 +497,7 @@ def data_loader(tse_db_connection):
 
 
 @pytest.fixture
-async def mock_cache_manager(monkeypatch):
+def mock_cache_manager(monkeypatch):
     """Mock CacheManager for testing without Redis."""
     from unittest.mock import AsyncMock, MagicMock
 

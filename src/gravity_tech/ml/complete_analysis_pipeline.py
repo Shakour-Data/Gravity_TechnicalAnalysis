@@ -460,7 +460,8 @@ class _FeatureCache:
     def volatility_features(self) -> dict[str, float]:
         if self._volatility_features is None:
             window = self._window(self._volatility_lookback)
-            self._volatility_features = self._trend_extractor.extract_indicator_features(window)
+            # Use dedicated volatility extractor to align with volatility model features
+            self._volatility_features = self._volatility_extractor.extract_volatility_features(window)
         return self._volatility_features
 
     def _window(self, length: int) -> list[Candle]:
@@ -583,9 +584,11 @@ class PipelineResult:
             },
             'volume_interactions': {
                 name: {
-                    'type': interaction.type.value,
-                    'score': interaction.interaction_score,
-                    'confidence_multiplier': interaction.confidence_multiplier
+                    'type': getattr(interaction, "interaction_type", None).value
+                    if getattr(interaction, "interaction_type", None) else None,
+                    'score': getattr(interaction, "interaction_score", None),
+                    'confidence': getattr(interaction, "confidence", None),
+                    'signals': getattr(interaction, "signals", []),
                 }
                 for name, interaction in (self.volume_interactions or {}).items()
             },

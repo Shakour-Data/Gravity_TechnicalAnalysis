@@ -17,6 +17,11 @@
 - اینجکشن نتایج: ولیدیشن payload (نماد/تایم‌فریم/NaN/Inf/حجم ۱۰MB)، dedup درجا، متریک‌های موفق/خطا/تاخیر، retries در مسیر مستقیم و احراز اختیاری.
 - اهداف/حدضرر داینامیک ATR-like در تشخیص الگو؛ `ml_status` به خروجی اضافه شد.
 - پیش‌بینی ML: مدل fallback در نبود فایل، timeout (2s/5s)، اعتبارسنجی NaN/Inf/بزرگ، محدودیت batch=256 و ادامه در خطای تک‌رکورد.
+## [1.0.2] - 2025-12-14
+### رفع باگ و بهبود تست‌ها
+- Routers: DB Explorer در زمان اجرا همیشه mount می‌شود اما با flag `expose_db_explorer` کنترل دسترسی می‌گردد.
+- تنظیمات: از شناسهٔ کلاس (`Settings.expose_db_explorer`) برای سازگاری بیشتر با `unittest.mock.patch` پشتیبانی شد.
+- Lifecycle: startup/shutdown converted to an async lifespan context manager and test fixtures updated for compatibility.
 
 ### تغییر یافته
 - Router سناریوها به‌صورت مشروط mount می‌شود؛ DB Explorer فقط در صورت فعال بودن پرچم mount می‌شود.

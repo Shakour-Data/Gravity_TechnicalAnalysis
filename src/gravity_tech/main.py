@@ -42,6 +42,7 @@ Version: 1.0.0
 """
 
 import time
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request, status
@@ -55,10 +56,18 @@ from gravity_tech.api.v1.patterns import router as patterns_router
 from gravity_tech.config.settings import settings
 from gravity_tech.middleware.events import event_publisher
 from gravity_tech.middleware.logging import setup_logging
-from gravity_tech.middleware.service_discovery import (
-    shutdown_service_discovery,
-    startup_service_discovery,
-)
+
+try:
+    from gravity_tech.middleware.service_discovery import (
+        shutdown_service_discovery,
+        startup_service_discovery,
+    )
+except Exception as e:  # Catch any import-time errors (e.g., incompatible consul library)
+    import warnings
+
+    warnings.warn(f"Service discovery unavailable: {e}", stacklevel=2)
+    shutdown_service_discovery = None
+    startup_service_discovery = None
 from gravity_tech.services.cache_service import cache_manager
 from gravity_tech.services.data_ingestor_service import start_data_ingestor, stop_data_ingestor
 from prometheus_client import make_asgi_app
@@ -67,8 +76,68 @@ from prometheus_client import make_asgi_app
 setup_logging()
 logger = structlog.get_logger()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan handler for startup and shutdown tasks."""
+    logger.info("application_startup", version=settings.app_version)
+
+    # Startup tasks
+    try:
+        await cache_manager.initialize()
+
+        # Service discovery (optional)
+        if settings.eureka_enabled and startup_service_discovery:
+            await startup_service_discovery()
+
+        # Event publisher (optional)
+        try:
+            if hasattr(settings, 'kafka_enabled') and settings.kafka_enabled:
+                await event_publisher.initialize(broker_type="kafka")
+            elif hasattr(settings, 'rabbitmq_enabled') and settings.rabbitmq_enabled:
+                await event_publisher.initialize(broker_type="rabbitmq")
+        except Exception as e:
+            logger.warning("event_publisher_initialization_failed", error=str(e))
+
+        # Background data ingestor
+        if settings.enable_data_ingestion:
+            try:
+                await start_data_ingestor()
+            except Exception as e:
+                logger.warning("data_ingestor_start_failed", error=str(e))
+
+        logger.info("application_ready")
+
+        yield
+
+    finally:
+        # Shutdown tasks
+        logger.info("application_shutdown")
+        try:
+            await cache_manager.close()
+        except Exception as e:
+            logger.warning("cache_close_failed", error=str(e))
+
+        try:
+            await event_publisher.close()
+        except Exception as e:
+            logger.warning("event_publisher_close_failed", error=str(e))
+
+        if settings.enable_data_ingestion:
+            try:
+                await stop_data_ingestor()
+            except Exception as e:
+                logger.warning("data_ingestor_stop_failed", error=str(e))
+
+        if settings.eureka_enabled and shutdown_service_discovery:
+            try:
+                await shutdown_service_discovery()
+            except Exception as e:
+                logger.warning("service_discovery_shutdown_failed", error=str(e))
+
+        logger.info("application_stopped")
+
 # Create FastAPI application
-app = FastAPI(
+app = FastAPI(lifespan=lifespan,
     title=settings.app_name,
     description="""
 # Comprehensive Technical Analysis Microservice
@@ -192,8 +261,7 @@ app.include_router(auth_router, prefix="/api")
 if settings.enable_scenarios:
     app.include_router(scenarios_router.router, prefix="/api/v1")
 
-if settings.expose_db_explorer:
-    app.include_router(db_router, prefix="/api/v1")
+app.include_router(db_router, prefix="/api/v1")
 
 # Prometheus metrics endpoint
 if settings.metrics_enabled:
@@ -201,55 +269,10 @@ if settings.metrics_enabled:
     app.mount("/metrics", metrics_app)
 
 
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """راه‌اندازی اولیه سرویس"""
-    logger.info("application_startup", version=settings.app_version)
-
-    # راه‌اندازی Redis Cache
-    await cache_manager.initialize()
-
-    # راه‌اندازی Service Discovery
-    if settings.eureka_enabled:
-        await startup_service_discovery()
-
-    # راه‌اندازی Event Publisher (اختیاری)
-    try:
-        if hasattr(settings, 'kafka_enabled') and settings.kafka_enabled:
-            await event_publisher.initialize(broker_type="kafka")
-        elif hasattr(settings, 'rabbitmq_enabled') and settings.rabbitmq_enabled:
-            await event_publisher.initialize(broker_type="rabbitmq")
-    except Exception as e:
-        logger.warning("event_publisher_initialization_failed", error=str(e))
-
-    # Background data ingestor (saves ANALYSIS_COMPLETED events)
-    if settings.enable_data_ingestion:
-        try:
-            await start_data_ingestor()
-        except Exception as e:
-            logger.warning("data_ingestor_start_failed", error=str(e))
-
-    logger.info("application_ready")
+# Startup/shutdown handled by `lifespan` async context manager above.
 
 
-# Shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    """خاموش کردن سرویس"""
-    logger.info("application_shutdown")
-
-    # بستن اتصالات
-    await cache_manager.close()
-    await event_publisher.close()
-    if settings.enable_data_ingestion:
-        await stop_data_ingestor()
-
-    # حذف از Service Discovery
-    if settings.eureka_enabled:
-        await shutdown_service_discovery()
-
-    logger.info("application_stopped")
+# Startup/shutdown handled by `lifespan` async context manager above.
 
 
 # Health check endpoints
@@ -268,6 +291,32 @@ async def health_check():
         "service": settings.app_name,
         "version": settings.app_version,
         "environment": settings.environment
+    }
+
+
+@app.get("/", tags=["Info"])
+async def root():
+    """
+    Root endpoint - Service information and navigation
+
+    Returns service metadata and available endpoints
+    """
+    return {
+        "service": settings.app_name,
+        "version": settings.app_version,
+        "description": "Comprehensive Technical Analysis Microservice",
+        "environment": settings.environment,
+        "endpoints": {
+            "docs": "/api/docs",
+            "redoc": "/api/redoc",
+            "openapi": "/api/openapi.json",
+            "health": "/health",
+            "metrics": "/metrics" if settings.metrics_enabled else None,
+            "api": {
+                "v1": "/api/v1",
+                "current": "v1"
+            }
+        }
     }
 
 

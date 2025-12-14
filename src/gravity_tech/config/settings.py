@@ -40,8 +40,8 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Server
-    host: str = "0.0.0.0"
-    port: int = 8000
+    host: str = "127.0.0.1"
+    port: int = 8002
     workers: int = 4
 
     # Security
@@ -75,11 +75,13 @@ class Settings(BaseSettings):
     rabbitmq_url: str | None = None
 
     # Data Ingestion (Hybrid Architecture)
-    enable_data_ingestion: bool = True  # Enable automatic saving of analysis results to database
+    enable_data_ingestion: bool = False  # Enable automatic saving of analysis results to database
     ingestion_auth_token: str = "default_ingestion_token"  # Token for ingestion authentication
 
     # Database Configuration
     database_url: str = "postgresql://gravity:gravity@localhost:5432/tech_analysis"
+    tse_database_url: str = "postgresql://gravity:gravity@localhost:5432/tech_analysis"
+    allow_db_fallback: bool = False
     database_pool_size: int = 10
     database_max_overflow: int = 20
     sqlite_path: str = "data/TechAnalysis.db"
@@ -110,3 +112,12 @@ settings = Settings()
 def get_settings() -> Settings:
     """Get application settings (for dependency injection)."""
     return settings
+
+
+# Compatibility: Some unit tests (and older code) patch the class attribute
+# via `unittest.mock.patch('gravity_tech.config.settings.Settings.expose_db_explorer', True)`
+# Pydantic v2 stores field info in annotations, so there may be no plain class
+# attribute for fields. Create explicit class-level attributes for a few
+# toggles to ensure `patch` works as tests expect.
+if not hasattr(Settings, 'expose_db_explorer'):
+    Settings.expose_db_explorer = False
