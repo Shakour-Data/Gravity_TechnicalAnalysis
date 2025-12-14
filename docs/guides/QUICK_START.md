@@ -19,7 +19,7 @@
 ## ۲) اجرای سرویس FastAPI
 از ریشه مخزن اجرا کنید:
 ```bash
-set PYTHONPATH=src
+set PYTHONPATH=apps/analysis_api/src
 uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 - مستندات تعاملی: `http://localhost:8000/api/docs`
@@ -87,3 +87,4 @@ python scripts/run_full_pipeline.py \
 - معماری و جریان درخواست: `docs/architecture/SYSTEM_ARCHITECTURE_DIAGRAMS.md`
 - راهنمای API و فهرست endpointها: `docs/guides/API_REFERENCE.md`
 - تصمیم‌گیر ۵ بعدی و ماتریس حجم: `docs/guides/FIVE_DIMENSIONAL_DECISION_GUIDE.md`
+
