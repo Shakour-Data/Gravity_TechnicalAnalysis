@@ -21,7 +21,7 @@
 ## اجرای محلی (توسعه)
 ```bash
 pip install -r requirements.txt
-set PYTHONPATH=src
+set PYTHONPATH=apps/analysis_api/src
 uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 - Swagger: `http://localhost:8000/api/docs`
@@ -30,7 +30,7 @@ uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## اجرای تولیدی سبک
 ```bash
-set PYTHONPATH=src
+set PYTHONPATH=apps/analysis_api/src
 uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
 ```
 - پشت Nginx/Traefik قرار دهید و CORS/RateLimit را در لایه لبه اعمال کنید.
@@ -49,3 +49,4 @@ uvicorn gravity_tech.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level
 - خطای Redis: `CACHE_ENABLED=false` را تنظیم کنید و سرویس را بدون کش بالا بیاورید.
 - مدل‌های ML موجود نیستند: فایل‌های `pattern_classifier_*.pkl` را در `ml_models/` قرار دهید یا endpointهای ML را غیرفعال کنید.
 - دیتا سرویس در دسترس نیست: `DATA_SERVICE_URL` را خالی بگذارید و از ورودی دستی کندل استفاده کنید.
+
