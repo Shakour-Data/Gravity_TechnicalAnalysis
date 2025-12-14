@@ -29,7 +29,7 @@ from _paths import ANALYSIS_SRC, REPO_ROOT
 ROOT = REPO_ROOT
 INGESTION_DIR = ROOT / "services" / "data_ingestion"
 INGESTION_DB = INGESTION_DIR / "data" / "tse_data.db"
-SQL_SCHEMA_FILE = ROOT / "scripts" / "postgres_schema.sql"
+SQL_SCHEMA_FILE = ROOT / "scripts" / "schema" / "postgres_schema.sql"
 PYTHON_BIN = os.environ.get("PYTHON", sys.executable)
 
 
