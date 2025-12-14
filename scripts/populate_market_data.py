@@ -6,14 +6,10 @@ the market_data_cache table in the internal TechAnalysis.db database.
 """
 
 import importlib
-import os
-import sys
-from pathlib import Path
 
-# Ensure local package imports work when run from repo root
-ROOT = Path(__file__).resolve().parent.parent
-os.chdir(ROOT / "src")  # Change to src directory
-sys.path.insert(0, str(ROOT / "src"))
+from _paths import REPO_ROOT, extend_sys_path
+
+extend_sys_path()
 
 # Now import after directory change
 config = importlib.import_module('config')
@@ -36,7 +32,7 @@ def populate_market_data_cache():
     # Connect to internal database
     db_manager = DatabaseManager(
         db_type=DatabaseType.SQLITE,
-        sqlite_path=str(ROOT / "data" / "TechAnalysis.db")
+        sqlite_path=str(REPO_ROOT / "data" / "TechAnalysis.db")
     )
 
     # Get list of symbols with sufficient data
