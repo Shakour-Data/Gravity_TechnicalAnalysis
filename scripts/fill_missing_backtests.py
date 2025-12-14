@@ -6,7 +6,7 @@ record exists in backtest_runs for the given interval/source, it runs a backtest
 and persists the summary.
 
 Usage (PowerShell/Windows example):
-    $env:PYTHONPATH="src"; python scripts/fill_missing_backtests.py --interval 1d --limit 1200
+    $env:PYTHONPATH="apps/analysis_api/src"; python scripts/fill_missing_backtests.py --interval 1d --limit 1200
 """
 
 from __future__ import annotations
@@ -112,3 +112,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
