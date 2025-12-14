@@ -1,0 +1,9 @@
+# Auto-detect text files and perform LF normalization
+* text=auto
+
+# Custom for Python files
+*.py text eol=lf
+
+# Binary files
+*.db binary
+*.sqlite binary
