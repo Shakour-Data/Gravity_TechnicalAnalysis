@@ -1,0 +1,112 @@
+[
+  {
+    "name": "RSI",
+    "category": "momentum",
+    "description": "Relative Strength Index - momentum oscillator",
+    "historical_accuracy": 0.75,
+    "ideal_regimes": ["trending", "sideways"],
+    "best_for": ["trend_confirmation", "overbought_oversold"],
+    "supported_styles": ["swing", "day"],
+    "ml_weight": 0.85,
+    "timeframes": ["1m", "5m", "15m", "1h", "4h", "1d"]
+  },
+  {
+    "name": "MACD",
+    "category": "momentum",
+    "description": "Moving Average Convergence Divergence",
+    "historical_accuracy": 0.78,
+    "ideal_regimes": ["trending", "volatile"],
+    "best_for": ["trend_confirmation", "momentum_analysis"],
+    "supported_styles": ["swing", "position"],
+    "ml_weight": 0.82,
+    "timeframes": ["5m", "15m", "1h", "4h", "1d"]
+  },
+  {
+    "name": "Bollinger Bands",
+    "category": "volatility",
+    "description": "Bollinger Bands - volatility bands",
+    "historical_accuracy": 0.72,
+    "ideal_regimes": ["volatile", "sideways"],
+    "best_for": ["volatility_analysis", "support_resistance"],
+    "supported_styles": ["scalping", "day"],
+    "ml_weight": 0.79,
+    "timeframes": ["1m", "5m", "15m", "1h", "1d"]
+  },
+  {
+    "name": "Moving Average",
+    "category": "trend",
+    "description": "Simple/Exponential Moving Averages",
+    "historical_accuracy": 0.80,
+    "ideal_regimes": ["trending"],
+    "best_for": ["trend_identification", "support_resistance"],
+    "supported_styles": ["swing", "position"],
+    "ml_weight": 0.88,
+    "timeframes": ["5m", "15m", "1h", "4h", "1d", "1w"]
+  },
+  {
+    "name": "Fibonacci Retracement",
+    "category": "pattern",
+    "description": "Fibonacci retracement levels",
+    "historical_accuracy": 0.68,
+    "ideal_regimes": ["trending"],
+    "best_for": ["support_resistance", "entry_exit"],
+    "supported_styles": ["swing", "position"],
+    "ml_weight": 0.74,
+    "timeframes": ["15m", "1h", "4h", "1d", "1w"]
+  },
+  {
+    "name": "Candlestick Patterns",
+    "category": "pattern",
+    "description": "Classical candlestick patterns",
+    "historical_accuracy": 0.65,
+    "ideal_regimes": ["sideways", "volatile"],
+    "best_for": ["entry_signals", "reversal_detection"],
+    "supported_styles": ["scalping", "day"],
+    "ml_weight": 0.71,
+    "timeframes": ["1m", "5m", "15m", "1h"]
+  },
+  {
+    "name": "Volume Analysis",
+    "category": "volume",
+    "description": "Volume-based indicators and analysis",
+    "historical_accuracy": 0.73,
+    "ideal_regimes": ["trending", "volatile"],
+    "best_for": ["confirmation", "breakout_detection"],
+    "supported_styles": ["swing", "day"],
+    "ml_weight": 0.76,
+    "timeframes": ["5m", "15m", "1h", "4h", "1d"]
+  },
+  {
+    "name": "Support Resistance",
+    "category": "pattern",
+    "description": "Dynamic support and resistance levels",
+    "historical_accuracy": 0.77,
+    "ideal_regimes": ["trending", "sideways"],
+    "best_for": ["support_resistance", "entry_exit"],
+    "supported_styles": ["swing", "position"],
+    "ml_weight": 0.81,
+    "timeframes": ["15m", "1h", "4h", "1d", "1w"]
+  },
+  {
+    "name": "Cycle Analysis",
+    "category": "cycle",
+    "description": "Market cycle identification and analysis",
+    "historical_accuracy": 0.69,
+    "ideal_regimes": ["sideways"],
+    "best_for": ["timing", "market_phase"],
+    "supported_styles": ["position"],
+    "ml_weight": 0.72,
+    "timeframes": ["1h", "4h", "1d", "1w"]
+  },
+  {
+    "name": "Divergence Analysis",
+    "category": "pattern",
+    "description": "Bullish/bearish divergence detection",
+    "historical_accuracy": 0.71,
+    "ideal_regimes": ["trending", "volatile"],
+    "best_for": ["reversal_detection", "confirmation"],
+    "supported_styles": ["swing", "position"],
+    "ml_weight": 0.78,
+    "timeframes": ["15m", "1h", "4h", "1d"]
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "dim1_indicators_score": 123.0,
+  "dim1_indicators_confidence": 219.0,
+  "dim1_indicators_weighted": 56.0,
+  "dim2_candlestick_score": 16.0,
+  "dim2_candlestick_confidence": 19.0,
+  "dim2_candlestick_weighted": 0.0,
+  "dim3_elliott_score": 6.0,
+  "dim3_elliott_confidence": 183.0,
+  "dim3_elliott_weighted": 62.0,
+  "dim4_classical_score": 35.0,
+  "dim4_classical_confidence": 67.0,
+  "dim4_classical_weighted": 21.0
+}

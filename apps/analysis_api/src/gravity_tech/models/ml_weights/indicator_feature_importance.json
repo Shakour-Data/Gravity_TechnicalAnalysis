@@ -1,0 +1,23 @@
+{
+  "sma_signal": 1.0,
+  "sma_confidence": 134.0,
+  "sma_weighted": 64.0,
+  "ema_signal": 17.0,
+  "ema_confidence": 67.0,
+  "ema_weighted": 72.0,
+  "wma_signal": 16.0,
+  "wma_confidence": 0.0,
+  "wma_weighted": 0.0,
+  "dema_signal": 88.0,
+  "dema_confidence": 0.0,
+  "dema_weighted": 0.0,
+  "tema_signal": 61.0,
+  "tema_confidence": 0.0,
+  "tema_weighted": 0.0,
+  "macd_signal": 38.0,
+  "macd_confidence": 0.0,
+  "macd_weighted": 12.0,
+  "adx_signal": 10.0,
+  "adx_confidence": 323.0,
+  "adx_weighted": 65.0
+}

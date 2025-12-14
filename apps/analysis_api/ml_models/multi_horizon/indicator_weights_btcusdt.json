@@ -1,0 +1,131 @@
+{
+  "horizons": [
+    "3d",
+    "7d",
+    "30d"
+  ],
+  "feature_names": [
+    "sma_signal",
+    "sma_confidence",
+    "sma_weighted",
+    "ema_signal",
+    "ema_confidence",
+    "ema_weighted",
+    "wma_signal",
+    "wma_confidence",
+    "wma_weighted",
+    "dema_signal",
+    "dema_confidence",
+    "dema_weighted",
+    "tema_signal",
+    "tema_confidence",
+    "tema_weighted",
+    "macd_signal",
+    "macd_confidence",
+    "macd_weighted",
+    "adx_signal",
+    "adx_confidence",
+    "adx_weighted"
+  ],
+  "weights": {
+    "3d": {
+      "horizon": "3d",
+      "weights": {
+        "sma_signal": 0.010362694300518135,
+        "sma_confidence": 0.07772020725388601,
+        "sma_weighted": 0.06088082901554404,
+        "ema_signal": 0.04533678756476684,
+        "ema_confidence": 0.034974093264248704,
+        "ema_weighted": 0.03238341968911917,
+        "wma_signal": 0.07124352331606218,
+        "wma_confidence": 0.0,
+        "wma_weighted": 0.009067357512953367,
+        "dema_signal": 0.06476683937823834,
+        "dema_confidence": 0.0,
+        "dema_weighted": 0.014248704663212436,
+        "tema_signal": 0.15155440414507773,
+        "tema_confidence": 0.0,
+        "tema_weighted": 0.022020725388601035,
+        "macd_signal": 0.10751295336787564,
+        "macd_confidence": 0.0,
+        "macd_weighted": 0.04145077720207254,
+        "adx_signal": 0.01683937823834197,
+        "adx_confidence": 0.1645077720207254,
+        "adx_weighted": 0.07512953367875648
+      },
+      "metrics": {
+        "r2_train": 0.8425512394700876,
+        "r2_test": 0.6788702705930925,
+        "mae_train": 0.014037016735766256,
+        "mae_test": 0.01749096191624936
+      },
+      "confidence": 0.9475271142512518
+    },
+    "7d": {
+      "horizon": "7d",
+      "weights": {
+        "sma_signal": 0.025220680958385876,
+        "sma_confidence": 0.07061790668348046,
+        "sma_weighted": 0.0605296343001261,
+        "ema_signal": 0.0201765447667087,
+        "ema_confidence": 0.04791929382093316,
+        "ema_weighted": 0.05170239596469105,
+        "wma_signal": 0.1034047919293821,
+        "wma_confidence": 0.0,
+        "wma_weighted": 0.015132408575031526,
+        "dema_signal": 0.05548549810844893,
+        "dema_confidence": 0.0,
+        "dema_weighted": 0.01008827238335435,
+        "tema_signal": 0.11223203026481715,
+        "tema_confidence": 0.0,
+        "tema_weighted": 0.017654476670870115,
+        "macd_signal": 0.06557377049180328,
+        "macd_confidence": 0.0,
+        "macd_weighted": 0.04539722572509458,
+        "adx_signal": 0.01639344262295082,
+        "adx_confidence": 0.2080706179066835,
+        "adx_weighted": 0.07440100882723834
+      },
+      "metrics": {
+        "r2_train": 0.8914368966425594,
+        "r2_test": 0.8560434795925514,
+        "mae_train": 0.018320982588999543,
+        "mae_test": 0.02106191675627959
+      },
+      "confidence": 0.9368142497311611
+    },
+    "30d": {
+      "horizon": "30d",
+      "weights": {
+        "sma_signal": 0.007894736842105263,
+        "sma_confidence": 0.04736842105263158,
+        "sma_weighted": 0.08552631578947369,
+        "ema_signal": 0.06447368421052632,
+        "ema_confidence": 0.02368421052631579,
+        "ema_weighted": 0.11447368421052631,
+        "wma_signal": 0.042105263157894736,
+        "wma_confidence": 0.0,
+        "wma_weighted": 0.006578947368421052,
+        "dema_signal": 0.06710526315789474,
+        "dema_confidence": 0.0,
+        "dema_weighted": 0.007894736842105263,
+        "tema_signal": 0.10526315789473684,
+        "tema_confidence": 0.0,
+        "tema_weighted": 0.015789473684210527,
+        "macd_signal": 0.06842105263157895,
+        "macd_confidence": 0.0,
+        "macd_weighted": 0.04342105263157895,
+        "adx_signal": 0.02631578947368421,
+        "adx_confidence": 0.2,
+        "adx_weighted": 0.07368421052631578
+      },
+      "metrics": {
+        "r2_train": 0.9021324337938235,
+        "r2_test": 0.8968536488178189,
+        "mae_train": 0.04709113958252018,
+        "mae_test": 0.05290420856764828
+      },
+      "confidence": 0.8412873742970551
+    }
+  }
+}
