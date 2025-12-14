@@ -31,9 +31,9 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore
 
 # Ensure local package imports work when run from repo root
+from _paths import REPO_ROOT, extend_sys_path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.append(str(ROOT / "src"))
+extend_sys_path()
 
 from gravity_tech.core.domain.entities import (  # noqa: E402
     Candle,  # noqa: E402
@@ -61,7 +61,7 @@ def safe_str(text: str) -> str:
     return text.encode("utf-8", "backslashreplace").decode("utf-8")
 
 
-DB_PATH = ROOT / "data" / "TechAnalysis.db"
+DB_PATH = REPO_ROOT / "data" / "TechAnalysis.db"
 TIMEFRAME = "1d"
 WINDOW_DAYS = 90
 LOOKBACK_BUFFER_DAYS = 200  # extra raw candles to satisfy long indicators
