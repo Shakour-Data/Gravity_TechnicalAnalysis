@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: gravity-stack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tech_analysis
+      POSTGRES_USER: gravity
+      POSTGRES_PASSWORD: gravity_db_pass
+    ports:
+      - "5544:5432"
+    volumes:
+      - gravity_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gravity -d tech_analysis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analysis-api:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile
+    container_name: gravity-analysis-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://gravity:gravity_db_pass@postgres:5432/tech_analysis
+      TSE_DATABASE_URL: postgresql://gravity:gravity_db_pass@postgres:5432/tech_analysis
+      HOST: 0.0.0.0
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  ingestion-runner:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile
+    container_name: gravity-ingestion-runner
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PG_DSN: postgresql://gravity:gravity_db_pass@postgres:5432/tech_analysis
+      INGESTION_INTERVAL_SECONDS: 86400
+    volumes:
+      - ./services/data_ingestion/data:/app/services/data_ingestion/data
+      # Provide gravity_tse.py (drop the file into services/data_ingestion/scripts on the host)
+      - ./services/data_ingestion/scripts:/app/services/data_ingestion/scripts
+    command:
+      [
+        "sh",
+        "-c",
+        "while true; do \
+         python scripts/run_stack_pipeline.py --mode daily --pg-dsn ${PG_DSN} --analysis-limit 120; \
+         sleep ${INGESTION_INTERVAL_SECONDS:-86400}; \
+         done",
+      ]
+    restart: unless-stopped
+
+volumes:
+  gravity_pg_data:
+    driver: local
