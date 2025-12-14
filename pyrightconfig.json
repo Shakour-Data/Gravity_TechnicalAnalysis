@@ -1,13 +1,13 @@
 {
   "include": [
-    "src",
-    "tests"
+    "apps/analysis_api/src",
+    "apps/analysis_api/tests"
   ],
   "exclude": [
     "venv",
     ".pytest_cache",
     "htmlcov",
-    "ml_models"
+    "apps/analysis_api/ml_models"
   ],
   "pythonVersion": "3.12",
   "typeCheckingMode": "basic",
@@ -17,7 +17,7 @@
   "executionEnvironments": [
     {
       "root": ".",
-      "extraPaths": ["./src"]
+      "extraPaths": ["./apps/analysis_api/src"]
     }
   ]
 }
