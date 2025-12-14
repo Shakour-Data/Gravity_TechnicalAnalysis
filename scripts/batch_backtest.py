@@ -5,7 +5,7 @@ Reads symbols from data/symbols.txt (one per line) and runs backtests in batches
 persisting results via DatabaseManager (Postgres if available, otherwise SQLite fallback).
 
 Usage (Windows/PowerShell example):
-    $env:PYTHONPATH="src"; python scripts/batch_backtest.py --interval 1d --limit 1200
+    $env:PYTHONPATH="apps/analysis_api/src"; python scripts/batch_backtest.py --interval 1d --limit 1200
 """
 
 from __future__ import annotations
@@ -83,3 +83,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
