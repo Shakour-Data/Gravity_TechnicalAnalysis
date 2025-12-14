@@ -17,12 +17,10 @@ License: MIT
 """
 
 import importlib
-import sys
-from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from _paths import extend_sys_path
+
+extend_sys_path()
 
 # Import after path setup
 gravity_tech_database = importlib.import_module('gravity_tech.database.database_manager')
