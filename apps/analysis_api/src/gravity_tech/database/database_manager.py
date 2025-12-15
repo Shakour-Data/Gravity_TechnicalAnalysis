@@ -69,7 +69,7 @@ class DatabaseManager:
         sqlite_path: str | None = None,
         json_path: str | None = None,
         auto_setup: bool = True,
-        allow_fallback: bool | None = None,
+        allow_fallback: bool | None = True,
     ):
         """
         Initialize Database Manager
@@ -85,7 +85,7 @@ class DatabaseManager:
         if allow_fallback is not None:
             self.allow_fallback = allow_fallback
         else:
-            self.allow_fallback = False
+            self.allow_fallback = True
         self.db_type = db_type
         self.connection_string = (
             connection_string
