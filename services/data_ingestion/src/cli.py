@@ -1,14 +1,14 @@
-
 import argparse
-import sqlite3
 import json
-import jdatetime
 import os
 import shutil
+import sqlite3
 from datetime import datetime
 
+import jdatetime
+
+from src.config import COMPANIES_FILE, DB_FILE, MARKETS_FILE, PANELS_FILE, SECTORS_FILE
 from src.database import init_price_data
-from src.config import DB_FILE, COMPANIES_FILE, SECTORS_FILE, MARKETS_FILE, PANELS_FILE
 from src.encoding_utils import ensure_utf8_console
 
 ensure_utf8_console()
@@ -41,26 +41,26 @@ def create_db(args):
     print("Database and tables created.")
 
 def load_initial(args):
-    with open(SECTORS_FILE, encoding='utf-8') as f:
+    with open(SECTORS_FILE) as f:
         sectors = json.load(f)
     init_price_data.insert_sectors(sectors)
-    with open(MARKETS_FILE, encoding='utf-8') as f:
+    with open(MARKETS_FILE) as f:
         markets = json.load(f)
     init_price_data.insert_markets(markets)
-    with open(PANELS_FILE, encoding='utf-8') as f:
+    with open(PANELS_FILE) as f:
         panels = json.load(f)
     init_price_data.insert_panels(panels)
-    
-    with open(COMPANIES_FILE, encoding='utf-8') as f:
+
+    with open(COMPANIES_FILE) as f:
         companies = json.load(f)
-    
+
     init_price_data.insert_companies(companies)
     print("Initial data loaded.")
 
 def reload_table(args):
     table = args.table
     file = args.file
-    with open(file, encoding='utf-8') as f:
+    with open(file) as f:
         data = json.load(f)
     func = getattr(init_price_data, f'insert_{table}')
     func(data)
@@ -134,10 +134,10 @@ def main():
         init_price_data.create_indices_tables()
 
     def load_market_indices(args):
-        import sys
         import os
+        import sys
+
         from src.database import init_price_data
-        
         # Add scripts directory to path
         scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
         if scripts_dir not in sys.path:
@@ -170,13 +170,13 @@ def main():
             except Exception as e:
                 print(f"  ✗ Error: {e}")
         print("Market indices loading complete.")
-
     def load_sector_indices(args):
-        import sys
-        import os
         import json
-        from src.database import init_price_data
+        import os
+        import sys
+
         from src.config import SECTORS_FILE
+        from src.database import init_price_data
         
         # Add scripts directory to path
         scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
@@ -184,7 +184,7 @@ def main():
         import gravity_tse as gpy  # type: ignore
         
         # Load sector mapping from JSON
-        with open(SECTORS_FILE, 'r', encoding='utf-8') as f:
+        with open(SECTORS_FILE) as f:
             json.load(f)
         
         # Map sector names to codes
@@ -215,8 +215,8 @@ def main():
             print(f"Loading {sector_name_json} ({sector_code})...")
             try:
                 df = gpy.Get_SectorIndex_History(
-                    sector=mapped_name, 
-                    start_date='1395-01-01', 
+                    sector=mapped_name,
+                    start_date='1395-01-01',
                     end_date=today_jalali,
                     double_date=True
                 )
@@ -229,17 +229,14 @@ def main():
                 print(f"  ✗ Error: {e}")
         
         print("Sector indices loaded.")
-
     parser = argparse.ArgumentParser(description="TSE Database CLI")
     subparsers = parser.add_subparsers(dest='command')
-
     subparsers.add_parser('create-indices-tables', help='Create market and sector indices tables').set_defaults(func=create_indices_tables)
     subparsers.add_parser('load-market-indices', help='Load market indices data').set_defaults(func=load_market_indices)
     subparsers.add_parser('load-sector-indices', help='Load sector indices data').set_defaults(func=load_sector_indices)
-
     subparsers.add_parser('create-db', help='Create database and tables').set_defaults(func=create_db)
     subparsers.add_parser('load-initial', help='Load initial data').set_defaults(func=load_initial)
-
+ 
     def init_all(args):
         create_db(args)
         create_indices_tables(args)
@@ -250,38 +247,34 @@ def main():
         DataFetcher.run()
         
         print("Database, tables, and all initial data loaded.")
-
+ 
     subparsers.add_parser('init-all', help='Create DB, tables, and load all initial data').set_defaults(func=init_all)
-
+ 
     def load_all_prices(args):
         from src.fetcher import DataFetcher
         DataFetcher.run()
-    
     subparsers.add_parser('load-all-prices', help='Fetch and load all price and indices data (cached)').set_defaults(func=load_all_prices)
-
-
+ 
+ 
     reload_parser = subparsers.add_parser('reload-table', help='Reload a table from JSON')
     reload_parser.add_argument('table', choices=['companies', 'sectors', 'markets', 'panels'])
     reload_parser.add_argument('file', help='Path to JSON file')
     reload_parser.set_defaults(func=reload_table)
-
     drop_parser = subparsers.add_parser('drop-table', help='Drop a table')
     drop_parser.add_argument('table', choices=['companies', 'sectors', 'markets', 'panels', 'price_data', 'last_updates'])
     drop_parser.set_defaults(func=drop_table)
-
     subparsers.add_parser('update-db', help='Update all tables').set_defaults(func=update_db)
-
+ 
     update_parser = subparsers.add_parser('update-table', help='Update a table from JSON')
     update_parser.add_argument('table', choices=['companies', 'sectors', 'markets', 'panels'])
     update_parser.add_argument('file', help='Path to JSON file')
     update_parser.set_defaults(func=update_table)
-
     subparsers.add_parser('list-sectors', help='List all sectors').set_defaults(func=list_sectors)
-
+ 
     companies_parser = subparsers.add_parser('list-companies', help='List companies in a sector')
     companies_parser.add_argument('sector_id', type=int)
     companies_parser.set_defaults(func=list_companies)
-
+ 
     price_parser = subparsers.add_parser('get-price-data', help='Get price data for a ticker')
     price_parser.add_argument('ticker')
     price_parser.add_argument('--limit', type=int, default=10)
@@ -292,6 +285,5 @@ def main():
         args.func(args)
     else:
         parser.print_help()
-
 if __name__ == '__main__':
     main()
