@@ -145,7 +145,7 @@ def main():
         if not os.path.exists(os.path.join(scripts_dir, 'gravity_tse.py')):
             raise ImportError(f"'gravity_tse.py' not found in {scripts_dir}")
         import gravity_tse as gpy  # type: ignore
-        
+
         today_jalali = jdatetime.date.today().strftime('%Y-%m-%d')
         indices = [
             ('CWI', 'شاخص کل', gpy.Get_CWI_History),
@@ -177,16 +177,16 @@ def main():
 
         from src.config import SECTORS_FILE
         from src.database import init_price_data
-        
+
         # Add scripts directory to path
         scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
         sys.path.insert(0, scripts_dir)
         import gravity_tse as gpy  # type: ignore
-        
+
         # Load sector mapping from JSON
         with open(SECTORS_FILE) as f:
             json.load(f)
-        
+
         # Map sector names to codes
         sector_mapping = {
             'فلزات اساسی': 27,
@@ -204,7 +204,7 @@ def main():
             'اطلاعات و ارتباطات': 73,
             'خرده فروشی،باستثنای وسایل نقلیه موتوری': 47,
         }
-        
+
         # Use mapped sector names from fetcher
         from src.fetcher import DataFetcher
 
@@ -227,7 +227,7 @@ def main():
                     print("  ⚠ No data returned")
             except Exception as e:
                 print(f"  ✗ Error: {e}")
-        
+
         print("Sector indices loaded.")
     parser = argparse.ArgumentParser(description="TSE Database CLI")
     subparsers = parser.add_subparsers(dest='command')
@@ -236,26 +236,26 @@ def main():
     subparsers.add_parser('load-sector-indices', help='Load sector indices data').set_defaults(func=load_sector_indices)
     subparsers.add_parser('create-db', help='Create database and tables').set_defaults(func=create_db)
     subparsers.add_parser('load-initial', help='Load initial data').set_defaults(func=load_initial)
- 
+
     def init_all(args):
         create_db(args)
         create_indices_tables(args)
         load_initial(args)
-        
+
         from src.fetcher import DataFetcher
         print("Checking and loading price and indices data...")
         DataFetcher.run()
-        
+
         print("Database, tables, and all initial data loaded.")
- 
+
     subparsers.add_parser('init-all', help='Create DB, tables, and load all initial data').set_defaults(func=init_all)
- 
+
     def load_all_prices(args):
         from src.fetcher import DataFetcher
         DataFetcher.run()
     subparsers.add_parser('load-all-prices', help='Fetch and load all price and indices data (cached)').set_defaults(func=load_all_prices)
- 
- 
+
+
     reload_parser = subparsers.add_parser('reload-table', help='Reload a table from JSON')
     reload_parser.add_argument('table', choices=['companies', 'sectors', 'markets', 'panels'])
     reload_parser.add_argument('file', help='Path to JSON file')
@@ -264,17 +264,17 @@ def main():
     drop_parser.add_argument('table', choices=['companies', 'sectors', 'markets', 'panels', 'price_data', 'last_updates'])
     drop_parser.set_defaults(func=drop_table)
     subparsers.add_parser('update-db', help='Update all tables').set_defaults(func=update_db)
- 
+
     update_parser = subparsers.add_parser('update-table', help='Update a table from JSON')
     update_parser.add_argument('table', choices=['companies', 'sectors', 'markets', 'panels'])
     update_parser.add_argument('file', help='Path to JSON file')
     update_parser.set_defaults(func=update_table)
     subparsers.add_parser('list-sectors', help='List all sectors').set_defaults(func=list_sectors)
- 
+
     companies_parser = subparsers.add_parser('list-companies', help='List companies in a sector')
     companies_parser.add_argument('sector_id', type=int)
     companies_parser.set_defaults(func=list_companies)
- 
+
     price_parser = subparsers.add_parser('get-price-data', help='Get price data for a ticker')
     price_parser.add_argument('ticker')
     price_parser.add_argument('--limit', type=int, default=10)
