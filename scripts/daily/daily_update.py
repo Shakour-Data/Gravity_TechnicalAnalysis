@@ -8,12 +8,18 @@ backtests, and tool performance for each day and symbol combination.
 import importlib
 import json
 import sqlite3
+import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
-from _paths import extend_sys_path
+# Add the project root to sys.path for module resolution
+ROOT = Path(__file__).resolve().parent.parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-extend_sys_path()
+# Define ROOT as the project root directory
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Import local modules after path setup
 gravity_tech_core_domain = importlib.import_module('gravity_tech.core.domain.entities')
