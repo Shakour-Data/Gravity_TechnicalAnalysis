@@ -218,6 +218,8 @@ class DatabaseManager:
                     "tool_recommendations_log": [],
                     "historical_scores": [],
                     "historical_indicator_scores": [],
+                    "daily_dimension_scores": [],
+                    "daily_indicator_values": [],
                     "market_data_cache": [],
                     "pattern_detection_results": [],
                     "backtest_runs": [],
@@ -541,6 +543,53 @@ class DatabaseManager:
             ON historical_indicator_scores(indicator_category);
         CREATE INDEX IF NOT EXISTS idx_indicator_score_id
             ON historical_indicator_scores(score_id);
+
+        -- Daily Dimension Scores
+        CREATE TABLE IF NOT EXISTS daily_dimension_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            ts TEXT NOT NULL,
+            dimension TEXT NOT NULL,
+            score REAL,
+            confidence REAL,
+            weight REAL,
+            signal TEXT,
+            features TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(symbol, timeframe, ts, dimension)
+        );
+        CREATE INDEX IF NOT EXISTS idx_daily_dim_symbol_ts
+            ON daily_dimension_scores(symbol, ts);
+        CREATE INDEX IF NOT EXISTS idx_daily_dim_dimension
+            ON daily_dimension_scores(dimension);
+
+        -- Daily Indicator Values
+        CREATE TABLE IF NOT EXISTS daily_indicator_values (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            ts TEXT NOT NULL,
+            dimension TEXT NOT NULL,
+            indicator_name TEXT NOT NULL,
+            indicator_params TEXT,
+            value REAL,
+            score REAL,
+            signal TEXT,
+            confidence REAL,
+            weight REAL,
+            source_window INTEGER,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(symbol, timeframe, ts, dimension, indicator_name)
+        );
+        CREATE INDEX IF NOT EXISTS idx_daily_ind_symbol_ts
+            ON daily_indicator_values(symbol, ts);
+        CREATE INDEX IF NOT EXISTS idx_daily_ind_dimension
+            ON daily_indicator_values(dimension);
+        CREATE INDEX IF NOT EXISTS idx_daily_ind_indicator
+            ON daily_indicator_values(indicator_name);
 
         -- Market Data Cache
         CREATE TABLE IF NOT EXISTS market_data_cache (
