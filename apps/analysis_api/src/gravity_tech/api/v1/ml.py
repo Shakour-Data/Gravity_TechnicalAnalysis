@@ -31,21 +31,21 @@ Provides RESTful endpoints for:
 - Model performance metrics
 """
 
-import pickle
-import time
+
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+import pickle
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from gravity_tech.database.database_manager import DatabaseManager
-from pydantic import BaseModel, Field
-
 from gravity_tech.config.paths import ML_MODELS_DIR
+from pydantic import BaseModel, Field
 
 try:
     from prometheus_client import Counter, Histogram
@@ -153,8 +153,6 @@ class BatchPredictionRequest(BaseModel):
     """Request for batch predictions"""
     features_list: list[PatternFeatures] = Field(
         ...,
-        min_items=1,
-        max_items=MAX_BATCH,
         description=f"List of feature vectors (max {MAX_BATCH})"
     )
     timeout_seconds: float | None = Field(
@@ -198,11 +196,11 @@ class ModelInfoResponse(BaseModel):
 
 class BacktestRequest(BaseModel):
     """Request for backtesting"""
-    highs: list[float] = Field(..., min_items=300, description="High prices (minimum 300 bars)")
-    lows: list[float] = Field(..., min_items=300, description="Low prices")
-    closes: list[float] = Field(..., min_items=300, description="Close prices")
-    volumes: list[float] = Field(..., min_items=300, description="Volume data")
-    dates: list[int] = Field(..., min_items=300, description="Timestamps")
+    highs: list[float] = Field(..., description="High prices (minimum 300 bars)", min_length=300)
+    lows: list[float] = Field(..., description="Low prices", min_length=300)
+    closes: list[float] = Field(..., description="Close prices", min_length=300)
+    volumes: list[float] = Field(..., description="Volume data", min_length=300)
+    dates: list[int] = Field(..., description="Timestamps", min_length=300)
     min_confidence: float = Field(default=0.6, ge=0, le=1, description="Minimum confidence for trades")
     window_size: int = Field(default=200, ge=100, le=500, description="Analysis window size")
     step_size: int = Field(default=50, ge=10, le=100, description="Window step size")
@@ -257,7 +255,7 @@ async def _predict_with_timeout(model: Any, feature_array: np.ndarray, timeout: 
         class_names = ['gartley', 'butterfly', 'bat', 'crab']
         predicted_class = class_names[pred]
         confidence = float(np.max(probas))
-        probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
+        probabilities = {name: float(prob) for name, prob in zip(class_names, probas, strict=True)}
         return {
             "pattern_type": predicted_class,
             "confidence": confidence,
@@ -318,7 +316,7 @@ def load_ml_model():
                 MODEL_META[version] = {
                     "path": str(path),
                     "hash": file_hash,
-                    "loaded_at": datetime.now(timezone.utc).isoformat(),
+                    "loaded_at": datetime.now(datetime.UTC).isoformat(),
                 }
                 MODEL_CACHE_LOADS.labels(version).inc()
                 return model, version
@@ -331,7 +329,7 @@ def load_ml_model():
         MODEL_META["fallback"] = {
             "path": "fallback",
             "hash": "fallback",
-            "loaded_at": datetime.now(timezone.utc).isoformat(),
+            "loaded_at": datetime.now(datetime.UTC).isoformat(),
         }
         logger.warning("ml_model_fallback_used")
         return dummy, "fallback"
@@ -436,7 +434,7 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
 
         return response
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         PREDICTION_REQUESTS.labels("predict", "model_missing", "unknown").inc()
         # fallback response with ml_enabled=false semantic via model_version=fallback
         return PredictionResponse(
@@ -522,14 +520,19 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
                     predicted_class = prediction['pattern_type']
                     confidence = prediction['confidence']
                     probabilities = prediction['probabilities']
-                else:
+                elif hasattr(model, 'predict') and hasattr(model, 'predict_proba'):
                     pred = model.predict(feature_array.reshape(1, -1))[0]
                     probas = model.predict_proba(feature_array.reshape(1, -1))[0]
-
                     class_names = ['gartley', 'butterfly', 'bat', 'crab']
                     predicted_class = class_names[pred]
                     confidence = float(np.max(probas))
-                    probabilities = {name: float(prob) for name, prob in zip(class_names, probas)}
+                    probabilities = {name: float(prob) for name, prob in zip(class_names, probas, strict=True)}
+                else:
+                    # fallback if model does not support required methods
+                    probs = {"gartley": 0.25, "butterfly": 0.25, "bat": 0.25, "crab": 0.25}
+                    predicted_class = "unknown"
+                    confidence = 0.0
+                    probabilities = probs
 
                 feature_inference_time = (time.perf_counter() - feature_start) * 1000
 
@@ -568,12 +571,12 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
 
         return response
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         PREDICTION_REQUESTS.labels("predict_batch", "model_missing", "unknown").inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e)
-        ) from e
+            detail="ML model file not found"
+        )
     except Exception as e:
         logger.error("batch_prediction_error", error=str(e))
         PREDICTION_REQUESTS.labels("predict_batch", "error", version if "version" in locals() else "unknown").inc()
@@ -633,11 +636,11 @@ async def get_model_info() -> ModelInfoResponse:
 
         return info.copy(update={"hyperparameters": info.hyperparameters, **meta})
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e)
-        ) from e
+            detail="ML model file not found"
+        )
     except Exception as e:
         logger.error("model_info_error", error=str(e))
         raise HTTPException(
