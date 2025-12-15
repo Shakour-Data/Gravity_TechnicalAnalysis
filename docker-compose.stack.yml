@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: gravity
       POSTGRES_PASSWORD: gravity_db_pass
     ports:
-      - "5544:5432"
+      - "${STACK_DB_PORT:-5545}:5432"
     volumes:
       - gravity_pg_data:/var/lib/postgresql/data
     healthcheck:
