@@ -1,7 +1,8 @@
-import psycopg2
 import csv
 import os
 from pathlib import Path
+
+import psycopg2
 
 # تنظیمات اتصال به PostgreSQL
 DB_CONFIG = {
@@ -89,4 +90,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-<parameter name="filePath">e:\Shakour\GravityProjects\Gravity_TechnicalAnalysis\export_postgres_data.py
