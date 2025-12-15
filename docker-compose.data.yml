@@ -12,7 +12,7 @@ services:
     volumes:
       - gravity_data_pg:/var/lib/postgresql/data
     ports:
-      - "5544:5432"   # adjust if port is taken
+      - "${DATA_DB_PORT:-5546}:5432"   # adjust if port is taken
     networks:
       - gravity_data_net
 
