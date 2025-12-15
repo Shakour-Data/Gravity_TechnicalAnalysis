@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from src.config import DB_FILE, INITIAL_START_DATE
 
@@ -45,7 +46,17 @@ class init_price_data:
     def create_indices_tables():
         conn = init_price_data.get_connection()
         cursor = conn.cursor()
-        
+
+        # Ensure base sectors table exists so FK on sector_indices does not fail
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sectors (
+                sector_id INTEGER PRIMARY KEY,
+                sector_name TEXT UNIQUE,
+                sector_name_en TEXT,
+                us_sector TEXT
+            )
+        ''')
+
         # Create indices_info table to store index metadata
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS indices_info (
@@ -227,6 +238,7 @@ class init_price_data:
     
     @staticmethod
     def get_connection():
+        os.makedirs(os.path.dirname(DB_FILE) or ".", exist_ok=True)
         conn = sqlite3.connect(DB_FILE)
         init_price_data._configure_connection(conn)
         return conn
