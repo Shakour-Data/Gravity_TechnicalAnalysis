@@ -15,19 +15,22 @@ Run (example):
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from gravity_tech.database.database_manager import DatabaseManager, DatabaseType
-from database import TSEDatabaseConnector
 from config import TSE_DB_FILE
+from database import TSEDatabaseConnector
+from gravity_tech.database.database_manager import DatabaseManager, DatabaseType
+
+DEFAULT_SQLITE_PATH = Path("data") / "TechAnalysis.db"
 
 
 def _ts_from_date(d: datetime | pd.Timestamp) -> datetime:
     if isinstance(d, pd.Timestamp):
         d = d.to_pydatetime()
-    return datetime.combine(d.date(), time.min, tzinfo=timezone.utc)
+    return datetime.combine(d.date(), time.min, tzinfo=UTC)
 
 
 def _compute_basic_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -80,10 +83,114 @@ def _atr(df: pd.DataFrame, window: int = 14) -> pd.Series:
     return tr.rolling(window=window, min_periods=window).mean()
 
 
+def _schema_prefix(manager: DatabaseManager) -> str:
+    return "tech_analysis." if manager.db_type == DatabaseType.POSTGRESQL else ""
+
+
+def ensure_daily_tables(manager: DatabaseManager) -> None:
+    """Create daily tables for both SQLite and PostgreSQL backends."""
+    if manager.db_type == DatabaseType.POSTGRESQL:
+        statements = [
+            "CREATE SCHEMA IF NOT EXISTS tech_analysis;",
+            """
+            CREATE TABLE IF NOT EXISTS tech_analysis.daily_dimension_scores (
+                id BIGSERIAL PRIMARY KEY,
+                symbol VARCHAR(20) NOT NULL,
+                timeframe VARCHAR(10) NOT NULL,
+                ts TIMESTAMPTZ NOT NULL,
+                dimension VARCHAR(50) NOT NULL,
+                score NUMERIC(12,6),
+                confidence NUMERIC(6,4),
+                weight NUMERIC(6,4),
+                signal VARCHAR(20),
+                features JSONB,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                CONSTRAINT uq_daily_dim UNIQUE (symbol, timeframe, ts, dimension)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_daily_dim_symbol_ts ON tech_analysis.daily_dimension_scores(symbol, ts);",
+            "CREATE INDEX IF NOT EXISTS idx_daily_dim_dimension ON tech_analysis.daily_dimension_scores(dimension);",
+            """
+            CREATE TABLE IF NOT EXISTS tech_analysis.daily_indicator_values (
+                id BIGSERIAL PRIMARY KEY,
+                symbol VARCHAR(20) NOT NULL,
+                timeframe VARCHAR(10) NOT NULL,
+                ts TIMESTAMPTZ NOT NULL,
+                dimension VARCHAR(50) NOT NULL,
+                indicator_name VARCHAR(100) NOT NULL,
+                indicator_params JSONB,
+                value NUMERIC(20,10),
+                score NUMERIC(12,6),
+                signal VARCHAR(20),
+                confidence NUMERIC(6,4),
+                weight NUMERIC(6,4),
+                source_window INTEGER,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                CONSTRAINT uq_daily_indicator UNIQUE (symbol, timeframe, ts, dimension, indicator_name)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_daily_ind_symbol_ts ON tech_analysis.daily_indicator_values(symbol, ts);",
+            "CREATE INDEX IF NOT EXISTS idx_daily_ind_dimension ON tech_analysis.daily_indicator_values(dimension);",
+            "CREATE INDEX IF NOT EXISTS idx_daily_ind_indicator ON tech_analysis.daily_indicator_values(indicator_name);",
+        ]
+    else:
+        statements = [
+            """
+            CREATE TABLE IF NOT EXISTS daily_dimension_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                timeframe TEXT NOT NULL,
+                ts TEXT NOT NULL,
+                dimension TEXT NOT NULL,
+                score REAL,
+                confidence REAL,
+                weight REAL,
+                signal TEXT,
+                features TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(symbol, timeframe, ts, dimension)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_daily_dim_symbol_ts ON daily_dimension_scores(symbol, ts);",
+            "CREATE INDEX IF NOT EXISTS idx_daily_dim_dimension ON daily_dimension_scores(dimension);",
+            """
+            CREATE TABLE IF NOT EXISTS daily_indicator_values (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                timeframe TEXT NOT NULL,
+                ts TEXT NOT NULL,
+                dimension TEXT NOT NULL,
+                indicator_name TEXT NOT NULL,
+                indicator_params TEXT,
+                value REAL,
+                score REAL,
+                signal TEXT,
+                confidence REAL,
+                weight REAL,
+                source_window INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(symbol, timeframe, ts, dimension, indicator_name)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_daily_ind_symbol_ts ON daily_indicator_values(symbol, ts);",
+            "CREATE INDEX IF NOT EXISTS idx_daily_ind_dimension ON daily_indicator_values(dimension);",
+            "CREATE INDEX IF NOT EXISTS idx_daily_ind_indicator ON daily_indicator_values(indicator_name);",
+        ]
+
+    for stmt in statements:
+        manager.execute_query(stmt)
+
+
 def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseManager, tse_source: str | None = None):
     connector = TSEDatabaseConnector(tse_source or TSE_DB_FILE)
     conn = manager.get_connection()
     placeholder = manager.get_sql_placeholder()
+    prefix = _schema_prefix(manager)
+    now_func = "NOW()" if manager.db_type == DatabaseType.POSTGRESQL else "CURRENT_TIMESTAMP"
 
     def clean_num(val):
         if val is None:
@@ -98,7 +205,7 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
 
     # Prepare insert/upsert statements for daily tables
     dim_insert = f"""
-        INSERT INTO tech_analysis.daily_dimension_scores
+        INSERT INTO {prefix}daily_dimension_scores
             (symbol, timeframe, ts, dimension, score, confidence, weight, signal, features)
         VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder},
                 {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
@@ -108,11 +215,11 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
             weight = EXCLUDED.weight,
             signal = EXCLUDED.signal,
             features = EXCLUDED.features,
-            updated_at = NOW()
+            updated_at = {now_func}
     """
 
     ind_insert = f"""
-        INSERT INTO tech_analysis.daily_indicator_values
+        INSERT INTO {prefix}daily_indicator_values
             (symbol, timeframe, ts, dimension, indicator_name, indicator_params,
              value, score, signal, confidence, weight, source_window)
         VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder},
@@ -135,7 +242,7 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
         df = pd.DataFrame(raw)
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         df = df.sort_values("timestamp")
-        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+        cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
         df = df[df["timestamp"] >= cutoff]
         if df.empty:
             continue
@@ -150,6 +257,7 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
 
         dim_rows = []
         ind_rows = []
+        rolling_std_20 = df["return"].rolling(20, min_periods=5).std()
         for _, row in df.iterrows():
             ts_val = _ts_from_date(row["timestamp"])
             # Indicators per dimension (sample set)
@@ -163,7 +271,8 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
             ind_rows.append((sym, "1d", ts_val, "momentum", "macd_hist", None, clean_num(row["macd_hist"]), None, None, 0.5, None, None))
             # Volatility
             ind_rows.append((sym, "1d", ts_val, "volatility", "atr_14", None, clean_num(row["atr_14"]), clean_num(row["volatility_score"]), None, 0.5, None, 14))
-            vol_std_val = df["return"].rolling(20, min_periods=5).std().loc[_]
+            # Use row's index to access rolling_std_20
+            vol_std_val = rolling_std_20.get(row.name, None)
             ind_rows.append((sym, "1d", ts_val, "volatility", "return_std_20", None,
                              clean_num(vol_std_val),
                              clean_num(row["volatility_score"]), None, 0.5, None, 20))
@@ -171,45 +280,70 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
             ind_rows.append((sym, "1d", ts_val, "volume", "vol_zscore_20", None, clean_num(row["volume_score"]), clean_num(row["volume_score"]), None, 0.5, None, 20))
 
             # Dimension scores (simple aggregates for now)
+            trend_score = clean_num(row["trend_score"])
+            momentum_score = clean_num(row["momentum_score"])
+            volatility_score = clean_num(row["volatility_score"])
+            volume_score = clean_num(row["volume_score"])
             dim_rows.extend([
-                (sym, "1d", ts_val, "trend", clean_num(row["trend_score"]), 0.5, None, "BULLISH" if clean_num(row["trend_score"]) and clean_num(row["trend_score"]) > 0 else "BEARISH" if clean_num(row["trend_score"]) and clean_num(row["trend_score"]) < 0 else "NEUTRAL", None),
-                (sym, "1d", ts_val, "momentum", clean_num(row["momentum_score"]), 0.5, None, "BULLISH" if clean_num(row["momentum_score"]) and clean_num(row["momentum_score"]) > 0 else "BEARISH" if clean_num(row["momentum_score"]) and clean_num(row["momentum_score"]) < 0 else "NEUTRAL", None),
-                (sym, "1d", ts_val, "volatility", clean_num(row["volatility_score"]), 0.5, None, "HIGH" if clean_num(row["volatility_score"]) and clean_num(row["volatility_score"]) > 0.05 else "NORMAL", None),
-                (sym, "1d", ts_val, "volume", clean_num(row["volume_score"]), 0.5, None, "HIGH" if clean_num(row["volume_score"]) and clean_num(row["volume_score"]) > 0 else "LOW", None),
+                (sym, "1d", ts_val, "trend", trend_score, 0.5, None,
+                 "BULLISH" if trend_score is not None and trend_score > 0 else "BEARISH" if trend_score is not None and trend_score < 0 else "NEUTRAL", None),
+                (sym, "1d", ts_val, "momentum", momentum_score, 0.5, None,
+                 "BULLISH" if momentum_score is not None and momentum_score > 0 else "BEARISH" if momentum_score is not None and momentum_score < 0 else "NEUTRAL", None),
+                (sym, "1d", ts_val, "volatility", volatility_score, 0.5, None,
+                 "HIGH" if volatility_score is not None and volatility_score > 0.05 else "NORMAL", None),
+                (sym, "1d", ts_val, "volume", volume_score, 0.5, None,
+                 "HIGH" if volume_score is not None and volume_score > 0 else "LOW", None),
             ])
 
-        with conn.cursor() as cur:
+        cur = conn.cursor()
+        try:
             if dim_rows:
                 cur.executemany(dim_insert, dim_rows)
             if ind_rows:
                 cur.executemany(ind_insert, ind_rows)
             conn.commit()
+        finally:
+            cur.close()
+    if manager.db_type == DatabaseType.POSTGRESQL:
+        manager.release_connection(conn)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Compute daily indicators and dimension scores into Postgres.")
+    parser = argparse.ArgumentParser(description="Compute daily indicators and dimension scores (PostgreSQL or SQLite).")
     parser.add_argument("--symbols", default="AUTO", help="Comma-separated symbols or AUTO to read from price_data.")
     parser.add_argument("--lookback-days", type=int, default=365, help="Lookback window in days.")
     parser.add_argument("--pg-dsn", default=None, help="Override DATABASE_URL for this run.")
+    parser.add_argument("--db-type", choices=["auto", "postgresql", "sqlite"], default="auto", help="Select backend; default auto-detect.")
+    parser.add_argument("--sqlite-path", default=None, help="Path to SQLite DB when db-type=sqlite (default: data/TechAnalysis.db).")
     parser.add_argument("--tse-dsn", default=None, help="Override TSE db path/DSN.")
     args = parser.parse_args()
 
-    manager = DatabaseManager(connection_string=args.pg_dsn, auto_setup=False)
-    if manager.db_type != DatabaseType.POSTGRESQL:
-        raise SystemExit("This script requires PostgreSQL backend.")
+    db_type = None
+    if args.db_type == "postgresql":
+        db_type = DatabaseType.POSTGRESQL
+    elif args.db_type == "sqlite":
+        db_type = DatabaseType.SQLITE
+
+    sqlite_path = args.sqlite_path or DEFAULT_SQLITE_PATH
+    manager = DatabaseManager(
+        db_type=db_type,
+        connection_string=args.pg_dsn,
+        sqlite_path=str(sqlite_path),
+        auto_setup=True,
+        allow_fallback=True,
+    )
+
+    ensure_daily_tables(manager)
+    tse_connector = TSEDatabaseConnector(args.tse_dsn or TSE_DB_FILE)
 
     if args.symbols.upper() == "AUTO":
-        # Pull symbol list from tse_input.price_data
-        conn = manager.get_connection()
-        with conn.cursor() as cur:
-            cur.execute("SELECT DISTINCT symbol FROM tse_input.price_data")
-            symbols = [r[0] for r in cur.fetchall()]
-        manager.release_connection(conn)
+        symbols = tse_connector.list_symbols(limit=100000, min_rows=120)
     else:
         symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
     compute_and_store(symbols, lookback_days=args.lookback_days, manager=manager, tse_source=args.tse_dsn)
-    print(f"✅ Computed daily indicators/dimensions for {len(symbols)} symbols.")
+    backend_str = manager.db_type.value if manager.db_type is not None else "unknown"
+    print(f"✅ Computed daily indicators/dimensions for {len(symbols)} symbols (backend: {backend_str}).")
 
 
 if __name__ == "__main__":
