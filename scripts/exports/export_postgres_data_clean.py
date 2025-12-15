@@ -1,7 +1,8 @@
-import psycopg2
 import csv
 import os
 from pathlib import Path
+
+import psycopg2
 
 # Database connection settings
 DB_CONFIG = {
