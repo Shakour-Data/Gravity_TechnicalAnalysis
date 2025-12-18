@@ -185,7 +185,13 @@ def ensure_daily_tables(manager: DatabaseManager) -> None:
         manager.execute_query(stmt)
 
 
-def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseManager, tse_source: str | None = None):
+def compute_and_store(
+    symbols: list[str],
+    lookback_days: int,
+    manager: DatabaseManager,
+    tse_source: str | None = None,
+    progress_cb=None,
+):
     connector = TSEDatabaseConnector(tse_source or TSE_DB_FILE)
     conn = manager.get_connection()
     placeholder = manager.get_sql_placeholder()
@@ -234,9 +240,13 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
             indicator_params = EXCLUDED.indicator_params
     """
 
-    for sym in symbols:
+    total = len(symbols)
+    for idx, sym in enumerate(symbols, start=1):
         raw = connector.fetch_price_data(sym)
+        wrote_rows = False
         if not raw:
+            if progress_cb:
+                progress_cb(idx, total, sym, wrote_rows)
             continue
 
         df = pd.DataFrame(raw)
@@ -245,6 +255,8 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
         cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
         df = df[df["timestamp"] >= cutoff]
         if df.empty:
+            if progress_cb:
+                progress_cb(idx, total, sym, wrote_rows)
             continue
 
         df["close"] = df["close"].astype(float)
@@ -301,9 +313,13 @@ def compute_and_store(symbols: list[str], lookback_days: int, manager: DatabaseM
                 cur.executemany(dim_insert, dim_rows)
             if ind_rows:
                 cur.executemany(ind_insert, ind_rows)
+            if dim_rows or ind_rows:
+                wrote_rows = True
             conn.commit()
         finally:
             cur.close()
+        if progress_cb:
+            progress_cb(idx, total, sym, wrote_rows)
     if manager.db_type == DatabaseType.POSTGRESQL:
         manager.release_connection(conn)
 
@@ -316,6 +332,7 @@ def main():
     parser.add_argument("--db-type", choices=["auto", "postgresql", "sqlite"], default="auto", help="Select backend; default auto-detect.")
     parser.add_argument("--sqlite-path", default=None, help="Path to SQLite DB when db-type=sqlite (default: data/TechAnalysis.db).")
     parser.add_argument("--tse-dsn", default=None, help="Override TSE db path/DSN.")
+    parser.add_argument("--max-symbols", type=int, default=0, help="Cap number of symbols to process (0 = all).")
     args = parser.parse_args()
 
     db_type = None
@@ -341,9 +358,26 @@ def main():
     else:
         symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
-    compute_and_store(symbols, lookback_days=args.lookback_days, manager=manager, tse_source=args.tse_dsn)
+    if args.max_symbols and len(symbols) > args.max_symbols:
+        symbols = symbols[: args.max_symbols]
+
     backend_str = manager.db_type.value if manager.db_type is not None else "unknown"
-    print(f"✅ Computed daily indicators/dimensions for {len(symbols)} symbols (backend: {backend_str}).")
+    total_symbols = len(symbols)
+    print(f"[daily] Starting daily computation for {total_symbols} symbols (backend: {backend_str}).")
+
+    def progress_cb(idx: int, total: int, symbol: str, wrote: bool) -> None:
+        pct = (idx / total * 100) if total else 100.0
+        state = "wrote" if wrote else "skipped"
+        print(f"[daily] {pct:5.1f}% ({idx}/{total}) {state}: {symbol}")
+
+    compute_and_store(
+        symbols,
+        lookback_days=args.lookback_days,
+        manager=manager,
+        tse_source=args.tse_dsn,
+        progress_cb=progress_cb,
+    )
+    print(f"✅ Computed daily indicators/dimensions for {total_symbols} symbols (backend: {backend_str}).")
 
 
 if __name__ == "__main__":
