@@ -239,7 +239,7 @@ class init_price_data:
     @staticmethod
     def get_connection():
         os.makedirs(os.path.dirname(DB_FILE) or ".", exist_ok=True)
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(DB_FILE, timeout=60)
         init_price_data._configure_connection(conn)
         return conn
 
