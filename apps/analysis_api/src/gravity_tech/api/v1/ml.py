@@ -36,8 +36,9 @@ import asyncio
 import pickle
 import threading
 import time
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +49,7 @@ from gravity_tech.config.paths import ML_MODELS_DIR
 from pydantic import BaseModel, Field
 
 try:
-    from prometheus_client import Counter, Histogram
+    from prometheus_client import REGISTRY, Counter, Histogram
 except Exception:  # pragma: no cover - fallback when prometheus_client missing
     class _Noop:
         def labels(self, *args, **kwargs):
@@ -61,6 +62,7 @@ except Exception:  # pragma: no cover - fallback when prometheus_client missing
             return self
 
     Counter = Histogram = lambda *args, **kwargs: _Noop()
+    REGISTRY = None
 
 logger = structlog.get_logger()
 
@@ -74,20 +76,31 @@ BATCH_TIMEOUT_SECONDS = 5.0
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
+# Prometheus helpers to avoid duplicate registration in tests/reloads
+def _get_metric(metric_cls: Any, name: str, doc: str, labelnames: Sequence[str] | tuple[str, ...]) -> Any:
+    if REGISTRY is not None:
+        try:
+            existing = REGISTRY._names_to_collectors.get(name)  # type: ignore[attr-defined]
+        except Exception:
+            existing = None
+        if existing:
+            return existing
+    return metric_cls(name, doc, labelnames)
+
 # Prometheus metrics
-MODEL_CACHE_HITS = Counter("ml_model_cache_hits_total", "ML model cache hits", ["version"])
-MODEL_CACHE_LOADS = Counter("ml_model_loads_total", "ML model loads from disk", ["version"])
-PREDICTION_REQUESTS = Counter(
-    "ml_prediction_requests_total", "Total ML prediction requests", ["endpoint", "status", "model_version"]
+MODEL_CACHE_HITS: Any = _get_metric(Counter, "ml_model_cache_hits_total", "ML model cache hits", ["version"])
+MODEL_CACHE_LOADS: Any = _get_metric(Counter, "ml_model_loads_total", "ML model loads from disk", ["version"])
+PREDICTION_REQUESTS: Any = _get_metric(
+    Counter, "ml_prediction_requests_total", "Total ML prediction requests", ["endpoint", "status", "model_version"]
 )
-PREDICTION_LATENCY = Histogram(
-    "ml_prediction_latency_seconds", "Prediction latency (seconds)", ["endpoint", "model_version"]
+PREDICTION_LATENCY: Any = _get_metric(
+    Histogram, "ml_prediction_latency_seconds", "Prediction latency (seconds)", ["endpoint", "model_version"]
 )
-BACKTEST_REQUESTS = Counter(
-    "ml_backtest_requests_total", "Total backtest requests", ["status"]
+BACKTEST_REQUESTS: Any = _get_metric(
+    Counter, "ml_backtest_requests_total", "Total backtest requests", ["status"]
 )
-BACKTEST_LATENCY = Histogram(
-    "ml_backtest_latency_seconds", "Backtest latency (seconds)"
+BACKTEST_LATENCY: Any = _get_metric(
+    Histogram, "ml_backtest_latency_seconds", "Backtest latency (seconds)", []
 )
 
 
@@ -286,6 +299,16 @@ class _DummyPatternModel:
             "probabilities": probs,
         }
 
+    # Compatibility methods for sklearn-like interface
+    def predict(self, features: np.ndarray) -> np.ndarray:
+        return np.array([0])
+
+    def predict_proba(self, features: np.ndarray) -> np.ndarray:
+        return np.array([[0.25, 0.25, 0.25, 0.25]])
+
+    def get_params(self, deep: bool = False) -> dict[str, Any]:
+        return {}
+
 
 def load_ml_model():
     """Load the latest ML model (cached). Falls back to dummy model if missing."""
@@ -309,17 +332,17 @@ def load_ml_model():
 
             with open(path, "rb") as f:
                 data = pickle.load(f)
-                model = data["model"] if isinstance(data, dict) else data
-                MODEL_CACHE.clear()
-                MODEL_META.clear()
-                MODEL_CACHE[version] = model
-                MODEL_META[version] = {
-                    "path": str(path),
-                    "hash": file_hash,
-                    "loaded_at": datetime.now(datetime.UTC).isoformat(),
-                }
-                MODEL_CACHE_LOADS.labels(version).inc()
-                return model, version
+        model = data["model"] if isinstance(data, dict) else data
+        MODEL_CACHE.clear()
+        MODEL_META.clear()
+        MODEL_CACHE[version] = model
+        MODEL_META[version] = {
+            "path": str(path),
+            "hash": file_hash,
+            "loaded_at": datetime.now(UTC).isoformat(),
+        }
+        MODEL_CACHE_LOADS.labels(version).inc()
+        return model, version
 
         # Fallback dummy model (uniform probabilities) to keep service responsive
         dummy = _DummyPatternModel()
@@ -329,7 +352,7 @@ def load_ml_model():
         MODEL_META["fallback"] = {
             "path": "fallback",
             "hash": "fallback",
-            "loaded_at": datetime.now(datetime.UTC).isoformat(),
+            "loaded_at": datetime.now(UTC).isoformat(),
         }
         logger.warning("ml_model_fallback_used")
         return dummy, "fallback"
@@ -576,7 +599,7 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ML model file not found"
-        )
+        ) from None
     except Exception as e:
         logger.error("batch_prediction_error", error=str(e))
         PREDICTION_REQUESTS.labels("predict_batch", "error", version if "version" in locals() else "unknown").inc()
@@ -640,7 +663,7 @@ async def get_model_info() -> ModelInfoResponse:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ML model file not found"
-        )
+        ) from None
     except Exception as e:
         logger.error("model_info_error", error=str(e))
         raise HTTPException(
