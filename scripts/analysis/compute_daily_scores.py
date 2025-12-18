@@ -47,8 +47,11 @@ def _compute_basic_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out["macd_hist"] = macd_hist
     out["atr_14"] = _atr(out, window=14)
 
-    # Scores/signals
-    out["trend_score"] = (out["ema_20"] - out["sma_20"]) / out["sma_20"]
+    # Scores/signals - improved trend_score with multiple indicators and weights
+    ema_sma_diff = (out["ema_20"] - out["sma_20"]) / out["sma_20"].replace(0, np.nan)
+    macd_trend = out["macd_hist"].apply(lambda x: 1 if x > 0 else -1 if x < 0 else 0)
+    # Weighted combination: 60% EMA-SMA diff, 40% MACD histogram direction
+    out["trend_score"] = 0.6 * ema_sma_diff.fillna(0) + 0.4 * macd_trend
     out["momentum_score"] = out["rsi_14"].apply(lambda x: (x - 50) / 50 if pd.notna(x) else 0)
     out["volatility_score"] = out["atr_14"] / out["close"]
     out["volume_score"] = (out["volume"] - out["volume"].rolling(20, min_periods=5).mean()) / (
