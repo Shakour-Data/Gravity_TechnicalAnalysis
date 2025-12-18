@@ -19,7 +19,7 @@
 ## عملیات
 - `docs/operations/DEPLOYMENT_GUIDE.md` — اجرای محلی/تولید، متغیرهای محیطی مهم.
 - `docs/operations/RUNBOOK.md` — چک‌های سلامت، پاک‌سازی کش، خطاهای رایج و راه‌حل سریع.
-- `docs/PROCESS_OVERVIEW.md` — خلاصه همه فرایندها با دیاگرام (تحلیل، الگو، ML، ابزار، بک‌تست، سناریو، کش/داده، ingestion).
+- `docs/SYSTEM_OVERVIEW.md` — خلاصه همه فرایندها با دیاگرام (تحلیل، الگو، ML، ابزار، بک‌تست، سناریو، کش/داده، ingestion).
 - `docs/processes/TECHNICAL_ANALYSIS.md` — فرایند کامل /api/v1/analyze با دیاگرام و وابستگی‌ها.
 - `docs/processes/PATTERN_DETECTION.md` — تشخیص هارمونیک با ML اختیاری.
 - `docs/processes/ML_PREDICTION.md` — پیش‌بینی ML، کش مدل، خطاها.
@@ -31,7 +31,7 @@
 - `docs/processes/INGESTION_METRICS.md` — ingestion و متریک‌ها.
 
 ## ساختار و تغییرات
-- `docs/PROJECT_STRUCTURE.md` — درخت پوشه‌ها و اجزای اصلی کد.
+- `docs/PROJECT_OVERVIEW.md` — درخت پوشه‌ها و اجزای اصلی کد.
 - `docs/changelog/CHANGELOG.md` — تغییرات واقعی نسخه 1.0.0 و پاک‌سازی مستندات.
 
 ## پوشش قابلیت‌های موجود در کد
