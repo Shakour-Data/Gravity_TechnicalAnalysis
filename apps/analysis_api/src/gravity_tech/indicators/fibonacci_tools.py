@@ -91,9 +91,13 @@ class FibonacciTools:
             Dictionary of arc levels
         """
         arcs = {}
+        start_deg, end_deg = angle_range
+        start_rad, end_rad = np.deg2rad(min(start_deg, end_deg)), np.deg2rad(max(start_deg, end_deg))
 
         for ratio in FibonacciTools.FIBONACCI_RATIOS['arc']:
             angle = np.arccos(1 - 2 * ratio)  # Convert ratio to angle
+            if not (start_rad <= angle <= end_rad):
+                continue
             y = center + radius * np.sin(angle)
             arcs[f"arc_{ratio:.3f}"] = y
 
