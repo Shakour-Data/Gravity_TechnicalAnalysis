@@ -1,48 +1,54 @@
-# Batch-50 Pipeline (TSETMC -> Fetch -> Analysis -> Postgres)
+# پایپ‌لاین بچ ۵۰تایی (TSETMC ← فچ ← تحلیل ← ذخیره در Postgres)
 
-این سند توضیح می‌دهد در هر بچ چه اتفاقی می‌افتد، چطور اجرا کنید، و چطور بعد از هر بچ گزارش بگیرید.
+این سند تنها اسکریپت پیشنهادی را توضیح می‌دهد و می‌گوید هر بچ دقیقاً چه داده‌هایی را به‌صورت سری زمانی در دیتابیس ذخیره می‌کند.
 
 ## ورودی‌ها
-- **منبع زنده (TSETMC)** از طریق `gravity_tse.py` + `finpy_tse`.
+- **منبع زنده (TSETMC)** از طریق `gravity_tse.py` و `finpy_tse`.
 - **کش سورس (SQLite)**: ترجیحاً `E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db` (~3.2M رکورد). جایگزین: `temp_gravity_tse/data/tse_data.db`.
-- **هدف (Postgres/Docker)**: DSN پروژه `postgresql://gravity:gravity@127.0.0.1:5544/tech_analysis` (داخل کانتینر: `postgresql://gravity:gravity@db:5432/tech_analysis`). اگر تنظیم نشده باشد، کد پیش‌فرض را `postgresql://postgres:Bedaan4D@127.0.0.1:5432/bedaan4d_db` استفاده می‌کند. می‌توانید با `--target-db` یا envهای `ANALYSIS_TARGET_DB` / `DATABASE_URL` عوض کنید.
-- **پارامترها**: `--batch-size` (پیش‌فرض 50)، `--min-candles` (پیش‌فرض 400)، `--limit` (تعداد کندل تحلیل؛ 0 = کل تاریخچه)، `--ingest-limit` (برای اینجست جداول تاریخی)، `--no-indices`, `--no-usd`, `--loop`.
+- **هدف (Postgres/Docker)**: DSN توصیه‌شده `postgresql://gravity:gravity_db_pass@127.0.0.1:5545/tech_analysis` (داخل کانتینر: `postgresql://gravity:gravity_db_pass@postgres:5432/tech_analysis`). همه اسکریپت‌ها را روی این DSN تنظیم کنید.
+- **پارامترها**: `--batch-size` (پیش‌فرض 50)، `--min-candles` (پیش‌فرض 400)، `--limit` (محدودیت کندل برای تحلیل)، `--ingest-limit` (محدودیت کندل برای اینجست سری زمانی؛ 0 یعنی کل تاریخچه)، `--no-indices`, `--no-usd`, `--loop`.
 
-## تنها اسکریپت پیشنهادی (یک‌مرحله‌ای، فچ + تحلیل + پر شدن همه جداول)
-فقط از `scripts/etl/run_batch50_full_ingest.py` استفاده کنید؛ بقیه اسکریپت‌ها (مثلاً `run_batch50.py`) را اجرا نکنید.
+## تنها اسکریپت پیشنهادی (یک‌مرحله‌ای: فچ + تحلیل + اینجست کامل)
 ```bash
 python scripts/etl/run_batch50_full_ingest.py ^
   --source-db "E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db" ^
-  --target-db "postgresql://gravity:gravity@127.0.0.1:5544/tech_analysis" ^
+  --target-db "postgresql://gravity:gravity_db_pass@127.0.0.1:5545/tech_analysis" ^
   --batch-size 50 ^
   --min-candles 120 ^
   --limit 500 ^
-  --ingest-limit 500
+  --ingest-limit 0 ^
+  --trend-window 30
 ```
-- اول، نمادهایی که قبلاً در `analysis_results` یا `historical_scores` هستند را رد می‌کند تا هر بار به بچ بعدی بروید.
-- سپس فچ از TSETMC، اجرای تحلیل، و پر کردن تمام جداول کلیدی در یک اجرا: `analysis_results`, `historical_scores`, `historical_indicator_scores`, `tool_performance_history`, `backtest_runs`, `pattern_detection_results`, `ml_weights_history`.
-
-## اجرای کلاسیک (Deprecated)
-`run_batch50.py` دیگر توصیه نمی‌شود؛ فقط برای سازگاری نگه داشته شده است و نباید اجرا شود.
+- نمادهایی که در `analysis_results` یا `historical_scores` مقصد هستند، رد می‌شوند؛ هر بار که اجرا کنید به ۵۰ نماد بعدی می‌رود.
+- سری زمانی برای همه جداول در یک اجرا ذخیره می‌شود (per-symbol, per-day): `analysis_results`, `historical_scores`, `historical_indicator_scores`, `tool_performance_history`, `backtest_runs`, `pattern_detection_results`, `ml_weights_history`.
+- محاسبه trend/volatility بر اساس پنجره‌ی `--trend-window` (پیش‌فرض 30 روز) روی همان کندل‌ها انجام می‌شود.
+- در شروع اجرا ایندکس/قیود کمکی ساخته می‌شود:  
+  - `historical_scores(symbol, ts, timeframe)`  
+  - `historical_indicator_scores(symbol, ts, timeframe)`  
+  - `ml_weights_history` یکتا `(symbol, ts, model_name, timeframe)`  
+  - `tool_performance_history` یکتا `(symbol, timeframe, prediction_timestamp, tool_name)`  
+  - `backtest_runs` یکتا `(symbol, interval, period_start, period_end, model_version)`  
+  - `pattern_detection_results` یکتا `(symbol, timeframe, timestamp, pattern_type, pattern_name)`
 
 ## مراحل هر بچ
-1) انتخاب نمادها: بر اساس `last_updates` و تعداد کندل (حداقل `min_candles`)، قدیمی‌ترین‌ها اول. در اسکریپت full-ingest، نمادهای موجود در Postgres رد می‌شوند.
-2) فچ TSETMC: فقط نمادهای همان بچ در `price_data`/`last_updates` ثبت می‌شوند. USD و شاخص‌های بازار/صنعت پیش‌فرض فعال هستند مگر `--no-usd`/`--no-indices`.
-3) تحلیل: اجرای `scripts/etl/run_full_pipeline.py --symbols ...` و نوشتن خروجی در دیتابیس هدف.
-4) اینجست تاریخی (فقط در full-ingest): پر کردن جداول سری‌زمانی برای همان نمادها.
+1) انتخاب نمادها: قدیمی‌ترین `last_date` در سورس، فیلتر `min_candles`، حذف نمادهای پردازش‌شده در مقصد.
+2) فچ TSETMC: فقط همان نمادها + USD + شاخص‌ها (مگر `--no-usd`/`--no-indices`).
+3) تحلیل: اجرای `run_full_pipeline.py` برای همان نمادها.
+4) اینجست سری زمانی: برای هر روز، برای هر نماد همه جداول بالا پر می‌شود؛ وزن‌ها (ml_weights_history) هم per-symbol، per-day هستند.
 
-## گزارش بعد از هر بچ
+## گزارش/اعتبارسنجی پس از هر بچ
 1) لیست نمادهای بچ را در یک فایل (هر خط یک نماد) ذخیره کنید، مثال: `batch1_symbols.txt`.
-2) دستور گزارش‌گیری:
+2) دستور چک خودکار:
 ```bash
-python scripts/etl/report_batch.py ^
-  --target-db "postgresql://gravity:gravity@127.0.0.1:5544/tech_analysis" ^
+python scripts/etl/validate_batch.py ^
+  --target-db "postgresql://gravity:gravity_db_pass@127.0.0.1:5545/tech_analysis" ^
+  --source-db "E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db" ^
   --symbols-file batch1_symbols.txt ^
-  --outfile batch1_report.txt
+  --limit 300
 ```
-- خروجی شامل تعداد ردیف/نماد در هر جدول، پوشش ۹۰ روزه `analysis_results`، و نمادهای ناقص (اگر باشند) است. بعد از هر بچ این فایل گزارش را برای مستندسازی نگه دارید.
+- خروجی: شمارش ردیف/نماد در هر جدول، بازه زمانی، و پوشش کندل‌های سورس (تا `limit`). اگر نمادی در جدولی غایب باشد، گزارش می‌شود.
 
-## چک‌های سریع
-- اگر نمادی غایب است، بررسی کنید حداقل `min_candles` داده در سورس داشته باشد.
-- اگر Postgres خالی است، DSN را مطابق کانتینر (`gravity:gravity@127.0.0.1:5544/tech_analysis`) تنظیم کنید.
-- برای ادامه بچ‌ها، همان دستور full-ingest را تکرار کنید؛ نمادهای قبلی را رد می‌کند و سراغ ۵۰ نماد بعدی می‌رود.
+## نکات
+- برای پوشش کامل تاریخچه، `--ingest-limit` را 0 بگذارید (پیش‌فرض جدید).
+- DSN قدیمی (postgres/Bedaan4D@5432) را استفاده نکنید؛ همه جا DSN بالا (gravity_db_pass@5545) را ست کنید.
+- اگر می‌خواهید سرعت بیشتر باشد، می‌توانید `--ingest-limit` را عددی بگذارید؛ اما تاریخچه کوتاه‌تر خواهد شد. پس از آن می‌توانید دوباره با limit بالاتر اینجست کنید؛ قیود یکتا مانع داده تکراری می‌شود.
