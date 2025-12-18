@@ -2,6 +2,27 @@
 
 پایگاه همه endpointهایی که در `gravity_tech.main` قابل استفاده‌اند. تمام مسیرها زیر `/api/v1` هستند مگر سلامت/متریک.
 
+## نمودار کلی APIها
+
+```mermaid
+flowchart LR
+    Client --> API["FastAPI /api/v1"]
+    API --> Analyze["/analyze\nتحلیل کامل"]
+    API --> Patterns["/patterns\nتشخیص الگو"]
+    API --> ML["/ml\nیادگیری ماشین"]
+    API --> Tools["/tools\nتوصیه ابزار"]
+    API --> Backtest["/backtest\nبک‌تست"]
+    API --> Scenarios["/scenarios\nسناریو (اختیاری)"]
+    API --> DB["/db\nاکسپلورر (اختیاری)"]
+    Analyze --> Response["JSON Response"]
+    Patterns --> Response
+    ML --> Response
+    Tools --> Response
+    Backtest --> Response
+    Scenarios --> Response
+    DB --> Response
+```
+
 ## پایه دسترسی
 - مستندات تعاملی: `/api/docs` (Swagger)
 - OpenAPI JSON: `/api/openapi.json`
