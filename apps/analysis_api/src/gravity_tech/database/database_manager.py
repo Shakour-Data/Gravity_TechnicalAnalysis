@@ -69,7 +69,7 @@ class DatabaseManager:
         sqlite_path: str | None = None,
         json_path: str | None = None,
         auto_setup: bool = True,
-        allow_fallback: bool | None = True,
+        allow_fallback: bool | None = None,
     ):
         """
         Initialize Database Manager
@@ -81,11 +81,11 @@ class DatabaseManager:
             json_path: مسیر فایل JSON (برای fallback)
             auto_setup: آیا خودکار schema را بسازد؟
         """
-        # Default: enforce Postgres (no silent fallback) unless explicitly allowed
-        if allow_fallback is not None:
-            self.allow_fallback = allow_fallback
+        # Default: honor settings.allow_db_fallback (defaults to False in settings)
+        if allow_fallback is None:
+            self.allow_fallback = getattr(settings, "allow_db_fallback", False)
         else:
-            self.allow_fallback = True
+            self.allow_fallback = allow_fallback
         self.db_type = db_type
         self.connection_string = (
             connection_string
@@ -95,7 +95,15 @@ class DatabaseManager:
         )
         default_sqlite = settings.sqlite_path or "data/tool_performance.db"
         default_json = settings.json_storage_path or "data/tool_performance.json"
-        self.sqlite_path = sqlite_path or default_sqlite
+        # Normalize SQLite path (guard against pointing to a directory)
+        chosen_sqlite = sqlite_path or default_sqlite
+        try:
+            from pathlib import Path as _Path
+            if _Path(chosen_sqlite).exists() and _Path(chosen_sqlite).is_dir():
+                chosen_sqlite = str(_Path(chosen_sqlite) / "tool_performance.db")
+        except Exception:
+            pass
+        self.sqlite_path = chosen_sqlite
         self.json_path = json_path or default_json
 
         self.connection_pool: Any = None  # psycopg2 pool or None
@@ -1323,14 +1331,14 @@ class DatabaseManager:
         if not aggregated:
             return 0
 
-        placeholders = (
-            "%s"
-            if self.db_type == DatabaseType.POSTGRESQL
-            else "?"
-        )
+        # Build query with explicit placeholders to avoid Python string-format confusion
+        if self.db_type == DatabaseType.SQLITE:
+            placeholders = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"
+        else:  # PostgreSQL
+            placeholders = "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s"
 
-        insert_query = (
-            f"""
+        if self.db_type == DatabaseType.SQLITE:
+            insert_query = f"""
             INSERT INTO tool_performance_stats (
                 tool_name, tool_category, market_regime, timeframe,
                 period_start, period_end,
@@ -1340,14 +1348,7 @@ class DatabaseManager:
                 bullish_success_rate, bearish_success_rate, neutral_success_rate,
                 best_accuracy, worst_accuracy, best_symbol, worst_symbol,
                 last_updated
-            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
-                      {placeholders})
+            ) VALUES ({placeholders})
             ON CONFLICT (tool_name, market_regime, timeframe, period_start, period_end)
             DO UPDATE SET
                 total_predictions = EXCLUDED.total_predictions,
@@ -1367,8 +1368,8 @@ class DatabaseManager:
                 worst_symbol = EXCLUDED.worst_symbol,
                 last_updated = CURRENT_TIMESTAMP
             """
-            if self.db_type == DatabaseType.SQLITE
-            else f"""
+        else:
+            insert_query = f"""
             INSERT INTO tool_performance_stats (
                 tool_name, tool_category, market_regime, timeframe,
                 period_start, period_end,
@@ -1378,14 +1379,7 @@ class DatabaseManager:
                 bullish_success_rate, bearish_success_rate, neutral_success_rate,
                 best_accuracy, worst_accuracy, best_symbol, worst_symbol,
                 last_updated
-            ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders},
-                      {placeholders}, {placeholders}, {placeholders}, {placeholders},
-                      NOW())
+            ) VALUES ({placeholders})
             ON CONFLICT (tool_name, market_regime, timeframe, period_start, period_end)
             DO UPDATE SET
                 total_predictions = EXCLUDED.total_predictions,
@@ -1405,7 +1399,6 @@ class DatabaseManager:
                 worst_symbol = EXCLUDED.worst_symbol,
                 last_updated = NOW()
             """
-        )
 
         params_to_insert = [
             (
@@ -2208,6 +2201,7 @@ class DatabaseManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager cleanup"""
+        _ = (exc_type, exc_val, exc_tb)
         self.close()
 
     def __del__(self):
