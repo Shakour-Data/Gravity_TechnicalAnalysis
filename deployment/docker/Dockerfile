@@ -1,14 +1,19 @@
-FROM python:3.11-slim
+# Base image aligned with package requirement (<3.13, >=3.12.10)
+FROM python:3.12-slim
 
 WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
 RUN apt-get update && apt-get install -y build-essential libffi-dev && rm -rf /var/lib/apt/lists/*
-RUN pip install --default-timeout=200 --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=200 --no-cache-dir -r requirements.txt psycopg[binary]>=3.1.18
 
-# Copy application code
-COPY src/ /app/src/
+# Copy application code and supporting assets
+COPY apps/analysis_api/src/ /app/src/
+COPY apps/analysis_api/ml_models/ /app/ml_models/
+COPY scripts/ /app/scripts/
+COPY services/ /app/services/
+COPY configs/ /app/configs/
 COPY pyproject.toml /app/
 COPY README.md /app/
 
