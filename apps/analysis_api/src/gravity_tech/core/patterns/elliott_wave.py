@@ -195,6 +195,7 @@ class ElliottWaveAnalyzer:
         Returns:
             ElliottWaveResult if pattern found, None otherwise
         """
+        min_wave_size = max(1, min_wave_size)
         if len(candles) < 20:
             return None
 
@@ -213,6 +214,8 @@ class ElliottWaveAnalyzer:
         # Try to find 5-wave impulsive pattern
         for i in range(len(all_pivots) - 5):
             pattern_pivots = all_pivots[i:i+6]
+            if any(abs(pattern_pivots[j + 1][0] - pattern_pivots[j][0]) < min_wave_size for j in range(5)):
+                continue
 
             # Check if alternating peaks and troughs
             types = [p[2] for p in pattern_pivots]
