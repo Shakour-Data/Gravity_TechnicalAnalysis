@@ -57,6 +57,10 @@ httpx==0.25.2
 # Configuration
 python-dotenv==1.0.0
 
+# Auth
+PyJWT==2.10.1
+python-multipart==0.0.20
+
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
@@ -77,8 +81,9 @@ tenacity==8.2.3
 
 # Database
 psycopg2-binary>=2.9.0
+# Needed by scripts/etl/run_stack_pipeline.py (imports psycopg v3)
+psycopg[binary]>=3.1.18
 
 # Documentation
 mkdocs==1.5.3
 mkdocs-material==9.5.3
-
