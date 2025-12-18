@@ -5,13 +5,13 @@ One-shot batch runner: fetch + analysis + fill all Postgres tables for the batch
 Steps per run:
 1) Select next N symbols from source SQLite (min_candles filter, oldest first), skipping symbols already present in target Postgres.
 2) Call scripts/etl/run_batch50.py to fetch from TSETMC and run analysis (fills analysis_results).
-3) Using the same symbol list, ingest baseline rows into:
+3) Using the same symbol list, ingest time-series rows into:
    - historical_scores
    - historical_indicator_scores
-   - tool_performance_history
-   - backtest_runs
-   - pattern_detection_results (placeholder)
-   - ml_weights_history (one row)
+   - tool_performance_history (per-day)
+   - backtest_runs (per-day)
+   - pattern_detection_results (per-day, baseline placeholder)
+   - ml_weights_history (per-symbol, per-day)
 
 Usage:
 python scripts/etl/run_batch50_full_ingest.py \\
@@ -110,14 +110,34 @@ def ingest_baseline(
     target_dsn: str,
     candle_limit: int,
     timeframe: str = "1d",
+    trend_window: int = 30,
 ) -> None:
     symbols_list = list(symbols)
     src = sqlite3.connect(source_db)
     src_cur = src.cursor()
+    limit_val = candle_limit if candle_limit and candle_limit > 0 else -1
 
     pg = psycopg2.connect(target_dsn)
     pg.autocommit = True
     cur = pg.cursor()
+
+    # Ensure helpful indexes/uniques exist
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_historical_scores_symbol_ts ON historical_scores(symbol, ts, timeframe);")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_historical_indicator_scores_symbol_ts ON historical_indicator_scores(symbol, ts, timeframe);"
+    )
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_ml_weights_symbol_ts_model ON ml_weights_history(symbol, ts, model_name, timeframe);"
+    )
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_tool_perf_symbol_ts ON tool_performance_history(symbol, timeframe, prediction_timestamp, tool_name);"
+    )
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_backtest_runs_symbol_period ON backtest_runs(symbol, interval, period_start, period_end, model_version);"
+    )
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_pattern_detection_symbol_ts ON pattern_detection_results(symbol, timeframe, timestamp, pattern_type, pattern_name);"
+    )
 
     insert_score_sql = """
     INSERT INTO historical_scores (
@@ -209,7 +229,7 @@ def ingest_baseline(
             ORDER BY date DESC
             LIMIT ?
             """,
-            (sym, candle_limit),
+            (sym, limit_val),
         ).fetchall()
         if len(candles) < 2:
             continue
@@ -222,6 +242,9 @@ def ingest_baseline(
         for idx in range(len(candles)):
             closes_slice = closes[: idx + 1]
             vols_slice = vols[: idx + 1]
+            if trend_window > 1 and len(closes_slice) > trend_window:
+                closes_slice = closes_slice[-trend_window:]
+                vols_slice = vols_slice[-trend_window:]
             first_close = closes_slice[0]
             last_close = closes_slice[-1]
             if len(closes_slice) < 2:
@@ -315,96 +338,85 @@ def ingest_baseline(
                 ),
             )
 
-        # one tool/backtest/pattern per symbol (latest ts)
-        ts_val_last = datetime.fromisoformat(dates[-1]) if isinstance(dates[-1], str) else now
-        if ts_val_last.tzinfo is None:
-            ts_val_last = ts_val_last.replace(tzinfo=timezone.utc)
-        last_close = closes[-1]
-        first_close = closes[0]
-        returns_all = [
-            (closes[i] - closes[i - 1]) / closes[i - 1]
-            for i in range(1, len(closes))
-            if closes[i - 1] != 0
-        ]
-        vol_level_all = (sum(r * r for r in returns_all) / len(returns_all)) ** 0.5 if returns_all else 0.0
-        trend_change_all = (last_close - first_close) / (first_close or 1e-9)
-        regime_all = "trending_bullish" if trend_change_all > 0.08 else "trending_bearish" if trend_change_all < -0.08 else "range"
-        prediction_all = "bullish" if trend_change_all > 0.005 else "bearish" if trend_change_all < -0.005 else "neutral"
-        conf_all = min(0.99, max(0.05, abs(trend_change_all) * 2 + vol_level_all * 0.2))
-        vol_profile_all = "high" if vols and (safe_mean(vols) > sorted(vols)[len(vols) // 2]) else "normal"
+            # per-day tool/backtest/pattern rows
+            tool_row = dict(
+                tool_name="baseline_trend",
+                tool_category="trend",
+                symbol=sym,
+                timeframe=timeframe,
+                market_regime=regime,
+                volatility_level=vol_level,
+                trend_strength=trend_change,
+                volume_profile=vol_profile,
+                prediction_type=prediction,
+                prediction_value=trend_change,
+                confidence_score=conf,
+                actual_result=None,
+                actual_price_change=None,
+                success=None,
+                accuracy=None,
+                prediction_timestamp=ts_val,
+                result_timestamp=None,
+                evaluation_period_hours=24,
+                metadata=json.dumps({"source": "batch50_full_ingest"}),
+                created_at=now,
+                updated_at=now,
+            )
+            cur.execute(insert_tool_sql, tool_row)
 
-        tool_row = dict(
-            tool_name="baseline_trend",
-            tool_category="trend",
-            symbol=sym,
-            timeframe=timeframe,
-            market_regime=regime_all,
-            volatility_level=vol_level_all,
-            trend_strength=trend_change_all,
-            volume_profile=vol_profile_all,
-            prediction_type=prediction_all,
-            prediction_value=trend_change_all,
-            confidence_score=conf_all,
-            actual_result=None,
-            actual_price_change=None,
-            success=None,
-            accuracy=None,
-            prediction_timestamp=ts_val_last,
-            result_timestamp=None,
-            evaluation_period_hours=24,
-            metadata=json.dumps({"source": "batch50_full_ingest"}),
-            created_at=now,
-            updated_at=now,
-        )
-        cur.execute(insert_tool_sql, tool_row)
+            returns_slice = [
+                (closes_slice[i] - closes_slice[i - 1]) / closes_slice[i - 1]
+                for i in range(1, len(closes_slice))
+                if closes_slice[i - 1] != 0
+            ]
+            max_close_slice = max(closes_slice)
+            max_dd_slice = min((c - max_close_slice) / max_close_slice for c in closes_slice) if closes_slice else 0.0
+            params = {"strategy": "buy_hold", "window": len(closes_slice)}
+            metrics = {
+                "buy_hold_return": (closes_slice[-1] / closes_slice[0] - 1) if closes_slice and closes_slice[0] else 0.0,
+                "annualized_volatility": vol_level,
+                "sharpe": (safe_mean(returns_slice) / (vol_level + 1e-9)) * (252 ** 0.5) if returns_slice else 0.0,
+                "win_rate": sum(1 for r in returns_slice if r > 0) / len(returns_slice) if returns_slice else 0.0,
+                "max_drawdown": max_dd_slice,
+                "samples": len(returns_slice),
+            }
+            cur.execute(
+                insert_bt_sql,
+                (
+                    sym,
+                    "batch50_full_ingest",
+                    timeframe,
+                    json.dumps(params),
+                    json.dumps(metrics),
+                    dates[0],
+                    dates[idx],
+                    "v0.1",
+                    now,
+                ),
+            )
 
-        params = {"strategy": "buy_hold", "window": len(closes)}
-        max_close = max(closes)
-        max_dd = min((c - max_close) / max_close for c in closes) if closes else 0.0
-        metrics = {
-            "buy_hold_return": (last_close / first_close - 1) if first_close else 0.0,
-            "annualized_volatility": vol_level_all,
-            "sharpe": (safe_mean(returns_all) / (vol_level_all + 1e-9)) * (252 ** 0.5) if returns_all else 0.0,
-            "win_rate": sum(1 for r in returns_all if r > 0) / len(returns_all) if returns_all else 0.0,
-            "max_drawdown": max_dd,
-            "samples": len(returns_all),
-        }
-        cur.execute(
-            insert_bt_sql,
-            (
-                sym,
-                "batch50_full_ingest",
-                timeframe,
-                json.dumps(params),
-                json.dumps(metrics),
-                dates[0],
-                dates[-1],
-                "v0.1",
-                now,
-            ),
-        )
+            cur.execute(
+                insert_pattern_sql,
+                (
+                    sym,
+                    timeframe,
+                    ts_val,
+                    "baseline",
+                    "range_pattern",
+                    0.1,
+                    0.0,
+                    ts_val,
+                    ts_val,
+                    None,
+                    None,
+                    "NEUTRAL",
+                    None,
+                    None,
+                    json.dumps({"source": "batch50_full_ingest"}),
+                    now,
+                ),
+            )
 
-        cur.execute(
-            insert_pattern_sql,
-            (
-                sym,
-                timeframe,
-                ts_val_last,
-                "baseline",
-                "range_pattern",
-                0.1,
-                0.0,
-                ts_val_last,
-                ts_val_last,
-                None,
-                None,
-                "NEUTRAL",
-                None,
-                None,
-                json.dumps({"source": "batch50_full_ingest"}),
-                now,
-            ),
-        )
         processed += 1
 
     cur.close()
@@ -421,7 +433,8 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=50)
     parser.add_argument("--min-candles", type=int, default=120)
     parser.add_argument("--limit", type=int, default=300, help="Max candles for analysis_results step.")
-    parser.add_argument("--ingest-limit", type=int, default=300, help="Max candles for baseline ingest into historical tables.")
+    parser.add_argument("--ingest-limit", type=int, default=0, help="Max candles for baseline ingest into historical tables (0 = all).")
+    parser.add_argument("--trend-window", type=int, default=30, help="Rolling window for trend/volatility calculations (days).")
     args = parser.parse_args()
 
     source_db = Path(args.source_db).resolve()
@@ -436,7 +449,7 @@ def main() -> None:
     except UnicodeEncodeError:
         print(f"Selected {len(symbols)} symbols for batch.")
     run_batch50(source_db, args.target_db, args.batch_size, args.min_candles, args.limit)
-    ingest_baseline(symbols, source_db, args.target_db, args.ingest_limit)
+    ingest_baseline(symbols, source_db, args.target_db, args.ingest_limit, trend_window=args.trend_window)
     print("Done.")
 
 
