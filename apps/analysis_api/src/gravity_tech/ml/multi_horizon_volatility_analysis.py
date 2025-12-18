@@ -157,6 +157,11 @@ class MultiHorizonVolatilityAnalyzer:
         X = pd.DataFrame([features])
 
         # پیش‌بینی امتیازها
+        if self.weight_learner.feature_names:
+            missing = [c for c in self.weight_learner.feature_names if c not in X.columns]
+            for col in missing:
+                X[col] = 0.0
+            X = X[self.weight_learner.feature_names]
         predictions = self.weight_learner.predict_multi_horizon(X)
 
         # ایجاد VolatilityScore برای هر افق
