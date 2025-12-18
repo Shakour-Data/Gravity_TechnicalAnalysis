@@ -176,7 +176,11 @@ class CompleteAnalysisPipeline:
     def _log(self, message: str):
         """چاپ پیام اگر verbose فعال باشد"""
         if self.verbose:
-            print(message)
+            try:
+                print(message)
+            except UnicodeEncodeError:
+                safe = message.encode("ascii", errors="ignore").decode("ascii", errors="ignore")
+                print(safe)
 
     def analyze(self) -> PipelineResult:
         """
