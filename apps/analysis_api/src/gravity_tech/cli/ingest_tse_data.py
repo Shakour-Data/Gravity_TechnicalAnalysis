@@ -111,18 +111,18 @@ def summarize_candles(candles: list[dict]) -> dict:
 def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: str, summary: dict) -> int:
     """Insert a row into historical_scores and return its ID."""
     placeholders = manager.get_sql_placeholder()
-    phs = ", ".join([placeholders] * 24)
+    phs = ", ".join([placeholders] * 23)
     query = f"""
         INSERT INTO historical_scores (
-            symbol, timestamp, timeframe,
+            symbol, ts, timeframe,
             trend_score, trend_confidence,
             momentum_score, momentum_confidence,
             combined_score, combined_confidence,
             trend_weight, momentum_weight,
             trend_signal, momentum_signal, combined_signal,
+            recommendation, action, price_at_analysis,
             volume_score, volatility_score, cycle_score, support_resistance_score,
-            recommendation, action, price_at_analysis, raw_data,
-            created_at, updated_at
+            raw_data, created_at
         ) VALUES ({phs})
         {"RETURNING id" if manager.db_type.name == "POSTGRESQL" else ""}
     """
@@ -145,15 +145,14 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
         "BULLISH" if summary["prediction"] == "bullish" else "BEARISH" if summary["prediction"] == "bearish" else "NEUTRAL",
         "BULLISH" if summary["prediction"] == "bullish" else "BEARISH" if summary["prediction"] == "bearish" else "NEUTRAL",
         "BULLISH" if summary["prediction"] == "bullish" else "BEARISH" if summary["prediction"] == "bearish" else "NEUTRAL",
-        0.0,
-        summary["volatility"],
-        0.0,
-        0.0,
-        None,
-        None,
+        "HOLD",  # recommendation
+        "HOLD",  # action
         summary["price_at_analysis"],
+        0.0,  # volume_score placeholder
+        summary["volatility"],
+        0.0,  # cycle_score
+        0.0,  # support_resistance_score
         json.dumps({"regime": summary["regime"], "volume_profile": summary["volume_profile"]}),
-        now,
         now,
     )
 
@@ -187,14 +186,13 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
     placeholders = manager.get_sql_placeholder()
     query = f"""
         INSERT INTO historical_indicator_scores (
-            score_id, symbol, timestamp, timeframe,
+            score_id, symbol, ts, timeframe,
             indicator_name, indicator_category, indicator_params,
-            value, signal, confidence, created_at
+            value, confidence, signal, raw_value
         ) VALUES ({placeholders}, {placeholders}, {placeholders}, {placeholders},
                   {placeholders}, {placeholders}, {placeholders},
                   {placeholders}, {placeholders}, {placeholders}, {placeholders})
     """
-    now = datetime.now(UTC).isoformat()
     ts_iso = summary["last_timestamp"].isoformat() if isinstance(summary["last_timestamp"], datetime) else str(summary["last_timestamp"])
     rows = [
         (
@@ -206,9 +204,9 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "volatility",
             None,
             summary["volatility"],
-            "HIGH" if summary["volatility"] > 0.2 else "NORMAL",
             summary["confidence"],
-            now,
+            "HIGH" if summary["volatility"] > 0.2 else "NORMAL",
+            None,
         ),
         (
             score_id,
@@ -219,9 +217,9 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "trend",
             None,
             summary["trend_strength"],
-            summary["regime"],
             summary["confidence"],
-            now,
+            summary["regime"],
+            None,
         ),
         (
             score_id,
@@ -232,9 +230,9 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "momentum",
             None,
             summary.get("rsi"),
-            None,
             summary["confidence"],
-            now,
+            None,
+            None,
         ),
         (
             score_id,
@@ -245,9 +243,9 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "momentum",
             json.dumps({"fast": 12, "slow": 26, "signal": 9}),
             summary.get("macd"),
-            None,
             summary["confidence"],
-            now,
+            summary.get("macd_signal"),
+            None,
         ),
         (
             score_id,
@@ -258,9 +256,9 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "momentum",
             None,
             summary.get("macd_signal"),
-            None,
             summary["confidence"],
-            now,
+            None,
+            None,
         ),
         (
             score_id,
@@ -271,9 +269,9 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "momentum",
             None,
             summary.get("macd_hist"),
-            None,
             summary["confidence"],
-            now,
+            None,
+            None,
         ),
         (
             score_id,
@@ -283,22 +281,27 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "sma_50_200_cross",
             "trend",
             json.dumps({"short": 50, "long": 200}),
-            1
-            if summary.get("sma_cross") == "golden"
-            else -1 if summary.get("sma_cross") == "death"
-            else 0,
-            summary.get("sma_cross"),
+            1 if summary.get("sma_cross") == "golden" else -1 if summary.get("sma_cross") == "death" else 0,
             summary["confidence"],
-            now,
+            summary.get("sma_cross"),
+            None,
         ),
     ]
     conn = manager.get_connection()
     cursor = conn.cursor()
-    cursor.executemany(query, rows)
-    conn.commit()
-    cursor.close()
-    if manager.db_type.name == "POSTGRESQL":  # pragma: no cover
-        manager.release_connection(conn)
+    try:
+        cursor.executemany(query, rows)
+        conn.commit()
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        if manager.db_type.name == "POSTGRESQL":  # pragma: no cover
+            try:
+                manager.release_connection(conn)
+            except Exception:
+                pass
 
 
 def ingest_symbol(manager: DatabaseManager, symbol: str, limit: int, timeframe: str):
@@ -307,7 +310,10 @@ def ingest_symbol(manager: DatabaseManager, symbol: str, limit: int, timeframe: 
     if limit and len(candles) > limit:
         candles = candles[-limit:]
     if not candles:
-        print(f"⚠️  No data for {symbol}, skipping")
+        try:
+            print(f"No data for {symbol}, skipping")
+        except UnicodeEncodeError:
+            print(f"No data for {symbol}, skipping")
         return
 
     summary = summarize_candles(candles)
@@ -331,14 +337,17 @@ def ingest_symbol(manager: DatabaseManager, symbol: str, limit: int, timeframe: 
     score_id = insert_historical_score(manager, symbol, timeframe, summary)
     insert_indicator_scores(manager, score_id, symbol, timeframe, summary)
 
-    print(f"✅ Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}")
+    try:
+        print(f"Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}")
+    except UnicodeEncodeError:
+        print(f"Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}")
 
 
 def get_last_score_ts(manager: DatabaseManager, symbol: str, timeframe: str) -> datetime | None:
     """Return last ingested timestamp for a symbol/timeframe."""
     placeholder = manager.get_sql_placeholder()
     rows = manager.execute_query(
-        f"SELECT MAX(timestamp) AS ts FROM historical_scores WHERE symbol = {placeholder} AND timeframe = {placeholder}",
+        f"SELECT MAX(ts) AS ts FROM historical_scores WHERE symbol = {placeholder} AND timeframe = {placeholder}",
         (symbol, timeframe),
         fetch=True,
     )
@@ -372,18 +381,18 @@ def ingest_full_history(manager: DatabaseManager, symbol: str, timeframe: str):
     vol_std = df["volume"].std() or 1.0
 
     placeholders = manager.get_sql_placeholder()
-    phs = ", ".join([placeholders] * 24)
+    phs = ", ".join([placeholders] * 23)
     query = f"""
         INSERT INTO historical_scores (
-            symbol, timestamp, timeframe,
+            symbol, ts, timeframe,
             trend_score, trend_confidence,
             momentum_score, momentum_confidence,
             combined_score, combined_confidence,
             trend_weight, momentum_weight,
             trend_signal, momentum_signal, combined_signal,
+            recommendation, action, price_at_analysis,
             volume_score, volatility_score, cycle_score, support_resistance_score,
-            recommendation, action, price_at_analysis, raw_data,
-            created_at, updated_at
+            raw_data, created_at
         ) VALUES ({phs})
     """
 
@@ -413,15 +422,14 @@ def ingest_full_history(manager: DatabaseManager, symbol: str, timeframe: str):
                 sig,
                 sig,
                 sig,
+        "HOLD",  # recommendation
+        "HOLD",  # action
+                row["close"],
                 vol_score,
                 volat,
                 0.0,
                 0.0,
-                None,
-                None,
-                row["close"],
                 json.dumps({"vol_z": vol_score}),
-                now,
                 now,
             )
         )
@@ -433,7 +441,10 @@ def ingest_full_history(manager: DatabaseManager, symbol: str, timeframe: str):
     cursor.close()
     if manager.db_type.name == "POSTGRESQL":  # pragma: no cover
         manager.release_connection(conn)
-    print(f"✅ Ingested full history for {symbol}: rows={len(rows)}")
+    try:
+        print(f"Ingested full history for {symbol}: rows={len(rows)}")
+    except UnicodeEncodeError:
+        print(f"Ingested full history for {symbol}: rows={len(rows)}")
 
 
 def reset_tables(manager: DatabaseManager):
@@ -528,8 +539,15 @@ def main():
             already = set()
 
     symbols_to_run = [s for s in symbols if s not in already]
-    print(
-        f"🚀 Ingesting {len(symbols_to_run)} symbols from TSE into project DB "
+    def _safe_print(msg: str) -> None:
+        try:
+            print(msg)
+        except UnicodeEncodeError:
+            safe = msg.encode("ascii", errors="ignore").decode("ascii", errors="ignore")
+            print(safe)
+
+    _safe_print(
+        f"Ingesting {len(symbols_to_run)} symbols from TSE into project DB "
         f"(limit={'all' if args.limit == 0 else args.limit} candles each; resume skip {len(already)})"
     )
 
@@ -539,9 +557,9 @@ def main():
                 ingest_full_history(manager, sym, timeframe=args.timeframe)
             ingest_symbol(manager, sym, limit=args.limit, timeframe=args.timeframe)
         except Exception as exc:  # pragma: no cover - runtime safeguard
-            print(f"⚠️  Failed to ingest {sym}: {exc}")
+            _safe_print(f"Failed to ingest {sym}: {exc}")
 
-    print("🎉 Ingest completed.")
+    _safe_print("Ingest completed.")
 
 
 if __name__ == "__main__":
