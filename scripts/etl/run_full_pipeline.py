@@ -231,8 +231,12 @@ def main() -> None:
     source_path = Path(args.source_db)
     if not source_path.exists():
         raise SystemExit(f"Source database not found: {source_path}")
-    target_path = Path(args.target_db)
-    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_db_str = args.target_db
+    is_pg = str(target_db_str).lower().startswith("postgres")
+    target_path = None
+    if not is_pg:
+        target_path = Path(target_db_str)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
     weights_json = Path(args.weights_json)
     weights_model = Path(args.weights_model)
     if not weights_json.exists():
@@ -241,12 +245,20 @@ def main() -> None:
         raise SystemExit(f"Model pickle not found: {weights_model}")
 
     source = TSEDatabaseConnector(str(source_path))
-    manager = DatabaseManager(
-        db_type=DatabaseType.SQLITE,
-        sqlite_path=str(target_path),
-        auto_setup=True,
-        allow_fallback=True,
-    )
+    if is_pg:
+        manager = DatabaseManager(
+            db_type=DatabaseType.POSTGRESQL,
+            connection_string=target_db_str,
+            auto_setup=True,
+            allow_fallback=False,
+        )
+    else:
+        manager = DatabaseManager(
+            db_type=DatabaseType.SQLITE,
+            sqlite_path=str(target_path),
+            auto_setup=True,
+            allow_fallback=True,
+        )
     ensure_analysis_results_table(manager)
 
     symbols = (
@@ -310,7 +322,11 @@ def main() -> None:
                 upsert_analysis_result(manager, symbol, args.timeframe, result, analysis_date=end_date)
                 daily_success += 1
             except Exception as exc:
-                logger.error("pipeline_failed", extra={"symbol": symbol, "date": end_date.isoformat(), "error": str(exc)})
+                logger.error(
+                    "pipeline_failed",
+                    extra={"symbol": symbol, "date": end_date.isoformat()},
+                    exc_info=True,
+                )
         if daily_success > 0:
             success += 1
             logger.info("symbol_processed", extra={"symbol": symbol, "daily_analyses": daily_success})
