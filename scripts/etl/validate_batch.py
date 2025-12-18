@@ -55,11 +55,12 @@ def coverage_vs_source(src_db: Path, symbols: List[str], limit: int) -> List[Tup
     """Return candle counts per symbol (up to limit) from source DB."""
     conn = sqlite3.connect(src_db)
     cur = conn.cursor()
+    limit_val = limit if limit and limit > 0 else -1
     result = []
     for sym in symbols:
         cur.execute(
             "SELECT COUNT(*) FROM (SELECT date FROM price_data WHERE ticker=? ORDER BY date DESC LIMIT ?)",
-            (sym, limit),
+            (sym, limit_val),
         )
         result.append((sym, cur.fetchone()[0]))
     cur.close()
@@ -118,7 +119,7 @@ def main() -> None:
         raise SystemExit("No symbols loaded from symbols-file.")
 
     report_lines = []
-    report_lines.append(f"Generated at: {datetime.utcnow().isoformat()}Z")
+    report_lines.append(f"Generated at: {datetime.now().astimezone().isoformat()}")
     report_lines.append(f"Target: {args.target_db}")
     report_lines.append(f"Symbols: {len(symbols)}")
     report_lines.append("")
