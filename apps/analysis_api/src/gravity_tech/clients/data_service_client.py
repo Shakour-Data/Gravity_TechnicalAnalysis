@@ -321,4 +321,5 @@ class DataServiceClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
+        _ = (exc_type, exc_val, exc_tb)
         await self.close()
