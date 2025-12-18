@@ -373,6 +373,12 @@ class DataFetcher:
         
         print("Fetching price data...")
         companies = DataFetcher.load_json(COMPANIES_FILE)
+        offset = int(os.getenv("SYMBOL_OFFSET", "0"))
+        limit = int(os.getenv("SYMBOL_LIMIT", "0"))
+        if offset or limit:
+            end = offset + limit if limit else None
+            companies = companies[offset:end]
+            print(f"Processing subset: offset={offset}, limit={limit}, count={len(companies)}")
         end_date = jdatetime.datetime.now().strftime('%Y-%m-%d')
         
         total = len(companies)
