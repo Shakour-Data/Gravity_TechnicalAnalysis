@@ -199,7 +199,7 @@ def main() -> None:
     default_target = (
         os.getenv("ANALYSIS_TARGET_DB")
         or os.getenv("DATABASE_URL")
-        or "postgresql://postgres:Bedaan4D@127.0.0.1:5432/bedaan4d_db"
+        or "postgresql://gravity:gravity_db_pass@127.0.0.1:5545/tech_analysis"
     )
     parser.add_argument(
         "--target-db",
