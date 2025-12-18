@@ -295,9 +295,13 @@ class WalkForwardBacktester:
         Returns:
             Stability score between 0 and 1
         """
-        # For now, return a random stability score
-        # In practice, you'd track parameter changes across windows
-        return np.random.uniform(0.5, 1.0)
+        if not current_params:
+            return 0.5
+
+        numeric_values = [float(v) for v in current_params.values() if isinstance(v, (int, float))]
+        dispersion = float(np.std(numeric_values)) if numeric_values else 0.0
+        stability = 1.0 / (1.0 + dispersion)
+        return max(0.0, min(1.0, stability))
 
     def _analyze_walk_forward_results(self, windows: list[WalkForwardWindow]) -> WalkForwardResult:
         """
