@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+# __file__ = .../scripts/utils/_paths.py -> repo root is two levels up
+REPO_ROOT = Path(__file__).resolve().parents[2]
 ANALYSIS_APP = REPO_ROOT / "apps" / "analysis_api"
 ANALYSIS_SRC = ANALYSIS_APP / "src"
 ANALYSIS_TESTS = ANALYSIS_APP / "tests"
