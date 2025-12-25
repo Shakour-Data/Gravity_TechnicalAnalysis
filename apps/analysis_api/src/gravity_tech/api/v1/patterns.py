@@ -235,7 +235,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 logger.info(
                     "ml_scoring_applied",
                     version=version,
-                    patterns_before=len(request.candles),
+                    patterns_before=len(detected_patterns),
                     patterns_after=len(filtered_patterns),
                 )
 

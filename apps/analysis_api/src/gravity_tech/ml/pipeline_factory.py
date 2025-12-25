@@ -128,14 +128,12 @@ def _load_weight_learner(weights_path: str, model_path: str | None) -> MultiHori
     learner.load_weights(weights_path)
 
     candidate_model = Path(model_path) if model_path else Path(weights_path).with_suffix(".pkl")
-    if candidate_model.exists():
-        learner.load_model_state(str(candidate_model))
-    else:
-        logger.info(
-            "multi_horizon.model_state_missing",
-            extra={"weights_path": weights_path, "model_path": str(candidate_model)},
+    if not candidate_model.exists():
+        raise FileNotFoundError(
+            f"Model state is required for real predictions; missing file: {candidate_model}"
         )
 
+    learner.load_model_state(str(candidate_model))
     return learner
 
 

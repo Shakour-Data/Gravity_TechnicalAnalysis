@@ -32,7 +32,7 @@ from gravity_tech.core.indicators.volatility import (
     convert_volatility_to_indicator_result,
 )
 from gravity_tech.core.indicators.volume import VolumeIndicators
-from gravity_tech.patterns.candlestick import CandlestickPatterns
+from gravity_tech.core.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.elliott_wave import analyze_elliott_waves
 from gravity_tech.services.fast_indicators import (
     FastBatchAnalyzer,

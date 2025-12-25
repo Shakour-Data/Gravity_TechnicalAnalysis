@@ -38,21 +38,19 @@ RUN_BATCH50 = REPO_ROOT / "scripts" / "etl" / "run_batch50.py"
 
 
 def _load_processed_symbols(target_dsn: str) -> Set[str]:
-    """Return symbols that already exist in the target so we do not re-run the same batch."""
+    """Return symbols that already exist in analysis_results so we avoid redoing them."""
     processed: Set[str] = set()
     if not target_dsn.lower().startswith("postgres"):
         return processed
 
     conn = psycopg2.connect(target_dsn)
     cur = conn.cursor()
-    # analysis_results and historical_scores both indicate a finished batch
-    for table in ("analysis_results", "historical_scores"):
-        try:
-            cur.execute(f"SELECT DISTINCT symbol FROM {table}")
-            processed.update(row[0] for row in cur.fetchall())
-        except Exception:
-            # If table is missing, skip silently so the script still runs.
-            continue
+    try:
+        cur.execute("SELECT DISTINCT symbol FROM analysis_results")
+        processed.update(row[0] for row in cur.fetchall())
+    except Exception:
+        # If table is missing, skip silently so the script still runs.
+        pass
     cur.close()
     conn.close()
     return processed
@@ -81,7 +79,9 @@ def pick_symbols(db_path: Path, batch_size: int, min_candles: int, already_done:
         conn.close()
 
 
-def run_batch50(source_db: Path, target_db: str, batch_size: int, min_candles: int, limit: int) -> None:
+def run_batch50(source_db: Path, target_db: str, symbols: Sequence[str], limit: int, offline: bool) -> None:
+    """Delegate to run_batch50.py but force the exact symbols list."""
+    sym_csv = ",".join(symbols)
     cmd = [
         sys.executable,
         str(RUN_BATCH50),
@@ -89,14 +89,14 @@ def run_batch50(source_db: Path, target_db: str, batch_size: int, min_candles: i
         str(source_db),
         "--target-db",
         target_db,
-        "--batch-size",
-        str(batch_size),
-        "--min-candles",
-        str(min_candles),
+        "--symbols",
+        sym_csv,
         "--limit",
         str(limit),
         "--skip-verify",
     ]
+    if offline:
+        cmd.append("--offline")
     subprocess.run(cmd, check=True)
 
 
@@ -111,6 +111,7 @@ def ingest_baseline(
     candle_limit: int,
     timeframe: str = "1d",
     trend_window: int = 30,
+    disable_baseline_patterns: bool = True,
 ) -> None:
     symbols_list = list(symbols)
     src = sqlite3.connect(source_db)
@@ -160,7 +161,27 @@ def ingest_baseline(
         %(recommendation)s, %(action)s, %(price_at_analysis)s,
         %(volume_score)s, %(volatility_score)s, %(cycle_score)s, %(support_resistance_score)s,
         %(raw_data)s, %(created_at)s
-    ) ON CONFLICT (symbol, ts, timeframe) DO NOTHING
+    ) ON CONFLICT (symbol, ts, timeframe) DO UPDATE SET
+        trend_score = EXCLUDED.trend_score,
+        trend_confidence = EXCLUDED.trend_confidence,
+        momentum_score = EXCLUDED.momentum_score,
+        momentum_confidence = EXCLUDED.momentum_confidence,
+        combined_score = EXCLUDED.combined_score,
+        combined_confidence = EXCLUDED.combined_confidence,
+        trend_weight = EXCLUDED.trend_weight,
+        momentum_weight = EXCLUDED.momentum_weight,
+        trend_signal = EXCLUDED.trend_signal,
+        momentum_signal = EXCLUDED.momentum_signal,
+        combined_signal = EXCLUDED.combined_signal,
+        recommendation = EXCLUDED.recommendation,
+        action = EXCLUDED.action,
+        price_at_analysis = EXCLUDED.price_at_analysis,
+        volume_score = EXCLUDED.volume_score,
+        volatility_score = EXCLUDED.volatility_score,
+        cycle_score = EXCLUDED.cycle_score,
+        support_resistance_score = EXCLUDED.support_resistance_score,
+        raw_data = EXCLUDED.raw_data,
+        created_at = EXCLUDED.created_at
     RETURNING id;
     """
     select_id_sql = "SELECT id FROM historical_scores WHERE symbol=%s AND ts=%s AND timeframe=%s"
@@ -239,6 +260,34 @@ def ingest_baseline(
         vols = [float(c[2] or 0.0) for c in candles]
         dates = [c[0] for c in candles]
 
+        def _calc_cycle_score(prices: list[float]) -> float:
+            """Simple oscillation proxy so cycle_score is not frozen at zero."""
+            if len(prices) < 5:
+                return 0.0
+            returns = [
+                (prices[i] - prices[i - 1]) / prices[i - 1]
+                for i in range(1, len(prices))
+                if prices[i - 1] != 0
+            ]
+            recent = returns[-7:] if len(returns) > 7 else returns
+            drift = (prices[-1] - prices[0]) / (prices[0] or 1e-9)
+            vol = (sum((r - (sum(recent) / len(recent))) ** 2 for r in recent) / len(recent)) ** 0.5 if recent else 0.0
+            osc = recent[-1] if recent else 0.0
+            score = 0.5 * osc + 0.3 * drift + 0.2 * vol
+            return float(max(-1.0, min(1.0, score)))
+
+        def _calc_sr_score(prices: list[float]) -> float:
+            """Heuristic S/R score: near support -> +1, near resistance -> -1."""
+            if not prices:
+                return 0.0
+            lo = min(prices)
+            hi = max(prices)
+            if hi == lo:
+                return 0.0
+            pos = (prices[-1] - lo) / (hi - lo)  # 0 at support, 1 at resistance
+            score = (0.5 - pos) * 2.0  # center=0, support=+1, resistance=-1
+            return float(max(-1.0, min(1.0, score)))
+
         for idx in range(len(candles)):
             closes_slice = closes[: idx + 1]
             vols_slice = vols[: idx + 1]
@@ -285,8 +334,8 @@ def ingest_baseline(
                 price_at_analysis=last_close,
                 volume_score=0.0,
                 volatility_score=vol_level,
-                cycle_score=0.0,
-                support_resistance_score=0.0,
+                cycle_score=_calc_cycle_score(closes_slice),
+                support_resistance_score=_calc_sr_score(closes_slice),
                 raw_data=json.dumps({"regime": regime, "vol_profile": vol_profile}),
                 created_at=now,
             )
@@ -395,27 +444,28 @@ def ingest_baseline(
                 ),
             )
 
-            cur.execute(
-                insert_pattern_sql,
-                (
-                    sym,
-                    timeframe,
-                    ts_val,
-                    "baseline",
-                    "range_pattern",
-                    0.1,
-                    0.0,
-                    ts_val,
-                    ts_val,
-                    None,
-                    None,
-                    "NEUTRAL",
-                    None,
-                    None,
-                    json.dumps({"source": "batch50_full_ingest"}),
-                    now,
-                ),
-            )
+            if not disable_baseline_patterns:
+                cur.execute(
+                    insert_pattern_sql,
+                    (
+                        sym,
+                        timeframe,
+                        ts_val,
+                        "baseline",
+                        "range_pattern",
+                        0.1,
+                        0.0,
+                        ts_val,
+                        ts_val,
+                        None,
+                        None,
+                        "NEUTRAL",
+                        None,
+                        None,
+                        json.dumps({"source": "batch50_full_ingest"}),
+                        now,
+                    ),
+                )
 
         processed += 1
 
@@ -435,22 +485,66 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=300, help="Max candles for analysis_results step.")
     parser.add_argument("--ingest-limit", type=int, default=0, help="Max candles for baseline ingest into historical tables (0 = all).")
     parser.add_argument("--trend-window", type=int, default=30, help="Rolling window for trend/volatility calculations (days).")
+    parser.add_argument("--offline", action="store_true", help="Do not fetch from TSETMC; use existing source DB only.")
+    parser.add_argument(
+        "--disable-baseline-patterns",
+        action="store_true",
+        default=True,
+        help="Skip writing placeholder pattern_detection_results rows (prevents fixed confidence/strength values).",
+    )
+    parser.add_argument(
+        "--symbols",
+        default=None,
+        help="Comma-separated explicit symbols for this batch. When set, pick_symbols/processed lookup are skipped.",
+    )
+    parser.add_argument(
+        "--loop",
+        action="store_true",
+        help="Keep running batches (size = batch-size) until no eligible symbols remain (based on analysis_results).",
+    )
     args = parser.parse_args()
 
     source_db = Path(args.source_db).resolve()
-    processed = _load_processed_symbols(args.target_db)
-    symbols = pick_symbols(source_db, args.batch_size, args.min_candles, processed)
-    if not symbols:
-        print("No symbols selected; nothing to do (maybe all eligible symbols are already processed).")
-        return
+    total_processed = 0
+    iteration = 0
+    explicit_symbols = [s.strip() for s in args.symbols.split(",")] if args.symbols else None
+    while True:
+        if explicit_symbols:
+            symbols = [s for s in explicit_symbols if s]
+            # Ensure we only run once if explicit list is provided
+            args.loop = False
+        else:
+            processed = _load_processed_symbols(args.target_db)
+            symbols = pick_symbols(source_db, args.batch_size, args.min_candles, processed)
+        if not symbols:
+            if args.loop:
+                print("No symbols remaining; loop complete.")
+            else:
+                print("No symbols selected; nothing to do (maybe all eligible symbols are already processed).")
+            break
 
-    try:
-        print(f"Selected {len(symbols)} symbols for batch: {symbols[:5]}{'...' if len(symbols) > 5 else ''}")
-    except UnicodeEncodeError:
-        print(f"Selected {len(symbols)} symbols for batch.")
-    run_batch50(source_db, args.target_db, args.batch_size, args.min_candles, args.limit)
-    ingest_baseline(symbols, source_db, args.target_db, args.ingest_limit, trend_window=args.trend_window)
-    print("Done.")
+        iteration += 1
+        try:
+            print(f"[batch {iteration}] Selected {len(symbols)} symbols: {symbols[:5]}{'...' if len(symbols) > 5 else ''}")
+        except UnicodeEncodeError:
+            print(f"[batch {iteration}] Selected {len(symbols)} symbols.")
+
+        run_batch50(source_db, args.target_db, symbols, args.limit, offline=args.offline)
+        ingest_baseline(
+            symbols,
+            source_db,
+            args.target_db,
+            args.ingest_limit,
+            trend_window=args.trend_window,
+            disable_baseline_patterns=args.disable_baseline_patterns,
+        )
+        total_processed += len(symbols)
+
+        if not args.loop:
+            break
+
+    if total_processed:
+        print(f"Done. Processed {total_processed} symbols in {iteration} batch(es).")
 
 
 if __name__ == "__main__":

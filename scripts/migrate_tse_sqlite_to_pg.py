@@ -82,6 +82,7 @@ TABLE_DEFS: tuple[str, str] = (
             adj_close REAL,
             adj_final REAL,
             adj_volume REAL,
+            symbol TEXT,
             ticker TEXT,
             company_id TEXT,
             FOREIGN KEY(company_id) REFERENCES tse_input.companies(company_id),
@@ -246,7 +247,7 @@ def main(sqlite_path: Path, pg_dsn: str) -> None:
         "price_data",
         """
         SELECT date as trading_date, j_date, adj_open, adj_high, adj_low, adj_close,
-               adj_final, adj_volume, ticker, company_id
+               adj_final, adj_volume, ticker, company_id, ticker as symbol
         FROM price_data
         """,
         [
@@ -260,6 +261,7 @@ def main(sqlite_path: Path, pg_dsn: str) -> None:
             "adj_volume",
             "ticker",
             "company_id",
+            "symbol",
         ],
         "tse_input.price_data",
     )

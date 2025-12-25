@@ -21,19 +21,24 @@ sys.path.insert(0, str(REPO_ROOT / "apps" / "analysis_api" / "src"))
 
 from config import TSE_DB_FILE  # type: ignore  # noqa: E402
 from database import TSEDatabaseConnector  # type: ignore  # noqa: E402
+from gravity_tech.config.settings import settings  # type: ignore  # noqa: E402
+from gravity_tech.core.contracts.analysis import AnalysisRequest  # type: ignore  # noqa: E402
 from gravity_tech.core.domain.entities import Candle  # type: ignore  # noqa: E402
 from gravity_tech.database.database_manager import (  # type: ignore  # noqa: E402
     DatabaseManager,
     DatabaseType,
 )
-from gravity_tech.ml.complete_analysis_pipeline import (
-    CompleteAnalysisPipeline,  # type: ignore  # noqa: E402
+from gravity_tech.ml.complete_analysis_pipeline import (  # type: ignore  # noqa: E402
+    CompleteAnalysisPipeline,
 )
 from gravity_tech.ml.pipeline_factory import (  # type: ignore  # noqa: E402
     load_momentum_analyzer,
     load_trend_analyzer,
     load_volatility_analyzer,
 )
+from gravity_tech.services.analysis_service import TechnicalAnalysisService  # type: ignore  # noqa: E402
+from gravity_tech.services.data_ingestor_service import data_ingestor  # type: ignore  # noqa: E402
+from gravity_tech.services.ingestion_payload import build_ingestion_payload  # type: ignore  # noqa: E402
 
 DEFAULT_WEIGHTS = ANALYSIS_MODELS / "multi_horizon" / "indicator_weights_btcusdt.json"
 DEFAULT_MODEL = ANALYSIS_MODELS / "multi_horizon" / "indicator_weights_btcusdt.pkl"
@@ -68,6 +73,11 @@ def parse_args() -> argparse.Namespace:
         "--disable-volume-matrix",
         action="store_true",
         help="Skip volume-dimension matrix stage when running the pipeline.",
+    )
+    parser.add_argument(
+        "--skip-ingestion",
+        action="store_true",
+        help="Do not persist technical indicators/patterns via the ingestion pipeline.",
     )
     return parser.parse_args()
 
@@ -245,6 +255,10 @@ def main() -> None:
         raise SystemExit(f"Model pickle not found: {weights_model}")
 
     source = TSEDatabaseConnector(str(source_path))
+    settings.database_url = target_db_str
+    data_ingestor.database_url = target_db_str
+    data_ingestor._recent_keys.clear()
+
     if is_pg:
         manager = DatabaseManager(
             db_type=DatabaseType.POSTGRESQL,
@@ -319,6 +333,23 @@ def main() -> None:
                     volatility_analyzer=volatility_analyzer,
                 )
                 result = pipeline.analyze()
+                # Persist the detailed technical analysis payload so higher-level tables stay consistent
+                if not args.skip_ingestion:
+                    try:
+                        analysis_request = AnalysisRequest(
+                            symbol=symbol,
+                            timeframe=args.timeframe,
+                            candles=candles_filtered,
+                        )
+                        technical_result = TechnicalAnalysisService._analyze_sync(analysis_request)
+                        payload = build_ingestion_payload(technical_result, candles_filtered)
+                        payload["analysis_timestamp"] = end_date
+                        data_ingestor.persist_direct(payload)
+                    except Exception as exc:
+                        logger.warning(
+                            "ingestion_persist_failed",
+                            extra={"symbol": symbol, "date": end_date.isoformat(), "error": str(exc)},
+                        )
                 upsert_analysis_result(manager, symbol, args.timeframe, result, analysis_date=end_date)
                 daily_success += 1
             except Exception as exc:

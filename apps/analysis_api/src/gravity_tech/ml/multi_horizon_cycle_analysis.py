@@ -200,13 +200,19 @@ class MultiHorizonCycleAnalyzer:
         if weight_learner is not None:
             self.weight_learner = weight_learner
         elif weights_path:
-            self.weight_learner = MultiHorizonWeightLearner.load(weights_path, model_path)
+            self.weight_learner = MultiHorizonWeightLearner.load(
+                weights_path,
+                model_path,
+                allow_weight_fallback=False,
+            )
         else:
+            # Without a trained model, fall back to heuristic learner to avoid zeroed cycle scores.
             self.weight_learner = self._create_default_learner()
 
     def _create_default_learner(self) -> MultiHorizonWeightLearner:
         """وزن‌های پیش‌فرض برای اندیکاتورهای سیکل"""
-        learner = MultiHorizonWeightLearner(horizons=self.horizons)
+        # This path should not be used in production; keep to satisfy type hints if ever needed.
+        learner = MultiHorizonWeightLearner(horizons=self.horizons, allow_weight_fallback=True)
         feature_names = self.feature_extractor.get_feature_names()
         learner.feature_names = feature_names
 
@@ -246,13 +252,21 @@ class MultiHorizonCycleAnalyzer:
         feature_window = candles[-self.lookback_period:]
         features = self.feature_extractor.extract_cycle_features(feature_window)
         features_df = pd.DataFrame([features])
-        predictions = self.weight_learner.predict_multi_horizon(features_df)
+        try:
+            predictions = self.weight_learner.predict_multi_horizon(features_df)
+            use_heuristic = self.weight_learner.model is None
+        except RuntimeError:
+            predictions = None
+            use_heuristic = True
 
         cycle_scores: dict[str, CycleScore] = {}
         for horizon in self.horizons:
-            pred_col = f'pred_{horizon}'
-            raw_score = float(predictions[pred_col].iloc[0]) if pred_col in predictions else 0.0
-            cycle_scores[horizon] = self._build_cycle_score(horizon, raw_score, features)
+            if use_heuristic or predictions is None:
+                cycle_scores[horizon] = self._build_heuristic_cycle_score(horizon, features, feature_window)
+            else:
+                pred_col = f'pred_{horizon}'
+                raw_score = float(predictions[pred_col].iloc[0]) if pred_col in predictions else 0.0
+                cycle_scores[horizon] = self._build_cycle_score(horizon, raw_score, features)
 
         cycle_3d = cycle_scores.get('3d', self._neutral_score('3d'))
         cycle_7d = cycle_scores.get('7d', self._neutral_score('7d'))
@@ -317,6 +331,94 @@ class MultiHorizonCycleAnalyzer:
             signal=signal,
             phase=phase,
             cycle_period=cycle_period
+        )
+
+    def _build_heuristic_cycle_score(
+        self,
+        horizon: str,
+        features: dict[str, float],
+        candles: list[Candle],
+    ) -> CycleScore:
+        """
+        Heuristic fallback when no trained cycle model exists.
+
+        ترکیبی از سیگنال‌های ادواری، مومنتوم قیمت و دامنه نوسان را
+        به کار می‌گیرد تا به جای صفرهای ثابت، امتیاز پویا تولید شود.
+        """
+        horizon_name = str(horizon)
+        try:
+            horizon_days = int(horizon_name.replace("d", ""))
+        except ValueError:
+            horizon_days = 7
+
+        closes = [c.close for c in candles if getattr(c, "close", None) is not None]
+        if len(closes) < 5:
+            return self._neutral_score(horizon_name)
+
+        window_len = min(len(closes), max(self.lookback_period // 2, horizon_days * 3))
+        window = closes[-window_len:]
+
+        returns = [
+            (window[i] - window[i - 1]) / window[i - 1]
+            for i in range(1, len(window))
+            if window[i - 1] != 0
+        ]
+
+        def _lag_return(period: int) -> float:
+            if len(window) <= period:
+                return 0.0
+            past = window[-period - 1]
+            return (window[-1] - past) / past if past else 0.0
+
+        horizon_ret = _lag_return(horizon_days)
+        short_ret = _lag_return(min(5, window_len - 1))
+        long_ret = _lag_return(min(20, window_len - 1))
+
+        momentum = 0.5 * horizon_ret + 0.3 * short_ret + 0.2 * long_ret
+
+        price_range = max(window) - min(window)
+        mean_price = np.mean(window) if window else 1.0
+        swing = price_range / mean_price if mean_price else 0.0
+        swing = float(np.clip(swing, 0.0, 0.35))
+
+        cycle_signal = features.get("cycle_weighted_signal", features.get("cycle_avg_signal", 0.0))
+        cycle_consistency = 1.0 - float(features.get("cycle_signal_std", 0.0))
+        cycle_consistency = float(np.clip(cycle_consistency, 0.0, 1.0))
+
+        swing_direction = np.sign(horizon_ret if horizon_ret != 0 else (returns[-1] if returns else 0.0))
+        swing_component = swing_direction * swing
+
+        base_score = 0.55 * cycle_signal + 0.30 * momentum + 0.15 * swing_component
+        normalized_score = float(np.clip(base_score, -1.0, 1.0))
+
+        conf_base = float(features.get("cycle_avg_confidence", 0.15))
+        confidence = conf_base
+        confidence += 0.2 * abs(cycle_signal)
+        confidence += 0.2 * cycle_consistency
+        confidence += 0.15 * min(1.0, window_len / max(1, self.lookback_period))
+        confidence += 0.1 * min(0.5, swing)
+        confidence = float(np.clip(confidence, 0.1, 0.95))
+
+        phase = features.get("cycle_avg_phase")
+        if phase is None or phase == 0.0 or np.isnan(phase):
+            phase_raw = np.degrees(np.arctan2(momentum, swing + 1e-6))
+            if phase_raw < 0:
+                phase_raw += 360
+            phase = phase_raw
+        phase = float(phase % 360)
+
+        cycle_period = float(features.get("cycle_avg_period", max(horizon_days, 20.0)))
+        cycle_period = float(np.clip(cycle_period, 8.0, 90.0))
+
+        signal = self._score_to_signal(normalized_score)
+
+        return CycleScore(
+            horizon=horizon_name,
+            score=normalized_score,
+            confidence=confidence,
+            signal=signal,
+            phase=phase,
+            cycle_period=cycle_period,
         )
 
     def _score_to_signal(self, score: float) -> SignalStrength:

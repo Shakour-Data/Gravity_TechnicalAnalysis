@@ -126,7 +126,7 @@ def _get_table_columns(dbm: DatabaseManager, table: str) -> list[str]:
 async def list_tables() -> TableListResponse:
     """Return tables available for UI browsing (all tables)."""
     _ensure_db_explorer_enabled()
-    dbm = DatabaseManager(auto_setup=True)
+    dbm = DatabaseManager(auto_setup=True, allow_fallback=True)
     return TableListResponse(tables=_list_tables(dbm))
 
 
@@ -134,14 +134,14 @@ async def list_tables() -> TableListResponse:
 async def db_info() -> DatabaseInfoResponse:
     """Return database info + per-table row counts."""
     _ensure_db_explorer_enabled()
-    dbm = DatabaseManager(auto_setup=True)
+    dbm = DatabaseManager(auto_setup=True, allow_fallback=True)
     return DatabaseInfoResponse(info=dbm.get_database_info(), stats=dbm.get_statistics())
 
 
 @router.get("/schema", response_model=TableSchemaResponse)
 async def table_schema(table: str = Query(..., description="Table name")) -> TableSchemaResponse:
     _ensure_db_explorer_enabled()
-    dbm = DatabaseManager(auto_setup=True)
+    dbm = DatabaseManager(auto_setup=True, allow_fallback=True)
     available = _list_tables(dbm)
     if table not in available:
         raise HTTPException(status_code=404, detail="Table not found")
@@ -160,7 +160,7 @@ async def download_backup(
 ):
     """Download a backup (JSON payload)."""
     _ensure_db_explorer_enabled()
-    dbm = DatabaseManager(auto_setup=True)
+    dbm = DatabaseManager(auto_setup=True, allow_fallback=True)
     backup_data = dbm.create_backup(tables, row_limit=max_rows_per_table)
     return JSONResponse(
         content=backup_data,

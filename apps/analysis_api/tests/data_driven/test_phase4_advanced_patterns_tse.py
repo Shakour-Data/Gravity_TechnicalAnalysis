@@ -9,25 +9,25 @@ Phase 4: Advanced Patterns Tests با داده‌های TSE
 لیسانس: MIT
 """
 
-import pytest
-from datetime import datetime, timedelta
-from typing import List, Optional
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import List, Optional
+
 import numpy as np
+import pytest
 
 # Add src to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 from gravity_tech.core.domain.entities import Candle
-from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
-from gravity_tech.core.indicators.volume import VolumeIndicators
 from gravity_tech.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.classical import ClassicalPatterns
-
+from gravity_tech.core.patterns.classical import ClassicalPatterns
 
 # ============================================================================
 # Phase 4: Advanced Pattern Recognition

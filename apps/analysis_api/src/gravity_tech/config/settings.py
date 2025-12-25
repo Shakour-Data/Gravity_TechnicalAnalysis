@@ -96,7 +96,8 @@ class Settings(BaseSettings):
     max_candles: int = 1000
     parallel_processing: bool = True
     max_workers: int = 10
-    use_fast_indicators: bool = True
+    # Fast indicators can return unstable results; keep disabled by default to force full calculations.
+    use_fast_indicators: bool = False
 
     # Feature toggles
     enable_scenarios: bool = False          # Mount /api/v1/scenarios router when true

@@ -68,7 +68,8 @@ class MultiHorizonWeightLearner:
         horizons: list[str] = None,
         test_size: float = 0.2,
         random_state: int = 42,
-        lgbm_params: dict = None
+        lgbm_params: dict = None,
+        allow_weight_fallback: bool = False,
     ):
         """
         Initialize multi-horizon weight learner
@@ -82,6 +83,7 @@ class MultiHorizonWeightLearner:
         self.horizons = horizons or ['3d', '7d', '30d']
         self.test_size = test_size
         self.random_state = random_state
+        self.allow_weight_fallback = allow_weight_fallback
 
         # پارامترهای پیش‌فرض LightGBM
         self.lgbm_params = lgbm_params or {
@@ -301,21 +303,22 @@ class MultiHorizonWeightLearner:
         Returns:
             DataFrame با ستون‌های [pred_3d, pred_7d, pred_30d]
         """
-        if self.model is not None:
-            # Ensure columns are in the correct order
-            if self.feature_names:
-                X = X[self.feature_names]
-            predictions = self.model.predict(X)
-            return pd.DataFrame(
-                predictions,
-                columns=[f'pred_{h}' for h in self.horizons]
-            )
+        if self.model is None:
+            if self.allow_weight_fallback:
+                logger.warning(
+                    "multi_horizon.predict_without_model",
+                    extra={"horizons": self.horizons}
+                )
+                return self._predict_with_weights(X)
+            raise RuntimeError("Multi-horizon model is not loaded; cannot compute predictions.")
 
-        logger.warning(
-            "multi_horizon.predict_without_model",
-            extra={"horizons": self.horizons}
+        if self.feature_names:
+            X = X[self.feature_names]
+        predictions = self.model.predict(X)
+        return pd.DataFrame(
+            predictions,
+            columns=[f'pred_{h}' for h in self.horizons]
         )
-        return self._predict_with_weights(X)
 
     def _predict_with_weights(self, X: pd.DataFrame) -> pd.DataFrame:
         """

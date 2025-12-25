@@ -9,8 +9,7 @@ from .momentum import MomentumIndicators
 from .support_resistance import SupportResistanceIndicators
 from .trend import TrendIndicators
 from .volatility import VolatilityIndicators
-
-# from .volume import VolumeIndicators
+from .volume import VolumeIndicators
 
 __all__ = [
     "TrendIndicators",

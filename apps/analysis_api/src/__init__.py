@@ -10,4 +10,6 @@ Clean Architecture implementation with 5 layers:
 """
 
 __version__ = "1.3.3"
-__all__ = []
+from typing import List
+
+__all__: List[str] = ["__version__"]

@@ -1,0 +1,294 @@
+=== E:\Shakour\GravityProjects\Gravity_TechnicalAnalysis\data\gravity_tech.db ===
+table: alembic_version (rows: 1)
+  columns:
+    - version_num: VARCHAR(32) [pk ,not null]
+
+table: companies (rows: 0)
+  columns:
+    - company_id: TEXT [pk ,not null]
+    - ticker: TEXT
+    - name: TEXT
+    - sector_id: INTEGER
+    - panel_id: INTEGER
+    - market_id: INTEGER
+  foreign keys:
+    - sector_id -> sectors(sector_id) on_update=NO ACTION on_delete=NO ACTION match=NONE
+    - panel_id -> panels(panel_id) on_update=NO ACTION on_delete=NO ACTION match=NONE
+    - market_id -> markets(market_id) on_update=NO ACTION on_delete=NO ACTION match=NONE
+
+table: markets (rows: 0)
+  columns:
+    - market_id: INTEGER [pk ,not null]
+    - market_name: TEXT
+
+table: panels (rows: 0)
+  columns:
+    - panel_id: INTEGER [pk ,not null]
+    - panel_name: TEXT
+
+table: price_data (rows: 0)
+  columns:
+    - id: INTEGER [pk ,not null]
+    - symbol: VARCHAR(20) [not null]
+    - timestamp: DATETIME [not null]
+    - open: FLOAT [not null]
+    - high: FLOAT [not null]
+    - low: FLOAT [not null]
+    - close: FLOAT [not null]
+    - volume: FLOAT [not null]
+    - adj_close: FLOAT
+
+table: sectors (rows: 0)
+  columns:
+    - sector_id: INTEGER [pk ,not null]
+    - sector_name: TEXT
+    - sector_name_en: TEXT
+    - us_sector: TEXT
+
+
+=== E:\Shakour\GravityProjects\Gravity_TechnicalAnalysis\data\TechAnalysis.db\tool_performance.db ===
+table: analysis_results (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - analysis_date: TEXT [not null]
+    - final_signal: TEXT [not null]
+    - confidence: REAL [default=0.0]
+    - trend_score: REAL [default=0.0]
+    - momentum_score: REAL [default=0.0]
+    - volatility_score: REAL [default=0.0]
+    - cycle_score: REAL [default=0.0]
+    - sr_score: REAL [default=0.0]
+    - volume_interaction_score: REAL [default=0.0]
+    - decision_matrix_score: REAL [default=0.0]
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: backtest_runs (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - source: TEXT [not null]
+    - interval: TEXT
+    - params: TEXT
+    - metrics: TEXT
+    - period_start: TEXT
+    - period_end: TEXT
+    - model_version: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: daily_dimension_scores (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - ts: TEXT [not null]
+    - dimension: TEXT [not null]
+    - score: REAL
+    - confidence: REAL
+    - weight: REAL
+    - signal: TEXT
+    - features: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+    - updated_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: daily_indicator_values (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - ts: TEXT [not null]
+    - dimension: TEXT [not null]
+    - indicator_name: TEXT [not null]
+    - indicator_params: TEXT
+    - value: REAL
+    - score: REAL
+    - signal: TEXT
+    - confidence: REAL
+    - weight: REAL
+    - source_window: INTEGER
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+    - updated_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: historical_indicator_scores (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - score_id: INTEGER
+    - symbol: TEXT [not null]
+    - timestamp: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - indicator_name: TEXT [not null]
+    - indicator_category: TEXT
+    - indicator_params: TEXT
+    - value: REAL [not null]
+    - signal: TEXT
+    - confidence: REAL
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+  foreign keys:
+    - score_id -> historical_scores(id) on_update=NO ACTION on_delete=CASCADE match=NONE
+
+table: historical_scores (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - timestamp: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - trend_score: REAL [default=0.0]
+    - trend_confidence: REAL [default=0.0]
+    - momentum_score: REAL [default=0.0]
+    - momentum_confidence: REAL [default=0.0]
+    - combined_score: REAL [default=0.0]
+    - combined_confidence: REAL [default=0.0]
+    - trend_weight: REAL [default=0.5]
+    - momentum_weight: REAL [default=0.5]
+    - trend_signal: TEXT [default='NEUTRAL']
+    - momentum_signal: TEXT [default='NEUTRAL']
+    - combined_signal: TEXT [default='NEUTRAL']
+    - volume_score: REAL [default=0.0]
+    - volatility_score: REAL [default=0.0]
+    - cycle_score: REAL [default=0.0]
+    - support_resistance_score: REAL [default=0.0]
+    - recommendation: TEXT
+    - action: TEXT
+    - price_at_analysis: REAL
+    - raw_data: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+    - updated_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: market_data_cache (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - timestamp: TEXT [not null]
+    - open: REAL [not null]
+    - high: REAL [not null]
+    - low: REAL [not null]
+    - close: REAL [not null]
+    - volume: REAL [not null]
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: ml_weights_history (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - model_name: TEXT [not null]
+    - model_version: TEXT [not null]
+    - market_regime: TEXT
+    - timeframe: TEXT
+    - weights: TEXT [not null]
+    - training_accuracy: REAL
+    - validation_accuracy: REAL
+    - r2_score: REAL
+    - mae: REAL
+    - training_samples: INTEGER
+    - training_date: TEXT [not null]
+    - metadata: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: pattern_detection_results (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - symbol: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - timestamp: TEXT [not null]
+    - pattern_type: TEXT [not null]
+    - pattern_name: TEXT [not null]
+    - confidence: REAL
+    - strength: REAL
+    - start_time: TEXT
+    - end_time: TEXT
+    - start_price: REAL
+    - end_price: REAL
+    - prediction: TEXT
+    - target_price: REAL
+    - stop_loss: REAL
+    - metadata: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: sqlite_sequence (rows: 0)
+  columns:
+    - name: 
+    - seq: 
+
+table: tool_performance_history (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - tool_name: TEXT [not null]
+    - tool_category: TEXT [not null]
+    - symbol: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - market_regime: TEXT [not null]
+    - volatility_level: REAL
+    - trend_strength: REAL
+    - volume_profile: TEXT
+    - prediction_type: TEXT [not null]
+    - prediction_value: REAL
+    - confidence_score: REAL
+    - actual_result: TEXT
+    - actual_price_change: REAL
+    - success: INTEGER
+    - accuracy: REAL
+    - prediction_timestamp: TEXT [not null ,default=CURRENT_TIMESTAMP]
+    - result_timestamp: TEXT
+    - evaluation_period_hours: INTEGER
+    - metadata: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+    - updated_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: tool_performance_stats (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - tool_name: TEXT [not null]
+    - tool_category: TEXT [not null]
+    - market_regime: TEXT
+    - timeframe: TEXT
+    - period_start: TEXT [not null]
+    - period_end: TEXT [not null]
+    - total_predictions: INTEGER [not null ,default=0]
+    - correct_predictions: INTEGER [not null ,default=0]
+    - accuracy: REAL
+    - avg_confidence: REAL
+    - avg_actual_change: REAL
+    - bullish_predictions: INTEGER [default=0]
+    - bearish_predictions: INTEGER [default=0]
+    - neutral_predictions: INTEGER [default=0]
+    - bullish_success_rate: REAL
+    - bearish_success_rate: REAL
+    - neutral_success_rate: REAL
+    - best_accuracy: REAL
+    - worst_accuracy: REAL
+    - best_symbol: TEXT
+    - worst_symbol: TEXT
+    - last_updated: TEXT [not null ,default=CURRENT_TIMESTAMP]
+
+table: tool_recommendations_log (rows: 0)
+  columns:
+    - id: INTEGER [pk]
+    - request_id: TEXT [not null]
+    - user_id: TEXT
+    - symbol: TEXT [not null]
+    - timeframe: TEXT [not null]
+    - analysis_goal: TEXT
+    - trading_style: TEXT
+    - market_regime: TEXT [not null]
+    - volatility_level: REAL
+    - trend_strength: REAL
+    - recommended_tools: TEXT [not null]
+    - ml_weights: TEXT
+    - user_feedback: TEXT
+    - tools_actually_used: TEXT
+    - trade_result: TEXT
+    - created_at: TEXT [not null ,default=CURRENT_TIMESTAMP]
+    - feedback_at: TEXT
+
+
+=== E:\Shakour\GravityProjects\Gravity_TechnicalAnalysis\data\test_source.db ===
+table: price_data (rows: 300)
+  columns:
+    - symbol: TEXT
+    - date: TEXT
+    - open: REAL
+    - high: REAL
+    - low: REAL
+    - close: REAL
+    - volume: INTEGER
+

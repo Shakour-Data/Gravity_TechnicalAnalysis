@@ -208,6 +208,10 @@ def main() -> None:
     )
     parser.add_argument("--batch-size", type=int, default=50, help="Number of symbols per batch.")
     parser.add_argument(
+        "--symbols",
+        help="Comma-separated symbols to process explicitly (overrides batch selection and disables looping).",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=0,
@@ -245,6 +249,11 @@ def main() -> None:
         action="store_true",
         help="Skip source data verification after each batch.",
     )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Do not fetch from TSETMC; only run analysis on existing source DB.",
+    )
     args = parser.parse_args()
 
     source_db = Path(args.source_db).resolve()
@@ -253,13 +262,19 @@ def main() -> None:
 
     ensure_target_ready(target_db)
 
+    symbols_arg: List[str] = []
+    if args.symbols:
+        symbols_arg = [s.strip() for s in args.symbols.split(",") if s.strip()]
+        # Explicit symbol list means exactly one iteration.
+        args.loop = False
+
     iteration = 0
     while True:
         if args.loop and args.max_iterations and iteration >= args.max_iterations:
             print(f"Reached max iterations ({args.max_iterations}); stopping.")
             break
 
-        symbols = pick_symbols(source_db, args.batch_size, args.min_candles)
+        symbols = symbols_arg if symbols_arg else pick_symbols(source_db, args.batch_size, args.min_candles)
         if not symbols:
             if iteration == 0:
                 print("No symbols found to process (maybe already up-to-date or below min-candles).")
@@ -272,12 +287,15 @@ def main() -> None:
         print(f"Selected {len(symbols)} symbols (oldest first, min_candles={args.min_candles}).")
 
         batch_start = time.perf_counter()
-        fetch_prices_for_symbols(
-            source_db,
-            symbols,
-            fetch_indices=not args.no_indices,
-            fetch_usd=not args.no_usd,
-        )
+        if args.offline:
+            print("[fetch] Skipped (offline mode).")
+        else:
+            fetch_prices_for_symbols(
+                source_db,
+                symbols,
+                fetch_indices=not args.no_indices,
+                fetch_usd=not args.no_usd,
+            )
         run_analysis_pipeline(symbols, source_db, target_db, args.limit)
         elapsed = time.perf_counter() - batch_start
 
