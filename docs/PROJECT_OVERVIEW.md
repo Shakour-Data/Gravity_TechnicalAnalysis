@@ -34,7 +34,7 @@ Gravity_TechnicalAnalysis/
 - **Patterns (`apps/analysis_api/src/gravity_tech/patterns`)**: Harmonic, classical, Elliott, candlestick detection utilities.
 - **Database (`apps/analysis_api/src/gravity_tech/database/`)**: Canonical schema files plus `DatabaseManager`/`HistoricalScoreManager`.
 - **Scripts (`scripts/`)**: Operational helpers. `run_full_pipeline.py` runs the full TSE→analysis→TechAnalysis.db flow; other populate/maintenance scripts live here.
-- **Clients**: `clients/data_service_client.py` for adjusted OHLCV retrieval via HTTP + Redis cache.
+- **Clients**: `apps/analysis_api/src/gravity_tech/clients/data_service_client.py` for adjusted OHLCV retrieval via HTTP + Redis cache.
 - **Middleware**: CORS, discovery, security, tracing, and metrics helpers.
 - **Feature Flags (see `settings`)**: `enable_scenarios` toggles `/api/v1/scenarios/*`; `expose_db_explorer` toggles `/api/v1/db/*`.
 
