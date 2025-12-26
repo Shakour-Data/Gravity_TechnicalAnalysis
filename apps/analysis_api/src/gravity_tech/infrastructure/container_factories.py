@@ -10,6 +10,7 @@ Pattern: Each factory receives the container and resolves its own dependencies.
 """
 
 from typing import Any
+
 import structlog
 
 logger = structlog.get_logger()
@@ -140,8 +141,8 @@ def create_data_ingestor_service(container: "ServiceContainer") -> Any:
     Returns:
         Configured data ingestor service
     """
-    from gravity_tech.services.data_ingestor_service import DataIngestorService
     from gravity_tech.config.unified_settings import get_settings
+    from gravity_tech.services.data_ingestor_service import DataIngestorService
     
     settings = get_settings()
     database = container.get("database")

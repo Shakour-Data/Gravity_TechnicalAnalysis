@@ -12,9 +12,10 @@ Useful for:
 No external dependencies, pure Python.
 """
 
-from typing import Any, Optional, Dict
-from datetime import datetime, timedelta
 import asyncio
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
+
 import structlog
 
 logger = structlog.get_logger()

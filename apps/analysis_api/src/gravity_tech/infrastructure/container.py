@@ -15,9 +15,10 @@ For testing:
     test_container.register("cache", mock_cache)
 """
 
-from typing import Dict, Any, Callable, Optional, Type
-import structlog
 from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, Optional, Type
+
+import structlog
 
 logger = structlog.get_logger()
 
@@ -202,12 +203,12 @@ def _setup_container(container: ServiceContainer) -> None:
     """
     from gravity_tech.config.unified_settings import get_settings
     from gravity_tech.infrastructure.container_factories import (
-        create_cache_service,
-        create_database_service,
         create_analysis_service,
-        create_tool_recommendation_service,
+        create_cache_service,
         create_data_ingestor_service,
+        create_database_service,
         create_event_publisher,
+        create_tool_recommendation_service,
     )
     
     settings = get_settings()

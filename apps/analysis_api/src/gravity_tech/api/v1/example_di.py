@@ -24,14 +24,14 @@ After (DI pattern):
         return result
 """
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
-from gravity_tech.infrastructure.container import get_container, ServiceContainer
 from gravity_tech.core.domain.entities import (
     AnalysisRequest,
-    TechnicalAnalysisResult,
     Signal,
+    TechnicalAnalysisResult,
 )
-import structlog
+from gravity_tech.infrastructure.container import ServiceContainer, get_container
 
 logger = structlog.get_logger()
 
