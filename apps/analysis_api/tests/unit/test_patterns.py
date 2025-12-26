@@ -9,11 +9,11 @@ Test coverage for pattern detection algorithms:
 Target: 100% coverage of pattern detection
 """
 
-import pytest
-import numpy as np
-from typing import List, Dict
 from datetime import datetime, timedelta
+from typing import Dict, List
 
+import numpy as np
+import pytest
 
 # ============================================================================
 # PATTERN TEST DATA BUILDERS

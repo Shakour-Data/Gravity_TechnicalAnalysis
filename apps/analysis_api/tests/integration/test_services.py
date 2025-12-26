@@ -11,11 +11,11 @@ Test coverage for:
 Target: 60+ comprehensive integration tests
 """
 
-import pytest
-from typing import Dict, List
 from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch
+from typing import Dict, List
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
 
 # ============================================================================
 # SERVICE TEST FIXTURES

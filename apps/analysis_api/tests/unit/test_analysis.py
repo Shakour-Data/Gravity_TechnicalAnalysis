@@ -11,10 +11,10 @@ Test coverage for analysis and signal generation:
 Target: 100% coverage of analysis logic
 """
 
-import pytest
-from typing import List, Dict
 from datetime import datetime, timedelta
+from typing import Dict, List
 
+import pytest
 
 # ============================================================================
 # TEST UTILITIES
