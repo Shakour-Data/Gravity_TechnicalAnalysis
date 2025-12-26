@@ -2,10 +2,16 @@
 Test Configuration and Fixtures
 
 Global pytest configuration and shared fixtures.
+Includes:
+- Mock services and containers
+- Database fixtures
+- Cache fixtures
+- Test data
+- Async test support
 
 Author: Gravity Tech Team
-Date: December 4, 2025
-Version: 1.0.0
+Date: December 26, 2025
+Version: 2.0.0 (DI-enabled)
 License: MIT
 """
 
@@ -14,13 +20,31 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+from typing import Generator
 
 import pytest
+import structlog
 
 # Add src to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
+
+logger = structlog.get_logger()
+
+# ============================================================================
+# Dependency Injection & Container Fixtures
+# ============================================================================
+
+from gravity_tech.infrastructure.container import (
+    create_test_container,
+    ServiceContainer,
+    reset_global_container,
+)
+from gravity_tech.infrastructure.adapters.memory_cache import MemoryCacheAdapter
+from gravity_tech.infrastructure.contracts import CacheBackend, DatabaseBackend
+from gravity_tech.config.unified_settings import Settings, Environment, reset_settings
 
 from gravity_tech.core.domain.entities import Candle  # noqa: E402
 
@@ -523,6 +547,139 @@ def mock_cache_manager(monkeypatch):
         mock_cache._cache_dict.clear()
         return True
 
+
+# ============================================================================
+# New: Mock Services & Containers (Phase 2)
+# ============================================================================
+
+@pytest.fixture
+def mock_cache() -> AsyncMock:
+    """
+    Provide async mock cache
+    
+    Use for: Unit tests where cache is a dependency
+    """
+    cache = AsyncMock(spec=CacheBackend)
+    cache.initialize = AsyncMock()
+    cache.get = AsyncMock(return_value=None)
+    cache.set = AsyncMock()
+    cache.delete = AsyncMock()
+    cache.exists = AsyncMock(return_value=False)
+    cache.clear = AsyncMock()
+    cache.close = AsyncMock()
+    return cache
+
+
+@pytest.fixture
+def memory_cache() -> MemoryCacheAdapter:
+    """
+    Provide real in-memory cache
+    
+    Use for: Integration tests, cache behavior testing
+    """
+    return MemoryCacheAdapter(default_ttl=60)
+
+
+@pytest.fixture
+def mock_database() -> AsyncMock:
+    """
+    Provide async mock database
+    
+    Use for: Unit tests where database is a dependency
+    """
+    db = AsyncMock(spec=DatabaseBackend)
+    db.initialize = AsyncMock()
+    db.execute = AsyncMock(return_value=0)
+    db.fetch_one = AsyncMock(return_value=None)
+    db.fetch_all = AsyncMock(return_value=[])
+    db.close = AsyncMock()
+    return db
+
+
+@pytest.fixture
+def test_container(memory_cache: MemoryCacheAdapter, mock_database: AsyncMock) -> ServiceContainer:
+    """
+    Provide test container with mocks
+    
+    Use for: Service layer tests
+    
+    Example:
+        def test_analysis_service(test_container):
+            service = test_container.get("analysis_service")
+            result = service.analyze(candles)
+            assert result is not None
+    """
+    container = create_test_container()
+    
+    # Register mocked/test services
+    container.register("cache", lambda _: memory_cache, singleton=True)
+    container.register("database", lambda _: mock_database, singleton=True)
+    
+    return container
+
+
+@pytest.fixture
+def isolated_container() -> Generator[ServiceContainer, None, None]:
+    """
+    Provide fresh container for each test
+    
+    Use for: Tests that need complete isolation
+    """
+    container = create_test_container()
+    yield container
+    # Cleanup
+    container.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """
+    Reset global state before each test
+    
+    Ensures test isolation
+    """
+    yield
+    
+    # Cleanup after test
+    reset_global_container()
+    reset_settings()
+    logger.debug("test_global_state_reset")
+
+
+@pytest.fixture
+def sample_candles_new() -> list:
+    """Provide sample OHLCV candles for testing"""
+    return [
+        {
+            "timestamp": 1700000000 + i * 3600,
+            "open": 100.0 + i * 0.1,
+            "high": 102.0 + i * 0.1,
+            "low": 99.0 + i * 0.1,
+            "close": 101.0 + i * 0.1,
+            "volume": 1000000 + i * 1000,
+        }
+        for i in range(100)
+    ]
+
+
+# ============================================================================
+# Marker Registration
+# ============================================================================
+
+def pytest_configure(config):
+    """Register custom markers"""
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests"
+    )
+    config.addinivalue_line(
+        "markers", "unit: marks tests as unit tests"
+    )
+    config.addinivalue_line(
+        "markers", "api: marks tests as API endpoint tests"
+    )
     async def mock_initialize():
         return None
 
