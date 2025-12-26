@@ -29,12 +29,13 @@
   - `python main.py create-db` / `load-initial` / `load-all-prices` in `services/data_ingestion/web/`
 
 ## Project Conventions
-- **Domain Entities:** Only use imports from `src/core/domain/entities/` (not `models/schemas.py`)
+- **Domain Entities:** Only use imports from `apps/analysis_api/src/gravity_tech/core/domain/entities/` (not `models/schemas.py`)
 - **Immutability:** All core entities are frozen dataclasses, validated in `__post_init__`
 - **Type Safety:** Full type hints required
 - **No Frameworks in Domain:** No FastAPI/Pydantic in domain layer
 - **ML Model Loading:** Endpoints requiring ML expect model files in `ml_models/` with specific names (see README)
 - **API Docs:** Interactive docs at `/api/docs` when running API
+- **Deprecated:** `models/schemas_backup.py` and `core/indicators/volume_day3.py` were deleted on 2025-12-26
 
 ## Key References
 - Main API: `apps/analysis_api/src/gravity_tech/main.py`
@@ -49,4 +50,4 @@
 - For new indicators/patterns, follow the dataclass/enum patterns in `domain/entities/` and update imports accordingly.
 
 ---
-_Last updated: 2025-12-15_
+_Last updated: 2025-12-26_
