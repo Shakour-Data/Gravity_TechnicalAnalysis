@@ -4,9 +4,11 @@ Data quality validator
 Validates OHLCV data quality and consistency.
 """
 
-from typing import List, Dict, Any, Tuple, Optional
-import structlog
 import math
+from typing import Any, Dict, List, Optional, Tuple
+
+import structlog
+
 from gravity_pipeline.validators.base import Validator
 
 logger = structlog.get_logger()

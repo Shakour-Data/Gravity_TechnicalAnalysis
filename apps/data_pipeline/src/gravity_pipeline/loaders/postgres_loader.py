@@ -4,9 +4,11 @@ PostgreSQL data loader
 Loads OHLCV candles into PostgreSQL database.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import asyncpg
 import structlog
+
 from gravity_pipeline.loaders.base import Loader
 
 logger = structlog.get_logger()

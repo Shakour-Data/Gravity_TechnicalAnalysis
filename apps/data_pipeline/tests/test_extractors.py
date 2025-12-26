@@ -2,8 +2,9 @@
 Tests for data extractors
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from gravity_pipeline.extractors import TSEExtractor, TSEExtractorConfig
 
 

@@ -2,10 +2,11 @@
 Tests for data loaders
 """
 
-import pytest
 import os
 import sqlite3
 from pathlib import Path
+
+import pytest
 from gravity_pipeline.loaders import SQLiteLoader
 
 

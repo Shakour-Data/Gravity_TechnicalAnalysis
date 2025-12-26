@@ -2,15 +2,16 @@
 Tests for database migration and schema validation
 """
 
-import pytest
-import sqlite3
 import os
-from sqlalchemy import create_engine
+import sqlite3
+
+import pytest
 from gravity_pipeline.migrations.manager import (
+    MigrationConfig,
     SchemaManager,
     SchemaValidator,
-    MigrationConfig,
 )
+from sqlalchemy import create_engine
 
 
 @pytest.fixture

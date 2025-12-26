@@ -2,8 +2,9 @@
 Tests for data transformers
 """
 
-import pytest
 import math
+
+import pytest
 from gravity_pipeline.transformers import DataCleaner
 
 

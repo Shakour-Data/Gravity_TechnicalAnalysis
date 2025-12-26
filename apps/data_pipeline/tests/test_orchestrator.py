@@ -2,15 +2,16 @@
 Integration tests for full ETL pipeline
 """
 
-import pytest
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from gravity_pipeline.orchestrator import DataPipeline, PipelineConfig, PipelineStage
+
+import pytest
 from gravity_pipeline.extractors import TSEExtractor
+from gravity_pipeline.loaders import SQLiteLoader
+from gravity_pipeline.orchestrator import DataPipeline, PipelineConfig, PipelineStage
 from gravity_pipeline.transformers import DataCleaner
 from gravity_pipeline.validators import DataQualityValidator
-from gravity_pipeline.loaders import SQLiteLoader
 
 
 @pytest.fixture

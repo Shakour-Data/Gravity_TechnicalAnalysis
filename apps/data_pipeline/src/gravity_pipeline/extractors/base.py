@@ -5,8 +5,9 @@ All extractors (TSE, Binance, CSV, etc) implement this contract.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import structlog
 
 logger = structlog.get_logger()

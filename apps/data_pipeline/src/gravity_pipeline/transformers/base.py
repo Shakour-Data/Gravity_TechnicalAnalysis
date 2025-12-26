@@ -5,7 +5,8 @@ All transformers implement this contract.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 import structlog
 
 logger = structlog.get_logger()

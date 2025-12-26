@@ -7,10 +7,11 @@ and reprocesses them through the analysis pipeline.
 
 import asyncio
 import sys
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-import structlog
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import structlog
 
 # Add parent directories to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -257,8 +258,9 @@ async def main():
     """Main entry point"""
     
     import argparse
-    from gravity_tech.infrastructure.container import get_container
+
     from gravity_tech.config.unified_settings import get_settings
+    from gravity_tech.infrastructure.container import get_container
     
     parser = argparse.ArgumentParser(
         description="Fix orphaned symbols in database"

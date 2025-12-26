@@ -7,10 +7,11 @@ Enables auto-generation of migrations and validation.
 
 import os
 import sys
-from typing import Optional, List, Dict, Any
-from sqlalchemy import inspect, create_engine, MetaData
-from sqlalchemy.engine import Engine
+from typing import Any, Dict, List, Optional
+
 import structlog
+from sqlalchemy import MetaData, create_engine, inspect
+from sqlalchemy.engine import Engine
 
 logger = structlog.get_logger()
 

@@ -4,11 +4,13 @@ TSE (Tehran Stock Exchange) data extractor
 Extracts OHLCV data from TSE sources (API or local database).
 """
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
-import aiohttp
 import asyncio
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import aiohttp
 import structlog
+
 from gravity_pipeline.extractors.base import Extractor, ExtractorConfig
 
 logger = structlog.get_logger()

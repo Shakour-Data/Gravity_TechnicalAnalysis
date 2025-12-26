@@ -4,9 +4,11 @@ SQLite data loader
 Loads OHLCV candles into SQLite database.
 """
 
-from typing import List, Dict, Any, Optional
 import sqlite3
+from typing import Any, Dict, List, Optional
+
 import structlog
+
 from gravity_pipeline.loaders.base import Loader
 
 logger = structlog.get_logger()
