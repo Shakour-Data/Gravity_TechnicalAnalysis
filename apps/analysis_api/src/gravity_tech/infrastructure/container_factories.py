@@ -9,9 +9,12 @@ These are called by the ServiceContainer during initialization.
 Pattern: Each factory receives the container and resolves its own dependencies.
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from gravity_tech.infrastructure.container import ServiceContainer
 
 logger = structlog.get_logger()
 
@@ -19,20 +22,23 @@ logger = structlog.get_logger()
 def create_cache_service(container: "ServiceContainer") -> Any:
     """
     Factory for cache service
-    
+
     Args:
         container: ServiceContainer instance
-        
+
     Returns:
         Configured cache instance
     """
     from gravity_tech.config.unified_settings import get_settings
-    
+
     settings = get_settings()
-    
+
     if settings.cache.backend == "redis":
         try:
-            from gravity_tech.infrastructure.adapters.redis_cache import RedisCacheAdapter
+            from gravity_tech.infrastructure.adapters.redis_cache import (  # type: ignore
+                RedisCacheAdapter,
+            )
+
             cache = RedisCacheAdapter(
                 host=settings.cache.host,
                 port=settings.cache.port,
@@ -44,51 +50,68 @@ def create_cache_service(container: "ServiceContainer") -> Any:
         except Exception as e:
             logger.warning("redis_cache_failed", error=str(e), fallback="memory")
             # Fall back to memory cache
-            from gravity_tech.infrastructure.adapters.memory_cache import MemoryCacheAdapter
+            from gravity_tech.infrastructure.adapters.memory_cache import (
+                MemoryCacheAdapter,
+            )
+
             return MemoryCacheAdapter(default_ttl=settings.cache.ttl_seconds)
-    
+
     elif settings.cache.backend == "memory":
-        from gravity_tech.infrastructure.adapters.memory_cache import MemoryCacheAdapter
+        from gravity_tech.infrastructure.adapters.memory_cache import (
+            MemoryCacheAdapter,
+        )
+
         cache = MemoryCacheAdapter(default_ttl=settings.cache.ttl_seconds)
         logger.info("cache_created", backend="memory")
         return cache
-    
+
     else:
-        logger.warning("invalid_cache_backend", backend=settings.cache.backend, default="memory")
-        from gravity_tech.infrastructure.adapters.memory_cache import MemoryCacheAdapter
+        logger.warning(
+            "invalid_cache_backend", backend=settings.cache.backend, default="memory"
+        )
+        from gravity_tech.infrastructure.adapters.memory_cache import (
+            MemoryCacheAdapter,
+        )
+
         return MemoryCacheAdapter()
 
 
 def create_database_service(container: "ServiceContainer") -> Any:
     """
     Factory for database service
-    
+
     Args:
         container: ServiceContainer instance
-        
+
     Returns:
         Configured database instance
     """
     from gravity_tech.config.unified_settings import get_settings
-    
+
     settings = get_settings()
-    
+
     if settings.database.engine == "postgresql":
         try:
-            from gravity_tech.infrastructure.adapters.postgres_db import PostgresDatabaseAdapter
+            from gravity_tech.infrastructure.adapters.postgres_db import (  # type: ignore
+                PostgresDatabaseAdapter,
+            )
+
             db = PostgresDatabaseAdapter(url=settings.database.url)
             logger.info("database_created", engine="postgresql")
             return db
         except Exception as e:
             logger.error("postgres_db_failed", error=str(e))
             raise
-    
+
     elif settings.database.engine == "sqlite":
-        from gravity_tech.infrastructure.adapters.sqlite_db import SqliteDatabaseAdapter
+        from gravity_tech.infrastructure.adapters.sqlite_db import (  # type: ignore
+            SqliteDatabaseAdapter,
+        )
+
         db = SqliteDatabaseAdapter(url=settings.database.url)
         logger.info("database_created", engine="sqlite")
         return db
-    
+
     else:
         raise ValueError(f"Unsupported database engine: {settings.database.engine}")
 
@@ -96,18 +119,16 @@ def create_database_service(container: "ServiceContainer") -> Any:
 def create_analysis_service(container: "ServiceContainer") -> Any:
     """
     Factory for analysis service
-    
+
     Args:
         container: ServiceContainer instance
-        
+
     Returns:
         Configured analysis service
     """
     from gravity_tech.services.analysis_service import TechnicalAnalysisService
-    
-    cache = container.get("cache")
-    
-    service = TechnicalAnalysisService(cache=cache)
+
+    service = TechnicalAnalysisService()
     logger.info("analysis_service_created")
     return service
 
@@ -115,18 +136,18 @@ def create_analysis_service(container: "ServiceContainer") -> Any:
 def create_tool_recommendation_service(container: "ServiceContainer") -> Any:
     """
     Factory for tool recommendation service
-    
+
     Args:
         container: ServiceContainer instance
-        
+
     Returns:
         Configured tool recommendation service
     """
-    from gravity_tech.services.tool_recommendation_service import ToolRecommendationService
-    
-    cache = container.get("cache")
-    
-    service = ToolRecommendationService(cache=cache)
+    from gravity_tech.services.tool_recommendation_service import (
+        ToolRecommendationService,
+    )
+
+    service = ToolRecommendationService()
     logger.info("tool_recommendation_service_created")
     return service
 
@@ -134,23 +155,16 @@ def create_tool_recommendation_service(container: "ServiceContainer") -> Any:
 def create_data_ingestor_service(container: "ServiceContainer") -> Any:
     """
     Factory for data ingestor service
-    
+
     Args:
         container: ServiceContainer instance
-        
+
     Returns:
         Configured data ingestor service
     """
-    from gravity_tech.config.unified_settings import get_settings
     from gravity_tech.services.data_ingestor_service import DataIngestorService
-    
-    settings = get_settings()
-    database = container.get("database")
-    
-    service = DataIngestorService(
-        database=database,
-        enabled=settings.features.enable_data_ingestion
-    )
+
+    service = DataIngestorService()
     logger.info("data_ingestor_service_created")
     return service
 
@@ -158,36 +172,45 @@ def create_data_ingestor_service(container: "ServiceContainer") -> Any:
 def create_event_publisher(container: "ServiceContainer") -> Any:
     """
     Factory for event publisher
-    
+
     Args:
         container: ServiceContainer instance
-        
+
     Returns:
         Configured event publisher
     """
     from gravity_tech.config.unified_settings import get_settings
-    
+
     settings = get_settings()
-    
+
     if settings.features.kafka_enabled:
         try:
-            from gravity_tech.infrastructure.adapters.kafka_publisher import KafkaPublisher
+            from gravity_tech.infrastructure.adapters.kafka_publisher import (  # type: ignore
+                KafkaPublisher,
+            )
+
             publisher = KafkaPublisher()
             logger.info("event_publisher_created", backend="kafka")
             return publisher
         except Exception as e:
             logger.warning("kafka_publisher_failed", error=str(e))
-    
+
     if settings.features.rabbitmq_enabled:
         try:
-            from gravity_tech.infrastructure.adapters.rabbitmq_publisher import RabbitMQPublisher
+            from gravity_tech.infrastructure.adapters.rabbitmq_publisher import (  # type: ignore
+                RabbitMQPublisher,
+            )
+
             publisher = RabbitMQPublisher()
             logger.info("event_publisher_created", backend="rabbitmq")
             return publisher
         except Exception as e:
             logger.warning("rabbitmq_publisher_failed", error=str(e))
-    
+
     # Fallback to no-op publisher
-    from gravity_tech.infrastructure.adapters.noop_publisher import NoOpPublisher
+    from gravity_tech.infrastructure.adapters.noop_publisher import (  # type: ignore
+        NoOpPublisher,
+    )
+
     logger.info("event_publisher_created", backend="noop")
     return NoOpPublisher()
