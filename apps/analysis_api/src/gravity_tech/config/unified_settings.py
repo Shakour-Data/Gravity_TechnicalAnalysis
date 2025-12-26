@@ -12,10 +12,11 @@ Usage:
     print(settings.database.url)
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, List
 import os
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import List, Optional
+
 import structlog
 
 logger = structlog.get_logger()
