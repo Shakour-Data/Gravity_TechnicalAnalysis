@@ -1,17 +1,19 @@
 """
-Test Configuration and Fixtures
+Test Configuration and Fixtures - Phase 4 Enhanced
 
 Global pytest configuration and shared fixtures.
 Includes:
 - Mock services and containers
 - Database fixtures
 - Cache fixtures
-- Test data
+- Test data factories
 - Async test support
+- Security test utilities
+- Performance benchmarking
 
 Author: Gravity Tech Team
-Date: December 26, 2025
-Version: 2.0.0 (DI-enabled)
+Date: December 27, 2025
+Version: 3.0.0 (Phase 4 Testing)
 License: MIT
 """
 
@@ -701,4 +703,164 @@ def pytest_configure(config):
 
     return mock_cache
 
+
+# ============================================================================
+# PHASE 4: TEST DATA FACTORIES
+# ============================================================================
+
+class CandleFactory:
+    """Factory for creating test candles"""
+    
+    @staticmethod
+    def create(
+        timestamp = None,
+        open_price: float = 100.0,
+        high_price: float = 110.0,
+        low_price: float = 90.0,
+        close_price: float = 105.0,
+        volume: float = 1000.0,
+    ) -> Candle:
+        """Create a single candle"""
+        if timestamp is None:
+            timestamp = datetime.now()
+        
+        return Candle(
+            timestamp=timestamp,
+            open=open_price,
+            high=high_price,
+            low=low_price,
+            close=close_price,
+            volume=volume,
+        )
+    
+    @staticmethod
+    def create_series(
+        count: int = 100,
+        start_date = None,
+        trend: str = "neutral"  # "up", "down", "neutral"
+    ) -> list:
+        """Create a series of candles"""
+        if start_date is None:
+            start_date = datetime.now() - timedelta(days=count)
+        
+        candles = []
+        price = 100.0
+        
+        for i in range(count):
+            timestamp = start_date + timedelta(days=i)
+            
+            # Apply trend
+            if trend == "up":
+                price += 0.5
+            elif trend == "down":
+                price -= 0.5
+            
+            candle = CandleFactory.create(
+                timestamp=timestamp,
+                open_price=price,
+                close_price=price + 1.0,
+                high_price=price + 2.0,
+                low_price=price - 1.0,
+                volume=1000 + i * 10,
+            )
+            candles.append(candle)
+        
+        return candles
+
+
+@pytest.fixture
+def candle_factory() -> CandleFactory:
+    """Provide candle factory for Phase 4 tests"""
+    return CandleFactory()
+
+
+@pytest.fixture
+def sample_candles() -> list:
+    """Provide sample candles for testing"""
+    return CandleFactory.create_series(100)
+
+
+@pytest.fixture
+def sample_uptrend_candles() -> list:
+    """Provide uptrend candles"""
+    return CandleFactory.create_series(50, trend="up")
+
+
+@pytest.fixture
+def sample_downtrend_candles() -> list:
+    """Provide downtrend candles"""
+    return CandleFactory.create_series(50, trend="down")
+
+
+# ============================================================================
+# PHASE 4: REQUEST/RESPONSE BUILDERS
+# ============================================================================
+
+class RequestBuilder:
+    """Builder for test requests"""
+    
+    @staticmethod
+    def analysis_request(
+        symbol: str = "BTCUSDT",
+        candles = None,
+    ) -> dict:
+        """Build analysis request"""
+        if candles is None:
+            candles = CandleFactory.create_series(50)
+        
+        return {
+            "symbol": symbol,
+            "candles": candles,
+        }
+
+
+class ResponseBuilder:
+    """Builder for test responses"""
+    
+    @staticmethod
+    def analysis_response(
+        signal: str = "BUY",
+        confidence: float = 75.0,
+        indicators = None,
+    ) -> dict:
+        """Build analysis response"""
+        if indicators is None:
+            indicators = {
+                "sma_20": 100.5,
+                "sma_50": 100.2,
+                "rsi": 65.0,
+            }
+        
+        return {
+            "signal": signal,
+            "confidence": confidence,
+            "indicators": indicators,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+
+@pytest.fixture
+def request_builder() -> RequestBuilder:
+    """Provide request builder"""
+    return RequestBuilder()
+
+
+@pytest.fixture
+def response_builder() -> ResponseBuilder:
+    """Provide response builder"""
+    return ResponseBuilder()
+
+
+# ============================================================================
+# PHASE 4: PYTEST HOOKS & MARKERS
+# ============================================================================
+
+def pytest_configure(config):
+    """Configure pytest with Phase 4 markers"""
+    config.addinivalue_line("markers", "unit: unit tests")
+    config.addinivalue_line("markers", "integration: integration tests")
+    config.addinivalue_line("markers", "e2e: end-to-end tests")
+    config.addinivalue_line("markers", "security: security tests")
+    config.addinivalue_line("markers", "slow: slow tests (optional skip)")
+    config.addinivalue_line("markers", "asyncio: async tests")
 
