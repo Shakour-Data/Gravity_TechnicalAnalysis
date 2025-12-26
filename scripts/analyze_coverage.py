@@ -9,12 +9,13 @@ This script:
 4. Tracks progress toward 80%+ target
 """
 
-import subprocess
 import json
+import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List
-import xml.etree.ElementTree as ET
+
 
 class CoverageAnalyzer:
     """Analyze test coverage and identify gaps"""

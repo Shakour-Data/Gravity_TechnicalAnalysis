@@ -9,10 +9,11 @@ Strategy:
 - Security tests for OWASP Top 10
 """
 
-import pytest
 import asyncio
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # ============================================================================
 # UNIT TESTS - Core Indicators
@@ -395,9 +396,10 @@ class TestDataPipelineE2E:
     @pytest.mark.asyncio
     async def test_complete_pipeline_flow(self):
         """Test complete pipeline from extract to load"""
-        from gravity_pipeline.orchestrator import DataPipeline, PipelineConfig
-        from gravity_pipeline.loaders import SQLiteLoader
         import tempfile
+
+        from gravity_pipeline.loaders import SQLiteLoader
+        from gravity_pipeline.orchestrator import DataPipeline, PipelineConfig
         
         # Create temp DB
         with tempfile.NamedTemporaryFile(suffix=".db") as f:
