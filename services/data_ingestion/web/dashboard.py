@@ -1,17 +1,19 @@
-import os
-import sys
-import io
 import contextlib
+import io
+import os
+import shutil
 import sqlite3
 import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 
-import dash
-from dash import html, dcc, Input, Output, State, callback_context
-import dash_bootstrap_components as dbc
-import plotly.graph_objects as go
-import plotly.express as px
+import dash  # type: ignore[import]
+import dash_bootstrap_components as dbc  # type: ignore[import]
 import pandas as pd
+import plotly.express as px  # type: ignore[import]
+import plotly.graph_objects as go  # type: ignore[import]
+from dash import Input, Output, State, callback_context, dcc, html  # type: ignore[import]
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -19,9 +21,9 @@ src_dir = os.path.join(parent_dir, "src")
 sys.path.insert(0, src_dir)
 sys.path.insert(0, parent_dir)
 
-from config import DB_FILE  # noqa: E402
-from encoding_utils import ensure_utf8_console  # noqa: E402
-from fetcher import DataFetcher  # noqa: E402
+from src.config import DB_FILE  # noqa: E402
+from src.encoding_utils import ensure_utf8_console  # noqa: E402
+from src.fetcher import DataFetcher  # noqa: E402
 
 ensure_utf8_console()
 
@@ -32,6 +34,45 @@ external_stylesheets = [
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "GravityTseHisPrice | داشبورد بازار"
+
+app.index_string = """
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+        :root {
+            --bg: #0a1020;
+            --card: #0f192d;
+            --panel: #101a30;
+            --text: #e8edf5;
+            --muted: #9fb2d4;
+            --accent: #00d2ff;
+            --accent-2: #7cf29c;
+            --border: #1f2d45;
+        }
+        body { background: radial-gradient(120% 120% at 20% 20%, #12213d 0%, #0a1020 55%); color: var(--text); }
+        .app-shell { background: transparent; }
+        .panel-card, .glass-card, .stat-card { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+        .header-title, .hero-title, .mini-title { color: var(--text); }
+        .muted-label, .text-muted, .hero-lead { color: var(--muted); }
+        .hero-cta, .action-btn { background: linear-gradient(120deg, var(--accent), var(--accent-2)); border: none; color: #0a1020; font-weight: 700; }
+        .hero-cta.btn-outline-secondary, .action-btn.btn-info { background: none; border: 1px solid var(--accent); color: var(--accent); }
+        .hero-cta:hover, .action-btn:hover { filter: brightness(1.05); }
+        .chart-card { background: var(--card); border-radius: 12px; padding: 4px; }
+        .ticker-dropdown .Select-control { background: var(--card); color: var(--text); }
+        pre { color: var(--text); background: #0c1425; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>{%config%}{%scripts%}{%renderer%}</footer>
+    </body>
+</html>
+"""
 
 palette = {
     "ink": "#0f172a",
@@ -218,6 +259,54 @@ def get_table_preview(table_name, limit=5):
         conn.close()
 
 
+def get_table_counts(limit: int = 10):
+    """Return top tables by row count for quick charting."""
+    conn = get_db_connection()
+    try:
+        tables_query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        tables = pd.read_sql(tables_query, conn)["name"].tolist()
+        results = []
+        for name in tables:
+            try:
+                count_query = f"SELECT COUNT(*) as count FROM {name}"
+                count = pd.read_sql(count_query, conn).iloc[0]["count"]
+                results.append((name, count))
+            except Exception:
+                continue
+        results.sort(key=lambda x: x[1], reverse=True)
+        return results[:limit]
+    finally:
+        conn.close()
+
+
+def create_db_backup():
+    """Create a timestamped backup of the SQLite database."""
+    source = Path(DB_FILE)
+    if not source.exists():
+        raise FileNotFoundError(f"DB file not found: {source}")
+    backup_dir = source.parent / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    target = backup_dir / f"{source.stem}_{ts}.bak"
+    shutil.copy2(source, target)
+    return target
+
+
+def read_support_logs(filter_text: str | None = None, limit: int = 300):
+    """Read support logs with optional text filter."""
+    log_path = Path(os.getenv("SUPPORT_LOG_PATH", "logs/app.log"))
+    if not log_path.exists():
+        return f"لاگ پیدا نشد: {log_path}"
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        if filter_text:
+            lines = [ln for ln in lines if filter_text.lower() in ln.lower()]
+        tail = lines[-limit:]
+        return "\n".join(tail) if tail else "موردی مطابق فیلتر یافت نشد."
+    except Exception as exc:
+        return f"خطا در خواندن لاگ: {exc}"
+
+
 def get_table_data(table_name, limit=200):
     """Fetch table data (latest rows first)."""
     conn = get_db_connection()
@@ -292,105 +381,124 @@ app.layout = html.Div(
     dir="rtl",
     children=[
         dcc.Interval(id="init-trigger", interval=800, max_intervals=1),
-        html.Section(
-            className="hero-section",
-            children=dbc.Container(
-                [
-                    dbc.Row(
+        dcc.Tabs(
+            id="dashboard-tabs",
+            value="overview",
+            className="dashboard-tabs",
+            children=[
+                dcc.Tab(label="نمای کلی", value="overview", className="dashboard-tab", selected_className="dashboard-tab-selected"),
+                dcc.Tab(label="داده‌ها", value="data", className="dashboard-tab", selected_className="dashboard-tab-selected"),
+                dcc.Tab(label="اقدامات", value="actions", className="dashboard-tab", selected_className="dashboard-tab-selected"),
+                dcc.Tab(label="CLI و لاگ", value="cli", className="dashboard-tab", selected_className="dashboard-tab-selected"),
+            ],
+        ),
+        html.Div(
+            id="tab-overview-hero",
+            children=[
+                html.Section(
+                    className="hero-section",
+                    children=dbc.Container(
                         [
-                            dbc.Col(
+                            dbc.Row(
                                 [
-                                    html.Span(
-                                        "تصویر روشن از بازار سرمایه",
-                                        className="eyebrow",
-                                    ),
-                                    html.H1(
-                                        "داشبورد GravityTseHisPrice",
-                                        className="hero-title",
-                                    ),
-                                    html.P(
-                                        "پوشش کامل شرکت‌ها، صنایع و شاخص‌ها با داده‌های تعدیل‌شده و به‌روزرسانی سریع. "
-                                        "همه چیز آماده یک گزارش شفاف و حرفه‌ای است.",
-                                        className="hero-lead",
-                                    ),
-                                    html.Div(
+                                    dbc.Col(
                                         [
-                                            dbc.Button(
-                                                [html.I(className="fa-solid fa-rotate icon-left"), "به‌روزرسانی دیتابیس"],
-                                                id="hero-update-btn",
-                                                color="success",
-                                                className="hero-cta",
+                                            html.Span(
+                                                "تصویر روشن از بازار سرمایه",
+                                                className="eyebrow",
                                             ),
-                                            dbc.Button(
-                                                [html.I(className="fa-solid fa-chart-column icon-left"), "نمایش خلاصه بازار"],
-                                                id="hero-status-btn",
-                                                color="secondary",
-                                                outline=True,
-                                                className="hero-cta",
+                                            html.H1(
+                                                "داشبورد GravityTseHisPrice",
+                                                className="hero-title",
+                                            ),
+                                            html.P(
+                                                "پوشش کامل شرکت‌ها، صنایع و شاخص‌ها با داده‌های تعدیل‌شده و به‌روزرسانی سریع. "
+                                                "همه چیز آماده یک گزارش شفاف و حرفه‌ای است.",
+                                                className="hero-lead",
+                                            ),
+                                            html.Div(
+                                                [
+                                                    dbc.Button(
+                                                        [html.I(className="fa-solid fa-rotate icon-left"), "به‌روزرسانی دیتابیس"],
+                                                        id="hero-update-btn",
+                                                        color="success",
+                                                        className="hero-cta",
+                                                    ),
+                                                    dbc.Button(
+                                                        [html.I(className="fa-solid fa-chart-column icon-left"), "نمایش خلاصه بازار"],
+                                                        id="hero-status-btn",
+                                                        color="secondary",
+                                                        outline=True,
+                                                        className="hero-cta",
+                                                    ),
+                                                ],
+                                                className="hero-cta-wrap",
+                                            ),
+                                            html.Div(
+                                                [
+                                                    dbc.Badge(
+                                                        "به‌روزرسانی با یک کلیک",
+                                                        className="hero-badge",
+                                                    ),
+                                                    dbc.Badge(
+                                                        "تحلیل آماده ارائه",
+                                                        className="hero-badge alt",
+                                                    ),
+                                                ],
+                                                className="hero-badges",
                                             ),
                                         ],
-                                        className="hero-cta-wrap",
+                                        lg=7,
+                                        md=12,
                                     ),
-                                    html.Div(
-                                        [
-                                            dbc.Badge(
-                                                "به‌روزرسانی با یک کلیک",
-                                                className="hero-badge",
+                                    dbc.Col(
+                                        dbc.Card(
+                                            dbc.CardBody(
+                                                [
+                                                    html.P("چک‌لیست آماده‌باش", className="mini-title"),
+                                                    html.Ul(
+                                                        [
+                                                            html.Li("دیتابیس و API هم‌مسیر و هماهنگ"),
+                                                            html.Li("گزارش لحظه‌ای تعداد رکوردها و آخرین تاریخ"),
+                                                            html.Li("پیش‌نمایش جداول و داده‌ها بدون خروج از داشبورد"),
+                                                        ],
+                                                        className="hero-list",
+                                                    ),
+                                                    html.Div(
+                                                        [
+                                                            html.Span("مسیر پایگاه داده:", className="muted-label"),
+                                                            html.Code(DB_FILE, className="db-path"),
+                                                        ],
+                                                        className="mini-row",
+                                                    ),
+                                                    html.Div(
+                                                        [
+                                                            html.Span("آدرس داشبورد:", className="muted-label"),
+                                                            html.Code("http://127.0.0.1:8050/", className="db-path"),
+                                                        ],
+                                                        className="mini-row",
+                                                    ),
+                                                ]
                                             ),
-                                            dbc.Badge(
-                                                "تحلیل آماده ارائه",
-                                                className="hero-badge alt",
-                                            ),
-                                        ],
-                                        className="hero-badges",
+                                            className="glass-card shadow-soft",
+                                        ),
+                                        lg=5,
+                                        md=12,
                                     ),
                                 ],
-                                lg=7,
-                                md=12,
-                            ),
-                            dbc.Col(
-                                dbc.Card(
-                                    dbc.CardBody(
-                                        [
-                                            html.P("چک‌لیست آماده‌باش", className="mini-title"),
-                                            html.Ul(
-                                                [
-                                                    html.Li("دیتابیس و API هم‌مسیر و هماهنگ"),
-                                                    html.Li("گزارش لحظه‌ای تعداد رکوردها و آخرین تاریخ"),
-                                                    html.Li("پیش‌نمایش جداول و داده‌ها بدون خروج از داشبورد"),
-                                                ],
-                                                className="hero-list",
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.Span("مسیر پایگاه داده:", className="muted-label"),
-                                                    html.Code(DB_FILE, className="db-path"),
-                                                ],
-                                                className="mini-row",
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.Span("آدرس داشبورد:", className="muted-label"),
-                                                    html.Code("http://127.0.0.1:8050/", className="db-path"),
-                                                ],
-                                                className="mini-row",
-                                            ),
-                                        ]
-                                    ),
-                                    className="glass-card shadow-soft",
-                                ),
-                                lg=5,
-                                md=12,
-                            ),
+                                className="align-items-center g-4",
+                            )
                         ],
-                        className="align-items-center g-4",
-                    )
-                ],
-                fluid=True,
-            ),
+                        fluid=True,
+                    ),
+                )
+            ],
         ),
         dbc.Container(
             [
+                html.Div(
+                    id="tab-overview",
+                    children=[
                 dbc.Row(
                     [
                         dbc.Col(
@@ -437,7 +545,7 @@ app.layout = html.Div(
                                                 ),
                                                 dbc.Col(
                                                     dcc.Dropdown(
-                                                        id="ticker-dropdown",
+                                                        id="price-ticker-dropdown",
                                                         placeholder="نماد را جست‌وجو کنید...",
                                                         className="ticker-dropdown",
                                                         clearable=True,
@@ -480,348 +588,484 @@ app.layout = html.Div(
                     ],
                     className="g-3 mt-1",
                 ),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.I(className="fa-solid fa-table header-icon"),
-                                                    html.Span("مرورگر جداول با فیلتر", className="header-title"),
-                                                ],
-                                                className="header-wrap",
-                                            )
-                                        ]
-                                    ),
-                                    dbc.CardBody(
-                                        [
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        dcc.Dropdown(
-                                                            id="table-select",
-                                                            placeholder="یک جدول را انتخاب کنید",
-                                                            className="ticker-dropdown mb-2",
-                                                        ),
-                                                        md=4,
-                                                        xs=12,
-                                                    ),
-                                                    dbc.Col(
-                                                        dcc.Input(
-                                                            id="table-filter",
-                                                            placeholder="فیلتر متنی (جست‌وجو در همه ستون‌ها)",
-                                                            className="form-control mb-2",
-                                                        ),
-                                                        md=5,
-                                                        xs=12,
-                                                    ),
-                                                    dbc.Col(
-                                                        dcc.Input(
-                                                            id="table-limit",
-                                                            type="number",
-                                                            value=100,
-                                                            min=10,
-                                                            max=500,
-                                                            step=10,
-                                                            placeholder="تعداد ردیف",
-                                                            className="form-control mb-2",
-                                                        ),
-                                                        md=3,
-                                                        xs=12,
-                                                    ),
-                                                ],
-                                                className="g-2 align-items-center",
-                                            ),
-                                            dcc.Loading(
-                                                type="default",
-                                                children=html.Div(id="table-viewer", className="action-log"),
-                                            ),
-                                        ]
-                                    ),
-                                ],
-                                className="panel-card shadow-soft h-100",
-                            ),
-                            lg=12,
-                            md=12,
-                        )
                     ],
-                    className="g-3 mt-1 mb-4",
                 ),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
+                html.Div(
+                    id="tab-data",
+                    style={"display": "none"},
+                    children=[
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Card(
                                         [
-                                            html.Div(
+                                            dbc.CardHeader(
                                                 [
-                                                    html.I(className="fa-solid fa-ranking-star header-icon"),
-                                                    html.Span("پرتفوی پُرحجم", className="header-title"),
-                                                ],
-                                                className="header-wrap",
-                                            )
-                                        ]
-                                    ),
-                                    dbc.CardBody(html.Div(id="top-companies-table")),
-                                ],
-                                className="panel-card shadow-soft h-100",
-                            ),
-                            lg=12,
-                            md=12,
-                        ),
-                    ],
-                    className="g-3 mt-1",
-                ),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.I(className="fa-solid fa-bolt header-icon"),
-                                                    html.Span("دستورات سریع", className="header-title"),
-                                                ],
-                                                className="header-wrap",
-                                            )
-                                        ]
-                                    ),
-                                    dbc.CardBody(
-                                        [
-                                            dbc.Button(
-                                                [html.I(className="fa-solid fa-rotate icon-left"), "به‌روزرسانی داده‌ها"],
-                                                id="update-btn",
-                                                color="primary",
-                                                className="w-100 mb-2 action-btn",
-                                            ),
-                                            dbc.Button(
-                                                [
-                                                    html.I(className="fa-solid fa-chart-column icon-left"),
-                                                    "نمایش خلاصه بازار",
-                                                ],
-                                                id="status-btn",
-                                                color="info",
-                                                className="w-100 mb-2 action-btn",
-                                            ),
-                                            dbc.Button(
-                                                [html.I(className="fa-solid fa-download icon-left"), "تهیه نسخه پشتیبان"],
-                                                id="backup-btn",
-                                                color="warning",
-                                                className="w-100 action-btn",
-                                            ),
-                                        ]
-                                    ),
-                                ],
-                                className="panel-card shadow-soft h-100",
-                            ),
-                            lg=4,
-                            md=12,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.I(className="fa-solid fa-terminal header-icon"),
-                                                    html.Span("گزارش عملیات و خطاها", className="header-title"),
-                                                ],
-                                                className="header-wrap",
-                                            )
-                                        ]
-                                    ),
-                                    dbc.CardBody(
-                                        dcc.Loading(
-                                            type="default",
-                                            children=html.Div(id="action-output", className="action-log"),
-                                        )
-                                    ),
-                                ],
-                                className="panel-card shadow-soft h-100",
-                            ),
-                            lg=8,
-                            md=12,
-                        ),
-                    ],
-                    className="g-3 mt-1 mb-4",
-                ),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.I(className="fa-solid fa-terminal header-icon"),
-                                                    html.Span("دستورات CLI در داشبورد", className="header-title"),
-                                                ],
-                                                className="header-wrap",
-                                            ),
-                                            html.Span("همه دستورات main.py در دسترس است.", className="muted-label"),
-                                        ]
-                                    ),
-                                    dbc.CardBody(
-                                        [
-                                            dcc.Dropdown(
-                                                id="cli-command",
-                                                options=CLI_COMMANDS,
-                                                placeholder="یک دستور را انتخاب کنید",
-                                                className="mb-2 ticker-dropdown",
-                                            ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        dcc.Dropdown(
-                                                            id="cli-table",
-                                                            options=[
-                                                                {"label": "companies", "value": "companies"},
-                                                                {"label": "sectors", "value": "sectors"},
-                                                                {"label": "markets", "value": "markets"},
-                                                                {"label": "panels", "value": "panels"},
-                                                                {"label": "price_data", "value": "price_data"},
-                                                                {"label": "last_updates", "value": "last_updates"},
-                                                            ],
-                                                            placeholder="جدول (در صورت نیاز)",
-                                                            className="mb-2 ticker-dropdown",
-                                                        ),
-                                                        md=6,
-                                                        xs=12,
-                                                    ),
-                                                    dbc.Col(
-                                                        dcc.Input(
-                                                            id="cli-file",
-                                                            placeholder="مسیر فایل JSON (در صورت نیاز)",
-                                                            className="form-control mb-2",
-                                                        ),
-                                                        md=6,
-                                                        xs=12,
-                                                    ),
-                                                ],
-                                                className="g-2",
-                                            ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        dcc.Input(
-                                                            id="cli-sector",
-                                                            type="number",
-                                                            placeholder="کد صنعت برای list-companies",
-                                                            className="form-control mb-2",
-                                                        ),
-                                                        md=6,
-                                                        xs=12,
-                                                    ),
-                                                    dbc.Col(
-                                                        dcc.Input(
-                                                            id="cli-ticker",
-                                                            placeholder="نماد برای get-price-data",
-                                                            className="form-control mb-2",
-                                                        ),
-                                                        md=6,
-                                                        xs=12,
-                                                    ),
-                                                ],
-                                                className="g-2",
-                                            ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        dcc.Input(
-                                                            id="cli-limit",
-                                                            type="number",
-                                                            placeholder="حد (اختیاری)",
-                                                            className="form-control mb-3",
-                                                        ),
-                                                        md=6,
-                                                        xs=12,
-                                                    ),
-                                                    dbc.Col(
-                                                        dbc.Button(
-                                                            [html.I(className="fa-solid fa-play icon-left"), "اجرای دستور"],
-                                                            id="cli-run-btn",
-                                                            color="success",
-                                                            className="w-100 action-btn mb-3",
-                                                        ),
-                                                        md=6,
-                                                        xs=12,
-                                                    ),
-                                                ],
-                                                className="g-2",
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.P(
-                                                        "راهنما: برای reload/update-table مسیر JSON و نام جدول لازم است. برای list-companies کد صنعت و برای get-price-data نماد (و حد اختیاری) را وارد کنید.",
-                                                        className="text-muted small mb-0",
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-table header-icon"),
+                                                            html.Span("مرورگر جداول با فیلتر", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
                                                     )
                                                 ]
                                             ),
-                                        ]
-                                    ),
-                                ],
-                                className="panel-card shadow-soft h-100",
-                            ),
-                            lg=6,
-                            md=12,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
-                                        [
-                                            html.Div(
+                                            dbc.CardBody(
                                                 [
-                                                    html.I(className="fa-solid fa-scroll header-icon"),
-                                                    html.Span("خروجی و لاگ دستورات CLI", className="header-title"),
-                                                ],
-                                                className="header-wrap",
-                                            )
-                                        ]
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                dcc.Dropdown(
+                                                                    id="table-select",
+                                                                    placeholder="یک جدول را انتخاب کنید",
+                                                                    className="ticker-dropdown mb-2",
+                                                                ),
+                                                                md=4,
+                                                                xs=12,
+                                                            ),
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="table-filter",
+                                                                    placeholder="فیلتر متنی (جست‌وجو در همه ستون‌ها)",
+                                                                    className="form-control mb-2",
+                                                                ),
+                                                                md=5,
+                                                                xs=12,
+                                                            ),
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="table-limit",
+                                                                    type="number",
+                                                                    value=100,
+                                                                    min=10,
+                                                                    max=500,
+                                                                    step=10,
+                                                                    placeholder="تعداد ردیف",
+                                                                    className="form-control mb-2",
+                                                                ),
+                                                                md=3,
+                                                                xs=12,
+                                                            ),
+                                                        ],
+                                                        className="g-2 align-items-center",
+                                                    ),
+                                                    dcc.Loading(
+                                                        type="default",
+                                                        children=html.Div(id="table-viewer", className="action-log"),
+                                                    ),
+                                                ]
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
                                     ),
-                                    dbc.CardBody(
-                                        dcc.Loading(
-                                            id="cli-loading",
-                                            type="default",
-                                            children=html.Div(id="cli-log", className="action-log"),
-                                        )
+                                    lg=12,
+                                    md=12,
+                                )
+                            ],
+                            className="g-3 mt-1 mb-4",
+                        ),
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-chart-pie header-icon"),
+                                                            html.Span("توزیع رکورد جداول", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    )
+                                                ]
+                                            ),
+                                            dbc.CardBody(
+                                                dcc.Graph(id="table-row-chart", className="chart-card"),
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
                                     ),
-                                ],
-                                className="panel-card shadow-soft h-100",
-                            ),
-                            lg=6,
-                            md=12,
+                                    lg=12,
+                                    md=12,
+                                )
+                            ],
+                            className="g-3 mt-1 mb-4",
+                        ),
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-ranking-star header-icon"),
+                                                            html.Span("پرتفوی پُرحجم", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    )
+                                                ]
+                                            ),
+                                            dbc.CardBody(html.Div(id="top-companies-table")),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
+                                    ),
+                                    lg=12,
+                                    md=12,
+                                ),
+                            ],
+                            className="g-3 mt-1",
+                        ),
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-clipboard-list header-icon"),
+                                                            html.Span("لاگ پشتیبانی و فیلتر", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    )
+                                                ]
+                                            ),
+                                            dbc.CardBody(
+                                                [
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="log-filter-text",
+                                                                    placeholder="عبارت فیلتر (اختیاری)...",
+                                                                    className="form-control mb-2",
+                                                                ),
+                                                                md=9,
+                                                                xs=12,
+                                                            ),
+                                                            dbc.Col(
+                                                                dbc.Button(
+                                                                    [html.I(className="fa-solid fa-rotate icon-left"), "بارگذاری لاگ"],
+                                                                    id="log-refresh-btn",
+                                                                    color="secondary",
+                                                                    className="w-100 action-btn mb-2",
+                                                                ),
+                                                                md=3,
+                                                                xs=12,
+                                                            ),
+                                                        ],
+                                                        className="g-2",
+                                                    ),
+                                                    dcc.Loading(
+                                                        type="default",
+                                                        children=html.Pre(id="log-viewer", className="action-log", style={"minHeight": "240px"}),
+                                                    ),
+                                                ]
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
+                                    ),
+                                    lg=12,
+                                    md=12,
+                                )
+                            ],
+                            className="g-3 mt-1",
                         ),
                     ],
-                    className="g-3 mt-1 mb-4",
                 ),
-                html.Footer(
-                    [
-                        html.P(
-                            "GravityTseHisPrice - پایش روزانه بازار سرمایه | نسخه 2.0.0",
-                            className="footer-title",
-                        ),
-                        html.P(
-                            "بازطراحی برای گزارش‌های حرفه‌ای و تجربه کاربری پاک و یکدست.",
-                            className="footer-subtitle",
+                html.Div(
+                    id="tab-actions",
+                    style={"display": "none"},
+                    children=[
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-bolt header-icon"),
+                                                            html.Span("دستورات سریع", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    )
+                                                ]
+                                            ),
+                                            dbc.CardBody(
+                                                [
+                                                    dbc.Button(
+                                                        [html.I(className="fa-solid fa-rotate icon-left"), "به‌روزرسانی داده‌ها"],
+                                                        id="update-btn",
+                                                        color="primary",
+                                                        className="w-100 mb-2 action-btn",
+                                                    ),
+                                                    dbc.Button(
+                                                        [
+                                                            html.I(className="fa-solid fa-chart-column icon-left"),
+                                                            "نمایش خلاصه بازار",
+                                                        ],
+                                                        id="status-btn",
+                                                        color="info",
+                                                        className="w-100 mb-2 action-btn",
+                                                    ),
+                                                    dbc.Button(
+                                                        [html.I(className="fa-solid fa-download icon-left"), "تهیه نسخه پشتیبان"],
+                                                        id="backup-btn",
+                                                        color="warning",
+                                                        className="w-100 action-btn",
+                                                    ),
+                                                ]
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
+                                    ),
+                                    lg=4,
+                                    md=12,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-terminal header-icon"),
+                                                            html.Span("گزارش عملیات و خطاها", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    )
+                                                ]
+                                            ),
+                                            dbc.CardBody(
+                                                dcc.Loading(
+                                                    type="default",
+                                                    children=html.Div(id="action-output", className="action-log"),
+                                                )
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
+                                    ),
+                                    lg=8,
+                                    md=12,
+                                ),
+                            ],
+                            className="g-3 mt-1 mb-4",
                         ),
                     ],
-                    className="app-footer text-center",
                 ),
+                html.Div(
+                    id="tab-cli",
+                    style={"display": "none"},
+                    children=[
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-terminal header-icon"),
+                                                            html.Span("دستورات CLI در داشبورد", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    ),
+                                                    html.Span("همه دستورات main.py در دسترس است.", className="muted-label"),
+                                                ]
+                                            ),
+                                            dbc.CardBody(
+                                                [
+                                                    dcc.Dropdown(
+                                                        id="cli-command",
+                                                        options=CLI_COMMANDS,
+                                                        placeholder="یک دستور را انتخاب کنید",
+                                                        className="mb-2 ticker-dropdown",
+                                                    ),
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                dcc.Dropdown(
+                                                                    id="cli-table",
+                                                                    options=[
+                                                                        {"label": "companies", "value": "companies"},
+                                                                        {"label": "sectors", "value": "sectors"},
+                                                                        {"label": "markets", "value": "markets"},
+                                                                        {"label": "panels", "value": "panels"},
+                                                                        {"label": "price_data", "value": "price_data"},
+                                                                        {"label": "last_updates", "value": "last_updates"},
+                                                                    ],
+                                                                    placeholder="جدول (در صورت نیاز)",
+                                                                    className="mb-2 ticker-dropdown",
+                                                                ),
+                                                                md=6,
+                                                                xs=12,
+                                                            ),
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="cli-file",
+                                                                    placeholder="مسیر فایل JSON (در صورت نیاز)",
+                                                                    className="form-control mb-2",
+                                                                ),
+                                                                md=6,
+                                                                xs=12,
+                                                            ),
+                                                        ],
+                                                        className="g-2",
+                                                    ),
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="cli-sector",
+                                                                    type="number",
+                                                                    placeholder="کد صنعت برای list-companies",
+                                                                    className="form-control mb-2",
+                                                                ),
+                                                                md=6,
+                                                                xs=12,
+                                                            ),
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="cli-ticker",
+                                                                    placeholder="نماد برای get-price-data",
+                                                                    className="form-control mb-2",
+                                                                ),
+                                                                md=6,
+                                                                xs=12,
+                                                            ),
+                                                        ],
+                                                        className="g-2",
+                                                    ),
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                dcc.Input(
+                                                                    id="cli-limit",
+                                                                    type="number",
+                                                                    placeholder="حد (اختیاری)",
+                                                                    className="form-control mb-3",
+                                                                ),
+                                                                md=6,
+                                                                xs=12,
+                                                            ),
+                                                            dbc.Col(
+                                                                dbc.Button(
+                                                                    [html.I(className="fa-solid fa-play icon-left"), "اجرای دستور"],
+                                                                    id="cli-run-btn",
+                                                                    color="success",
+                                                                    className="w-100 action-btn mb-3",
+                                                                ),
+                                                                md=6,
+                                                                xs=12,
+                                                            ),
+                                                        ],
+                                                        className="g-2",
+                                                    ),
+                                                    html.Div(
+                                                        [
+                                                            html.P(
+                                                                "راهنما: برای reload/update-table مسیر JSON و نام جدول لازم است. برای list-companies کد صنعت و برای get-price-data نماد (و حد اختیاری) را وارد کنید.",
+                                                                className="text-muted small mb-0",
+                                                            )
+                                                        ]
+                                                    ),
+                                                ]
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
+                                    ),
+                                    lg=6,
+                                    md=12,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            dbc.CardHeader(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.I(className="fa-solid fa-scroll header-icon"),
+                                                            html.Span("خروجی و لاگ دستورات CLI", className="header-title"),
+                                                        ],
+                                                        className="header-wrap",
+                                                    )
+                                                ]
+                                            ),
+                                            dbc.CardBody(
+                                                dcc.Loading(
+                                                    id="cli-loading",
+                                                    type="default",
+                                                    children=html.Div(id="cli-log", className="action-log"),
+                                                )
+                                            ),
+                                        ],
+                                        className="panel-card shadow-soft h-100",
+                                    ),
+                                    lg=6,
+                                    md=12,
+                                ),
+                            ],
+                            className="g-3 mt-1 mb-4",
+                        ),
+                    ],
+                ),
+        html.Footer(
+            [
+                html.P(
+                    "GravityTseHisPrice - پایش روزانه بازار سرمایه | نسخه 2.0.0",
+                    className="footer-title",
+                ),
+                html.P(
+                    "بازطراحی برای گزارش‌های حرفه‌ای و تجربه کاربری پاک و یکدست.",
+                    className="footer-subtitle",
+                ),
+            ],
+            className="app-footer text-center",
+        ),
+        html.Div(
+            [
+                html.Button(id="update-btn", style={"display": "none"}),
+                html.Button(id="status-btn", style={"display": "none"}),
+                html.Button(id="backup-btn", style={"display": "none"}),
+            ],
+            style={"display": "none"},
+        ),
             ],
             fluid=True,
             className="content-shell pb-5",
         ),
     ],
 )
+
+
+@app.callback(
+    [
+        Output("tab-overview-hero", "style"),
+        Output("tab-overview", "style"),
+        Output("tab-data", "style"),
+        Output("tab-actions", "style"),
+        Output("tab-cli", "style"),
+    ],
+    Input("dashboard-tabs", "value"),
+)
+def switch_tabs(active_tab: str):
+    """Show the selected tab and hide others for a cleaner support workflow."""
+    visible = {"display": "block"}
+    hidden = {"display": "none"}
+    return [
+        visible if active_tab == "overview" else hidden,
+        visible if active_tab == "overview" else hidden,
+        visible if active_tab == "data" else hidden,
+        visible if active_tab == "actions" else hidden,
+        visible if active_tab == "cli" else hidden,
+    ]
 
 
 @app.callback(
@@ -848,7 +1092,7 @@ def update_summary(init_tick, n_clicks, hero_clicks):
 
 
 @app.callback(
-    Output("ticker-dropdown", "options"),
+    Output("price-ticker-dropdown", "options"),
     [Input("init-trigger", "n_intervals"), Input("update-btn", "n_clicks"), Input("hero-update-btn", "n_clicks")],
 )
 def update_ticker_options(init_tick, n_clicks, hero_clicks):
@@ -866,13 +1110,15 @@ def update_ticker_options(init_tick, n_clicks, hero_clicks):
         return []
 
 
-@app.callback(Output("price-chart", "figure"), Input("ticker-dropdown", "value"))
+@app.callback(Output("price-chart", "figure"), Input("price-ticker-dropdown", "value"))
 def update_price_chart(selected_ticker):
     """Update price chart based on selected ticker."""
-    if selected_ticker:
-        df = get_recent_price_data(selected_ticker, limit=500)
-    else:
-        df = get_recent_price_data(limit=500)
+    try:
+        df = get_recent_price_data(selected_ticker, limit=500) if selected_ticker else get_recent_price_data(limit=500)
+    except Exception as exc:
+        fig = go.Figure()
+        fig.add_annotation(text=f"خطا در دریافت داده‌ها: {exc}", showarrow=False, font={"color": "#ef4444"})
+        return fig
 
     if df.empty:
         return go.Figure()
@@ -886,7 +1132,7 @@ def update_price_chart(selected_ticker):
                 y=df["adj_close"],
                 mode="lines",
                 name=f"قیمت {selected_ticker}",
-                line=dict(color=palette["accent"], width=3),
+                line={"color": palette["accent"], "width": 3},
                 fill="tozeroy",
                 fillcolor="rgba(45, 212, 191, 0.08)",
             )
@@ -903,7 +1149,7 @@ def update_price_chart(selected_ticker):
         )
         fig.update_layout(
             title=f"روند قیمت و حجم | {selected_ticker}",
-            yaxis2=dict(title="حجم", overlaying="y", side="right"),
+            yaxis2={"title": "حجم", "overlaying": "y", "side": "right"},
         )
     else:
         df_avg = df.groupby("date")["adj_close"].mean().reset_index()
@@ -913,7 +1159,7 @@ def update_price_chart(selected_ticker):
                 y=df_avg["adj_close"],
                 mode="lines",
                 name="میانگین بازار",
-                line=dict(color=palette["accent"], width=3),
+                line={"color": palette["accent"], "width": 3},
                 fill="tozeroy",
                 fillcolor="rgba(45, 212, 191, 0.08)",
             )
@@ -921,10 +1167,10 @@ def update_price_chart(selected_ticker):
         fig.update_layout(title="میانگین قیمت تعدیل‌شده کل بازار")
 
     fig.update_layout(
-        margin=dict(l=0, r=0, t=60, b=20),
+        margin={"l": 0, "r": 0, "t": 60, "b": 20},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=palette["text"], size=12),
+        font={"color": palette["text"], "size": 12},
         xaxis_title="تاریخ",
         yaxis_title="قیمت تعدیل‌شده",
         hovermode="x unified",
@@ -957,13 +1203,13 @@ def update_sectors_chart(init_tick, n_clicks, hero_clicks):
             textposition="inside",
             textinfo="percent+label",
             pull=[0.04] * len(df),
-            marker=dict(line=dict(color=palette["ink"], width=1)),
+            marker={"line": {"color": palette["ink"], "width": 1}},
         )
         fig.update_layout(
-            margin=dict(l=0, r=0, t=50, b=10),
+            margin={"l": 0, "r": 0, "t": 50, "b": 10},
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=palette["text"]),
+            font={"color": palette["text"]},
         )
         return fig
     except Exception:
@@ -1010,6 +1256,40 @@ def update_top_companies_table(init_tick, n_clicks, hero_clicks):
         return table
     except Exception as e:
         return html.P(f"خطا در بارگذاری جدول: {str(e)}", className="text-danger")
+
+
+@app.callback(
+    Output("table-row-chart", "figure"),
+    [Input("init-trigger", "n_intervals"), Input("update-btn", "n_clicks"), Input("hero-update-btn", "n_clicks")],
+)
+def update_table_row_chart(init_tick, n_clicks, hero_clicks):
+    """Bar chart showing row distribution across top tables."""
+    try:
+        counts = get_table_counts(limit=8)
+        if not counts:
+            return go.Figure()
+        names, values = zip(*counts)  # noqa: B905
+        fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=list(names),
+                    y=list(values),
+                    marker_color="#00d2ff",
+                    name="row_count",
+                )
+            ]
+        )
+        fig.update_layout(
+            margin={"l": 20, "r": 10, "t": 40, "b": 40},
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font={"color": palette["text"], "size": 12},
+            title="توزیع ردیف‌ها بین جداول اصلی",
+        )
+        fig.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,0.06)")
+        return fig
+    except Exception:
+        return go.Figure()
 
 
 @app.callback(
@@ -1064,7 +1344,7 @@ def render_table_viewer(table_name, filter_text, limit, init_tick, n_clicks, her
 
         rows = []
         for _, row in df.iterrows():
-            rows.append(html.Tr([html.Td(to_persian_numbers(val) if isinstance(val, (int, float)) else val) for val in row]))
+            rows.append(html.Tr([html.Td(to_persian_numbers(val) if isinstance(val, int | float) else val) for val in row]))
 
         table = dbc.Table(
             [
@@ -1173,7 +1453,18 @@ def handle_actions(update_clicks, hero_update_clicks, status_clicks, hero_status
             return dbc.Alert(f"خطا در دریافت وضعیت: {e}", color="danger", className="mb-0")
 
     if button_id == "backup-btn":
-        return dbc.Alert("تهیه نسخه پشتیبان به‌زودی اضافه می‌شود.", color="secondary", className="mb-0")
+        try:
+            target = create_db_backup()
+            return dbc.Alert(
+                [
+                    html.H6("نسخه پشتیبان ایجاد شد"),
+                    html.P(f"مسیر فایل: {target}"),
+                ],
+                color="success",
+                className="mb-0",
+            )
+        except Exception as e:
+            return dbc.Alert(f"خطا در تهیه نسخه پشتیبان: {e}", color="danger", className="mb-0")
 
     return ""
 
@@ -1223,8 +1514,20 @@ def handle_cli_commands(n_clicks, command, table, file_path, sector_id, ticker, 
     )
 
 
+@app.callback(
+    Output("log-viewer", "children"),
+    [Input("init-trigger", "n_intervals"), Input("log-refresh-btn", "n_clicks")],
+    State("log-filter-text", "value"),
+)
+def refresh_support_logs(init_tick, refresh_clicks, filter_text):
+    """Refresh support log view with optional filter."""
+    logs = read_support_logs(filter_text=filter_text or "", limit=300)
+    return logs
+
+
 if __name__ == "__main__":
+    dash_port = os.getenv("DASH_PORT", "8051")
     print("🚀 Starting GravityTseHisPrice Dashboard...")
-    print("🌐 Open: http://127.0.0.1:8050/")
-    print("⌨️  Press Ctrl+C to stop\n")
-    app.run(debug=True, host="0.0.0.0", port=8050)
+    print(f"🌐 Open: http://127.0.0.1:{dash_port}/")
+    print("✋  Press Ctrl+C to stop\n")
+    app.run(debug=True, host="0.0.0.0", port=dash_port)

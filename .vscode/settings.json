@@ -18,6 +18,10 @@
     "--cov-report=html",
     "--cov-fail-under=70"
   ],
+  "python.analysis.extraPaths": [
+    "services/data_ingestion",
+    "services/data_ingestion/src"
+  ],
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": true,
   "files.exclude": {
