@@ -68,8 +68,7 @@ tests/
 │
 ├── benchmarks/                   # Performance benchmarks
 │   ├── benchmark_momentum_indicators.py
-│   ├── benchmark_new_indicators.py
-│   └── benchmark_volume_day3.py
+│   └── benchmark_new_indicators.py
 │
 ├── archived/                     # Legacy and experimental tests
 │   ├── test_patterns_comprehensive.py
@@ -84,10 +83,8 @@ tests/
 │   ├── test_new_trend_indicators.py
 │   ├── test_fibonacci_tools.py
 │   ├── test_fibonacci_tools_comprehensive.py
-│   ├── test_volume_day3.py
 │   ├── test_volume_indicators_comprehensive.py
 │   ├── validate_momentum_indicators.py
-│   ├── validate_volume_day3.py
 │   ├── mathematical_validation.py
 │   └── test_cycle_fix.txt.bak
 │
@@ -267,12 +264,12 @@ Current Status: **11.71%** (1,948 of 16,611 lines)
 6. **Benchmarks**: Moved to `tests/benchmarks/`
    - `benchmark_momentum_indicators.py`
    - `benchmark_new_indicators.py`
-   - `benchmark_volume_day3.py`
 
 7. **Legacy Files**: Moved to `tests/archived/`
-   - 14 older test files
-   - 3 validation scripts
+   - 13 older test files
+   - 2 validation scripts
    - 1 backup file
+   - *Note: Tests for deleted modules (volume_day3) removed on 2025-12-26*
 
 ### What Stayed
 - `tests/unit/` - Already organized, kept as-is (28 test files)

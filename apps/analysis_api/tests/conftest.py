@@ -1,11 +1,19 @@
 """
-Test Configuration and Fixtures
+Test Configuration and Fixtures - Phase 4 Enhanced
 
 Global pytest configuration and shared fixtures.
+Includes:
+- Mock services and containers
+- Database fixtures
+- Cache fixtures
+- Test data factories
+- Async test support
+- Security test utilities
+- Performance benchmarking
 
 Author: Gravity Tech Team
-Date: December 4, 2025
-Version: 1.0.0
+Date: December 27, 2025
+Version: 3.0.0 (Phase 4 Testing)
 License: MIT
 """
 
@@ -14,15 +22,32 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Generator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import structlog
 
 # Add src to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
+logger = structlog.get_logger()
+
+# ============================================================================
+# Dependency Injection & Container Fixtures
+# ============================================================================
+
+from gravity_tech.config.unified_settings import Environment, Settings, reset_settings
 from gravity_tech.core.domain.entities import Candle  # noqa: E402
+from gravity_tech.infrastructure.adapters.memory_cache import MemoryCacheAdapter
+from gravity_tech.infrastructure.container import (
+    ServiceContainer,
+    create_test_container,
+    reset_global_container,
+)
+from gravity_tech.infrastructure.contracts import CacheBackend, DatabaseBackend
 
 # ============================================================================
 # مسیر پایگاه داده بازار ایران (TSE)
@@ -523,6 +548,139 @@ def mock_cache_manager(monkeypatch):
         mock_cache._cache_dict.clear()
         return True
 
+
+# ============================================================================
+# New: Mock Services & Containers (Phase 2)
+# ============================================================================
+
+@pytest.fixture
+def mock_cache() -> AsyncMock:
+    """
+    Provide async mock cache
+    
+    Use for: Unit tests where cache is a dependency
+    """
+    cache = AsyncMock(spec=CacheBackend)
+    cache.initialize = AsyncMock()
+    cache.get = AsyncMock(return_value=None)
+    cache.set = AsyncMock()
+    cache.delete = AsyncMock()
+    cache.exists = AsyncMock(return_value=False)
+    cache.clear = AsyncMock()
+    cache.close = AsyncMock()
+    return cache
+
+
+@pytest.fixture
+def memory_cache() -> MemoryCacheAdapter:
+    """
+    Provide real in-memory cache
+    
+    Use for: Integration tests, cache behavior testing
+    """
+    return MemoryCacheAdapter(default_ttl=60)
+
+
+@pytest.fixture
+def mock_database() -> AsyncMock:
+    """
+    Provide async mock database
+    
+    Use for: Unit tests where database is a dependency
+    """
+    db = AsyncMock(spec=DatabaseBackend)
+    db.initialize = AsyncMock()
+    db.execute = AsyncMock(return_value=0)
+    db.fetch_one = AsyncMock(return_value=None)
+    db.fetch_all = AsyncMock(return_value=[])
+    db.close = AsyncMock()
+    return db
+
+
+@pytest.fixture
+def test_container(memory_cache: MemoryCacheAdapter, mock_database: AsyncMock) -> ServiceContainer:
+    """
+    Provide test container with mocks
+    
+    Use for: Service layer tests
+    
+    Example:
+        def test_analysis_service(test_container):
+            service = test_container.get("analysis_service")
+            result = service.analyze(candles)
+            assert result is not None
+    """
+    container = create_test_container()
+    
+    # Register mocked/test services
+    container.register("cache", lambda _: memory_cache, singleton=True)
+    container.register("database", lambda _: mock_database, singleton=True)
+    
+    return container
+
+
+@pytest.fixture
+def isolated_container() -> Generator[ServiceContainer, None, None]:
+    """
+    Provide fresh container for each test
+    
+    Use for: Tests that need complete isolation
+    """
+    container = create_test_container()
+    yield container
+    # Cleanup
+    container.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """
+    Reset global state before each test
+    
+    Ensures test isolation
+    """
+    yield
+    
+    # Cleanup after test
+    reset_global_container()
+    reset_settings()
+    logger.debug("test_global_state_reset")
+
+
+@pytest.fixture
+def sample_candles_new() -> list:
+    """Provide sample OHLCV candles for testing"""
+    return [
+        {
+            "timestamp": 1700000000 + i * 3600,
+            "open": 100.0 + i * 0.1,
+            "high": 102.0 + i * 0.1,
+            "low": 99.0 + i * 0.1,
+            "close": 101.0 + i * 0.1,
+            "volume": 1000000 + i * 1000,
+        }
+        for i in range(100)
+    ]
+
+
+# ============================================================================
+# Marker Registration
+# ============================================================================
+
+def pytest_configure(config):
+    """Register custom markers"""
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests"
+    )
+    config.addinivalue_line(
+        "markers", "unit: marks tests as unit tests"
+    )
+    config.addinivalue_line(
+        "markers", "api: marks tests as API endpoint tests"
+    )
     async def mock_initialize():
         return None
 
@@ -545,4 +703,164 @@ def mock_cache_manager(monkeypatch):
 
     return mock_cache
 
+
+# ============================================================================
+# PHASE 4: TEST DATA FACTORIES
+# ============================================================================
+
+class CandleFactory:
+    """Factory for creating test candles"""
+    
+    @staticmethod
+    def create(
+        timestamp = None,
+        open_price: float = 100.0,
+        high_price: float = 110.0,
+        low_price: float = 90.0,
+        close_price: float = 105.0,
+        volume: float = 1000.0,
+    ) -> Candle:
+        """Create a single candle"""
+        if timestamp is None:
+            timestamp = datetime.now()
+        
+        return Candle(
+            timestamp=timestamp,
+            open=open_price,
+            high=high_price,
+            low=low_price,
+            close=close_price,
+            volume=volume,
+        )
+    
+    @staticmethod
+    def create_series(
+        count: int = 100,
+        start_date = None,
+        trend: str = "neutral"  # "up", "down", "neutral"
+    ) -> list:
+        """Create a series of candles"""
+        if start_date is None:
+            start_date = datetime.now() - timedelta(days=count)
+        
+        candles = []
+        price = 100.0
+        
+        for i in range(count):
+            timestamp = start_date + timedelta(days=i)
+            
+            # Apply trend
+            if trend == "up":
+                price += 0.5
+            elif trend == "down":
+                price -= 0.5
+            
+            candle = CandleFactory.create(
+                timestamp=timestamp,
+                open_price=price,
+                close_price=price + 1.0,
+                high_price=price + 2.0,
+                low_price=price - 1.0,
+                volume=1000 + i * 10,
+            )
+            candles.append(candle)
+        
+        return candles
+
+
+@pytest.fixture
+def candle_factory() -> CandleFactory:
+    """Provide candle factory for Phase 4 tests"""
+    return CandleFactory()
+
+
+@pytest.fixture
+def sample_candles() -> list:
+    """Provide sample candles for testing"""
+    return CandleFactory.create_series(100)
+
+
+@pytest.fixture
+def sample_uptrend_candles() -> list:
+    """Provide uptrend candles"""
+    return CandleFactory.create_series(50, trend="up")
+
+
+@pytest.fixture
+def sample_downtrend_candles() -> list:
+    """Provide downtrend candles"""
+    return CandleFactory.create_series(50, trend="down")
+
+
+# ============================================================================
+# PHASE 4: REQUEST/RESPONSE BUILDERS
+# ============================================================================
+
+class RequestBuilder:
+    """Builder for test requests"""
+    
+    @staticmethod
+    def analysis_request(
+        symbol: str = "BTCUSDT",
+        candles = None,
+    ) -> dict:
+        """Build analysis request"""
+        if candles is None:
+            candles = CandleFactory.create_series(50)
+        
+        return {
+            "symbol": symbol,
+            "candles": candles,
+        }
+
+
+class ResponseBuilder:
+    """Builder for test responses"""
+    
+    @staticmethod
+    def analysis_response(
+        signal: str = "BUY",
+        confidence: float = 75.0,
+        indicators = None,
+    ) -> dict:
+        """Build analysis response"""
+        if indicators is None:
+            indicators = {
+                "sma_20": 100.5,
+                "sma_50": 100.2,
+                "rsi": 65.0,
+            }
+        
+        return {
+            "signal": signal,
+            "confidence": confidence,
+            "indicators": indicators,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+
+@pytest.fixture
+def request_builder() -> RequestBuilder:
+    """Provide request builder"""
+    return RequestBuilder()
+
+
+@pytest.fixture
+def response_builder() -> ResponseBuilder:
+    """Provide response builder"""
+    return ResponseBuilder()
+
+
+# ============================================================================
+# PHASE 4: PYTEST HOOKS & MARKERS
+# ============================================================================
+
+def pytest_configure(config):
+    """Configure pytest with Phase 4 markers"""
+    config.addinivalue_line("markers", "unit: unit tests")
+    config.addinivalue_line("markers", "integration: integration tests")
+    config.addinivalue_line("markers", "e2e: end-to-end tests")
+    config.addinivalue_line("markers", "security: security tests")
+    config.addinivalue_line("markers", "slow: slow tests (optional skip)")
+    config.addinivalue_line("markers", "asyncio: async tests")
 

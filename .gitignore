@@ -1,6 +1,20 @@
 # ==============================================================================
 # Gravity Technical Analysis - .gitignore
 # ==============================================================================
+# SECURITY: Never commit credentials, secrets, or sensitive files
+# ==============================================================================
+
+# ⚠️ SECURITY CRITICAL - Sensitive Files
+database_connection_info.txt
+*.credentials
+*.secrets
+.env.production
+.env.prod
+.env.local
+.env.*.local
+credentials.json
+api_keys.txt
+secrets.txt
 
 # ==============================================================================
 # Python
@@ -354,21 +368,25 @@ cache/
 *.cache
 
 # ==============================================================================
-# Development & Reports
+# Temporary & Experimental Files
 # ==============================================================================
-# Development reports
-DAY_*.md
-CODE_REVIEW_*.md
-CLEANUP_REPORT.md
-*_REPORT.md
-PROGRESS_*.md
+# Temporary directories
+temp_*/
+temp_gravity_*/
+tmp*/
+.temp/
 
-# Deprecated files
-deprecated/
-old/
-archive/
-backup/
-_backup/
+# Temporary reports
+batch*.txt
+status.txt
+gravity_full_prompt.txt
+*.tmp
+report_*.txt
+debug_*.txt
+
+# Development artifacts
+.debug
+debug/
 
 # Benchmarks
 benchmark_results/

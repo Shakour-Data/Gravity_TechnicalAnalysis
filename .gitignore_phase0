@@ -1,0 +1,90 @@
+# Gravity Technical Analysis - Phase 0 Security Fixes
+
+## Sensitive Files - MUST NEVER COMMIT
+database_connection_info.txt
+*.credentials
+*.secrets
+.env.production
+.env.prod
+.env.local
+
+## Temporary Files
+temp_*
+temp_gravity_*
+batch*.txt
+status.txt
+gravity_full_prompt.txt
+*.tmp
+
+## Build & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+## Virtual Environments
+venv/
+ENV/
+env/
+.venv
+.env
+
+## IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+
+## Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+## Database
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/TechAnalysis.db
+
+## Logs
+*.log
+logs/
+
+## ML Models (keep only in local)
+ml_models/*.pkl
+ml_models/*.joblib
+*.h5
+*.pt
+*.pth
+
+## Docker
+docker-compose.override.yml
+
+## Git
+.git/
