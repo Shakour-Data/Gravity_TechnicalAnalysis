@@ -1,6 +1,21 @@
 # cloudbuild.yaml - include a step to generate Procfile using a dedicated script
 # Replaces fragile inline bash one-liners with a multi-line script for readability and maintainability
 steps:
+  - id: "clone"
+    name: "gcr.io/cloud-builders/git"
+    args: ["clone", "https://github.com/Shakour-Data/Gravity_TechnicalAnalysis", "."]
+  - id: "create-env"
+    name: "ubuntu"
+    entrypoint: "bash"
+    args:
+      - -c
+      - "echo '.env file created with 2 lines' > .env"
+  - id: "create-python-version"
+    name: "ubuntu"
+    entrypoint: "bash"
+    args:
+      - -c
+      - "echo '3.12' > .python-version"
   - id: "create-procfile"
     name: "ubuntu"
     entrypoint: "bash"
