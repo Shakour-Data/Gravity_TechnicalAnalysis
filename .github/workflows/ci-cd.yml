@@ -125,6 +125,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Create Procfile
+        run: |
+          chmod +x scripts/create-procfile.sh
+          ./scripts/create-procfile.sh
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
