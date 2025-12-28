@@ -190,6 +190,8 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "accuracy: marks tests as accuracy validation tests",
+    "fibonacci: marks tests related to fibonacci analysis",
+    "backtesting: marks tests related to backtesting workflows",
 ]
 
 [tool.coverage.run]

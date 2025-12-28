@@ -17,7 +17,8 @@ License: MIT
 
 import numpy as np
 import pytest
-import torch
+
+torch = pytest.importorskip("torch")
 
 
 class TestLSTMModel:
