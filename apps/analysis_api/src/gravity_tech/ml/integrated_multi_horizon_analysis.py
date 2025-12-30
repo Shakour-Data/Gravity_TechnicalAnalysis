@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+
 from gravity_tech.ml.volume_dimension_matrix import (
     InteractionType,
     VolumeDimensionInteraction,
@@ -41,33 +42,35 @@ from gravity_tech.models.schemas import (
 
 class MarketSignal(Enum):
     """سیگنال نهایی بازار"""
-    VERY_BULLISH = "VERY_BULLISH"           # بسیار صعودی
-    BULLISH = "BULLISH"                     # صعودی
-    SLIGHTLY_BULLISH = "SLIGHTLY_BULLISH"   # کمی صعودی
-    NEUTRAL = "NEUTRAL"                     # خنثی
-    SLIGHTLY_BEARISH = "SLIGHTLY_BEARISH"   # کمی نزولی
-    BEARISH = "BEARISH"                     # نزولی
-    VERY_BEARISH = "VERY_BEARISH"           # بسیار نزولی
+
+    VERY_BULLISH = "VERY_BULLISH"  # بسیار صعودی
+    BULLISH = "BULLISH"  # صعودی
+    SLIGHTLY_BULLISH = "SLIGHTLY_BULLISH"  # کمی صعودی
+    NEUTRAL = "NEUTRAL"  # خنثی
+    SLIGHTLY_BEARISH = "SLIGHTLY_BEARISH"  # کمی نزولی
+    BEARISH = "BEARISH"  # نزولی
+    VERY_BEARISH = "VERY_BEARISH"  # بسیار نزولی
 
 
 @dataclass
 class DimensionAnalysis:
     """تحلیل یک dimension شامل base و adjusted scores"""
+
     name: str
 
     # امتیاز پایه (قبل از volume adjustment)
-    base_score: float           # [-1, +1]
-    base_confidence: float      # [0, 1]
+    base_score: float  # [-1, +1]
+    base_confidence: float  # [0, 1]
 
     # volume interaction
     volume_interaction: VolumeDimensionInteraction
 
     # امتیاز تعدیل شده (بعد از volume adjustment)
-    adjusted_score: float       # [-1, +1]
+    adjusted_score: float  # [-1, +1]
     adjusted_confidence: float  # [0, 1]
 
     # وزن در ترکیب نهایی
-    weight: float               # [0, 1]
+    weight: float  # [0, 1]
 
     # توضیحات
     signal: MarketSignal
@@ -82,26 +85,26 @@ class IntegratedAnalysis:
     dimensions: dict[str, DimensionAnalysis]
 
     # امتیازهای کلی
-    overall_base_score: float           # قبل از volume
-    overall_adjusted_score: float       # بعد از volume
+    overall_base_score: float  # قبل از volume
+    overall_adjusted_score: float  # بعد از volume
     overall_confidence: float
 
     # سیگنال نهایی
     final_signal: MarketSignal
-    signal_strength: float              # [0, 1] - قدرت سیگنال
+    signal_strength: float  # [0, 1] - قدرت سیگنال
 
     # توافق بین dimensions
-    dimensions_agreement: float         # [0, 1]
-    conflicting_signals: list[str]      # dimensions مخالف
+    dimensions_agreement: float  # [0, 1]
+    conflicting_signals: list[str]  # dimensions مخالف
 
     # توصیه
     recommendation: str
-    risk_level: str                     # LOW, MEDIUM, HIGH
+    risk_level: str  # LOW, MEDIUM, HIGH
 
     # اطلاعات تکمیلی
-    dominant_dimension: str             # قوی‌ترین dimension
-    weakest_dimension: str              # ضعیف‌ترین dimension
-    volume_impact: float                # [-1, +1] - تاثیر کلی حجم
+    dominant_dimension: str  # قوی‌ترین dimension
+    weakest_dimension: str  # ضعیف‌ترین dimension
+    volume_impact: float  # [-1, +1] - تاثیر کلی حجم
 
 
 class IntegratedMultiHorizonAnalyzer:
@@ -118,7 +121,7 @@ class IntegratedMultiHorizonAnalyzer:
         "Momentum": 0.25,
         "Volatility": 0.15,
         "Cycle": 0.20,
-        "SupportResistance": 0.10
+        "SupportResistance": 0.10,
     }
 
     def __init__(self, candles: list[Candle]):
@@ -135,7 +138,7 @@ class IntegratedMultiHorizonAnalyzer:
         momentum_score: MomentumScore,
         volatility_score: VolatilityScore,
         cycle_score: CycleScore,
-        sr_score: SupportResistanceScore
+        sr_score: SupportResistanceScore,
     ) -> IntegratedAnalysis:
         """
         تحلیل یکپارچه با volume adjustments
@@ -150,7 +153,7 @@ class IntegratedMultiHorizonAnalyzer:
             momentum_score=momentum_score,
             volatility_score=volatility_score,
             cycle_score=cycle_score,
-            sr_score=sr_score
+            sr_score=sr_score,
         )
 
         # ═══ گام 2: تحلیل هر dimension ═══
@@ -159,32 +162,32 @@ class IntegratedMultiHorizonAnalyzer:
                 name="Trend",
                 base_score=trend_score.score,
                 base_confidence=trend_score.confidence,
-                interaction=interactions["Trend"]
+                interaction=interactions["Trend"],
             ),
             "Momentum": self._analyze_dimension(
                 name="Momentum",
                 base_score=momentum_score.score,
                 base_confidence=momentum_score.confidence,
-                interaction=interactions["Momentum"]
+                interaction=interactions["Momentum"],
             ),
             "Volatility": self._analyze_dimension(
                 name="Volatility",
                 base_score=volatility_score.score,
                 base_confidence=volatility_score.confidence,
-                interaction=interactions["Volatility"]
+                interaction=interactions["Volatility"],
             ),
             "Cycle": self._analyze_dimension(
                 name="Cycle",
                 base_score=cycle_score.score,
                 base_confidence=cycle_score.confidence,
-                interaction=interactions["Cycle"]
+                interaction=interactions["Cycle"],
             ),
             "SupportResistance": self._analyze_dimension(
                 name="SupportResistance",
                 base_score=sr_score.score,
                 base_confidence=sr_score.confidence,
-                interaction=interactions["SupportResistance"]
-            )
+                interaction=interactions["SupportResistance"],
+            ),
         }
 
         # ═══ گام 3: محاسبه وزن‌های داینامیک ═══
@@ -195,14 +198,10 @@ class IntegratedMultiHorizonAnalyzer:
             dimensions_analysis[dim_name].weight = weight
 
         # ═══ گام 4: محاسبه امتیاز کلی ═══
-        overall_base_score = self._calculate_overall_score(
-            dimensions_analysis,
-            use_adjusted=False
-        )
+        overall_base_score = self._calculate_overall_score(dimensions_analysis, use_adjusted=False)
 
         overall_adjusted_score = self._calculate_overall_score(
-            dimensions_analysis,
-            use_adjusted=True
+            dimensions_analysis, use_adjusted=True
         )
 
         # ═══ گام 5: محاسبه توافق بین dimensions ═══
@@ -210,25 +209,21 @@ class IntegratedMultiHorizonAnalyzer:
 
         # ═══ گام 6: تعیین سیگنال نهایی ═══
         final_signal, signal_strength = self._determine_final_signal(
-            overall_adjusted_score,
-            agreement
+            overall_adjusted_score, agreement
         )
 
         # ═══ گام 7: محاسبه confidence کلی ═══
-        overall_confidence = self._calculate_overall_confidence(
-            dimensions_analysis,
-            agreement
-        )
+        overall_confidence = self._calculate_overall_confidence(dimensions_analysis, agreement)
 
         # ═══ گام 8: تعیین dimension غالب و ضعیف ═══
         dominant = max(
             dimensions_analysis.items(),
-            key=lambda x: abs(x[1].adjusted_score) * x[1].adjusted_confidence
+            key=lambda x: abs(x[1].adjusted_score) * x[1].adjusted_confidence,
         )[0]
 
         weakest = min(
             dimensions_analysis.items(),
-            key=lambda x: abs(x[1].adjusted_score) * x[1].adjusted_confidence
+            key=lambda x: abs(x[1].adjusted_score) * x[1].adjusted_confidence,
         )[0]
 
         # ═══ گام 9: محاسبه تاثیر کلی حجم ═══
@@ -241,14 +236,12 @@ class IntegratedMultiHorizonAnalyzer:
             confidence=overall_confidence,
             agreement=agreement,
             conflicting=conflicting,
-            volume_impact=volume_impact
+            volume_impact=volume_impact,
         )
 
         # ═══ گام 11: تعیین سطح ریسک ═══
         risk_level = self._determine_risk_level(
-            agreement=agreement,
-            confidence=overall_confidence,
-            conflicting=conflicting
+            agreement=agreement, confidence=overall_confidence, conflicting=conflicting
         )
 
         return IntegratedAnalysis(
@@ -264,7 +257,7 @@ class IntegratedMultiHorizonAnalyzer:
             risk_level=risk_level,
             dominant_dimension=dominant,
             weakest_dimension=weakest,
-            volume_impact=volume_impact
+            volume_impact=volume_impact,
         )
 
     def _analyze_dimension(
@@ -272,7 +265,7 @@ class IntegratedMultiHorizonAnalyzer:
         name: str,
         base_score: float,
         base_confidence: float,
-        interaction: VolumeDimensionInteraction
+        interaction: VolumeDimensionInteraction,
     ) -> DimensionAnalysis:
         """
         تحلیل یک dimension با volume adjustment
@@ -303,10 +296,7 @@ class IntegratedMultiHorizonAnalyzer:
 
         # توضیحات
         explanation = self._generate_dimension_explanation(
-            name=name,
-            base_score=base_score,
-            adjusted_score=adjusted_score,
-            interaction=interaction
+            name=name, base_score=base_score, adjusted_score=adjusted_score, interaction=interaction
         )
 
         return DimensionAnalysis(
@@ -318,12 +308,11 @@ class IntegratedMultiHorizonAnalyzer:
             adjusted_confidence=adjusted_confidence,
             weight=0.0,  # خواهد شد با dynamic weights
             signal=signal,
-            explanation=explanation
+            explanation=explanation,
         )
 
     def _calculate_dynamic_weights(
-        self,
-        dimensions: dict[str, DimensionAnalysis]
+        self, dimensions: dict[str, DimensionAnalysis]
     ) -> dict[str, float]:
         """
         محاسبه وزن‌های داینامیک بر اساس confidence هر dimension
@@ -351,9 +340,7 @@ class IntegratedMultiHorizonAnalyzer:
             return self.BASE_WEIGHTS.copy()
 
     def _calculate_overall_score(
-        self,
-        dimensions: dict[str, DimensionAnalysis],
-        use_adjusted: bool = True
+        self, dimensions: dict[str, DimensionAnalysis], use_adjusted: bool = True
     ) -> float:
         """
         محاسبه امتیاز کلی (weighted average)
@@ -379,8 +366,7 @@ class IntegratedMultiHorizonAnalyzer:
             return 0.0
 
     def _calculate_agreement(
-        self,
-        dimensions: dict[str, DimensionAnalysis]
+        self, dimensions: dict[str, DimensionAnalysis]
     ) -> tuple[float, list[str]]:
         """
         محاسبه میزان توافق بین dimensions
@@ -416,9 +402,7 @@ class IntegratedMultiHorizonAnalyzer:
         return agreement, conflicting
 
     def _determine_final_signal(
-        self,
-        overall_score: float,
-        agreement: float
+        self, overall_score: float, agreement: float
     ) -> tuple[MarketSignal, float]:
         """
         تعیین سیگنال نهایی و قدرت آن
@@ -453,9 +437,7 @@ class IntegratedMultiHorizonAnalyzer:
             return MarketSignal.VERY_BEARISH
 
     def _calculate_overall_confidence(
-        self,
-        dimensions: dict[str, DimensionAnalysis],
-        agreement: float
+        self, dimensions: dict[str, DimensionAnalysis], agreement: float
     ) -> float:
         """
         محاسبه confidence کلی
@@ -476,7 +458,7 @@ class IntegratedMultiHorizonAnalyzer:
         name: str,
         base_score: float,
         adjusted_score: float,
-        interaction: VolumeDimensionInteraction
+        interaction: VolumeDimensionInteraction,
     ) -> str:
         """تولید توضیحات برای یک dimension"""
 
@@ -485,7 +467,7 @@ class IntegratedMultiHorizonAnalyzer:
             "Momentum": "مومنتوم",
             "Volatility": "نوسان",
             "Cycle": "سیکل",
-            "SupportResistance": "حمایت/مقاومت"
+            "SupportResistance": "حمایت/مقاومت",
         }
 
         base_signal = self._score_to_signal(base_score)
@@ -514,7 +496,7 @@ class IntegratedMultiHorizonAnalyzer:
         confidence: float,
         agreement: float,
         conflicting: list[str],
-        volume_impact: float
+        volume_impact: float,
     ) -> str:
         """تولید توصیه نهایی"""
 
@@ -556,9 +538,7 @@ class IntegratedMultiHorizonAnalyzer:
 
         # 2. هشدار اگر توافق پایین است
         if agreement < 0.5:
-            recommendations.append(
-                f"⚠️ توافق پایین ({agreement:.0%}) - سیگنال‌های متناقض"
-            )
+            recommendations.append(f"⚠️ توافق پایین ({agreement:.0%}) - سیگنال‌های متناقض")
 
         # 3. هشدار اگر dimensions مخالف دارد
         if conflicting:
@@ -567,23 +547,17 @@ class IntegratedMultiHorizonAnalyzer:
                 "Momentum": "مومنتوم",
                 "Volatility": "نوسان",
                 "Cycle": "سیکل",
-                "SupportResistance": "S/R"
+                "SupportResistance": "S/R",
             }
             conflicting_persian = [dim_names[d] for d in conflicting]
-            recommendations.append(
-                f"⚠️ تناقض در: {', '.join(conflicting_persian)}"
-            )
+            recommendations.append(f"⚠️ تناقض در: {', '.join(conflicting_persian)}")
 
         # 4. تاثیر حجم
         if abs(volume_impact) > 0.15:
             if volume_impact > 0:
-                recommendations.append(
-                    f"📊 حجم تقویت‌کننده (+{volume_impact:.2f})"
-                )
+                recommendations.append(f"📊 حجم تقویت‌کننده (+{volume_impact:.2f})")
             else:
-                recommendations.append(
-                    f"📊 حجم تضعیف‌کننده ({volume_impact:.2f})"
-                )
+                recommendations.append(f"📊 حجم تضعیف‌کننده ({volume_impact:.2f})")
 
         # 5. توصیه مدیریت ریسک
         if confidence < 0.6:
@@ -592,10 +566,7 @@ class IntegratedMultiHorizonAnalyzer:
         return " | ".join(recommendations)
 
     def _determine_risk_level(
-        self,
-        agreement: float,
-        confidence: float,
-        conflicting: list[str]
+        self, agreement: float, confidence: float, conflicting: list[str]
     ) -> str:
         """تعیین سطح ریسک"""
 
@@ -618,6 +589,7 @@ class IntegratedMultiHorizonAnalyzer:
 # Example Usage
 # ═══════════════════════════════════════════════════════════════════
 
+
 def example_integrated_analysis():
     """
     مثال استفاده از تحلیل یکپارچه
@@ -637,52 +609,36 @@ def example_integrated_analysis():
         low_price = min(open_price, close_price) - random.uniform(0, 200)
         volume = random.uniform(1000, 2000)
 
-        candles.append(Candle(
-            open=open_price,
-            high=high_price,
-            low=low_price,
-            close=close_price,
-            volume=volume,
-            timestamp=1700000000 + i * 3600
-        ))
+        candles.append(
+            Candle(
+                open=open_price,
+                high=high_price,
+                low=low_price,
+                close=close_price,
+                volume=volume,
+                timestamp=1700000000 + i * 3600,
+            )
+        )
 
         base_price = close_price
 
     # شبیه‌سازی scores
-    trend_score = TrendScore(
-        score=0.75,
-        confidence=0.85,
-        signal="BULLISH",
-        strength=0.80
-    )
+    trend_score = TrendScore(score=0.75, confidence=0.85, signal="BULLISH", strength=0.80)
 
-    momentum_score = MomentumScore(
-        score=0.60,
-        confidence=0.75,
-        signal="BULLISH",
-        strength=0.65
-    )
+    momentum_score = MomentumScore(score=0.60, confidence=0.75, signal="BULLISH", strength=0.65)
 
     volatility_score = VolatilityScore(
-        score=0.40,
-        confidence=0.70,
-        signal="EXPANDING",
-        strength=0.50
+        score=0.40, confidence=0.70, signal="EXPANDING", strength=0.50
     )
 
-    cycle_score = CycleScore(
-        score=0.55,
-        confidence=0.72,
-        phase="MARKUP",
-        strength=0.60
-    )
+    cycle_score = CycleScore(score=0.55, confidence=0.72, phase="MARKUP", strength=0.60)
 
     sr_score = SupportResistanceScore(
         score=0.65,
         confidence=0.78,
         signal="NEAR_SUPPORT",
         bounce_probability=0.72,
-        breakout_probability=0.28
+        breakout_probability=0.28,
     )
 
     # تحلیل یکپارچه
@@ -693,7 +649,7 @@ def example_integrated_analysis():
         momentum_score=momentum_score,
         volatility_score=volatility_score,
         cycle_score=cycle_score,
-        sr_score=sr_score
+        sr_score=sr_score,
     )
 
     # نمایش نتایج
