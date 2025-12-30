@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
 
@@ -32,14 +33,14 @@ class MultiHorizonVolatilityFeatureExtractor:
 
     # اندیکاتورهای نوسان
     VOLATILITY_INDICATORS = [
-        'atr',
-        'bollinger_bands',
-        'keltner_channel',
-        'donchian_channel',
-        'standard_deviation',
-        'historical_volatility',
-        'atr_percentage',
-        'chaikin_volatility'
+        "atr",
+        "bollinger_bands",
+        "keltner_channel",
+        "donchian_channel",
+        "standard_deviation",
+        "historical_volatility",
+        "atr_percentage",
+        "chaikin_volatility",
     ]
 
     def __init__(
@@ -67,16 +68,13 @@ class MultiHorizonVolatilityFeatureExtractor:
             self.horizons = []
             for h in horizons:
                 if isinstance(h, str):
-                    self.horizons.append(int(h.replace('d', '')))
+                    self.horizons.append(int(h.replace("d", "")))
                 else:
                     self.horizons.append(int(h))
 
         self.max_horizon = max(self.horizons)
 
-    def extract_volatility_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_volatility_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         استخراج ویژگی‌های نوسان
 
@@ -99,18 +97,23 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             atr_result = VolatilityIndicators.atr(candles, period=14)
 
-            features['atr_signal'] = atr_result.signal.get_score() / 2.0  # نرمال به [-1, 1]
-            features['atr_confidence'] = atr_result.confidence
-            features['atr_weighted'] = features['atr_signal'] * features['atr_confidence']
+            features["atr_signal"] = atr_result.signal.get_score() / 2.0  # نرمال به [-1, 1]
+            features["atr_confidence"] = atr_result.confidence
+            features["atr_weighted"] = features["atr_signal"] * features["atr_confidence"]
             # Note: normalized and percentile not available in IndicatorResult
-            features['atr_normalized'] = 0.0  # Placeholder
-            features['atr_percentile'] = 50.0  # Placeholder
+            features["atr_normalized"] = 0.0  # Placeholder
+            features["atr_percentile"] = 50.0  # Placeholder
         except Exception as e:
             logger.warning("ATR calculation error", exc_info=e)
-            features.update({
-                'atr_signal': 0.0, 'atr_confidence': 0.5,
-                'atr_weighted': 0.0, 'atr_normalized': 0.0, 'atr_percentile': 50.0
-            })
+            features.update(
+                {
+                    "atr_signal": 0.0,
+                    "atr_confidence": 0.5,
+                    "atr_weighted": 0.0,
+                    "atr_normalized": 0.0,
+                    "atr_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 2. Bollinger Bands
@@ -118,19 +121,25 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             bb_result = VolatilityIndicators.bollinger_bands(candles, period=20)
 
-            features['bollinger_bands_signal'] = bb_result.signal.get_score() / 2.0
-            features['bollinger_bands_confidence'] = bb_result.confidence
-            features['bollinger_bands_weighted'] = features['bollinger_bands_signal'] * features['bollinger_bands_confidence']
+            features["bollinger_bands_signal"] = bb_result.signal.get_score() / 2.0
+            features["bollinger_bands_confidence"] = bb_result.confidence
+            features["bollinger_bands_weighted"] = (
+                features["bollinger_bands_signal"] * features["bollinger_bands_confidence"]
+            )
             # Note: normalized and percentile not available in IndicatorResult
-            features['bollinger_bands_normalized'] = 0.0  # Placeholder
-            features['bollinger_bands_percentile'] = 50.0  # Placeholder
+            features["bollinger_bands_normalized"] = 0.0  # Placeholder
+            features["bollinger_bands_percentile"] = 50.0  # Placeholder
         except Exception as e:
             logger.warning("Bollinger Bands calculation error", exc_info=e)
-            features.update({
-                'bollinger_bands_signal': 0.0, 'bollinger_bands_confidence': 0.5,
-                'bollinger_bands_weighted': 0.0, 'bollinger_bands_normalized': 0.0,
-                'bollinger_bands_percentile': 50.0
-            })
+            features.update(
+                {
+                    "bollinger_bands_signal": 0.0,
+                    "bollinger_bands_confidence": 0.5,
+                    "bollinger_bands_weighted": 0.0,
+                    "bollinger_bands_normalized": 0.0,
+                    "bollinger_bands_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 3. Keltner Channel
@@ -138,18 +147,24 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             keltner_result = VolatilityIndicators.keltner_channel(candles, period=20)
 
-            features['keltner_channel_signal'] = keltner_result.signal.get_score() / 2.0
-            features['keltner_channel_confidence'] = keltner_result.confidence
-            features['keltner_channel_weighted'] = features['keltner_channel_signal'] * features['keltner_channel_confidence']
-            features['keltner_channel_normalized'] = keltner_result.normalized
-            features['keltner_channel_percentile'] = keltner_result.percentile
+            features["keltner_channel_signal"] = keltner_result.signal.get_score() / 2.0
+            features["keltner_channel_confidence"] = keltner_result.confidence
+            features["keltner_channel_weighted"] = (
+                features["keltner_channel_signal"] * features["keltner_channel_confidence"]
+            )
+            features["keltner_channel_normalized"] = keltner_result.normalized
+            features["keltner_channel_percentile"] = keltner_result.percentile
         except Exception as e:
             logger.warning("Keltner Channel calculation error", exc_info=e)
-            features.update({
-                'keltner_channel_signal': 0.0, 'keltner_channel_confidence': 0.5,
-                'keltner_channel_weighted': 0.0, 'keltner_channel_normalized': 0.0,
-                'keltner_channel_percentile': 50.0
-            })
+            features.update(
+                {
+                    "keltner_channel_signal": 0.0,
+                    "keltner_channel_confidence": 0.5,
+                    "keltner_channel_weighted": 0.0,
+                    "keltner_channel_normalized": 0.0,
+                    "keltner_channel_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 4. Donchian Channel
@@ -157,18 +172,24 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             donchian_result = VolatilityIndicators.donchian_channel(candles, period=20)
 
-            features['donchian_channel_signal'] = donchian_result.signal.get_score() / 2.0
-            features['donchian_channel_confidence'] = donchian_result.confidence
-            features['donchian_channel_weighted'] = features['donchian_channel_signal'] * features['donchian_channel_confidence']
-            features['donchian_channel_normalized'] = donchian_result.normalized
-            features['donchian_channel_percentile'] = donchian_result.percentile
+            features["donchian_channel_signal"] = donchian_result.signal.get_score() / 2.0
+            features["donchian_channel_confidence"] = donchian_result.confidence
+            features["donchian_channel_weighted"] = (
+                features["donchian_channel_signal"] * features["donchian_channel_confidence"]
+            )
+            features["donchian_channel_normalized"] = donchian_result.normalized
+            features["donchian_channel_percentile"] = donchian_result.percentile
         except Exception as e:
             logger.warning("Donchian Channel calculation error", exc_info=e)
-            features.update({
-                'donchian_channel_signal': 0.0, 'donchian_channel_confidence': 0.5,
-                'donchian_channel_weighted': 0.0, 'donchian_channel_normalized': 0.0,
-                'donchian_channel_percentile': 50.0
-            })
+            features.update(
+                {
+                    "donchian_channel_signal": 0.0,
+                    "donchian_channel_confidence": 0.5,
+                    "donchian_channel_weighted": 0.0,
+                    "donchian_channel_normalized": 0.0,
+                    "donchian_channel_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 5. Standard Deviation
@@ -176,18 +197,24 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             std_result = VolatilityIndicators.standard_deviation(candles, period=20)
 
-            features['standard_deviation_signal'] = std_result.signal.get_score() / 2.0
-            features['standard_deviation_confidence'] = std_result.confidence
-            features['standard_deviation_weighted'] = features['standard_deviation_signal'] * features['standard_deviation_confidence']
-            features['standard_deviation_normalized'] = std_result.normalized
-            features['standard_deviation_percentile'] = std_result.percentile
+            features["standard_deviation_signal"] = std_result.signal.get_score() / 2.0
+            features["standard_deviation_confidence"] = std_result.confidence
+            features["standard_deviation_weighted"] = (
+                features["standard_deviation_signal"] * features["standard_deviation_confidence"]
+            )
+            features["standard_deviation_normalized"] = std_result.normalized
+            features["standard_deviation_percentile"] = std_result.percentile
         except Exception as e:
             logger.warning("Standard Deviation calculation error", exc_info=e)
-            features.update({
-                'standard_deviation_signal': 0.0, 'standard_deviation_confidence': 0.5,
-                'standard_deviation_weighted': 0.0, 'standard_deviation_normalized': 0.0,
-                'standard_deviation_percentile': 50.0
-            })
+            features.update(
+                {
+                    "standard_deviation_signal": 0.0,
+                    "standard_deviation_confidence": 0.5,
+                    "standard_deviation_weighted": 0.0,
+                    "standard_deviation_normalized": 0.0,
+                    "standard_deviation_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 6. Historical Volatility
@@ -195,18 +222,25 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             hv_result = VolatilityIndicators.historical_volatility(candles, period=20)
 
-            features['historical_volatility_signal'] = hv_result.signal.get_score() / 2.0
-            features['historical_volatility_confidence'] = hv_result.confidence
-            features['historical_volatility_weighted'] = features['historical_volatility_signal'] * features['historical_volatility_confidence']
-            features['historical_volatility_normalized'] = hv_result.normalized
-            features['historical_volatility_percentile'] = hv_result.percentile
+            features["historical_volatility_signal"] = hv_result.signal.get_score() / 2.0
+            features["historical_volatility_confidence"] = hv_result.confidence
+            features["historical_volatility_weighted"] = (
+                features["historical_volatility_signal"]
+                * features["historical_volatility_confidence"]
+            )
+            features["historical_volatility_normalized"] = hv_result.normalized
+            features["historical_volatility_percentile"] = hv_result.percentile
         except Exception as e:
             logger.warning("Historical Volatility calculation error", exc_info=e)
-            features.update({
-                'historical_volatility_signal': 0.0, 'historical_volatility_confidence': 0.5,
-                'historical_volatility_weighted': 0.0, 'historical_volatility_normalized': 0.0,
-                'historical_volatility_percentile': 50.0
-            })
+            features.update(
+                {
+                    "historical_volatility_signal": 0.0,
+                    "historical_volatility_confidence": 0.5,
+                    "historical_volatility_weighted": 0.0,
+                    "historical_volatility_normalized": 0.0,
+                    "historical_volatility_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 7. ATR Percentage
@@ -214,18 +248,24 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             atr_pct_result = VolatilityIndicators.atr_percentage(candles, period=14)
 
-            features['atr_percentage_signal'] = atr_pct_result.signal.get_score() / 2.0
-            features['atr_percentage_confidence'] = atr_pct_result.confidence
-            features['atr_percentage_weighted'] = features['atr_percentage_signal'] * features['atr_percentage_confidence']
-            features['atr_percentage_normalized'] = atr_pct_result.normalized
-            features['atr_percentage_percentile'] = atr_pct_result.percentile
+            features["atr_percentage_signal"] = atr_pct_result.signal.get_score() / 2.0
+            features["atr_percentage_confidence"] = atr_pct_result.confidence
+            features["atr_percentage_weighted"] = (
+                features["atr_percentage_signal"] * features["atr_percentage_confidence"]
+            )
+            features["atr_percentage_normalized"] = atr_pct_result.normalized
+            features["atr_percentage_percentile"] = atr_pct_result.percentile
         except Exception as e:
             logger.warning("ATR Percentage calculation error", exc_info=e)
-            features.update({
-                'atr_percentage_signal': 0.0, 'atr_percentage_confidence': 0.5,
-                'atr_percentage_weighted': 0.0, 'atr_percentage_normalized': 0.0,
-                'atr_percentage_percentile': 50.0
-            })
+            features.update(
+                {
+                    "atr_percentage_signal": 0.0,
+                    "atr_percentage_confidence": 0.5,
+                    "atr_percentage_weighted": 0.0,
+                    "atr_percentage_normalized": 0.0,
+                    "atr_percentage_percentile": 50.0,
+                }
+            )
 
         # ═══════════════════════════════════════════════════════
         # 8. Chaikin Volatility
@@ -233,26 +273,28 @@ class MultiHorizonVolatilityFeatureExtractor:
         try:
             chaikin_result = VolatilityIndicators.chaikin_volatility(candles, period=10)
 
-            features['chaikin_volatility_signal'] = chaikin_result.signal.get_score() / 2.0
-            features['chaikin_volatility_confidence'] = chaikin_result.confidence
-            features['chaikin_volatility_weighted'] = features['chaikin_volatility_signal'] * features['chaikin_volatility_confidence']
-            features['chaikin_volatility_normalized'] = chaikin_result.normalized
-            features['chaikin_volatility_percentile'] = chaikin_result.percentile
+            features["chaikin_volatility_signal"] = chaikin_result.signal.get_score() / 2.0
+            features["chaikin_volatility_confidence"] = chaikin_result.confidence
+            features["chaikin_volatility_weighted"] = (
+                features["chaikin_volatility_signal"] * features["chaikin_volatility_confidence"]
+            )
+            features["chaikin_volatility_normalized"] = chaikin_result.normalized
+            features["chaikin_volatility_percentile"] = chaikin_result.percentile
         except Exception as e:
             logger.warning("Chaikin Volatility calculation error", exc_info=e)
-            features.update({
-                'chaikin_volatility_signal': 0.0, 'chaikin_volatility_confidence': 0.5,
-                'chaikin_volatility_weighted': 0.0, 'chaikin_volatility_normalized': 0.0,
-                'chaikin_volatility_percentile': 50.0
-            })
+            features.update(
+                {
+                    "chaikin_volatility_signal": 0.0,
+                    "chaikin_volatility_confidence": 0.5,
+                    "chaikin_volatility_weighted": 0.0,
+                    "chaikin_volatility_normalized": 0.0,
+                    "chaikin_volatility_percentile": 50.0,
+                }
+            )
 
         return features
 
-    def calculate_future_volatility_change(
-        self,
-        candles: list[Candle],
-        horizon: int
-    ) -> float:
+    def calculate_future_volatility_change(self, candles: list[Candle], horizon: int) -> float:
         """
         محاسبه تغییر نوسان در آینده
 
@@ -297,9 +339,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             return 0.0
 
     def extract_features_with_target(
-        self,
-        candles: list[Candle],
-        horizon: int
+        self, candles: list[Candle], horizon: int
     ) -> tuple[dict[str, float], float]:
         """
         استخراج ویژگی‌ها به همراه target برای آموزش
@@ -323,9 +363,7 @@ class MultiHorizonVolatilityFeatureExtractor:
         return features, target
 
     def create_training_dataset(
-        self,
-        candles: list[Candle],
-        horizons: list[int] = None
+        self, candles: list[Candle], horizons: list[int] = None
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         ایجاد دیتاست آموزشی برای چند افق زمانی
@@ -423,7 +461,7 @@ class MultiHorizonVolatilityFeatureExtractor:
             val = series[idx]
             if np.isnan(val):
                 return None
-            targets[f'target_{h}d'] = float(np.clip(val / 50.0, -1.0, 1.0))
+            targets[f"target_{h}d"] = float(np.clip(val / 50.0, -1.0, 1.0))
         return targets
 
     def get_feature_names(self) -> list[str]:
@@ -432,11 +470,13 @@ class MultiHorizonVolatilityFeatureExtractor:
         """
         feature_names = []
         for indicator in self.VOLATILITY_INDICATORS:
-            feature_names.extend([
-                f'{indicator}_signal',
-                f'{indicator}_confidence',
-                f'{indicator}_weighted',
-                f'{indicator}_normalized',
-                f'{indicator}_percentile'
-            ])
+            feature_names.extend(
+                [
+                    f"{indicator}_signal",
+                    f"{indicator}_confidence",
+                    f"{indicator}_weighted",
+                    f"{indicator}_normalized",
+                    f"{indicator}_percentile",
+                ]
+            )
         return feature_names
