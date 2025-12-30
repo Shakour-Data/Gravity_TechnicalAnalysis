@@ -18,8 +18,8 @@ import pickle
 from dataclasses import dataclass
 from pathlib import Path
 
-
 import numpy as np
+
 from gravity_tech.ml.multi_horizon_support_resistance_features import (
     MultiHorizonSupportResistanceFeatureExtractor,
 )
@@ -29,6 +29,7 @@ from gravity_tech.models.schemas import Candle
 @dataclass
 class SupportResistanceScore:
     """اسکور Support & Resistance برای یک افق زمانی"""
+
     horizon: str  # '3d', '7d', '30d'
     score: float  # [-1, +1]: -1=strong resistance nearby, +1=strong support nearby
     confidence: float  # [0, 1]
@@ -103,6 +104,7 @@ class SupportResistanceScore:
 @dataclass
 class MultiHorizonSupportResistanceAnalysis:
     """تحلیل Multi-Horizon کامل"""
+
     score_3d: SupportResistanceScore
     score_7d: SupportResistanceScore
     score_30d: SupportResistanceScore
@@ -138,10 +140,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         self.weights = self._load_weights(weights_path)
         self.model_state = self._load_model_state(model_path)
 
-    def analyze(
-        self,
-        candles: list[Candle]
-    ) -> MultiHorizonSupportResistanceAnalysis:
+    def analyze(self, candles: list[Candle]) -> MultiHorizonSupportResistanceAnalysis:
         """
         تحلیل کامل Support & Resistance برای همه افق‌ها
 
@@ -160,39 +159,34 @@ class MultiHorizonSupportResistanceAnalyzer:
         all_features = self.feature_extractor.extract_all_horizons(candles)
 
         # تحلیل هر افق
-        score_3d = self._calculate_horizon_score(candles, '3d', all_features, current_price)
-        score_7d = self._calculate_horizon_score(candles, '7d', all_features, current_price)
-        score_30d = self._calculate_horizon_score(candles, '30d', all_features, current_price)
+        score_3d = self._calculate_horizon_score(candles, "3d", all_features, current_price)
+        score_7d = self._calculate_horizon_score(candles, "7d", all_features, current_price)
+        score_30d = self._calculate_horizon_score(candles, "30d", all_features, current_price)
 
         # ترکیب اسکورها
-        overall_sr_score = (
-            score_3d.score * 0.4 +
-            score_7d.score * 0.35 +
-            score_30d.score * 0.25
-        )
+        overall_sr_score = score_3d.score * 0.4 + score_7d.score * 0.35 + score_30d.score * 0.25
 
         overall_confidence = (
-            score_3d.confidence * 0.4 +
-            score_7d.confidence * 0.35 +
-            score_30d.confidence * 0.25
+            score_3d.confidence * 0.4 + score_7d.confidence * 0.35 + score_30d.confidence * 0.25
         )
 
         # محاسبه توافق
-        horizons_agreement = self._calculate_horizons_agreement(
-            score_3d, score_7d, score_30d
-        )
+        horizons_agreement = self._calculate_horizons_agreement(score_3d, score_7d, score_30d)
 
         alignment = self._determine_alignment(score_3d, score_7d, score_30d)
 
         # سطوح بحرانی
-        critical_support = max(score_3d.nearest_support, score_7d.nearest_support, score_30d.nearest_support)
-        critical_resistance = min(score_3d.nearest_resistance, score_7d.nearest_resistance, score_30d.nearest_resistance)
+        critical_support = max(
+            score_3d.nearest_support, score_7d.nearest_support, score_30d.nearest_support
+        )
+        critical_resistance = min(
+            score_3d.nearest_resistance, score_7d.nearest_resistance, score_30d.nearest_resistance
+        )
 
         # سیگنال و توصیه کلی
         overall_signal = self._determine_overall_signal(score_3d, score_7d, score_30d)
         overall_recommendation = self._generate_overall_recommendation(
-            overall_sr_score, overall_signal, horizons_agreement,
-            score_3d, score_7d, score_30d
+            overall_sr_score, overall_signal, horizons_agreement, score_3d, score_7d, score_30d
         )
 
         return MultiHorizonSupportResistanceAnalysis(
@@ -206,7 +200,7 @@ class MultiHorizonSupportResistanceAnalyzer:
             critical_support=critical_support,
             critical_resistance=critical_resistance,
             overall_signal=overall_signal,
-            overall_recommendation=overall_recommendation
+            overall_recommendation=overall_recommendation,
         )
 
     def _calculate_horizon_score(
@@ -214,7 +208,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         candles: list[Candle],
         horizon: str,
         all_features: dict[str, float],
-        current_price: float
+        current_price: float,
     ) -> SupportResistanceScore:
         """محاسبه اسکور یک افق زمانی"""
 
@@ -224,9 +218,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         # استخراج ویژگی‌های این افق
         prefix = f"{horizon}_"
         horizon_features = {
-            k.replace(prefix, ''): v
-            for k, v in all_features.items()
-            if k.startswith(prefix)
+            k.replace(prefix, ""): v for k, v in all_features.items() if k.startswith(prefix)
         }
 
         # محاسبه اسکور وزن‌دار
@@ -240,16 +232,16 @@ class MultiHorizonSupportResistanceAnalyzer:
         breakout_prob = self._calculate_breakout_probability(horizon_features, weights)
 
         # استخراج سطوح
-        resistance_dist_pct = horizon_features.get('nearest_resistance_dist', 5.0)
-        support_dist_pct = horizon_features.get('nearest_support_dist', 5.0)
+        resistance_dist_pct = horizon_features.get("nearest_resistance_dist", 5.0)
+        support_dist_pct = horizon_features.get("nearest_support_dist", 5.0)
 
         nearest_resistance = current_price * (1 + resistance_dist_pct / 100)
         nearest_support = current_price * (1 - support_dist_pct / 100)
 
-        resistance_strength = horizon_features.get('resistance_strength', 0.5)
-        support_strength = horizon_features.get('support_strength', 0.5)
+        resistance_strength = horizon_features.get("resistance_strength", 0.5)
+        support_strength = horizon_features.get("support_strength", 0.5)
 
-        sr_position = horizon_features.get('sr_position', 0.5)
+        sr_position = horizon_features.get("sr_position", 0.5)
         distance_to_key_level = min(resistance_dist_pct, support_dist_pct)
 
         # تعیین سیگنال
@@ -273,7 +265,7 @@ class MultiHorizonSupportResistanceAnalyzer:
             sr_position=sr_position,
             distance_to_key_level=distance_to_key_level,
             signal=signal,
-            recommendation=recommendation
+            recommendation=recommendation,
         )
 
     def _predict_score(
@@ -285,19 +277,17 @@ class MultiHorizonSupportResistanceAnalyzer:
         """Use a trained regression bundle when available."""
         if self.model_state and horizon in self.model_state:
             bundle = self.model_state[horizon]
-            feature_names = bundle.get('feature_names', [])
-            coef = bundle.get('weights', [])
-            intercept = bundle.get('intercept', 0.0)
+            feature_names = bundle.get("feature_names", [])
+            coef = bundle.get("weights", [])
+            intercept = bundle.get("intercept", 0.0)
             total = intercept
-            for name, weight in zip(feature_names, coef):
+            for name, weight in zip(feature_names, coef, strict=False):
                 total += features.get(name, 0.0) * weight
             return float(np.clip(total, -1.0, 1.0))
         return self._calculate_weighted_score(features, weights)
 
     def _calculate_weighted_score(
-        self,
-        features: dict[str, float],
-        weights: dict[str, float]
+        self, features: dict[str, float], weights: dict[str, float]
     ) -> float:
         """محاسبه اسکور وزن‌دار از ویژگی‌ها"""
         score = 0.0
@@ -321,28 +311,28 @@ class MultiHorizonSupportResistanceAnalyzer:
         # 2. قدرت سطوح بیشتر
         # 3. فاصله به سطح کمتر
 
-        level_count = features.get('resistance_count', 0) + features.get('support_count', 0)
-        level_strength = (features.get('resistance_strength', 0) + features.get('support_strength', 0)) / 2
-        level_density = features.get('level_density', 0)
-        distance = features.get('nearest_level_dist', 10.0)
+        level_count = features.get("resistance_count", 0) + features.get("support_count", 0)
+        level_strength = (
+            features.get("resistance_strength", 0) + features.get("support_strength", 0)
+        ) / 2
+        level_density = features.get("level_density", 0)
+        distance = features.get("nearest_level_dist", 10.0)
 
         # نزدیکی به سطح → confidence بیشتر
         distance_factor = max(0, 1.0 - distance / 10.0)
 
         # ترکیب
         confidence = (
-            min(level_count / 5.0, 1.0) * 0.3 +
-            level_strength * 0.3 +
-            level_density * 0.2 +
-            distance_factor * 0.2
+            min(level_count / 5.0, 1.0) * 0.3
+            + level_strength * 0.3
+            + level_density * 0.2
+            + distance_factor * 0.2
         )
 
         return np.clip(confidence, 0.0, 1.0)
 
     def _calculate_bounce_probability(
-        self,
-        features: dict[str, float],
-        weights: dict[str, float]
+        self, features: dict[str, float], weights: dict[str, float]
     ) -> float:
         """محاسبه احتمال برگشت از سطح"""
         # احتمال bounce بالاتر وقتی:
@@ -350,31 +340,31 @@ class MultiHorizonSupportResistanceAnalyzer:
         # 2. چند سطح در همان ناحیه (clustering)
         # 3. سطح چند بار تست شده
 
-        distance = features.get('nearest_level_dist', 10.0)
-        level_strength = max(features.get('resistance_strength', 0), features.get('support_strength', 0))
-        level_density = features.get('level_density', 0)
-        sr_position = features.get('sr_position', 0.5)
+        distance = features.get("nearest_level_dist", 10.0)
+        level_strength = max(
+            features.get("resistance_strength", 0), features.get("support_strength", 0)
+        )
+        level_density = features.get("level_density", 0)
+        sr_position = features.get("sr_position", 0.5)
 
         # نزدیک به support یا resistance
-        near_level = (sr_position < 0.2 or sr_position > 0.8)
+        near_level = sr_position < 0.2 or sr_position > 0.8
 
         # فاکتور فاصله (نزدیک‌تر = احتمال بیشتر)
         distance_factor = max(0, 1.0 - distance / 5.0)
 
         # محاسبه احتمال
         bounce_prob = (
-            distance_factor * 0.4 +
-            level_strength * 0.3 +
-            level_density * 0.2 +
-            (1.0 if near_level else 0.0) * 0.1
+            distance_factor * 0.4
+            + level_strength * 0.3
+            + level_density * 0.2
+            + (1.0 if near_level else 0.0) * 0.1
         )
 
         return np.clip(bounce_prob, 0.0, 1.0)
 
     def _calculate_breakout_probability(
-        self,
-        features: dict[str, float],
-        weights: dict[str, float]
+        self, features: dict[str, float], weights: dict[str, float]
     ) -> float:
         """محاسبه احتمال شکست سطح"""
         # احتمال breakout بالاتر وقتی:
@@ -382,8 +372,10 @@ class MultiHorizonSupportResistanceAnalyzer:
         # 2. momentum قوی
         # 3. چند بار سطح تست شده (آماده شکست)
 
-        level_strength = max(features.get('resistance_strength', 0), features.get('support_strength', 0))
-        sr_bias = features.get('sr_bias', 0)
+        level_strength = max(
+            features.get("resistance_strength", 0), features.get("support_strength", 0)
+        )
+        sr_bias = features.get("sr_bias", 0)
 
         # سطح ضعیف → احتمال شکست بیشتر
         weak_level = 1.0 - level_strength
@@ -392,18 +384,11 @@ class MultiHorizonSupportResistanceAnalyzer:
         momentum_strong = abs(sr_bias)
 
         # محاسبه احتمال
-        breakout_prob = (
-            weak_level * 0.5 +
-            momentum_strong * 0.5
-        )
+        breakout_prob = weak_level * 0.5 + momentum_strong * 0.5
 
         return np.clip(breakout_prob, 0.0, 1.0)
 
-    def _determine_signal(
-        self,
-        sr_position: float,
-        distance_to_level: float
-    ) -> str:
+    def _determine_signal(self, sr_position: float, distance_to_level: float) -> str:
         """تعیین سیگنال بر اساس موقعیت"""
         # در سطح (فاصله < 1%)
         if distance_to_level < 1.0:
@@ -427,7 +412,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         bounce_prob: float,
         breakout_prob: float,
         sr_position: float,
-        horizon: str
+        horizon: str,
     ) -> str:
         """تولید توصیه برای یک افق"""
 
@@ -473,7 +458,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         self,
         score_3d: SupportResistanceScore,
         score_7d: SupportResistanceScore,
-        score_30d: SupportResistanceScore
+        score_30d: SupportResistanceScore,
     ) -> float:
         """محاسبه توافق بین افق‌ها"""
         scores = [score_3d.score, score_7d.score, score_30d.score]
@@ -494,7 +479,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         self,
         score_3d: SupportResistanceScore,
         score_7d: SupportResistanceScore,
-        score_30d: SupportResistanceScore
+        score_30d: SupportResistanceScore,
     ) -> str:
         """تعیین alignment بین افق‌ها"""
         agreement = self._calculate_horizons_agreement(score_3d, score_7d, score_30d)
@@ -510,7 +495,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         self,
         score_3d: SupportResistanceScore,
         score_7d: SupportResistanceScore,
-        score_30d: SupportResistanceScore
+        score_30d: SupportResistanceScore,
     ) -> str:
         """تعیین سیگنال کلی"""
         signals = [score_3d.signal, score_7d.signal, score_30d.signal]
@@ -537,7 +522,7 @@ class MultiHorizonSupportResistanceAnalyzer:
         agreement: float,
         score_3d: SupportResistanceScore,
         score_7d: SupportResistanceScore,
-        score_30d: SupportResistanceScore
+        score_30d: SupportResistanceScore,
     ) -> str:
         """تولید توصیه کلی"""
 
@@ -573,45 +558,45 @@ class MultiHorizonSupportResistanceAnalyzer:
 
         # وزن‌های پیش‌فرض
         return {
-            '3d': {
-                'nearest_resistance_dist': -0.3,
-                'resistance_strength': -0.2,
-                'nearest_support_dist': 0.3,
-                'support_strength': 0.2,
-                'sr_position': -0.4,  # negative: نزدیک به 1 (resistance) = سیگنال فروش
-                'sr_bias': 0.3,
-                'level_density': 0.15,
-                'fib_signal': 0.2,
-                'camarilla_signal': 0.15
+            "3d": {
+                "nearest_resistance_dist": -0.3,
+                "resistance_strength": -0.2,
+                "nearest_support_dist": 0.3,
+                "support_strength": 0.2,
+                "sr_position": -0.4,  # negative: نزدیک به 1 (resistance) = سیگنال فروش
+                "sr_bias": 0.3,
+                "level_density": 0.15,
+                "fib_signal": 0.2,
+                "camarilla_signal": 0.15,
             },
-            '7d': {
-                'nearest_resistance_dist': -0.25,
-                'resistance_strength': -0.2,
-                'nearest_support_dist': 0.25,
-                'support_strength': 0.2,
-                'sr_position': -0.35,
-                'sr_bias': 0.25,
-                'level_density': 0.15,
-                'fib_signal': 0.2,
-                'camarilla_signal': 0.15
+            "7d": {
+                "nearest_resistance_dist": -0.25,
+                "resistance_strength": -0.2,
+                "nearest_support_dist": 0.25,
+                "support_strength": 0.2,
+                "sr_position": -0.35,
+                "sr_bias": 0.25,
+                "level_density": 0.15,
+                "fib_signal": 0.2,
+                "camarilla_signal": 0.15,
             },
-            '30d': {
-                'nearest_resistance_dist': -0.2,
-                'resistance_strength': -0.2,
-                'nearest_support_dist': 0.2,
-                'support_strength': 0.2,
-                'sr_position': -0.3,
-                'sr_bias': 0.2,
-                'level_density': 0.15,
-                'fib_signal': 0.2,
-                'camarilla_signal': 0.15
-            }
+            "30d": {
+                "nearest_resistance_dist": -0.2,
+                "resistance_strength": -0.2,
+                "nearest_support_dist": 0.2,
+                "support_strength": 0.2,
+                "sr_position": -0.3,
+                "sr_bias": 0.2,
+                "level_density": 0.15,
+                "fib_signal": 0.2,
+                "camarilla_signal": 0.15,
+            },
         }
 
     def _load_model_state(self, model_path: str | None) -> dict[str, dict[str, list[float]]]:
         """Load pickled regression bundles if available."""
         if model_path and Path(model_path).exists():
-            with open(model_path, 'rb') as fh:
+            with open(model_path, "rb") as fh:
                 return pickle.load(fh)
         return {}
 
@@ -629,10 +614,7 @@ if __name__ == "__main__":
 
     # تولید داده نمونه
     candles = generate_sample_candles(
-        count=800,
-        base_price=50000,
-        volatility=0.02,
-        trend='sideways'
+        count=800, base_price=50000, volatility=0.02, trend="sideways"
     )
 
     # ایجاد analyzer
@@ -657,8 +639,12 @@ if __name__ == "__main__":
         print(f"   سیگنال: {score.signal}")
         print(f"   احتمال Bounce: {score.bounce_probability:.1%}")
         print(f"   احتمال Breakout: {score.breakout_probability:.1%}")
-        print(f"   نزدیک‌ترین حمایت: ${score.nearest_support:,.2f} ({((score.nearest_support - current_price) / current_price * 100):+.2f}%)")
-        print(f"   نزدیک‌ترین مقاومت: ${score.nearest_resistance:,.2f} ({((score.nearest_resistance - current_price) / current_price * 100):+.2f}%)")
+        print(
+            f"   نزدیک‌ترین حمایت: ${score.nearest_support:,.2f} ({((score.nearest_support - current_price) / current_price * 100):+.2f}%)"
+        )
+        print(
+            f"   نزدیک‌ترین مقاومت: ${score.nearest_resistance:,.2f} ({((score.nearest_resistance - current_price) / current_price * 100):+.2f}%)"
+        )
         print(f"   قدرت حمایت: {score.support_strength:.1%}")
         print(f"   قدرت مقاومت: {score.resistance_strength:.1%}")
         print(f"   📝 {score.recommendation}")
