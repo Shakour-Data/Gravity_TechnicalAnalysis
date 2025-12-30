@@ -10,17 +10,18 @@ License: MIT
 """
 
 import asyncio
-from unittest.mock import AsyncMock
 import hashlib
 import json
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
+from unittest.mock import AsyncMock
 
 import structlog
-from gravity_tech.config.settings import settings
 from redis import asyncio as aioredis
 from redis.asyncio.connection import ConnectionPool
+
+from gravity_tech.config.settings import settings
 
 logger = structlog.get_logger()
 
@@ -56,7 +57,10 @@ class CacheManager:
             return True
 
         try:
-            redis_url = getattr(settings, "redis_url", None) or f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
+            redis_url = (
+                getattr(settings, "redis_url", None)
+                or f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
+            )
             # Use from_url for compatibility with test mocks
             self.redis = aioredis.from_url(
                 redis_url,
@@ -74,7 +78,7 @@ class CacheManager:
                 "redis_cache_initialized",
                 host=settings.redis_host,
                 port=settings.redis_port,
-                db=settings.redis_db
+                db=settings.redis_db,
             )
             return True
 
@@ -105,19 +109,14 @@ class CacheManager:
                 return None
 
             logger.debug("cache_hit", key=key)
-            raw_value = value.decode('utf-8') if isinstance(value, (bytes, bytearray)) else value
+            raw_value = value.decode("utf-8") if isinstance(value, (bytes, bytearray)) else value
             return json.loads(raw_value)
 
         except Exception as e:
             logger.warning("cache_get_error", key=key, error=str(e))
             return None
 
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: int | None = None
-    ) -> bool:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """
         Store value in cache.
 
@@ -184,11 +183,7 @@ class CacheManager:
             deleted_count = 0
 
             while True:
-                cursor, keys = await self.redis.scan(
-                    cursor=cursor,
-                    match=pattern,
-                    count=100
-                )
+                cursor, keys = await self.redis.scan(cursor=cursor, match=pattern, count=100)
 
                 if keys:
                     await self.redis.delete(*keys)
@@ -256,7 +251,7 @@ class CacheManager:
             # Serialize all values
             serialized_data = {}
             for key, value in data.items():
-                serialized_data[key] = json.dumps(value).encode('utf-8')
+                serialized_data[key] = json.dumps(value).encode("utf-8")
 
             ttl = ttl or settings.cache_ttl
 
@@ -347,9 +342,7 @@ def cache_key_generator(*args, **kwargs) -> str:
 
 
 def cached(
-    ttl: int | None = None,
-    key_prefix: str = "cache",
-    key_generator: Callable | None = None
+    ttl: int | None = None, key_prefix: str = "cache", key_generator: Callable | None = None
 ):
     """
     Decorator for caching function output.
@@ -365,6 +358,7 @@ def cached(
         ...     # Heavy computations
         ...     return result
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -380,22 +374,14 @@ def cached(
             try:
                 cached_result = await cache_manager.get(full_key)
                 if cached_result is not None:
-                    logger.debug(
-                        "function_cache_hit",
-                        function=func.__name__,
-                        key=full_key
-                    )
+                    logger.debug("function_cache_hit", function=func.__name__, key=full_key)
                     return cached_result
             except Exception as e:
                 logger.warning("cache_get_failed", error=str(e), key=full_key)
                 # Continue to execute function even if cache fails
 
             # Execute function
-            logger.debug(
-                "function_cache_miss",
-                function=func.__name__,
-                key=full_key
-            )
+            logger.debug("function_cache_miss", function=func.__name__, key=full_key)
             result = await func(*args, **kwargs)
 
             # Save in cache with graceful degradation
@@ -408,6 +394,7 @@ def cached(
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -456,21 +443,25 @@ class CacheWarmer:
 
                 # Check if already in cache
                 existing = await self.cache.get(cache_key)
-                if existing is None or isinstance(existing, AsyncMock):  # pragma: no cover - test mocks
+                if existing is None or isinstance(
+                    existing, AsyncMock
+                ):  # pragma: no cover - test mocks
                     # Placeholder for actual data loading logic
                     # In real implementation, this would load from database
                     placeholder_data = {
                         "symbol": symbol,
                         "timeframe": timeframe,
                         "status": "warming_placeholder",
-                        "last_updated": str(asyncio.get_event_loop().time())
+                        "last_updated": str(asyncio.get_event_loop().time()),
                     }
 
                     await self.cache.set(cache_key, placeholder_data, ttl=3600)  # 1 hour TTL
                     logger.debug("warmed_cache_key", key=cache_key)
 
             except Exception as e:
-                logger.warning("cache_warming_failed", symbol=symbol, timeframe=timeframe, error=str(e))
+                logger.warning(
+                    "cache_warming_failed", symbol=symbol, timeframe=timeframe, error=str(e)
+                )
 
     async def warm_ml_models(self):
         """
@@ -480,7 +471,7 @@ class CacheWarmer:
             model_keys = [
                 "ml:model:pattern_classifier:info",
                 "ml:model:multi_horizon:info",
-                "ml:model:weights:latest"
+                "ml:model:weights:latest",
             ]
 
             for key in model_keys:
@@ -490,7 +481,7 @@ class CacheWarmer:
                     metadata = {
                         "model_type": key.split(":")[2],
                         "status": "available",
-                        "last_loaded": str(asyncio.get_event_loop().time())
+                        "last_loaded": str(asyncio.get_event_loop().time()),
                     }
                     await self.cache.set(key, metadata, ttl=7200)  # 2 hours TTL
 
