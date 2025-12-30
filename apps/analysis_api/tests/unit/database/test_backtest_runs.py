@@ -24,7 +24,10 @@ def test_save_backtest_run_sqlite_persists_row():
 
         conn = manager.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT symbol, source, interval, model_version, params, metrics FROM backtest_runs WHERE id=?", (inserted_id,))
+        cursor.execute(
+            "SELECT symbol, source, interval, model_version, params, metrics FROM backtest_runs WHERE id=?",
+            (inserted_id,),
+        )
         row = cursor.fetchone()
         assert row is not None
         assert row["symbol"] == "TEST"
@@ -39,7 +42,9 @@ def test_save_backtest_run_sqlite_persists_row():
 def test_save_backtest_run_json_fallback():
     with tempfile.TemporaryDirectory() as tmpdir:
         json_path = f"{tmpdir}/backtests.json"
-        manager = DatabaseManager(db_type=DatabaseType.JSON_FILE, json_path=json_path, auto_setup=True)
+        manager = DatabaseManager(
+            db_type=DatabaseType.JSON_FILE, json_path=json_path, auto_setup=True
+        )
 
         inserted_id = manager.save_backtest_run(
             symbol="TEST2",
