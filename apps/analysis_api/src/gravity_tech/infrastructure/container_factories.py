@@ -66,9 +66,7 @@ def create_cache_service(container: "ServiceContainer") -> Any:
         return cache
 
     else:
-        logger.warning(
-            "invalid_cache_backend", backend=settings.cache.backend, default="memory"
-        )
+        logger.warning("invalid_cache_backend", backend=settings.cache.backend, default="memory")
         from gravity_tech.infrastructure.adapters.memory_cache import (
             MemoryCacheAdapter,
         )
