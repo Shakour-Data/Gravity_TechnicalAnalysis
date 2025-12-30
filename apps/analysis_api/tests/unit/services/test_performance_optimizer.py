@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from gravity_tech.services.performance_optimizer import (
     calculate_macd_numba,
     calculate_rsi_numba,
