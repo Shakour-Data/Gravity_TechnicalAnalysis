@@ -31,7 +31,6 @@ Provides RESTful endpoints for:
 - Model performance metrics
 """
 
-
 import asyncio
 import pickle
 import threading
@@ -45,12 +44,14 @@ from typing import Any
 import numpy as np
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from gravity_tech.config.paths import ML_MODELS_DIR
 from pydantic import BaseModel, Field
+
+from gravity_tech.config.paths import ML_MODELS_DIR
 
 try:
     from prometheus_client import REGISTRY, Counter, Histogram
 except Exception:  # pragma: no cover - fallback when prometheus_client missing
+
     class _Noop:
         def labels(self, *args, **kwargs):
             return self
@@ -76,8 +77,11 @@ BATCH_TIMEOUT_SECONDS = 5.0
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
+
 # Prometheus helpers to avoid duplicate registration in tests/reloads
-def _get_metric(metric_cls: Any, name: str, doc: str, labelnames: Sequence[str] | tuple[str, ...]) -> Any:
+def _get_metric(
+    metric_cls: Any, name: str, doc: str, labelnames: Sequence[str] | tuple[str, ...]
+) -> Any:
     if REGISTRY is not None:
         try:
             existing = REGISTRY._names_to_collectors.get(name)  # type: ignore[attr-defined]
@@ -87,14 +91,25 @@ def _get_metric(metric_cls: Any, name: str, doc: str, labelnames: Sequence[str] 
             return existing
     return metric_cls(name, doc, labelnames)
 
+
 # Prometheus metrics
-MODEL_CACHE_HITS: Any = _get_metric(Counter, "ml_model_cache_hits_total", "ML model cache hits", ["version"])
-MODEL_CACHE_LOADS: Any = _get_metric(Counter, "ml_model_loads_total", "ML model loads from disk", ["version"])
+MODEL_CACHE_HITS: Any = _get_metric(
+    Counter, "ml_model_cache_hits_total", "ML model cache hits", ["version"]
+)
+MODEL_CACHE_LOADS: Any = _get_metric(
+    Counter, "ml_model_loads_total", "ML model loads from disk", ["version"]
+)
 PREDICTION_REQUESTS: Any = _get_metric(
-    Counter, "ml_prediction_requests_total", "Total ML prediction requests", ["endpoint", "status", "model_version"]
+    Counter,
+    "ml_prediction_requests_total",
+    "Total ML prediction requests",
+    ["endpoint", "status", "model_version"],
 )
 PREDICTION_LATENCY: Any = _get_metric(
-    Histogram, "ml_prediction_latency_seconds", "Prediction latency (seconds)", ["endpoint", "model_version"]
+    Histogram,
+    "ml_prediction_latency_seconds",
+    "Prediction latency (seconds)",
+    ["endpoint", "model_version"],
 )
 BACKTEST_REQUESTS: Any = _get_metric(
     Counter, "ml_backtest_requests_total", "Total backtest requests", ["status"]
@@ -108,8 +123,10 @@ BACKTEST_LATENCY: Any = _get_metric(
 # Request/Response Models
 # ============================================================================
 
+
 class PatternFeatures(BaseModel):
     """Pattern features for ML classification"""
+
     xab_ratio_accuracy: float
     abc_ratio_accuracy: float
     bcd_ratio_accuracy: float
@@ -153,42 +170,44 @@ class PatternFeatures(BaseModel):
 
 class PredictionRequest(BaseModel):
     """Request for pattern prediction"""
+
     features: PatternFeatures = Field(..., description="21-dimensional feature vector")
     timeout_seconds: float | None = Field(
-        default=None,
-        ge=0.1,
-        le=30.0,
-        description="Optional per-request timeout; defaults to 2s"
+        default=None, ge=0.1, le=30.0, description="Optional per-request timeout; defaults to 2s"
     )
 
 
 class BatchPredictionRequest(BaseModel):
     """Request for batch predictions"""
+
     features_list: list[PatternFeatures] = Field(
-        ...,
-        description=f"List of feature vectors (max {MAX_BATCH})"
+        ..., description=f"List of feature vectors (max {MAX_BATCH})"
     )
     timeout_seconds: float | None = Field(
         default=None,
         ge=0.1,
         le=60.0,
-        description="Optional timeout for entire batch request; defaults to 5s"
+        description="Optional timeout for entire batch request; defaults to 5s",
     )
 
 
 class PredictionResponse(BaseModel):
     """ML prediction response"""
+
     predicted_pattern: str = Field(..., description="Predicted pattern type")
     confidence: float = Field(..., ge=0, le=1, description="Prediction confidence (0-1)")
     probabilities: dict[str, float] = Field(..., description="Probability for each pattern class")
     model_version: str = Field(..., description="Model version used")
     inference_time_ms: float = Field(..., description="Inference time in milliseconds")
     model_hash: str | None = Field(None, description="SHA256 of model artifact")
-    model_loaded_at: str | None = Field(None, description="UTC time when model was loaded into cache")
+    model_loaded_at: str | None = Field(
+        None, description="UTC time when model was loaded into cache"
+    )
 
 
 class BatchPredictionResponse(BaseModel):
     """Batch prediction response"""
+
     predictions: list[PredictionResponse]
     total_predictions: int
     average_confidence: float
@@ -197,6 +216,7 @@ class BatchPredictionResponse(BaseModel):
 
 class ModelInfoResponse(BaseModel):
     """Model information response"""
+
     model_name: str
     model_version: str
     model_type: str
@@ -209,18 +229,22 @@ class ModelInfoResponse(BaseModel):
 
 class BacktestRequest(BaseModel):
     """Request for backtesting"""
+
     highs: list[float] = Field(..., description="High prices (minimum 300 bars)", min_length=300)
     lows: list[float] = Field(..., description="Low prices", min_length=300)
     closes: list[float] = Field(..., description="Close prices", min_length=300)
     volumes: list[float] = Field(..., description="Volume data", min_length=300)
     dates: list[int] = Field(..., description="Timestamps", min_length=300)
-    min_confidence: float = Field(default=0.6, ge=0, le=1, description="Minimum confidence for trades")
+    min_confidence: float = Field(
+        default=0.6, ge=0, le=1, description="Minimum confidence for trades"
+    )
     window_size: int = Field(default=200, ge=100, le=500, description="Analysis window size")
     step_size: int = Field(default=50, ge=10, le=100, description="Window step size")
 
 
 class BacktestMetrics(BaseModel):
     """Backtesting metrics"""
+
     total_trades: int
     winning_trades: int
     losing_trades: int
@@ -236,16 +260,20 @@ class BacktestMetrics(BaseModel):
 
 class BacktestResponse(BaseModel):
     """Backtesting response"""
+
     metrics: BacktestMetrics
     trade_count: int
     backtest_period: dict[str, str]
     analysis_time_ms: float
-    model_version: str | None = Field(None, description="Model version used (if classifier involved)")
+    model_version: str | None = Field(
+        None, description="Model version used (if classifier involved)"
+    )
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 def _hash_file(path: Path) -> str:
     import hashlib
@@ -257,15 +285,17 @@ def _hash_file(path: Path) -> str:
     return h.hexdigest()
 
 
-async def _predict_with_timeout(model: Any, feature_array: np.ndarray, timeout: float) -> dict[str, Any]:
+async def _predict_with_timeout(
+    model: Any, feature_array: np.ndarray, timeout: float
+) -> dict[str, Any]:
     """Run model prediction in a thread with timeout."""
 
     def _predict_blocking():
-        if hasattr(model, 'predict_single'):
+        if hasattr(model, "predict_single"):
             return model.predict_single(feature_array)
         pred = model.predict(feature_array.reshape(1, -1))[0]
         probas = model.predict_proba(feature_array.reshape(1, -1))[0]
-        class_names = ['gartley', 'butterfly', 'bat', 'crab']
+        class_names = ["gartley", "butterfly", "bat", "crab"]
         predicted_class = class_names[pred]
         confidence = float(np.max(probas))
         probabilities = {name: float(prob) for name, prob in zip(class_names, probas, strict=True)}
@@ -278,13 +308,12 @@ async def _predict_with_timeout(model: Any, feature_array: np.ndarray, timeout: 
     loop = asyncio.get_running_loop()
     try:
         return await asyncio.wait_for(
-            loop.run_in_executor(_EXECUTOR, _predict_blocking),
-            timeout=timeout
+            loop.run_in_executor(_EXECUTOR, _predict_blocking), timeout=timeout
         )
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=f"Prediction exceeded timeout ({timeout}s)"
+            detail=f"Prediction exceeded timeout ({timeout}s)",
         ) from exc
 
 
@@ -362,11 +391,12 @@ def load_ml_model():
 # Endpoints
 # ============================================================================
 
+
 @router.post(
     "/predict",
     response_model=PredictionResponse,
     summary="Predict Pattern Type",
-    description="Classify pattern using ML model and return confidence scores"
+    description="Classify pattern using ML model and return confidence scores",
 )
 async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
     """
@@ -404,36 +434,38 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
 
         # Prepare features
         feature_dict = request.features.model_dump()
-        feature_array = np.array([
-            feature_dict['xab_ratio_accuracy'],
-            feature_dict['abc_ratio_accuracy'],
-            feature_dict['bcd_ratio_accuracy'],
-            feature_dict['xad_ratio_accuracy'],
-            feature_dict['pattern_symmetry'],
-            feature_dict['pattern_slope'],
-            feature_dict['xa_angle'],
-            feature_dict['ab_angle'],
-            feature_dict['bc_angle'],
-            feature_dict['cd_angle'],
-            feature_dict['pattern_duration'],
-            feature_dict['xa_magnitude'],
-            feature_dict['ab_magnitude'],
-            feature_dict['bc_magnitude'],
-            feature_dict['cd_magnitude'],
-            feature_dict['volume_at_d'],
-            feature_dict['volume_trend'],
-            feature_dict['volume_confirmation'],
-            feature_dict['rsi_at_d'],
-            feature_dict['macd_at_d'],
-            feature_dict['momentum_divergence']
-        ])
+        feature_array = np.array(
+            [
+                feature_dict["xab_ratio_accuracy"],
+                feature_dict["abc_ratio_accuracy"],
+                feature_dict["bcd_ratio_accuracy"],
+                feature_dict["xad_ratio_accuracy"],
+                feature_dict["pattern_symmetry"],
+                feature_dict["pattern_slope"],
+                feature_dict["xa_angle"],
+                feature_dict["ab_angle"],
+                feature_dict["bc_angle"],
+                feature_dict["cd_angle"],
+                feature_dict["pattern_duration"],
+                feature_dict["xa_magnitude"],
+                feature_dict["ab_magnitude"],
+                feature_dict["bc_magnitude"],
+                feature_dict["cd_magnitude"],
+                feature_dict["volume_at_d"],
+                feature_dict["volume_trend"],
+                feature_dict["volume_confirmation"],
+                feature_dict["rsi_at_d"],
+                feature_dict["macd_at_d"],
+                feature_dict["momentum_divergence"],
+            ]
+        )
 
         # Make prediction (with timeout)
         timeout = request.timeout_seconds or PREDICTION_TIMEOUT_SECONDS
         prediction = await _predict_with_timeout(model, feature_array, timeout)
-        predicted_class = prediction['pattern_type']
-        confidence = prediction['confidence']
-        probabilities = prediction['probabilities']
+        predicted_class = prediction["pattern_type"]
+        confidence = prediction["confidence"]
+        probabilities = prediction["probabilities"]
 
         duration_seconds = time.perf_counter() - start_ts
         inference_time = duration_seconds * 1000
@@ -448,10 +480,12 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
             model_loaded_at=meta.get("loaded_at"),
         )
 
-        logger.info("ml_prediction",
-                   pattern=predicted_class,
-                   confidence=confidence,
-                   inference_time_ms=round(inference_time, 2))
+        logger.info(
+            "ml_prediction",
+            pattern=predicted_class,
+            confidence=confidence,
+            inference_time_ms=round(inference_time, 2),
+        )
         PREDICTION_REQUESTS.labels("predict", "success", version).inc()
         PREDICTION_LATENCY.labels("predict", version).observe(duration_seconds)
 
@@ -471,10 +505,11 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
         )
     except Exception as e:
         logger.error("ml_prediction_error", error=str(e))
-        PREDICTION_REQUESTS.labels("predict", "error", version if "version" in locals() else "unknown").inc()
+        PREDICTION_REQUESTS.labels(
+            "predict", "error", version if "version" in locals() else "unknown"
+        ).inc()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Prediction failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Prediction failed: {str(e)}"
         ) from e
 
 
@@ -482,7 +517,7 @@ async def predict_pattern(request: PredictionRequest) -> PredictionResponse:
     "/predict/batch",
     response_model=BatchPredictionResponse,
     summary="Batch Pattern Predictions",
-    description="Classify multiple patterns in a single request"
+    description="Classify multiple patterns in a single request",
 )
 async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
     """
@@ -513,43 +548,47 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
             feature_start = time.perf_counter()
             try:
                 feature_dict = features.model_dump()
-                feature_array = np.array([
-                    feature_dict['xab_ratio_accuracy'],
-                    feature_dict['abc_ratio_accuracy'],
-                    feature_dict['bcd_ratio_accuracy'],
-                    feature_dict['xad_ratio_accuracy'],
-                    feature_dict['pattern_symmetry'],
-                    feature_dict['pattern_slope'],
-                    feature_dict['xa_angle'],
-                    feature_dict['ab_angle'],
-                    feature_dict['bc_angle'],
-                    feature_dict['cd_angle'],
-                    feature_dict['pattern_duration'],
-                    feature_dict['xa_magnitude'],
-                    feature_dict['ab_magnitude'],
-                    feature_dict['bc_magnitude'],
-                    feature_dict['cd_magnitude'],
-                    feature_dict['volume_at_d'],
-                    feature_dict['volume_trend'],
-                    feature_dict['volume_confirmation'],
-                    feature_dict['rsi_at_d'],
-                    feature_dict['macd_at_d'],
-                    feature_dict['momentum_divergence']
-                ])
+                feature_array = np.array(
+                    [
+                        feature_dict["xab_ratio_accuracy"],
+                        feature_dict["abc_ratio_accuracy"],
+                        feature_dict["bcd_ratio_accuracy"],
+                        feature_dict["xad_ratio_accuracy"],
+                        feature_dict["pattern_symmetry"],
+                        feature_dict["pattern_slope"],
+                        feature_dict["xa_angle"],
+                        feature_dict["ab_angle"],
+                        feature_dict["bc_angle"],
+                        feature_dict["cd_angle"],
+                        feature_dict["pattern_duration"],
+                        feature_dict["xa_magnitude"],
+                        feature_dict["ab_magnitude"],
+                        feature_dict["bc_magnitude"],
+                        feature_dict["cd_magnitude"],
+                        feature_dict["volume_at_d"],
+                        feature_dict["volume_trend"],
+                        feature_dict["volume_confirmation"],
+                        feature_dict["rsi_at_d"],
+                        feature_dict["macd_at_d"],
+                        feature_dict["momentum_divergence"],
+                    ]
+                )
 
                 # Make prediction
-                if hasattr(model, 'predict_single'):
+                if hasattr(model, "predict_single"):
                     prediction = model.predict_single(feature_array)
-                    predicted_class = prediction['pattern_type']
-                    confidence = prediction['confidence']
-                    probabilities = prediction['probabilities']
-                elif hasattr(model, 'predict') and hasattr(model, 'predict_proba'):
+                    predicted_class = prediction["pattern_type"]
+                    confidence = prediction["confidence"]
+                    probabilities = prediction["probabilities"]
+                elif hasattr(model, "predict") and hasattr(model, "predict_proba"):
                     pred = model.predict(feature_array.reshape(1, -1))[0]
                     probas = model.predict_proba(feature_array.reshape(1, -1))[0]
-                    class_names = ['gartley', 'butterfly', 'bat', 'crab']
+                    class_names = ["gartley", "butterfly", "bat", "crab"]
                     predicted_class = class_names[pred]
                     confidence = float(np.max(probas))
-                    probabilities = {name: float(prob) for name, prob in zip(class_names, probas, strict=True)}
+                    probabilities = {
+                        name: float(prob) for name, prob in zip(class_names, probas, strict=True)
+                    }
                 else:
                     # fallback if model does not support required methods
                     probs = {"gartley": 0.25, "butterfly": 0.25, "bat": 0.25, "crab": 0.25}
@@ -559,19 +598,23 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
 
                 feature_inference_time = (time.perf_counter() - feature_start) * 1000
 
-                predictions.append(PredictionResponse(
-                    predicted_pattern=predicted_class,
-                    confidence=confidence,
-                    probabilities=probabilities,
-                    model_version=version,
-                    inference_time_ms=round(feature_inference_time, 2),
-                    model_hash=meta.get("hash") if meta else None,
-                    model_loaded_at=meta.get("loaded_at") if meta else None,
-                ))
+                predictions.append(
+                    PredictionResponse(
+                        predicted_pattern=predicted_class,
+                        confidence=confidence,
+                        probabilities=probabilities,
+                        model_version=version,
+                        inference_time_ms=round(feature_inference_time, 2),
+                        model_hash=meta.get("hash") if meta else None,
+                        model_loaded_at=meta.get("loaded_at") if meta else None,
+                    )
+                )
                 confidences.append(confidence)
             except Exception as exc:
                 errors += 1
-                logger.warning("batch_prediction_item_failed", error=str(exc), error_type=type(exc).__name__)
+                logger.warning(
+                    "batch_prediction_item_failed", error=str(exc), error_type=type(exc).__name__
+                )
 
         duration_seconds = time.perf_counter() - start_ts
         total_time = duration_seconds * 1000
@@ -581,14 +624,16 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
             predictions=predictions,
             total_predictions=len(predictions),
             average_confidence=round(avg_confidence, 4),
-            total_inference_time_ms=round(total_time, 2)
+            total_inference_time_ms=round(total_time, 2),
         )
 
-        logger.info("batch_prediction",
-                   count=len(predictions),
-                   avg_confidence=avg_confidence,
-                   total_time_ms=round(total_time, 2),
-                   errors=errors)
+        logger.info(
+            "batch_prediction",
+            count=len(predictions),
+            avg_confidence=avg_confidence,
+            total_time_ms=round(total_time, 2),
+            errors=errors,
+        )
         PREDICTION_REQUESTS.labels("predict_batch", "success", version).inc()
         PREDICTION_LATENCY.labels("predict_batch", version).observe(duration_seconds)
 
@@ -597,15 +642,16 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
     except FileNotFoundError:
         PREDICTION_REQUESTS.labels("predict_batch", "model_missing", "unknown").inc()
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ML model file not found"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="ML model file not found"
         ) from None
     except Exception as e:
         logger.error("batch_prediction_error", error=str(e))
-        PREDICTION_REQUESTS.labels("predict_batch", "error", version if "version" in locals() else "unknown").inc()
+        PREDICTION_REQUESTS.labels(
+            "predict_batch", "error", version if "version" in locals() else "unknown"
+        ).inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch prediction failed: {str(e)}"
+            detail=f"Batch prediction failed: {str(e)}",
         ) from e
 
 
@@ -613,7 +659,7 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
     "/model/info",
     response_model=ModelInfoResponse,
     summary="Get Model Information",
-    description="Get information about the loaded ML model"
+    description="Get information about the loaded ML model",
 )
 async def get_model_info() -> ModelInfoResponse:
     """
@@ -642,14 +688,14 @@ async def get_model_info() -> ModelInfoResponse:
             accuracy=None,
             features_count=21,
             supported_patterns=["gartley", "butterfly", "bat", "crab"],
-            hyperparameters=None
+            hyperparameters=None,
         )
 
         # Try to get additional info from model
         if version == "v2":
             info.accuracy = 0.6495  # From Day 5 training
             info.training_date = "2025-11-12"
-            if hasattr(model, 'get_params'):
+            if hasattr(model, "get_params"):
                 info.hyperparameters = model.get_params()
         elif version == "v1":
             info.accuracy = 0.4825  # From Day 4 training
@@ -661,21 +707,20 @@ async def get_model_info() -> ModelInfoResponse:
 
     except FileNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ML model file not found"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="ML model file not found"
         ) from None
     except Exception as e:
         logger.error("model_info_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve model info: {str(e)}"
+            detail=f"Failed to retrieve model info: {str(e)}",
         ) from e
 
 
 @router.get(
     "/health",
     summary="ML Service Health",
-    description="Check ML service health and model availability"
+    description="Check ML service health and model availability",
 )
 async def ml_service_health():
     """Check ML service health"""
@@ -695,8 +740,8 @@ async def ml_service_health():
                 "single_prediction": True,
                 "batch_prediction": True,
                 "model_info": True,
-                "backtesting": True
-            }
+                "backtesting": True,
+            },
         }
     except FileNotFoundError:
         return {
@@ -704,7 +749,7 @@ async def ml_service_health():
             "service": "ml-prediction",
             "version": "1.0.0",
             "model_loaded": False,
-            "error": "ML model not found"
+            "error": "ML model not found",
         }
     except Exception as e:
         logger.error("ml_health_check_error", error=str(e))
@@ -712,5 +757,5 @@ async def ml_service_health():
             "status": "unhealthy",
             "service": "ml-prediction",
             "version": "1.0.0",
-            "error": str(e)
+            "error": str(e),
         }
