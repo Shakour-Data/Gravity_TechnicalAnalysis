@@ -22,14 +22,12 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
-from collections import defaultdict
-from datetime import date, datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
 
 TABLES = [
     "analysis_results",
@@ -42,14 +40,16 @@ TABLES = [
 ]
 
 
-def load_symbols(path: Path) -> List[str]:
+def load_symbols(path: Path) -> list[str]:
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def load_prices(src_db: Path, symbols: Iterable[str], limit: int) -> Dict[str, List[Tuple[date, float]]]:
+def load_prices(
+    src_db: Path, symbols: Iterable[str], limit: int
+) -> dict[str, list[tuple[date, float]]]:
     conn = sqlite3.connect(src_db)
     cur = conn.cursor()
-    result: Dict[str, List[Tuple[date, float]]] = {}
+    result: dict[str, list[tuple[date, float]]] = {}
     limit_val = limit if limit and limit > 0 else -1
     for sym in symbols:
         rows = cur.execute(
@@ -74,7 +74,9 @@ def load_prices(src_db: Path, symbols: Iterable[str], limit: int) -> Dict[str, L
     return result
 
 
-def trend_agreement(pg_conn, symbols: List[str], prices: Dict[str, List[Tuple[date, float]]], limit: int) -> Tuple[int, int]:
+def trend_agreement(
+    pg_conn, symbols: list[str], prices: dict[str, list[tuple[date, float]]], limit: int
+) -> tuple[int, int]:
     """Compare sign(trend_score) vs sign(next-day return) from source prices."""
     cur = pg_conn.cursor(cursor_factory=RealDictCursor)
     lim_clause = "" if limit <= 0 else f"LIMIT {limit}"
@@ -114,16 +116,21 @@ def trend_agreement(pg_conn, symbols: List[str], prices: Dict[str, List[Tuple[da
     return agree, total
 
 
-def counts_and_ranges(pg_conn, symbols: List[str]) -> List[str]:
+def counts_and_ranges(pg_conn, symbols: list[str]) -> list[str]:
     cur = pg_conn.cursor()
-    lines: List[str] = []
+    lines: list[str] = []
     sym_tuple = tuple(symbols)
     for tbl in TABLES:
-        cur.execute(f"SELECT COUNT(*), COUNT(DISTINCT symbol) FROM {tbl} WHERE symbol IN %s", (sym_tuple,))
+        cur.execute(
+            f"SELECT COUNT(*), COUNT(DISTINCT symbol) FROM {tbl} WHERE symbol IN %s", (sym_tuple,)
+        )
         rows, distinct_syms = cur.fetchone()
         lines.append(f"- {tbl}: rows={rows}, symbols={distinct_syms}")
     lines.append("")
-    cur.execute("SELECT MIN(analysis_date), MAX(analysis_date) FROM analysis_results WHERE symbol IN %s", (sym_tuple,))
+    cur.execute(
+        "SELECT MIN(analysis_date), MAX(analysis_date) FROM analysis_results WHERE symbol IN %s",
+        (sym_tuple,),
+    )
     lines.append(f"- analysis_results range: {cur.fetchone()}")
     cur.execute("SELECT MIN(ts), MAX(ts) FROM historical_scores WHERE symbol IN %s", (sym_tuple,))
     lines.append(f"- historical_scores range: {cur.fetchone()}")
@@ -133,10 +140,10 @@ def counts_and_ranges(pg_conn, symbols: List[str]) -> List[str]:
     return lines
 
 
-def duplicate_checks(pg_conn, symbols: List[str]) -> List[str]:
+def duplicate_checks(pg_conn, symbols: list[str]) -> list[str]:
     cur = pg_conn.cursor()
     sym_tuple = tuple(symbols)
-    lines: List[str] = []
+    lines: list[str] = []
     dup_queries = {
         "historical_scores": "symbol, ts, timeframe",
         # align with unique index (coalesce + ::text)
@@ -157,7 +164,7 @@ def duplicate_checks(pg_conn, symbols: List[str]) -> List[str]:
     return lines
 
 
-def negative_vol_checks(pg_conn, symbols: List[str]) -> int:
+def negative_vol_checks(pg_conn, symbols: list[str]) -> int:
     cur = pg_conn.cursor()
     cur.execute(
         "SELECT COUNT(*) FROM historical_scores WHERE symbol = ANY(%s) AND volatility_score < 0",
@@ -168,7 +175,7 @@ def negative_vol_checks(pg_conn, symbols: List[str]) -> int:
     return c
 
 
-def coverage_stats(prices: Dict[str, List[Tuple[date, float]]], limit: int) -> Tuple[float, int]:
+def coverage_stats(prices: dict[str, list[tuple[date, float]]], limit: int) -> tuple[float, int]:
     counts = []
     for rows in prices.values():
         if limit > 0:
@@ -181,12 +188,16 @@ def coverage_stats(prices: Dict[str, List[Tuple[date, float]]], limit: int) -> T
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Auto validate batch and generate Markdown report.")
+    parser = argparse.ArgumentParser(
+        description="Auto validate batch and generate Markdown report."
+    )
     parser.add_argument("--target-db", required=True, help="Postgres DSN for target.")
     parser.add_argument("--source-db", required=True, help="SQLite DB path for price_data.")
     parser.add_argument("--symbols-file", required=True, help="File with symbols, one per line.")
     parser.add_argument("--outfile", required=True, help="Path to write Markdown report.")
-    parser.add_argument("--limit", type=int, default=500, help="Max candles per symbol to consider (0 = all).")
+    parser.add_argument(
+        "--limit", type=int, default=500, help="Max candles per symbol to consider (0 = all)."
+    )
     args = parser.parse_args()
 
     symbols = load_symbols(Path(args.symbols_file))
@@ -200,12 +211,12 @@ def main() -> None:
     pg_conn = psycopg2.connect(args.target_db)
     pg_conn.autocommit = True
 
-    report: List[str] = []
+    report: list[str] = []
     report.append(f"# گزارش اعتبارسنجی بچ ({len(symbols)} نماد)")
-    report.append(f"- زمان اجرا: {datetime.now(timezone.utc).isoformat()}")
+    report.append(f"- زمان اجرا: {datetime.now(UTC).isoformat()}")
     report.append(f"- DSN: {args.target_db}")
     report.append(f"- سورس: {args.source_db}")
-    report.append(f"- limit کندل: {args.limit if args.limit>0 else 'همه'}")
+    report.append(f"- limit کندل: {args.limit if args.limit > 0 else 'همه'}")
     report.append("")
 
     report.append("## شمارش و پوشش جداول")
