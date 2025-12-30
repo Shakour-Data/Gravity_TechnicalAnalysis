@@ -71,7 +71,7 @@ class WalkForwardBacktester:
         in_sample_periods: int = 252,  # 1 year
         out_sample_periods: int = 63,  # 3 months
         step_size: int = 21,  # 1 month
-        min_samples: int = 100
+        min_samples: int = 100,
     ):
         """
         Initialize walk-forward backtester.
@@ -98,8 +98,10 @@ class WalkForwardBacktester:
 
     def _validate_data(self):
         """Validate input data format."""
-        required_columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
-        missing_columns = [col for col in required_columns if col not in self.historical_data.columns]
+        required_columns = ["timestamp", "open", "high", "low", "close", "volume"]
+        missing_columns = [
+            col for col in required_columns if col not in self.historical_data.columns
+        ]
 
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
@@ -109,9 +111,7 @@ class WalkForwardBacktester:
             raise ValueError(f"Insufficient data: need at least {total_periods_needed} periods")
 
     def run_walk_forward_analysis(
-        self,
-        parallel: bool = True,
-        max_workers: int | None = None
+        self, parallel: bool = True, max_workers: int | None = None
     ) -> WalkForwardResult:
         """
         Run complete walk-forward analysis.
@@ -177,18 +177,13 @@ class WalkForwardBacktester:
         return windows
 
     def _process_windows_parallel(
-        self,
-        windows: list[tuple[int, int, int, int]],
-        max_workers: int | None
+        self, windows: list[tuple[int, int, int, int]], max_workers: int | None
     ) -> list[WalkForwardWindow]:
         """Process windows in parallel."""
         workers = max_workers or min(4, len(windows))  # Limit to 4 workers
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            futures = [
-                executor.submit(self._process_single_window, window)
-                for window in windows
-            ]
+            futures = [executor.submit(self._process_single_window, window) for window in windows]
 
             results = []
             for future in as_completed(futures):
@@ -201,8 +196,7 @@ class WalkForwardBacktester:
         return results
 
     def _process_windows_sequential(
-        self,
-        windows: list[tuple[int, int, int, int]]
+        self, windows: list[tuple[int, int, int, int]]
     ) -> list[WalkForwardWindow]:
         """Process windows sequentially."""
         results = []
@@ -245,10 +239,26 @@ class WalkForwardBacktester:
             stability_score = self._calculate_parameter_stability(optimized_params, window_id)
 
             # Create timestamps
-            in_sample_start = in_sample_data['timestamp'].iloc[0] if isinstance(in_sample_data['timestamp'].iloc[0], datetime) else pd.to_datetime(in_sample_data['timestamp'].iloc[0])
-            in_sample_end_time = in_sample_data['timestamp'].iloc[-1] if isinstance(in_sample_data['timestamp'].iloc[-1], datetime) else pd.to_datetime(in_sample_data['timestamp'].iloc[-1])
-            out_sample_start = out_sample_data['timestamp'].iloc[0] if isinstance(out_sample_data['timestamp'].iloc[0], datetime) else pd.to_datetime(out_sample_data['timestamp'].iloc[0])
-            out_sample_end_time = out_sample_data['timestamp'].iloc[-1] if isinstance(out_sample_data['timestamp'].iloc[-1], datetime) else pd.to_datetime(out_sample_data['timestamp'].iloc[-1])
+            in_sample_start = (
+                in_sample_data["timestamp"].iloc[0]
+                if isinstance(in_sample_data["timestamp"].iloc[0], datetime)
+                else pd.to_datetime(in_sample_data["timestamp"].iloc[0])
+            )
+            in_sample_end_time = (
+                in_sample_data["timestamp"].iloc[-1]
+                if isinstance(in_sample_data["timestamp"].iloc[-1], datetime)
+                else pd.to_datetime(in_sample_data["timestamp"].iloc[-1])
+            )
+            out_sample_start = (
+                out_sample_data["timestamp"].iloc[0]
+                if isinstance(out_sample_data["timestamp"].iloc[0], datetime)
+                else pd.to_datetime(out_sample_data["timestamp"].iloc[0])
+            )
+            out_sample_end_time = (
+                out_sample_data["timestamp"].iloc[-1]
+                if isinstance(out_sample_data["timestamp"].iloc[-1], datetime)
+                else pd.to_datetime(out_sample_data["timestamp"].iloc[-1])
+            )
 
             return WalkForwardWindow(
                 window_id=window_id,
@@ -259,7 +269,7 @@ class WalkForwardBacktester:
                 optimized_parameters=optimized_params,
                 in_sample_performance=in_sample_perf,
                 out_sample_performance=out_sample_perf,
-                parameter_stability_score=stability_score
+                parameter_stability_score=stability_score,
             )
 
         except Exception as e:
@@ -272,15 +282,13 @@ class WalkForwardBacktester:
                 out_sample_start=datetime.now(UTC),
                 out_sample_end=datetime.now(UTC),
                 optimized_parameters={},
-                in_sample_performance={'error': str(e)},
-                out_sample_performance={'error': str(e)},
-                parameter_stability_score=0.0
+                in_sample_performance={"error": str(e)},
+                out_sample_performance={"error": str(e)},
+                parameter_stability_score=0.0,
             )
 
     def _calculate_parameter_stability(
-        self,
-        current_params: dict[str, Any],
-        window_id: int
+        self, current_params: dict[str, Any], window_id: int
     ) -> float:
         """
         Calculate parameter stability score.
@@ -323,11 +331,11 @@ class WalkForwardBacktester:
 
         for window in windows:
             # Skip windows with errors
-            if 'error' in window.in_sample_performance or 'error' in window.out_sample_performance:
+            if "error" in window.in_sample_performance or "error" in window.out_sample_performance:
                 continue
 
-            in_sample_return = window.in_sample_performance.get('total_return', 0)
-            out_sample_return = window.out_sample_performance.get('total_return', 0)
+            in_sample_return = window.in_sample_performance.get("total_return", 0)
+            out_sample_return = window.out_sample_performance.get("total_return", 0)
             stability = window.parameter_stability_score
 
             in_sample_returns.append(in_sample_return)
@@ -351,28 +359,28 @@ class WalkForwardBacktester:
 
         # Additional statistics
         summary_stats = {
-            'in_sample_returns': {
-                'mean': avg_in_sample,
-                'std': np.std(in_sample_returns),
-                'min': min(in_sample_returns),
-                'max': max(in_sample_returns),
-                'median': np.median(in_sample_returns)
+            "in_sample_returns": {
+                "mean": avg_in_sample,
+                "std": np.std(in_sample_returns),
+                "min": min(in_sample_returns),
+                "max": max(in_sample_returns),
+                "median": np.median(in_sample_returns),
             },
-            'out_sample_returns': {
-                'mean': avg_out_sample,
-                'std': np.std(out_sample_returns),
-                'min': min(out_sample_returns),
-                'max': max(out_sample_returns),
-                'median': np.median(out_sample_returns)
+            "out_sample_returns": {
+                "mean": avg_out_sample,
+                "std": np.std(out_sample_returns),
+                "min": min(out_sample_returns),
+                "max": max(out_sample_returns),
+                "median": np.median(out_sample_returns),
             },
-            'stability_scores': {
-                'mean': parameter_stability,
-                'std': np.std(stability_scores),
-                'min': min(stability_scores),
-                'max': max(stability_scores)
+            "stability_scores": {
+                "mean": parameter_stability,
+                "std": np.std(stability_scores),
+                "min": min(stability_scores),
+                "max": max(stability_scores),
             },
-            'total_windows_processed': len(windows),
-            'successful_windows': len(in_sample_returns)
+            "total_windows_processed": len(windows),
+            "successful_windows": len(in_sample_returns),
         }
 
         return WalkForwardResult(
@@ -383,5 +391,5 @@ class WalkForwardBacktester:
             parameter_stability=parameter_stability,
             overfitting_ratio=overfitting_ratio,
             windows=windows,
-            summary_stats=summary_stats
+            summary_stats=summary_stats,
         )
