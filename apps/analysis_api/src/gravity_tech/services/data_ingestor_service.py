@@ -20,11 +20,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
+from prometheus_client import Counter, Histogram
+
 from gravity_tech.config.settings import settings
 from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.database.historical_manager import HistoricalScoreManager
 from gravity_tech.middleware.events import EventConsumer, MessageType
-from prometheus_client import Counter, Histogram
 
 logger = structlog.get_logger()
 
@@ -92,8 +93,12 @@ class DataIngestorService:
 
         # Check for NaN/Inf in numeric fields
         numeric_fields = [
-            "trend_score", "momentum_score", "combined_score",
-            "price_at_analysis", "trend_confidence", "momentum_confidence"
+            "trend_score",
+            "momentum_score",
+            "combined_score",
+            "price_at_analysis",
+            "trend_confidence",
+            "momentum_confidence",
         ]
         for field in numeric_fields:
             value = data.get(field)
@@ -111,11 +116,19 @@ class DataIngestorService:
                     return False
                 for price_field in ["open", "high", "low", "close"]:
                     price = candle.get(price_field)
-                    if price is None or not isinstance(price, int | float) or price <= 0 or math.isnan(price) or math.isinf(price):
-                        logger.warning("invalid_candle_price", index=i, field=price_field, value=price)
+                    if (
+                        price is None
+                        or not isinstance(price, int | float)
+                        or price <= 0
+                        or math.isnan(price)
+                        or math.isinf(price)
+                    ):
+                        logger.warning(
+                            "invalid_candle_price", index=i, field=price_field, value=price
+                        )
                         return False
                 # Check chronological order
-                if i > 0 and candle.get("timestamp") <= candles[i-1].get("timestamp"):
+                if i > 0 and candle.get("timestamp") <= candles[i - 1].get("timestamp"):
                     logger.warning("non_chronological_candles", index=i)
                     return False
 
@@ -125,7 +138,7 @@ class DataIngestorService:
             return False
 
         # Size limit check (10MB max)
-        payload_size = len(json.dumps(data, default=str).encode('utf-8'))
+        payload_size = len(json.dumps(data, default=str).encode("utf-8"))
         if payload_size > 10 * 1024 * 1024:
             logger.warning("payload_too_large", size=payload_size)
             return False
@@ -177,9 +190,11 @@ class DataIngestorService:
         try:
             # بررسی فعال بودن event messaging
             if not (settings.kafka_enabled or settings.rabbitmq_enabled):
-                logger.warning("no_event_broker_enabled",
-                             kafka=settings.kafka_enabled,
-                             rabbitmq=settings.rabbitmq_enabled)
+                logger.warning(
+                    "no_event_broker_enabled",
+                    kafka=settings.kafka_enabled,
+                    rabbitmq=settings.rabbitmq_enabled,
+                )
                 # بدون consumer ادامه می‌دهیم
                 self.consumer = None
             else:
@@ -228,8 +243,7 @@ class DataIngestorService:
         try:
             # Subscribe به eventهای ANALYSIS_COMPLETED
             await self.consumer.subscribe(
-                MessageType.ANALYSIS_COMPLETED,
-                self._handle_analysis_completed
+                MessageType.ANALYSIS_COMPLETED, self._handle_analysis_completed
             )
 
             # شروع consuming
@@ -311,7 +325,7 @@ class DataIngestorService:
                     volume_analysis=volume_analysis,
                     price_targets=price_targets,
                     pattern_detections=pattern_detections,
-                )
+                ),
             )
 
             # Reset circuit breaker on success
@@ -322,17 +336,13 @@ class DataIngestorService:
                 "analysis_result_saved",
                 symbol=symbol,
                 timeframe=timeframe,
-                score=entry.combined_score
+                score=entry.combined_score,
             )
 
         except Exception as e:
             self.circuit_breaker_failures += 1
             INGEST_EVENTS.labels(status="error", mode="broker").inc()
-            logger.error(
-                "analysis_event_handling_failed",
-                error=str(e),
-                message_data=message
-            )
+            logger.error("analysis_event_handling_failed", error=str(e), message_data=message)
 
     def _convert_to_historical_entry(self, symbol: str, timeframe: str, results: dict[str, Any]):
         """
@@ -375,7 +385,9 @@ class DataIngestorService:
         recommendation = results.get("recommendation") or ("BUY" if combined_score > 0 else "HOLD")
         action = results.get("action") or "HOLD"
 
-        analysis_timestamp = results.get("analysis_timestamp") or results.get("timestamp") or datetime.now(UTC)
+        analysis_timestamp = (
+            results.get("analysis_timestamp") or results.get("timestamp") or datetime.now(UTC)
+        )
         if isinstance(analysis_timestamp, str):
             try:
                 analysis_timestamp = datetime.fromisoformat(analysis_timestamp)
@@ -404,7 +416,7 @@ class DataIngestorService:
             raw_data=results,
             recommendation=recommendation,
             action=action,
-            price_at_analysis=float(price_at_analysis)
+            price_at_analysis=float(price_at_analysis),
         )
 
     def _persist_entry(
@@ -501,10 +513,12 @@ class DataIngestorService:
                 INGEST_RETRIES.labels(reason="persistence_error").inc()
                 if attempt == max_retries - 1:
                     INGEST_EVENTS.labels(status="error", mode="direct").inc()
-                    logger.error("direct_persist_failed_after_retries", error=str(e), attempts=max_retries)
+                    logger.error(
+                        "direct_persist_failed_after_retries", error=str(e), attempts=max_retries
+                    )
                     raise
                 else:
-                    logger.warning("direct_persist_retry", attempt=attempt+1, error=str(e))
+                    logger.warning("direct_persist_retry", attempt=attempt + 1, error=str(e))
                     time.sleep(1)  # Simple backoff
 
     def _build_indicator_scores(self, results: dict[str, Any]) -> list[dict] | None:
@@ -566,7 +580,7 @@ class DataIngestorService:
                     "signal": norm_signal,
                     "raw_value": value,
                 }
-        )
+            )
 
         return normalized if normalized else None
 
@@ -613,7 +627,9 @@ class DataIngestorService:
 
         return normalized or None
 
-    def _build_pattern_detections(self, symbol: str, timeframe: str, results: dict[str, Any]) -> list[dict] | None:
+    def _build_pattern_detections(
+        self, symbol: str, timeframe: str, results: dict[str, Any]
+    ) -> list[dict] | None:
         """Normalize pattern results (classical/candlestick) to storage schema."""
 
         buckets = [
@@ -707,7 +723,9 @@ class DataIngestorService:
                 signal = getattr(p, "signal", None)
                 confidence = getattr(p, "confidence", 0.0)
                 description = getattr(p, "description", None)
-                price_target = getattr(p, "price_target", None) or getattr(p, "projected_target", None)
+                price_target = getattr(p, "price_target", None) or getattr(
+                    p, "projected_target", None
+                )
                 candle_indices = getattr(p, "candle_indices", None)
                 price_levels = getattr(p, "price_levels", None)
             else:
