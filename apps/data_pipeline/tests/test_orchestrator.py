@@ -2,13 +2,9 @@
 Integration tests for full ETL pipeline
 """
 
-import asyncio
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from gravity_pipeline.extractors import TSEExtractor
-from gravity_pipeline.loaders import SQLiteLoader
 from gravity_pipeline.orchestrator import DataPipeline, PipelineConfig, PipelineStage
 from gravity_pipeline.transformers import DataCleaner
 from gravity_pipeline.validators import DataQualityValidator
@@ -76,20 +72,17 @@ async def test_pipeline_initialization(pipeline):
 @pytest.mark.asyncio
 async def test_pipeline_stages_skip(pipeline, sample_candles):
     """Test skipping specific pipeline stages"""
-    
+
     # Mock stages
     pipeline.run_extract = AsyncMock(return_value=sample_candles)
     pipeline.run_transform = AsyncMock(return_value=sample_candles)
     pipeline.run_validate = AsyncMock(return_value=(len(sample_candles), 0))
     pipeline.run_deduplicate = AsyncMock(return_value=sample_candles)
     pipeline.run_load = AsyncMock(return_value=len(sample_candles))
-    
+
     # Run with skipped validate stage
-    result = await pipeline.run_full(
-        symbols=["BTCUSDT"],
-        skip_stages=[PipelineStage.VALIDATE]
-    )
-    
+    result = await pipeline.run_full(symbols=["BTCUSDT"], skip_stages=[PipelineStage.VALIDATE])
+
     # Validate stage should not be in completed
     assert PipelineStage.VALIDATE not in pipeline.stages_completed
 
@@ -97,11 +90,11 @@ async def test_pipeline_stages_skip(pipeline, sample_candles):
 @pytest.mark.asyncio
 async def test_pipeline_error_handling(pipeline, sample_candles):
     """Test error handling in pipeline"""
-    
+
     # Mock stages with one failing
     pipeline.run_extract = AsyncMock(return_value=sample_candles)
     pipeline.run_transform = AsyncMock(side_effect=Exception("Transform failed"))
-    
+
     # Should raise exception
     with pytest.raises(Exception, match="Transform failed"):
         await pipeline.run_full(symbols=["BTCUSDT"])
@@ -110,16 +103,13 @@ async def test_pipeline_error_handling(pipeline, sample_candles):
 @pytest.mark.asyncio
 async def test_extractor_transformer_integration(sample_candles):
     """Test extractor and transformer working together"""
-    
+
     # Create transformer
-    cleaner = DataCleaner(
-        remove_outliers=True,
-        fill_missing_with="skip"
-    )
-    
+    cleaner = DataCleaner(remove_outliers=True, fill_missing_with="skip")
+
     # Clean sample data
     cleaned = await cleaner.transform(sample_candles)
-    
+
     # All samples should pass cleaning
     assert len(cleaned) == len(sample_candles)
     assert all(c["open"] > 0 for c in cleaned)
@@ -128,15 +118,15 @@ async def test_extractor_transformer_integration(sample_candles):
 @pytest.mark.asyncio
 async def test_validator_integration(sample_candles):
     """Test validator"""
-    
+
     validator = DataQualityValidator(
         check_ohlc=True,
         check_volume=True,
         check_timestamps=False,
     )
-    
+
     valid, invalid = await validator.validate(sample_candles)
-    
+
     # All samples should be valid
     assert valid == len(sample_candles)
     assert invalid == 0
@@ -145,21 +135,21 @@ async def test_validator_integration(sample_candles):
 @pytest.mark.asyncio
 async def test_end_to_end_pipeline_flow(sample_candles):
     """Test complete pipeline flow from extract to load"""
-    
+
     # 1. Extract
     extracted = sample_candles.copy()
     assert len(extracted) == 3
-    
+
     # 2. Transform
     cleaner = DataCleaner(fill_missing_with="skip")
     transformed = await cleaner.transform(extracted)
     assert len(transformed) == 3
-    
+
     # 3. Validate
     validator = DataQualityValidator()
     valid, invalid = await validator.validate(transformed)
     assert valid == 3
-    
+
     # 4. Deduplicate (simplified)
     deduplicated = []
     seen = set()
@@ -169,7 +159,7 @@ async def test_end_to_end_pipeline_flow(sample_candles):
             deduplicated.append(candle)
             seen.add(key)
     assert len(deduplicated) == 3
-    
+
     # 5. Load (would insert into DB)
     # loaded = await loader.load(deduplicated)
     # assert loaded == 3
@@ -178,48 +168,50 @@ async def test_end_to_end_pipeline_flow(sample_candles):
 @pytest.mark.asyncio
 async def test_batch_processing(sample_candles):
     """Test batch processing of large datasets"""
-    
+
     # Create large dataset
     large_dataset = []
     for i in range(1000):
-        large_dataset.append({
-            "symbol": f"SYM{i % 10}",
-            "timestamp": f"2024-01-{(i % 28) + 1:02d}",
-            "open": float(100 + i),
-            "high": float(110 + i),
-            "low": float(90 + i),
-            "close": float(105 + i),
-            "volume": float(1000 + i),
-        })
-    
+        large_dataset.append(
+            {
+                "symbol": f"SYM{i % 10}",
+                "timestamp": f"2024-01-{(i % 28) + 1:02d}",
+                "open": float(100 + i),
+                "high": float(110 + i),
+                "low": float(90 + i),
+                "close": float(105 + i),
+                "volume": float(1000 + i),
+            }
+        )
+
     # Transform in batches
     cleaner = DataCleaner()
     transformed = await cleaner.transform(large_dataset)
-    
+
     # All should be cleaned
     assert len(transformed) == len(large_dataset)
-    
+
     # Validate
     validator = DataQualityValidator()
     valid, invalid = await validator.validate(transformed)
-    
+
     assert valid >= len(large_dataset) - 10  # Allow small error
 
 
 @pytest.mark.asyncio
 async def test_pipeline_statistics(pipeline):
     """Test pipeline statistics tracking"""
-    
+
     # Mock pipeline execution
     pipeline.run_extract = AsyncMock(return_value=[{"symbol": "TEST"}] * 100)
     pipeline.run_transform = AsyncMock(return_value=[{"symbol": "TEST"}] * 100)
     pipeline.run_validate = AsyncMock(return_value=(100, 0))
     pipeline.run_deduplicate = AsyncMock(return_value=[{"symbol": "TEST"}] * 100)
     pipeline.run_load = AsyncMock(return_value=100)
-    
+
     # Run pipeline
     result = await pipeline.run_full(symbols=["TEST"])
-    
+
     # Check result structure
     assert result is not None
     assert "status" in result or "stages_completed" in result
@@ -228,17 +220,17 @@ async def test_pipeline_statistics(pipeline):
 @pytest.mark.asyncio
 async def test_data_consistency(sample_candles):
     """Test data consistency through pipeline stages"""
-    
+
     # Process through all stages
     cleaner = DataCleaner()
     cleaned = await cleaner.transform(sample_candles)
-    
+
     # Verify symbols preserved
-    symbols_before = set(c.get("symbol") for c in sample_candles)
-    symbols_after = set(c.get("symbol") for c in cleaned)
+    symbols_before = {c.get("symbol") for c in sample_candles}
+    symbols_after = {c.get("symbol") for c in cleaned}
     assert symbols_before == symbols_after
-    
+
     # Verify timestamps preserved
-    ts_before = set(c.get("timestamp") for c in sample_candles)
-    ts_after = set(c.get("timestamp") for c in cleaned)
+    ts_before = {c.get("timestamp") for c in sample_candles}
+    ts_after = {c.get("timestamp") for c in cleaned}
     assert ts_before == ts_after
