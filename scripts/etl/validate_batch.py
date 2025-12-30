@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Set, Tuple
 
 import psycopg2
 
@@ -32,7 +32,7 @@ TABLES = [
 ]
 
 
-def load_symbols(path: Path) -> List[str]:
+def load_symbols(path: Path) -> list[str]:
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
@@ -51,7 +51,7 @@ def pg_connect(dsn: str):
     return conn
 
 
-def coverage_vs_source(src_db: Path, symbols: List[str], limit: int) -> List[Tuple[str, int]]:
+def coverage_vs_source(src_db: Path, symbols: list[str], limit: int) -> list[tuple[str, int]]:
     """Return candle counts per symbol (up to limit) from source DB."""
     conn = sqlite3.connect(src_db)
     cur = conn.cursor()
@@ -68,14 +68,16 @@ def coverage_vs_source(src_db: Path, symbols: List[str], limit: int) -> List[Tup
     return result
 
 
-def check_tables(conn, symbols: List[str]) -> str:
+def check_tables(conn, symbols: list[str]) -> str:
     lines = []
     cur = conn.cursor()
     sym_tuple = tuple(symbols)
 
-    missing: dict[str, Set[str]] = {}
+    missing: dict[str, set[str]] = {}
     for tbl in TABLES:
-        cur.execute(f"SELECT COUNT(*), COUNT(DISTINCT symbol) FROM {tbl} WHERE symbol IN %s", (sym_tuple,))
+        cur.execute(
+            f"SELECT COUNT(*), COUNT(DISTINCT symbol) FROM {tbl} WHERE symbol IN %s", (sym_tuple,)
+        )
         rows, distinct_syms = cur.fetchone()
         lines.append(f"{tbl:30s} rows={rows:8d} symbols={distinct_syms:5d}")
         cur.execute(f"SELECT DISTINCT symbol FROM {tbl} WHERE symbol IN %s", (sym_tuple,))
@@ -86,7 +88,10 @@ def check_tables(conn, symbols: List[str]) -> str:
 
     # time ranges
     lines.append("")
-    cur.execute("SELECT MIN(analysis_date), MAX(analysis_date) FROM analysis_results WHERE symbol IN %s", (sym_tuple,))
+    cur.execute(
+        "SELECT MIN(analysis_date), MAX(analysis_date) FROM analysis_results WHERE symbol IN %s",
+        (sym_tuple,),
+    )
     lines.append(f"analysis_results range: {cur.fetchone()}")
     cur.execute("SELECT MIN(ts), MAX(ts) FROM historical_scores WHERE symbol IN %s", (sym_tuple,))
     lines.append(f"historical_scores range: {cur.fetchone()}")
@@ -107,11 +112,17 @@ def check_tables(conn, symbols: List[str]) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate that batch symbols are fully stored in target DB.")
+    parser = argparse.ArgumentParser(
+        description="Validate that batch symbols are fully stored in target DB."
+    )
     parser.add_argument("--target-db", required=True, help="Postgres DSN for target.")
-    parser.add_argument("--source-db", required=True, help="Source SQLite DB (for candle coverage).")
+    parser.add_argument(
+        "--source-db", required=True, help="Source SQLite DB (for candle coverage)."
+    )
     parser.add_argument("--symbols-file", required=True, help="File with symbols, one per line.")
-    parser.add_argument("--limit", type=int, default=300, help="Max candles to compare with source.")
+    parser.add_argument(
+        "--limit", type=int, default=300, help="Max candles to compare with source."
+    )
     args = parser.parse_args()
 
     symbols = load_symbols(Path(args.symbols_file))
@@ -134,7 +145,9 @@ def main() -> None:
     avg_candles = sum(c for _, c in src_counts) / len(src_counts) if src_counts else 0
     min_candles = min((c for _, c in src_counts), default=0)
     report_lines.append("")
-    report_lines.append(f"Source candle coverage (limit={args.limit}): avg={avg_candles:.1f}, min={min_candles}")
+    report_lines.append(
+        f"Source candle coverage (limit={args.limit}): avg={avg_candles:.1f}, min={min_candles}"
+    )
 
     print("\n".join(report_lines))
 
