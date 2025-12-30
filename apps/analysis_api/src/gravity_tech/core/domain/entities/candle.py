@@ -37,9 +37,10 @@ from enum import Enum
 
 class CandleType(Enum):
     """Type of candle based on price action"""
-    BULLISH = "BULLISH"      # Close > Open (green/white)
-    BEARISH = "BEARISH"      # Close < Open (red/black)
-    DOJI = "DOJI"            # Close ≈ Open (indecision)
+
+    BULLISH = "BULLISH"  # Close > Open (green/white)
+    BEARISH = "BEARISH"  # Close < Open (red/black)
+    DOJI = "DOJI"  # Close ≈ Open (indecision)
 
     def __str__(self) -> str:
         return self.value
@@ -63,6 +64,7 @@ class Candle:
         symbol: Trading pair symbol (e.g., "BTCUSDT")
         timeframe: Candle timeframe (e.g., "1h", "4h", "1d")
     """
+
     timestamp: datetime
     open: float
     high: float
@@ -199,5 +201,5 @@ class Candle:
         return max(
             self.high - self.low,
             abs(self.high - previous_candle.close),
-            abs(self.low - previous_candle.close)
+            abs(self.low - previous_candle.close),
         )
