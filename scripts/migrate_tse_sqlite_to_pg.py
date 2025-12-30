@@ -16,12 +16,11 @@ Notes:
 import argparse
 import sqlite3
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import psycopg2
 import psycopg2.extras
-
 
 TABLE_DEFS: tuple[str, str] = (
     (
@@ -183,7 +182,7 @@ def copy_rows(
                 break
             psycopg2.extras.execute_batch(
                 cur,
-                f"INSERT INTO {target} ({', '.join(columns)}) VALUES ({', '.join(['%s']*len(columns))}) "
+                f"INSERT INTO {target} ({', '.join(columns)}) VALUES ({', '.join(['%s'] * len(columns))}) "
                 f"ON CONFLICT DO NOTHING",
                 [tuple(r[c] for c in columns) for r in batch],
                 page_size=chunk_size,
@@ -315,6 +314,8 @@ def main(sqlite_path: Path, pg_dsn: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--sqlite", default="services/data_ingestion/data/tse_data.db")
-    parser.add_argument("--pg", default="postgresql://gravity:gravity_db_pass@localhost:5545/tech_analysis")
+    parser.add_argument(
+        "--pg", default="postgresql://gravity:gravity_db_pass@localhost:5545/tech_analysis"
+    )
     args = parser.parse_args()
     main(Path(args.sqlite), args.pg)
