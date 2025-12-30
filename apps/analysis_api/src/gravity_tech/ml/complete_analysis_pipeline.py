@@ -25,6 +25,7 @@ Date: November 14, 2025
 Version: 1.0.0
 License: MIT
 """
+
 from __future__ import annotations
 
 import math
@@ -139,8 +140,12 @@ class CompleteAnalysisPipeline:
             learner=volatility_learner,
             factory=MultiHorizonVolatilityAnalyzer,
         )
-        self._cycle_analyzer: MultiHorizonCycleAnalyzer = cycle_analyzer or MultiHorizonCycleAnalyzer()
-        self._sr_analyzer: MultiHorizonSupportResistanceAnalyzer = sr_analyzer or MultiHorizonSupportResistanceAnalyzer()
+        self._cycle_analyzer: MultiHorizonCycleAnalyzer = (
+            cycle_analyzer or MultiHorizonCycleAnalyzer()
+        )
+        self._sr_analyzer: MultiHorizonSupportResistanceAnalyzer = (
+            sr_analyzer or MultiHorizonSupportResistanceAnalyzer()
+        )
 
         # Cache expensive feature computations for trend/momentum/volatility
         self._feature_cache: _FeatureCache = feature_cache or _FeatureCache(self.candles)
@@ -162,7 +167,9 @@ class CompleteAnalysisPipeline:
     def _sanitize_candles(candles: list[Candle]) -> list[Candle]:
         """Validate minimum length and finite OHLCV values"""
         if len(candles) < MIN_PIPELINE_CANDLES:
-            raise ValueError(f"Pipeline requires at least {MIN_PIPELINE_CANDLES} candles (got {len(candles)})")
+            raise ValueError(
+                f"Pipeline requires at least {MIN_PIPELINE_CANDLES} candles (got {len(candles)})"
+            )
         for c in candles:
             values = [c.open, c.high, c.low, c.close, c.volume]
             if not all(math.isfinite(float(v)) for v in values):
@@ -209,7 +216,9 @@ class CompleteAnalysisPipeline:
         self._make_final_decision()
 
         # ساخت نتیجه
-        trend_score, momentum_score, volatility_score, cycle_score, sr_score = self._require_scores()
+        trend_score, momentum_score, volatility_score, cycle_score, sr_score = (
+            self._require_scores()
+        )
         decision = self._require_final_decision()
 
         result = PipelineResult(
@@ -221,7 +230,7 @@ class CompleteAnalysisPipeline:
             cycle_score=cycle_score,
             sr_score=sr_score,
             volume_interactions=self._volume_interactions,
-            decision=decision
+            decision=decision,
         )
 
         self._log("\n" + "=" * 80)
@@ -256,7 +265,9 @@ class CompleteAnalysisPipeline:
         momentum_result = momentum_analyzer.analyze(momentum_features)
         momentum_score = self._select_best_momentum_score(momentum_result)
         self._momentum_score = momentum_score
-        self._log(f"      Score: {momentum_score.score:+.3f}, Signal: {momentum_score.signal.value}")
+        self._log(
+            f"      Score: {momentum_score.score:+.3f}, Signal: {momentum_score.signal.value}"
+        )
 
         # Volatility
         self._log("   ? Volatility Analysis...")
@@ -264,7 +275,9 @@ class CompleteAnalysisPipeline:
         volatility_result = volatility_analyzer.analyze(volatility_features)
         volatility_score = self._select_best_volatility_score(volatility_result)
         self._volatility_score = volatility_score
-        self._log(f"      Score: {volatility_score.score:+.3f}, Signal: {volatility_score.signal.value}")
+        self._log(
+            f"      Score: {volatility_score.score:+.3f}, Signal: {volatility_score.signal.value}"
+        )
 
         # Cycle
         self._log("   ? Cycle Analysis...")
@@ -284,20 +297,24 @@ class CompleteAnalysisPipeline:
     def _calculate_volume_interactions(self):
         """محاسبه تعاملات حجم-ابعاد"""
 
-        trend_score, momentum_score, volatility_score, cycle_score, sr_score = self._require_scores()
+        trend_score, momentum_score, volatility_score, cycle_score, sr_score = (
+            self._require_scores()
+        )
         volume_matrix = VolumeDimensionMatrix(self.candles)
         self._volume_interactions = volume_matrix.calculate_all_interactions(
             trend_score=trend_score,
             momentum_score=momentum_score,
             volatility_score=volatility_score,
             cycle_score=cycle_score,
-            sr_score=sr_score
+            sr_score=sr_score,
         )
 
         # نمایش خلاصه
         for name, interaction in self._volume_interactions.items():
-            self._log(f"   → {name}: {interaction.interaction_type.value} "
-                      f"({interaction.interaction_score:+.3f})")
+            self._log(
+                f"   → {name}: {interaction.interaction_type.value} "
+                f"({interaction.interaction_score:+.3f})"
+            )
 
     def _make_final_decision(self):
         """تصمیم‌گیری نهایی با 5D Matrix"""
@@ -305,16 +322,18 @@ class CompleteAnalysisPipeline:
         matrix = FiveDimensionalDecisionMatrix(
             candles=self.candles,
             dimension_weights=self.custom_weights,
-            use_volume_matrix=self.use_volume_matrix
+            use_volume_matrix=self.use_volume_matrix,
         )
 
-        trend_score, momentum_score, volatility_score, cycle_score, sr_score = self._require_scores()
+        trend_score, momentum_score, volatility_score, cycle_score, sr_score = (
+            self._require_scores()
+        )
         decision = matrix.analyze(
             trend_score=trend_score,
             momentum_score=momentum_score,
             volatility_score=volatility_score,
             cycle_score=cycle_score,
-            sr_score=sr_score
+            sr_score=sr_score,
         )
         self._final_decision = decision
 
@@ -355,7 +374,9 @@ class CompleteAnalysisPipeline:
         candidates = [analysis.score_3d, analysis.score_7d, analysis.score_30d]
         return max(candidates, key=lambda score: score.confidence)
 
-    def _require_scores(self) -> tuple[TrendScore, MomentumScore, VolatilityScore, CycleScore, SupportResistanceScore]:
+    def _require_scores(
+        self,
+    ) -> tuple[TrendScore, MomentumScore, VolatilityScore, CycleScore, SupportResistanceScore]:
         """Ensure all base scores are available and return them."""
         if (
             self._trend_score is None
@@ -417,8 +438,6 @@ class CompleteAnalysisPipeline:
         return self._final_decision
 
 
-
-
 class _FeatureCache:
     """Cache expensive feature extractions for pipeline analyzers."""
 
@@ -465,7 +484,9 @@ class _FeatureCache:
         if self._volatility_features is None:
             window = self._window(self._volatility_lookback)
             # Use dedicated volatility extractor to align with volatility model features
-            self._volatility_features = self._volatility_extractor.extract_volatility_features(window)
+            self._volatility_features = self._volatility_extractor.extract_volatility_features(
+                window
+            )
         return self._volatility_features
 
     def _window(self, length: int) -> list[Candle]:
@@ -491,7 +512,7 @@ class PipelineResult:
         cycle_score: CycleScore,
         sr_score: SupportResistanceScore,
         volume_interactions: dict | None,
-        decision: FiveDimensionalDecision
+        decision: FiveDimensionalDecision,
     ):
         self.timestamp = timestamp
         self.candles_count = candles_count
@@ -517,8 +538,12 @@ class PipelineResult:
         print("📊 ابعاد پایه:")
         print("─" * 80)
         print(f"  Trend:      {self.trend_score.score:+.3f} ({self.trend_score.signal.value})")
-        print(f"  Momentum:   {self.momentum_score.score:+.3f} ({self.momentum_score.signal.value})")
-        print(f"  Volatility: {self.volatility_score.score:+.3f} ({self.volatility_score.signal.value})")
+        print(
+            f"  Momentum:   {self.momentum_score.score:+.3f} ({self.momentum_score.signal.value})"
+        )
+        print(
+            f"  Volatility: {self.volatility_score.score:+.3f} ({self.volatility_score.signal.value})"
+        )
         print(f"  Cycle:      {self.cycle_score.score:+.3f} ({self.cycle_score.phase})")
         print(f"  S/R:        {self.sr_score.score:+.3f} ({self.sr_score.nearest_level_type})")
 
@@ -554,74 +579,73 @@ class PipelineResult:
     def to_dict(self) -> dict:
         """تبدیل به دیکشنری (برای JSON)"""
         return {
-            'timestamp': self.timestamp.isoformat(),
-            'candles_count': self.candles_count,
-            'base_dimensions': {
-                'trend': {
-                    'score': self.trend_score.score,
-                    'signal': self.trend_score.signal.value,
-                    'accuracy': self.trend_score.accuracy
+            "timestamp": self.timestamp.isoformat(),
+            "candles_count": self.candles_count,
+            "base_dimensions": {
+                "trend": {
+                    "score": self.trend_score.score,
+                    "signal": self.trend_score.signal.value,
+                    "accuracy": self.trend_score.accuracy,
                 },
-                'momentum': {
-                    'score': self.momentum_score.score,
-                    'signal': self.momentum_score.signal.value,
-                    'accuracy': self.momentum_score.accuracy
+                "momentum": {
+                    "score": self.momentum_score.score,
+                    "signal": self.momentum_score.signal.value,
+                    "accuracy": self.momentum_score.accuracy,
                 },
-                'volatility': {
-                    'score': self.volatility_score.score,
-                    'signal': self.volatility_score.signal.value,
-                    'accuracy': self.volatility_score.accuracy
+                "volatility": {
+                    "score": self.volatility_score.score,
+                    "signal": self.volatility_score.signal.value,
+                    "accuracy": self.volatility_score.accuracy,
                 },
-                'cycle': {
-                    'score': self.cycle_score.score,
-                    'phase': self.cycle_score.phase,
-                    'phase_strength': self.cycle_score.phase_strength,
-                    'accuracy': self.cycle_score.accuracy
+                "cycle": {
+                    "score": self.cycle_score.score,
+                    "phase": self.cycle_score.phase,
+                    "phase_strength": self.cycle_score.phase_strength,
+                    "accuracy": self.cycle_score.accuracy,
                 },
-                'support_resistance': {
-                    'score': self.sr_score.score,
-                    'signal': getattr(self.sr_score.signal, "value", self.sr_score.signal),
-                    'nearest_level_type': self.sr_score.nearest_level_type,
-                    'nearest_level_distance': getattr(self.sr_score, "distance_to_key_level", None),
-                    'accuracy': self.sr_score.accuracy
-                }
+                "support_resistance": {
+                    "score": self.sr_score.score,
+                    "signal": getattr(self.sr_score.signal, "value", self.sr_score.signal),
+                    "nearest_level_type": self.sr_score.nearest_level_type,
+                    "nearest_level_distance": getattr(self.sr_score, "distance_to_key_level", None),
+                    "accuracy": self.sr_score.accuracy,
+                },
             },
-            'volume_interactions': {
+            "volume_interactions": {
                 name: {
-                    'type': getattr(interaction, "interaction_type", None).value
-                    if getattr(interaction, "interaction_type", None) else None,
-                    'score': getattr(interaction, "interaction_score", None),
-                    'confidence': getattr(interaction, "confidence", None),
-                    'signals': getattr(interaction, "signals", []),
+                    "type": getattr(interaction, "interaction_type", None).value
+                    if getattr(interaction, "interaction_type", None)
+                    else None,
+                    "score": getattr(interaction, "interaction_score", None),
+                    "confidence": getattr(interaction, "confidence", None),
+                    "signals": getattr(interaction, "signals", []),
                 }
                 for name, interaction in (self.volume_interactions or {}).items()
             },
-            'final_decision': {
-                'signal': self.decision.final_signal.value,
-                'score': self.decision.final_score,
-                'confidence': self.decision.final_confidence,
-                'signal_strength': self.decision.signal_strength,
-                'agreement': self.decision.agreement.overall_agreement,
-                'risk_level': self.decision.risk_level.value,
-                'risk_factors': self.decision.risk_factors,
-                'recommendation': self.decision.recommendation,
-                'entry_strategy': self.decision.entry_strategy,
-                'exit_strategy': self.decision.exit_strategy,
-                'stop_loss': self.decision.stop_loss_suggestion,
-                'take_profit': self.decision.take_profit_suggestion,
-                'market_condition': self.decision.market_condition,
-                'key_insights': self.decision.key_insights
-            }
+            "final_decision": {
+                "signal": self.decision.final_signal.value,
+                "score": self.decision.final_score,
+                "confidence": self.decision.final_confidence,
+                "signal_strength": self.decision.signal_strength,
+                "agreement": self.decision.agreement.overall_agreement,
+                "risk_level": self.decision.risk_level.value,
+                "risk_factors": self.decision.risk_factors,
+                "recommendation": self.decision.recommendation,
+                "entry_strategy": self.decision.entry_strategy,
+                "exit_strategy": self.decision.exit_strategy,
+                "stop_loss": self.decision.stop_loss_suggestion,
+                "take_profit": self.decision.take_profit_suggestion,
+                "market_condition": self.decision.market_condition,
+                "key_insights": self.decision.key_insights,
+            },
         }
 
 
 # Convenience Functions
 # =====================
 
-def quick_analyze(
-    candles: list[Candle],
-    verbose: bool = False
-) -> PipelineResult:
+
+def quick_analyze(candles: list[Candle], verbose: bool = False) -> PipelineResult:
     """
     تحلیل سریع - با تنظیمات پیش‌فرض
 
@@ -637,9 +661,7 @@ def quick_analyze(
 
 
 def analyze_with_custom_weights(
-    candles: list[Candle],
-    weights: dict[str, float],
-    verbose: bool = False
+    candles: list[Candle], weights: dict[str, float], verbose: bool = False
 ) -> PipelineResult:
     """
     تحلیل با وزن‌های سفارشی
@@ -652,18 +674,11 @@ def analyze_with_custom_weights(
     Returns:
         PipelineResult
     """
-    pipeline = CompleteAnalysisPipeline(
-        candles,
-        custom_weights=weights,
-        verbose=verbose
-    )
+    pipeline = CompleteAnalysisPipeline(candles, custom_weights=weights, verbose=verbose)
     return pipeline.analyze()
 
 
-def analyze_without_volume(
-    candles: list[Candle],
-    verbose: bool = False
-) -> PipelineResult:
+def analyze_without_volume(candles: list[Candle], verbose: bool = False) -> PipelineResult:
     """
     تحلیل بدون Volume Matrix
 
@@ -674,11 +689,7 @@ def analyze_without_volume(
     Returns:
         PipelineResult
     """
-    pipeline = CompleteAnalysisPipeline(
-        candles,
-        use_volume_matrix=False,
-        verbose=verbose
-    )
+    pipeline = CompleteAnalysisPipeline(candles, use_volume_matrix=False, verbose=verbose)
     return pipeline.analyze()
 
 
