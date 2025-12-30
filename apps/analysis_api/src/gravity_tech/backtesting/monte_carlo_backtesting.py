@@ -59,7 +59,7 @@ class MonteCarloBacktester:
         historical_data: pd.DataFrame,
         num_simulations: int = 1000,
         test_window_days: int = 252,  # 1 year
-        confidence_levels: list[float] | None = None
+        confidence_levels: list[float] | None = None,
     ):
         """
         Initialize Monte Carlo backtester.
@@ -82,8 +82,10 @@ class MonteCarloBacktester:
 
     def _validate_data(self):
         """Validate input data format."""
-        required_columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
-        missing_columns = [col for col in required_columns if col not in self.historical_data.columns]
+        required_columns = ["timestamp", "open", "high", "low", "close", "volume"]
+        missing_columns = [
+            col for col in required_columns if col not in self.historical_data.columns
+        ]
 
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
@@ -92,9 +94,7 @@ class MonteCarloBacktester:
             raise ValueError(f"Insufficient data: need at least {self.test_window_days} periods")
 
     def run_monte_carlo_analysis(
-        self,
-        parallel: bool = True,
-        max_workers: int | None = None
+        self, parallel: bool = True, max_workers: int | None = None
     ) -> MonteCarloResult:
         """
         Run Monte Carlo analysis.
@@ -119,8 +119,7 @@ class MonteCarloBacktester:
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [
-                executor.submit(self._run_single_simulation, i)
-                for i in range(self.num_simulations)
+                executor.submit(self._run_single_simulation, i) for i in range(self.num_simulations)
             ]
 
             results = []
@@ -169,27 +168,27 @@ class MonteCarloBacktester:
             performance = self._calculate_performance_metrics(strategy_result, noisy_data)
 
             return {
-                'simulation_id': simulation_id,
-                'success': performance['total_return'] > 0,
-                'total_return': performance['total_return'],
-                'sharpe_ratio': performance['sharpe_ratio'],
-                'max_drawdown': performance['max_drawdown'],
-                'win_rate': performance['win_rate'],
-                'profit_factor': performance['profit_factor'],
-                'details': performance
+                "simulation_id": simulation_id,
+                "success": performance["total_return"] > 0,
+                "total_return": performance["total_return"],
+                "sharpe_ratio": performance["sharpe_ratio"],
+                "max_drawdown": performance["max_drawdown"],
+                "win_rate": performance["win_rate"],
+                "profit_factor": performance["profit_factor"],
+                "details": performance,
             }
 
         except Exception as e:
             logger.error(f"Error in simulation {simulation_id}: {e}")
             return {
-                'simulation_id': simulation_id,
-                'success': False,
-                'total_return': -1.0,
-                'sharpe_ratio': 0.0,
-                'max_drawdown': 1.0,
-                'win_rate': 0.0,
-                'profit_factor': 0.0,
-                'details': {'error': str(e)}
+                "simulation_id": simulation_id,
+                "success": False,
+                "total_return": -1.0,
+                "sharpe_ratio": 0.0,
+                "max_drawdown": 1.0,
+                "win_rate": 0.0,
+                "profit_factor": 0.0,
+                "details": {"error": str(e)},
             }
 
     def _sample_random_window(self) -> pd.DataFrame:
@@ -210,10 +209,7 @@ class MonteCarloBacktester:
         return self.historical_data.iloc[start_idx:end_idx].copy()
 
     def _add_market_noise(
-        self,
-        data: pd.DataFrame,
-        volatility_factor: float = 0.1,
-        trend_bias: float = 0.0
+        self, data: pd.DataFrame, volatility_factor: float = 0.1, trend_bias: float = 0.0
     ) -> pd.DataFrame:
         """
         Add realistic market noise to data.
@@ -229,7 +225,7 @@ class MonteCarloBacktester:
         modified_data = data.copy()
 
         # Calculate returns
-        returns = modified_data['close'].pct_change().fillna(0)
+        returns = modified_data["close"].pct_change().fillna(0)
 
         # Add volatility noise
         volatility_noise = np.random.normal(0, volatility_factor, len(returns))
@@ -240,27 +236,25 @@ class MonteCarloBacktester:
         noisy_returns += trend_noise
 
         # Reconstruct prices
-        modified_data['close'] = modified_data['close'].iloc[0] * (1 + noisy_returns).cumprod()
+        modified_data["close"] = modified_data["close"].iloc[0] * (1 + noisy_returns).cumprod()
 
         # Adjust OHLC accordingly
         for i in range(1, len(modified_data)):
-            base_price = modified_data['close'].iloc[i]
+            base_price = modified_data["close"].iloc[i]
             volatility = abs(returns.iloc[i]) * (1 + volatility_factor)
 
             # Generate realistic OHLC
             high_mult = 1 + np.random.uniform(0, volatility)
             low_mult = 1 - np.random.uniform(0, volatility)
 
-            modified_data.loc[modified_data.index[i], 'high'] = base_price * high_mult
-            modified_data.loc[modified_data.index[i], 'low'] = base_price * low_mult
-            modified_data.loc[modified_data.index[i], 'open'] = modified_data['close'].iloc[i-1]
+            modified_data.loc[modified_data.index[i], "high"] = base_price * high_mult
+            modified_data.loc[modified_data.index[i], "low"] = base_price * low_mult
+            modified_data.loc[modified_data.index[i], "open"] = modified_data["close"].iloc[i - 1]
 
         return modified_data
 
     def _calculate_performance_metrics(
-        self,
-        strategy_result: dict[str, Any],
-        data: pd.DataFrame
+        self, strategy_result: dict[str, Any], data: pd.DataFrame
     ) -> dict[str, Any]:
         """
         Calculate performance metrics for a strategy result.
@@ -273,16 +267,16 @@ class MonteCarloBacktester:
             Dictionary with performance metrics
         """
         # Extract trades/signals from strategy result
-        trades = strategy_result.get('trades', [])
-        signals = strategy_result.get('signals', [])
+        trades = strategy_result.get("trades", [])
+        signals = strategy_result.get("signals", [])
 
         if not trades and not signals:
             return {
-                'total_return': 0.0,
-                'sharpe_ratio': 0.0,
-                'max_drawdown': 0.0,
-                'win_rate': 0.0,
-                'profit_factor': 0.0
+                "total_return": 0.0,
+                "sharpe_ratio": 0.0,
+                "max_drawdown": 0.0,
+                "win_rate": 0.0,
+                "profit_factor": 0.0,
             }
 
         # Calculate returns
@@ -290,11 +284,11 @@ class MonteCarloBacktester:
 
         if not returns:
             return {
-                'total_return': 0.0,
-                'sharpe_ratio': 0.0,
-                'max_drawdown': 0.0,
-                'win_rate': 0.0,
-                'profit_factor': 0.0
+                "total_return": 0.0,
+                "sharpe_ratio": 0.0,
+                "max_drawdown": 0.0,
+                "win_rate": 0.0,
+                "profit_factor": 0.0,
             }
 
         # Calculate metrics
@@ -305,17 +299,15 @@ class MonteCarloBacktester:
         profit_factor = self._calculate_profit_factor(returns)
 
         return {
-            'total_return': total_return,
-            'sharpe_ratio': sharpe_ratio,
-            'max_drawdown': max_drawdown,
-            'win_rate': win_rate,
-            'profit_factor': profit_factor
+            "total_return": total_return,
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown": max_drawdown,
+            "win_rate": win_rate,
+            "profit_factor": profit_factor,
         }
 
     def _calculate_strategy_returns(
-        self,
-        trades_signals: list[dict[str, Any]],
-        data: pd.DataFrame
+        self, trades_signals: list[dict[str, Any]], data: pd.DataFrame
     ) -> list[float]:
         """
         Calculate strategy returns from trades/signals.
@@ -331,26 +323,26 @@ class MonteCarloBacktester:
         position = 0  # 1 for long, -1 for short, 0 for neutral
 
         for i, item in enumerate(trades_signals):
-            if 'signal' in item:
+            if "signal" in item:
                 # Signal-based
-                signal = item['signal']
+                signal = item["signal"]
                 if signal > 0 and position <= 0:
                     position = 1
                 elif signal < 0 and position >= 0:
                     position = -1
                 elif signal == 0:
                     position = 0
-            elif 'action' in item:
+            elif "action" in item:
                 # Trade-based
-                action = item['action']
-                if action == 'buy' and position <= 0:
+                action = item["action"]
+                if action == "buy" and position <= 0:
                     position = 1
-                elif action == 'sell' and position >= 0:
+                elif action == "sell" and position >= 0:
                     position = -1
 
             # Calculate return for this period
             if i > 0:
-                price_return = data['close'].iloc[i] / data['close'].iloc[int(i-1)] - 1
+                price_return = data["close"].iloc[i] / data["close"].iloc[int(i - 1)] - 1
                 strategy_return = position * price_return
                 returns.append(strategy_return)
 
@@ -397,7 +389,7 @@ class MonteCarloBacktester:
         gross_loss = abs(sum(r for r in returns if r < 0))
 
         if gross_loss == 0:
-            return float('inf') if gross_profit > 0 else 0.0
+            return float("inf") if gross_profit > 0 else 0.0
 
         return gross_profit / gross_loss
 
@@ -415,8 +407,8 @@ class MonteCarloBacktester:
             raise ValueError("No simulation results to analyze")
 
         # Extract metrics
-        returns = [r['total_return'] for r in results]
-        successful = [r for r in results if r['success']]
+        returns = [r["total_return"] for r in results]
+        successful = [r for r in results if r["success"]]
 
         # Calculate statistics
         success_rate = len(successful) / len(results)
@@ -432,15 +424,15 @@ class MonteCarloBacktester:
             lower_percentile = (1 - level) / 2 * 100
             upper_percentile = (1 + level) / 2 * 100
 
-            confidence_intervals[f"{int(level*100)}%"] = (
+            confidence_intervals[f"{int(level * 100)}%"] = (
                 float(np.percentile(returns, lower_percentile)),  # type: ignore
-                float(np.percentile(returns, upper_percentile))   # type: ignore
+                float(np.percentile(returns, upper_percentile)),  # type: ignore
             )
 
         # Additional metrics from successful simulations
         if successful:
-            sharpe_ratios = [r['sharpe_ratio'] for r in successful]
-            max_drawdowns = [r['max_drawdown'] for r in successful]
+            sharpe_ratios = [r["sharpe_ratio"] for r in successful]
+            max_drawdowns = [r["max_drawdown"] for r in successful]
 
             sharpe_avg = float(np.mean(sharpe_ratios))
             max_dd_avg = float(np.mean(max_drawdowns))
@@ -461,5 +453,5 @@ class MonteCarloBacktester:
             max_drawdown_avg=max_dd_avg,
             confidence_intervals=confidence_intervals,
             return_distribution=returns,
-            simulation_details=results
+            simulation_details=results,
         )
