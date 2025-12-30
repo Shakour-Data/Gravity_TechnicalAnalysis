@@ -31,6 +31,7 @@ from enum import Enum
 
 class IndicatorCategory(str, Enum):
     """Technical indicator categories"""
+
     TREND = "TREND"
     MOMENTUM = "MOMENTUM"
     CYCLE = "CYCLE"
