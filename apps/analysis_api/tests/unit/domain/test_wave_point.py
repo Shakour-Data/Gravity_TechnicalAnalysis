@@ -9,8 +9,9 @@ Tests cover:
 - Edge cases and error conditions
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 from gravity_tech.core.domain.entities.wave_point import WavePoint
 
 
@@ -25,22 +26,12 @@ class TestWavePoint:
     @pytest.fixture
     def valid_wave_point_peak(self, valid_timestamp):
         """Fixture for a valid peak wave point"""
-        return WavePoint(
-            wave_number=1,
-            price=100.0,
-            timestamp=valid_timestamp,
-            wave_type="PEAK"
-        )
+        return WavePoint(wave_number=1, price=100.0, timestamp=valid_timestamp, wave_type="PEAK")
 
     @pytest.fixture
     def valid_wave_point_trough(self, valid_timestamp):
         """Fixture for a valid trough wave point"""
-        return WavePoint(
-            wave_number=2,
-            price=95.0,
-            timestamp=valid_timestamp,
-            wave_type="TROUGH"
-        )
+        return WavePoint(wave_number=2, price=95.0, timestamp=valid_timestamp, wave_type="TROUGH")
 
     def test_wave_point_creation_peak(self, valid_wave_point_peak):
         """Test creating a valid peak wave point"""
@@ -85,71 +76,75 @@ class TestWavePoint:
         wave_dict = {valid_wave_point_peak: "test_value"}
         assert wave_dict[valid_wave_point_peak] == "test_value"
 
-    @pytest.mark.parametrize("invalid_wave_type", [
-        "peak",      # lowercase
-        "PEAKS",     # plural
-        "TROUGHES",  # misspelled
-        "INVALID",   # completely wrong
-        "",          # empty string
-        None,        # None value
-        123,         # integer
-    ])
+    @pytest.mark.parametrize(
+        "invalid_wave_type",
+        [
+            "peak",  # lowercase
+            "PEAKS",  # plural
+            "TROUGHES",  # misspelled
+            "INVALID",  # completely wrong
+            "",  # empty string
+            None,  # None value
+            123,  # integer
+        ],
+    )
     def test_invalid_wave_type_validation(self, valid_timestamp, invalid_wave_type):
         """Test validation of wave_type field"""
         with pytest.raises(ValueError, match="wave_type must be 'PEAK' or 'TROUGH'"):
             WavePoint(
-                wave_number=1,
-                price=100.0,
-                timestamp=valid_timestamp,
-                wave_type=invalid_wave_type
+                wave_number=1, price=100.0, timestamp=valid_timestamp, wave_type=invalid_wave_type
             )
 
-    @pytest.mark.parametrize("invalid_price", [
-        0,           # zero
-        -1.0,        # negative
-        -100.0,      # negative large
-        -0.01,       # negative small
-    ])
+    @pytest.mark.parametrize(
+        "invalid_price",
+        [
+            0,  # zero
+            -1.0,  # negative
+            -100.0,  # negative large
+            -0.01,  # negative small
+        ],
+    )
     def test_invalid_price_validation(self, valid_timestamp, invalid_price):
         """Test validation of price field (must be positive)"""
         with pytest.raises(ValueError, match="price must be positive"):
             WavePoint(
-                wave_number=1,
-                price=invalid_price,
-                timestamp=valid_timestamp,
-                wave_type="PEAK"
+                wave_number=1, price=invalid_price, timestamp=valid_timestamp, wave_type="PEAK"
             )
 
-    @pytest.mark.parametrize("valid_price", [
-        0.01,        # very small positive
-        1.0,         # small positive
-        100.0,       # normal price
-        1000000.0,   # large price
-        0.000001,    # very small decimal
-    ])
+    @pytest.mark.parametrize(
+        "valid_price",
+        [
+            0.01,  # very small positive
+            1.0,  # small positive
+            100.0,  # normal price
+            1000000.0,  # large price
+            0.000001,  # very small decimal
+        ],
+    )
     def test_valid_price_values(self, valid_timestamp, valid_price):
         """Test that valid positive prices are accepted"""
         point = WavePoint(
-            wave_number=1,
-            price=valid_price,
-            timestamp=valid_timestamp,
-            wave_type="PEAK"
+            wave_number=1, price=valid_price, timestamp=valid_timestamp, wave_type="PEAK"
         )
         assert point.price == valid_price
 
-    @pytest.mark.parametrize("wave_number", [
-        1, 2, 3, 4, 5,  # impulse waves
-        0,              # wave 0 (sometimes used)
-        -1,             # negative (though unusual)
-        100,            # large number
-    ])
+    @pytest.mark.parametrize(
+        "wave_number",
+        [
+            1,
+            2,
+            3,
+            4,
+            5,  # impulse waves
+            0,  # wave 0 (sometimes used)
+            -1,  # negative (though unusual)
+            100,  # large number
+        ],
+    )
     def test_wave_number_values(self, valid_timestamp, wave_number):
         """Test various wave number values"""
         point = WavePoint(
-            wave_number=wave_number,
-            price=100.0,
-            timestamp=valid_timestamp,
-            wave_type="PEAK"
+            wave_number=wave_number, price=100.0, timestamp=valid_timestamp, wave_type="PEAK"
         )
         assert point.wave_number == wave_number
 
@@ -192,4 +187,3 @@ class TestWavePoint:
         deep_copied = copy.deepcopy(valid_wave_point_peak)
         assert deep_copied == valid_wave_point_peak
         assert deep_copied is not valid_wave_point_peak
-
