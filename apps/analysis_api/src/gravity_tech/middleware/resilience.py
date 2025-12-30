@@ -15,7 +15,6 @@ from collections.abc import Callable
 from enum import Enum
 from functools import wraps
 
-
 import structlog
 
 logger = structlog.get_logger()
@@ -23,6 +22,7 @@ logger = structlog.get_logger()
 
 class CircuitState(Enum):
     """حالت Circuit Breaker"""
+
     CLOSED = "closed"  # عادی - درخواست‌ها عبور می‌کنند
     OPEN = "open"  # باز - تمام درخواست‌ها رد می‌شوند
     HALF_OPEN = "half_open"  # نیمه‌باز - تست برای بازگشت به حالت عادی
@@ -50,7 +50,7 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: type = Exception
+        expected_exception: type = Exception,
     ):
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
@@ -74,7 +74,8 @@ class CircuitBreaker:
                     logger.warning(
                         "circuit_breaker_open",
                         function=func.__name__,
-                        time_until_retry=self.recovery_timeout - (time.time() - self.last_failure_time)
+                        time_until_retry=self.recovery_timeout
+                        - (time.time() - self.last_failure_time),
                     )
                     raise Exception(f"Circuit breaker is OPEN for {func.__name__}")
 
@@ -90,7 +91,7 @@ class CircuitBreaker:
                     function=func.__name__,
                     error=str(e),
                     failure_count=self.failure_count,
-                    state=self.state.value
+                    state=self.state.value,
                 )
                 raise
 
@@ -99,8 +100,8 @@ class CircuitBreaker:
     def _should_attempt_reset(self) -> bool:
         """بررسی اینکه آیا زمان تست مجدد رسیده است"""
         return (
-            self.last_failure_time is not None and
-            time.time() - self.last_failure_time >= self.recovery_timeout
+            self.last_failure_time is not None
+            and time.time() - self.last_failure_time >= self.recovery_timeout
         )
 
     def _on_success(self):
@@ -120,7 +121,7 @@ class CircuitBreaker:
             logger.warning(
                 "circuit_breaker_opened",
                 failure_count=self.failure_count,
-                threshold=self.failure_threshold
+                threshold=self.failure_threshold,
             )
 
 
@@ -129,7 +130,7 @@ def retry_with_backoff(
     initial_delay: float = 1.0,
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
-    jitter: bool = True
+    jitter: bool = True,
 ):
     """
     Retry Decorator با Exponential Backoff و Jitter
@@ -148,6 +149,7 @@ def retry_with_backoff(
         ... async def fetch_data():
         ...     return await api.get('/data')
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -165,19 +167,17 @@ def retry_with_backoff(
                             "retry_exhausted",
                             function=func.__name__,
                             attempts=attempt + 1,
-                            error=str(e)
+                            error=str(e),
                         )
                         raise
 
                     # محاسبه تاخیر با backoff
-                    delay = min(
-                        initial_delay * (exponential_base ** attempt),
-                        max_delay
-                    )
+                    delay = min(initial_delay * (exponential_base**attempt), max_delay)
 
                     # اضافه کردن jitter
                     if jitter:
                         import random
+
                         delay = delay * (0.5 + random.random())
 
                     logger.warning(
@@ -186,7 +186,7 @@ def retry_with_backoff(
                         attempt=attempt + 1,
                         max_retries=max_retries,
                         delay=f"{delay:.2f}s",
-                        error=str(e)
+                        error=str(e),
                     )
 
                     await asyncio.sleep(delay)
@@ -194,6 +194,7 @@ def retry_with_backoff(
             raise last_exception
 
         return wrapper
+
     return decorator
 
 
@@ -211,25 +212,18 @@ def timeout(seconds: float):
         ... async def slow_operation():
         ...     await process_data()
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             try:
-                return await asyncio.wait_for(
-                    func(*args, **kwargs),
-                    timeout=seconds
-                )
-            except asyncio.TimeoutError:
-                logger.error(
-                    "operation_timeout",
-                    function=func.__name__,
-                    timeout=seconds
-                )
-                raise TimeoutError(
-                    f"Operation {func.__name__} timed out after {seconds}s"
-                )
+                return await asyncio.wait_for(func(*args, **kwargs), timeout=seconds)
+            except TimeoutError:
+                logger.error("operation_timeout", function=func.__name__, timeout=seconds)
+                raise TimeoutError(f"Operation {func.__name__} timed out after {seconds}s")
 
         return wrapper
+
     return decorator
 
 
@@ -263,7 +257,7 @@ class Bulkhead:
                     "bulkhead_acquired",
                     function=func.__name__,
                     active=self.active_count,
-                    max=self.max_concurrent
+                    max=self.max_concurrent,
                 )
 
                 try:
@@ -271,9 +265,7 @@ class Bulkhead:
                 finally:
                     self.active_count -= 1
                     logger.debug(
-                        "bulkhead_released",
-                        function=func.__name__,
-                        active=self.active_count
+                        "bulkhead_released", function=func.__name__, active=self.active_count
                     )
 
         return wrapper
@@ -284,7 +276,7 @@ def resilient(
     max_retries: int = 3,
     timeout_seconds: float = 30,
     circuit_threshold: int = 5,
-    max_concurrent: int = 10
+    max_concurrent: int = 10,
 ):
     """
     ترکیب تمام الگوهای مقاومتی
@@ -294,6 +286,7 @@ def resilient(
         ... async def call_external_api():
         ...     return await api.fetch()
     """
+
     def decorator(func: Callable) -> Callable:
         # اعمال لایه‌های مختلف
         func = Bulkhead(max_concurrent)(func)
