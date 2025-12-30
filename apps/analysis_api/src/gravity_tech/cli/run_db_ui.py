@@ -32,7 +32,9 @@ def main() -> None:
         "--reload", action="store_true", help="Enable auto-reload for local development"
     )
     parser.add_argument(
-        "--log-level", default="info", choices=["critical", "error", "warning", "info", "debug", "trace"]
+        "--log-level",
+        default="info",
+        choices=["critical", "error", "warning", "info", "debug", "trace"],
     )
     args = parser.parse_args()
 
