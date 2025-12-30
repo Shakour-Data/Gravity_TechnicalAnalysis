@@ -34,7 +34,9 @@ def compute_overall_signals(result: TechnicalAnalysisResult) -> TechnicalAnalysi
     """
 
     trend_score, trend_accuracy = _calc_category_score_and_accuracy(result.trend_indicators)
-    momentum_score, momentum_accuracy = _calc_category_score_and_accuracy(result.momentum_indicators)
+    momentum_score, momentum_accuracy = _calc_category_score_and_accuracy(
+        result.momentum_indicators
+    )
     cycle_score, cycle_accuracy = _calc_category_score_and_accuracy(result.cycle_indicators)
     volume_score, volume_accuracy = _calc_category_score_and_accuracy(result.volume_indicators)
 
@@ -52,11 +54,14 @@ def compute_overall_signals(result: TechnicalAnalysisResult) -> TechnicalAnalysi
         "volume": volume_accuracy,
     }
 
-    total_weighted_accuracy = sum(base_weights[cat] * accuracies[cat] for cat in base_weights.keys())
+    total_weighted_accuracy = sum(
+        base_weights[cat] * accuracies[cat] for cat in base_weights.keys()
+    )
 
     if total_weighted_accuracy > 0:
         adjusted_weights = {
-            cat: (base_weights[cat] * accuracies[cat]) / total_weighted_accuracy for cat in base_weights.keys()
+            cat: (base_weights[cat] * accuracies[cat]) / total_weighted_accuracy
+            for cat in base_weights.keys()
         }
     else:
         adjusted_weights = base_weights
@@ -99,7 +104,9 @@ def compute_overall_signals(result: TechnicalAnalysisResult) -> TechnicalAnalysi
         std_dev = np.std(all_scores)
         agreement_confidence = max(0.0, min(1.0, 1.0 - (std_dev / 4.0)))
         accuracy_confidence = float(np.mean(all_confidences))
-        result.overall_confidence = float((agreement_confidence * 0.6) + (accuracy_confidence * 0.4))
+        result.overall_confidence = float(
+            (agreement_confidence * 0.6) + (accuracy_confidence * 0.4)
+        )
     else:
         result.overall_confidence = 0.5
 
