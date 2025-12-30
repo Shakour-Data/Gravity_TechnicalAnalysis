@@ -9,7 +9,7 @@ python scripts/etl/recompute_validation.py \
   --source-db "E:\\Shakour\\MyProjects\\GravityTseHisPrice\\data\\tse_data.db" \
   --symbols-file batch1_symbols.txt \
   --window 30 \
-  --outfile docs/recompute_report_batch1.md
+  --outfile docs/reports/recompute_report.md
 
 Notes:
 - This uses a rolling window of closes ending at each ts to recompute:
@@ -188,7 +188,9 @@ def main() -> None:
     for m in mismatches[:20]:
         lines.append(f"- {m}")
 
-    Path(args.outfile).write_text("\n".join(lines), encoding="utf-8")
+    out_path = Path(args.outfile)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Report saved to {args.outfile}")
 
 
