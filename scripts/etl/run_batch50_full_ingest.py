@@ -27,9 +27,9 @@ import json
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime, timezone
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, List, Sequence, Set
 
 import psycopg2
 
@@ -37,9 +37,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RUN_BATCH50 = REPO_ROOT / "scripts" / "etl" / "run_batch50.py"
 
 
-def _load_processed_symbols(target_dsn: str) -> Set[str]:
+def _load_processed_symbols(target_dsn: str) -> set[str]:
     """Return symbols that already exist in analysis_results so we avoid redoing them."""
-    processed: Set[str] = set()
+    processed: set[str] = set()
     if not target_dsn.lower().startswith("postgres"):
         return processed
 
@@ -56,7 +56,9 @@ def _load_processed_symbols(target_dsn: str) -> Set[str]:
     return processed
 
 
-def pick_symbols(db_path: Path, batch_size: int, min_candles: int, already_done: Set[str]) -> List[str]:
+def pick_symbols(
+    db_path: Path, batch_size: int, min_candles: int, already_done: set[str]
+) -> list[str]:
     conn = sqlite3.connect(db_path)
     try:
         rows = conn.execute(
@@ -79,7 +81,9 @@ def pick_symbols(db_path: Path, batch_size: int, min_candles: int, already_done:
         conn.close()
 
 
-def run_batch50(source_db: Path, target_db: str, symbols: Sequence[str], limit: int, offline: bool) -> None:
+def run_batch50(
+    source_db: Path, target_db: str, symbols: Sequence[str], limit: int, offline: bool
+) -> None:
     """Delegate to run_batch50.py but force the exact symbols list."""
     sym_csv = ",".join(symbols)
     cmd = [
@@ -123,7 +127,9 @@ def ingest_baseline(
     cur = pg.cursor()
 
     # Ensure helpful indexes/uniques exist
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_historical_scores_symbol_ts ON historical_scores(symbol, ts, timeframe);")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_historical_scores_symbol_ts ON historical_scores(symbol, ts, timeframe);"
+    )
     cur.execute(
         "CREATE INDEX IF NOT EXISTS idx_historical_indicator_scores_symbol_ts ON historical_indicator_scores(symbol, ts, timeframe);"
     )
@@ -238,7 +244,7 @@ def ingest_baseline(
     ON CONFLICT DO NOTHING;
     """
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     processed = 0
 
     for sym in symbols_list:
@@ -271,7 +277,11 @@ def ingest_baseline(
             ]
             recent = returns[-7:] if len(returns) > 7 else returns
             drift = (prices[-1] - prices[0]) / (prices[0] or 1e-9)
-            vol = (sum((r - (sum(recent) / len(recent))) ** 2 for r in recent) / len(recent)) ** 0.5 if recent else 0.0
+            vol = (
+                (sum((r - (sum(recent) / len(recent))) ** 2 for r in recent) / len(recent)) ** 0.5
+                if recent
+                else 0.0
+            )
             osc = recent[-1] if recent else 0.0
             score = 0.5 * osc + 0.3 * drift + 0.2 * vol
             return float(max(-1.0, min(1.0, score)))
@@ -306,13 +316,29 @@ def ingest_baseline(
             vol_level = (sum(r * r for r in returns) / len(returns)) ** 0.5 if returns else 0.0
             trend_change = (last_close - first_close) / (first_close or 1e-9)
             conf = min(0.99, max(0.05, abs(trend_change) * 2 + vol_level * 0.2))
-            regime = "trending_bullish" if trend_change > 0.08 else "trending_bearish" if trend_change < -0.08 else "range"
-            prediction = "bullish" if trend_change > 0.005 else "bearish" if trend_change < -0.005 else "neutral"
-            vol_profile = "high" if vols_slice and (safe_mean(vols_slice) > sorted(vols_slice)[len(vols_slice) // 2]) else "normal"
+            regime = (
+                "trending_bullish"
+                if trend_change > 0.08
+                else "trending_bearish"
+                if trend_change < -0.08
+                else "range"
+            )
+            prediction = (
+                "bullish"
+                if trend_change > 0.005
+                else "bearish"
+                if trend_change < -0.005
+                else "neutral"
+            )
+            vol_profile = (
+                "high"
+                if vols_slice and (safe_mean(vols_slice) > sorted(vols_slice)[len(vols_slice) // 2])
+                else "normal"
+            )
 
             ts_val = datetime.fromisoformat(dates[idx]) if isinstance(dates[idx], str) else now
             if ts_val.tzinfo is None:
-                ts_val = ts_val.replace(tzinfo=timezone.utc)
+                ts_val = ts_val.replace(tzinfo=UTC)
 
             payload = dict(
                 symbol=sym,
@@ -326,11 +352,31 @@ def ingest_baseline(
                 combined_confidence=conf,
                 trend_weight=0.5,
                 momentum_weight=0.5,
-                trend_signal="BULLISH" if prediction == "bullish" else "BEARISH" if prediction == "bearish" else "NEUTRAL",
-                momentum_signal="BULLISH" if prediction == "bullish" else "BEARISH" if prediction == "bearish" else "NEUTRAL",
-                combined_signal="BULLISH" if prediction == "bullish" else "BEARISH" if prediction == "bearish" else "NEUTRAL",
-                recommendation="BUY" if prediction == "bullish" else "SELL" if prediction == "bearish" else "HOLD",
-                action="BUY" if prediction == "bullish" else "SELL" if prediction == "bearish" else "HOLD",
+                trend_signal="BULLISH"
+                if prediction == "bullish"
+                else "BEARISH"
+                if prediction == "bearish"
+                else "NEUTRAL",
+                momentum_signal="BULLISH"
+                if prediction == "bullish"
+                else "BEARISH"
+                if prediction == "bearish"
+                else "NEUTRAL",
+                combined_signal="BULLISH"
+                if prediction == "bullish"
+                else "BEARISH"
+                if prediction == "bearish"
+                else "NEUTRAL",
+                recommendation="BUY"
+                if prediction == "bullish"
+                else "SELL"
+                if prediction == "bearish"
+                else "HOLD",
+                action="BUY"
+                if prediction == "bullish"
+                else "SELL"
+                if prediction == "bearish"
+                else "HOLD",
                 price_at_analysis=last_close,
                 volume_score=0.0,
                 volatility_score=vol_level,
@@ -351,8 +397,32 @@ def ingest_baseline(
 
             if score_id:
                 ind_rows = [
-                    (score_id, sym, ts_val, timeframe, "volatility_std", "volatility", None, vol_level, conf, regime, None),
-                    (score_id, sym, ts_val, timeframe, "trend_strength", "trend", None, trend_change, conf, prediction, None),
+                    (
+                        score_id,
+                        sym,
+                        ts_val,
+                        timeframe,
+                        "volatility_std",
+                        "volatility",
+                        None,
+                        vol_level,
+                        conf,
+                        regime,
+                        None,
+                    ),
+                    (
+                        score_id,
+                        sym,
+                        ts_val,
+                        timeframe,
+                        "trend_strength",
+                        "trend",
+                        None,
+                        trend_change,
+                        conf,
+                        prediction,
+                        None,
+                    ),
                 ]
                 for r in ind_rows:
                     cur.execute(insert_ind_sql, r)
@@ -419,13 +489,23 @@ def ingest_baseline(
                 if closes_slice[i - 1] != 0
             ]
             max_close_slice = max(closes_slice)
-            max_dd_slice = min((c - max_close_slice) / max_close_slice for c in closes_slice) if closes_slice else 0.0
+            max_dd_slice = (
+                min((c - max_close_slice) / max_close_slice for c in closes_slice)
+                if closes_slice
+                else 0.0
+            )
             params = {"strategy": "buy_hold", "window": len(closes_slice)}
             metrics = {
-                "buy_hold_return": (closes_slice[-1] / closes_slice[0] - 1) if closes_slice and closes_slice[0] else 0.0,
+                "buy_hold_return": (closes_slice[-1] / closes_slice[0] - 1)
+                if closes_slice and closes_slice[0]
+                else 0.0,
                 "annualized_volatility": vol_level,
-                "sharpe": (safe_mean(returns_slice) / (vol_level + 1e-9)) * (252 ** 0.5) if returns_slice else 0.0,
-                "win_rate": sum(1 for r in returns_slice if r > 0) / len(returns_slice) if returns_slice else 0.0,
+                "sharpe": (safe_mean(returns_slice) / (vol_level + 1e-9)) * (252**0.5)
+                if returns_slice
+                else 0.0,
+                "win_rate": sum(1 for r in returns_slice if r > 0) / len(returns_slice)
+                if returns_slice
+                else 0.0,
                 "max_drawdown": max_dd_slice,
                 "samples": len(returns_slice),
             }
@@ -477,15 +557,33 @@ def ingest_baseline(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run batch50 analysis and fill all Postgres tables in one shot.")
+    parser = argparse.ArgumentParser(
+        description="Run batch50 analysis and fill all Postgres tables in one shot."
+    )
     parser.add_argument("--source-db", required=True, help="Path to source TSE SQLite DB.")
     parser.add_argument("--target-db", required=True, help="Postgres DSN for analysis/output.")
     parser.add_argument("--batch-size", type=int, default=50)
     parser.add_argument("--min-candles", type=int, default=120)
-    parser.add_argument("--limit", type=int, default=300, help="Max candles for analysis_results step.")
-    parser.add_argument("--ingest-limit", type=int, default=0, help="Max candles for baseline ingest into historical tables (0 = all).")
-    parser.add_argument("--trend-window", type=int, default=30, help="Rolling window for trend/volatility calculations (days).")
-    parser.add_argument("--offline", action="store_true", help="Do not fetch from TSETMC; use existing source DB only.")
+    parser.add_argument(
+        "--limit", type=int, default=300, help="Max candles for analysis_results step."
+    )
+    parser.add_argument(
+        "--ingest-limit",
+        type=int,
+        default=0,
+        help="Max candles for baseline ingest into historical tables (0 = all).",
+    )
+    parser.add_argument(
+        "--trend-window",
+        type=int,
+        default=30,
+        help="Rolling window for trend/volatility calculations (days).",
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Do not fetch from TSETMC; use existing source DB only.",
+    )
     parser.add_argument(
         "--disable-baseline-patterns",
         action="store_true",
@@ -520,12 +618,16 @@ def main() -> None:
             if args.loop:
                 print("No symbols remaining; loop complete.")
             else:
-                print("No symbols selected; nothing to do (maybe all eligible symbols are already processed).")
+                print(
+                    "No symbols selected; nothing to do (maybe all eligible symbols are already processed)."
+                )
             break
 
         iteration += 1
         try:
-            print(f"[batch {iteration}] Selected {len(symbols)} symbols: {symbols[:5]}{'...' if len(symbols) > 5 else ''}")
+            print(
+                f"[batch {iteration}] Selected {len(symbols)} symbols: {symbols[:5]}{'...' if len(symbols) > 5 else ''}"
+            )
         except UnicodeEncodeError:
             print(f"[batch {iteration}] Selected {len(symbols)} symbols.")
 
