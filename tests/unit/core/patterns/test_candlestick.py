@@ -17,7 +17,7 @@ class TestCandlestickPatterns:
             high=110.0,
             low=90.0,
             close=105.0,
-            volume=1000
+            volume=1000,
         )
 
     @pytest.fixture
@@ -29,7 +29,7 @@ class TestCandlestickPatterns:
             high=105.0,
             low=95.0,
             close=100.1,
-            volume=1000
+            volume=1000,
         )
 
     @pytest.fixture
@@ -41,7 +41,7 @@ class TestCandlestickPatterns:
             high=101.5,
             low=85.0,
             close=101.0,
-            volume=1000
+            volume=1000,
         )
 
     def test_is_doji_true(self, doji_candle):
@@ -78,7 +78,7 @@ class TestCandlestickPatterns:
             high=110.0,
             low=100.0,
             close=102.0,
-            volume=1000
+            volume=1000,
         )
         candle2 = Candle(
             timestamp="2023-01-02T00:00:00Z",
@@ -86,10 +86,10 @@ class TestCandlestickPatterns:
             high=108.0,
             low=98.0,
             close=106.0,
-            volume=1000
+            volume=1000,
         )
         result = CandlestickPatterns.is_engulfing(candle1, candle2)
-        assert result == 'bullish'
+        assert result == "bullish"
 
     def test_is_engulfing_bearish(self):
         """Test bearish engulfing pattern."""
@@ -110,7 +110,7 @@ class TestCandlestickPatterns:
                 high=115.0,
                 low=105.0,
                 close=107.0,
-                volume=1000
+                volume=1000,
             ),
             Candle(
                 timestamp="2023-01-02T00:00:00Z",
@@ -118,7 +118,7 @@ class TestCandlestickPatterns:
                 high=109.0,
                 low=106.0,
                 close=107.5,
-                volume=1000
+                volume=1000,
             ),
             Candle(
                 timestamp="2023-01-03T00:00:00Z",
@@ -126,11 +126,11 @@ class TestCandlestickPatterns:
                 high=112.0,
                 low=107.0,
                 close=111.0,
-                volume=1000
+                volume=1000,
             ),
         ]
         result = CandlestickPatterns.is_morning_evening_star(candles)
-        assert result == 'morning'
+        assert result == "morning"
 
     def test_is_evening_star(self):
         """Test evening star pattern."""
@@ -141,7 +141,7 @@ class TestCandlestickPatterns:
                 high=105.0,
                 low=95.0,
                 close=103.0,
-                volume=1000
+                volume=1000,
             ),
             Candle(
                 timestamp="2023-01-02T00:00:00Z",
@@ -149,7 +149,7 @@ class TestCandlestickPatterns:
                 high=106.0,
                 low=102.0,
                 close=102.5,
-                volume=1000
+                volume=1000,
             ),
             Candle(
                 timestamp="2023-01-03T00:00:00Z",
@@ -157,11 +157,11 @@ class TestCandlestickPatterns:
                 high=103.0,
                 low=98.0,
                 close=99.0,
-                volume=1000
+                volume=1000,
             ),
         ]
         result = CandlestickPatterns.is_morning_evening_star(candles)
-        assert result == 'evening'
+        assert result == "evening"
 
     def test_is_morning_evening_star_insufficient_data(self, sample_candle):
         """Test morning/evening star with insufficient data."""
