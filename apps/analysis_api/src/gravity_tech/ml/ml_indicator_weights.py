@@ -18,6 +18,7 @@ import pandas as pd
 
 try:
     import lightgbm as lgb
+
     LIGHTGBM_AVAILABLE = True
 except ImportError:
     LIGHTGBM_AVAILABLE = False
@@ -25,6 +26,7 @@ except ImportError:
 
 try:
     import xgboost as xgb
+
     XGBOOST_AVAILABLE = True
 except ImportError:
     XGBOOST_AVAILABLE = False
@@ -48,10 +50,14 @@ class IndicatorWeightLearner:
         """Lazy load matplotlib to avoid import-time dependency."""
         try:
             import matplotlib.pyplot as plt
+
             return plt
         except ImportError as e:
-            raise ImportError("matplotlib is required for visualization. Install with: pip install matplotlib") from e
-    INDICATORS = ['sma', 'ema', 'wma', 'dema', 'tema', 'macd', 'adx']
+            raise ImportError(
+                "matplotlib is required for visualization. Install with: pip install matplotlib"
+            ) from e
+
+    INDICATORS = ["sma", "ema", "wma", "dema", "tema", "macd", "adx"]
 
     def __init__(self, model_type: str = "lightgbm"):
         """
@@ -76,11 +82,7 @@ class IndicatorWeightLearner:
             self.model_type = "sklearn"
 
     def train(
-        self,
-        X: pd.DataFrame,
-        y: pd.Series,
-        test_size: float = 0.2,
-        random_state: int = 42
+        self, X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, random_state: int = 42
     ) -> dict:
         """
         Train model to predict future returns from indicator signals
@@ -114,7 +116,7 @@ class IndicatorWeightLearner:
                 max_depth=5,
                 num_leaves=31,
                 random_state=random_state,
-                verbose=-1
+                verbose=-1,
             )
         elif self.model_type == "xgboost":
             self.model = xgb.XGBRegressor(
@@ -122,14 +124,11 @@ class IndicatorWeightLearner:
                 learning_rate=0.05,
                 max_depth=5,
                 random_state=random_state,
-                verbosity=0
+                verbosity=0,
             )
         else:  # sklearn
             self.model = GradientBoostingRegressor(
-                n_estimators=100,
-                learning_rate=0.05,
-                max_depth=5,
-                random_state=random_state
+                n_estimators=100, learning_rate=0.05, max_depth=5, random_state=random_state
             )
 
         # Fit model
@@ -141,12 +140,12 @@ class IndicatorWeightLearner:
 
         # Calculate metrics
         metrics = {
-            'train_mse': mean_squared_error(y_train, y_train_pred),  # type: ignore[reportArgumentType]
-            'test_mse': mean_squared_error(y_test, y_test_pred),  # type: ignore[reportArgumentType]
-            'train_mae': mean_absolute_error(y_train, y_train_pred),  # type: ignore[reportArgumentType]
-            'test_mae': mean_absolute_error(y_test, y_test_pred),  # type: ignore[reportArgumentType]
-            'train_r2': r2_score(y_train, y_train_pred),  # type: ignore[reportArgumentType]
-            'test_r2': r2_score(y_test, y_test_pred)  # type: ignore[reportArgumentType]
+            "train_mse": mean_squared_error(y_train, y_train_pred),  # type: ignore[reportArgumentType]
+            "test_mse": mean_squared_error(y_test, y_test_pred),  # type: ignore[reportArgumentType]
+            "train_mae": mean_absolute_error(y_train, y_train_pred),  # type: ignore[reportArgumentType]
+            "test_mae": mean_absolute_error(y_test, y_test_pred),  # type: ignore[reportArgumentType]
+            "train_r2": r2_score(y_train, y_train_pred),  # type: ignore[reportArgumentType]
+            "test_r2": r2_score(y_test, y_test_pred),  # type: ignore[reportArgumentType]
         }
 
         print("\n📊 Training Results:")
@@ -175,15 +174,12 @@ class IndicatorWeightLearner:
 
         # Create importance dict
         self.feature_importance = {
-            name: float(imp)
-            for name, imp in zip(feature_names, importance, strict=True)
+            name: float(imp) for name, imp in zip(feature_names, importance, strict=True)
         }
 
         # Sort by importance
         sorted_importance = sorted(
-            self.feature_importance.items(),
-            key=lambda x: x[1],
-            reverse=True
+            self.feature_importance.items(), key=lambda x: x[1], reverse=True
         )
 
         print("\n🔝 Top 10 Most Important Features:")
@@ -207,8 +203,8 @@ class IndicatorWeightLearner:
             # Sum importance of all features for this indicator
             total_imp = 0.0
 
-            for suffix in ['_signal', '_confidence', '_weighted']:
-                feature_name = f'{indicator}{suffix}'
+            for suffix in ["_signal", "_confidence", "_weighted"]:
+                feature_name = f"{indicator}{suffix}"
                 if feature_name in self.feature_importance:
                     total_imp += self.feature_importance[feature_name]
 
@@ -218,26 +214,16 @@ class IndicatorWeightLearner:
         total = sum(indicator_importance.values())
 
         if total > 0:
-            self.learned_weights = {
-                ind: imp / total
-                for ind, imp in indicator_importance.items()
-            }
+            self.learned_weights = {ind: imp / total for ind, imp in indicator_importance.items()}
         else:
             # Fallback to equal weights
-            self.learned_weights = {
-                ind: 1.0 / len(self.INDICATORS)
-                for ind in self.INDICATORS
-            }
+            self.learned_weights = {ind: 1.0 / len(self.INDICATORS) for ind in self.INDICATORS}
 
         print("\n⚖️  Learned Indicator Weights:")
-        sorted_weights = sorted(
-            self.learned_weights.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_weights = sorted(self.learned_weights.items(), key=lambda x: x[1], reverse=True)
 
         for indicator, weight in sorted_weights:
-            bar = '█' * int(weight * 100)
+            bar = "█" * int(weight * 100)
             print(f"   {indicator:15s}: {weight:.4f} {bar}")
 
         # Verify sum
@@ -253,7 +239,9 @@ class IndicatorWeightLearner:
         """
         return self.learned_weights.copy()
 
-    def get_weights_with_confidence(self, X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, dict[str, float] | float | str]:
+    def get_weights_with_confidence(
+        self, X_test: pd.DataFrame, y_test: pd.Series
+    ) -> dict[str, dict[str, float] | float | str]:
         """
         Get learned weights with confidence metrics
 
@@ -295,18 +283,17 @@ class IndicatorWeightLearner:
             reliability_factor = 0.4
 
         result = {
-            'weights': self.learned_weights.copy(),
-            'metrics': {
-                'r2_score': r2,
-                'mae': mae,
-                'confidence_interval_95': confidence_95,
-                'reliability': weight_reliability,
-                'reliability_factor': reliability_factor
+            "weights": self.learned_weights.copy(),
+            "metrics": {
+                "r2_score": r2,
+                "mae": mae,
+                "confidence_interval_95": confidence_95,
+                "reliability": weight_reliability,
+                "reliability_factor": reliability_factor,
             },
-            'adjusted_weights': {
-                ind: weight * reliability_factor
-                for ind, weight in self.learned_weights.items()
-            }
+            "adjusted_weights": {
+                ind: weight * reliability_factor for ind, weight in self.learned_weights.items()
+            },
         }
 
         return result
@@ -322,19 +309,19 @@ class IndicatorWeightLearner:
 
         # Save weights with metrics
         weights_data = {
-            'weights': self.learned_weights,
-            'feature_importance': self.feature_importance,
-            'timestamp': datetime.now(UTC).isoformat(),
-            'model_type': self.model_type
+            "weights": self.learned_weights,
+            "feature_importance": self.feature_importance,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "model_type": self.model_type,
         }
 
         weights_path = self.model_path / "indicator_weights.json"
-        with open(weights_path, 'w') as f:
+        with open(weights_path, "w") as f:
             json.dump(weights_data, f, indent=2)
 
         # Save feature importance
         importance_path = self.model_path / "indicator_feature_importance.json"
-        with open(importance_path, 'w') as f:
+        with open(importance_path, "w") as f:
             json.dump(self.feature_importance, f, indent=2)
 
         print("\n💾 Saved:")
@@ -381,7 +368,7 @@ class IndicatorWeightLearner:
         ml_mae = mean_absolute_error(y, y_pred_ml)  # type: ignore[reportArgumentType]
 
         # Equal weights baseline: simple average of all weighted signals
-        weighted_features = [f'{ind}_weighted' for ind in self.INDICATORS]
+        weighted_features = [f"{ind}_weighted" for ind in self.INDICATORS]
         available_features = [f for f in weighted_features if f in X.columns]
 
         if available_features:
@@ -390,7 +377,7 @@ class IndicatorWeightLearner:
             equal_mae = mean_absolute_error(y, equal_weight_pred)
         else:
             equal_r2 = 0.0
-            equal_mae = float('inf')
+            equal_mae = float("inf")
 
         print("\n   ML Weights:")
         print(f"      R²:  {ml_r2:.4f}")
@@ -401,8 +388,12 @@ class IndicatorWeightLearner:
         print(f"      MAE: {equal_mae:.6f}")
 
         print("\n   Improvement:")
-        print(f"      R²:  {(ml_r2 - equal_r2):.4f} ({((ml_r2/equal_r2 - 1)*100 if equal_r2 != 0 else 0):.1f}%)")
-        print(f"      MAE: {(equal_mae - ml_mae):.6f} ({((1 - ml_mae/equal_mae)*100 if equal_mae != 0 else 0):.1f}%)")
+        print(
+            f"      R²:  {(ml_r2 - equal_r2):.4f} ({((ml_r2 / equal_r2 - 1) * 100 if equal_r2 != 0 else 0):.1f}%)"
+        )
+        print(
+            f"      MAE: {(equal_mae - ml_mae):.6f} ({((1 - ml_mae / equal_mae) * 100 if equal_mae != 0 else 0):.1f}%)"
+        )
 
     def plot_feature_importance(self, top_n: int = 15):
         """
@@ -415,20 +406,18 @@ class IndicatorWeightLearner:
         plt = self._get_matplotlib()
 
         # Get top N features
-        sorted_features = sorted(
-            self.feature_importance.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:top_n]
+        sorted_features = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[
+            :top_n
+        ]
 
         features, importances = zip(*sorted_features, strict=True)
 
         # Plot
         plt.figure(figsize=(10, 6))
-        plt.barh(range(len(features)), importances, color='steelblue')
+        plt.barh(range(len(features)), importances, color="steelblue")
         plt.yticks(range(len(features)), features)
-        plt.xlabel('Feature Importance')
-        plt.title(f'Top {top_n} Feature Importance - Indicator Weights')
+        plt.xlabel("Feature Importance")
+        plt.title(f"Top {top_n} Feature Importance - Indicator Weights")
         plt.tight_layout()
 
         plot_path = self.model_path / "indicator_feature_importance.png"
@@ -454,16 +443,16 @@ class IndicatorWeightLearner:
         width = 0.35
 
         fig, ax = plt.subplots(figsize=(12, 6))
-        ax.bar(x - width/2, ml_weights, width, label='ML Learned Weights', color='steelblue')  # type: ignore[reportOperatorIssue]
-        ax.bar(x + width/2, equal_weights, width, label='Equal Weights', color='coral')  # type: ignore[reportOperatorIssue]
+        ax.bar(x - width / 2, ml_weights, width, label="ML Learned Weights", color="steelblue")  # type: ignore[reportOperatorIssue]
+        ax.bar(x + width / 2, equal_weights, width, label="Equal Weights", color="coral")  # type: ignore[reportOperatorIssue]
 
-        ax.set_xlabel('Indicator')
-        ax.set_ylabel('Weight')
-        ax.set_title('Learned Weights vs Equal Weights (10 Indicators)')
+        ax.set_xlabel("Indicator")
+        ax.set_ylabel("Weight")
+        ax.set_title("Learned Weights vs Equal Weights (10 Indicators)")
         ax.set_xticks(x)
-        ax.set_xticklabels(indicators, rotation=45, ha='right')
+        ax.set_xticklabels(indicators, rotation=45, ha="right")
         ax.legend()
-        ax.grid(axis='y', alpha=0.3)
+        ax.grid(axis="y", alpha=0.3)
 
         plt.tight_layout()
         plot_path = self.model_path / "indicator_weights_comparison.png"
@@ -506,8 +495,8 @@ if __name__ == "__main__":
 
     # Step 4: Compare with baseline
     print("\n🔍 Step 4: Comparing with baseline...")
-    X_test = X.iloc[int(len(X) * 0.8):]
-    y_test = y.iloc[int(len(y) * 0.8):]
+    X_test = X.iloc[int(len(X) * 0.8) :]
+    y_test = y.iloc[int(len(y) * 0.8) :]
     learner.compare_with_equal_weights(X_test, y_test)
 
     # Step 5: Visualize
@@ -526,4 +515,4 @@ if __name__ == "__main__":
     # Display final weights
     print("\n🎯 Final Learned Weights:")
     for ind, weight in sorted(learner.get_weights().items(), key=lambda x: x[1], reverse=True):
-        print(f"   {ind:15s}: {weight:.4f} ({weight*100:.1f}%)")
+        print(f"   {ind:15s}: {weight:.4f} ({weight * 100:.1f}%)")
