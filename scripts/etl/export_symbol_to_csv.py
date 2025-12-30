@@ -1,5 +1,3 @@
-
-
 import logging
 import os
 from pathlib import Path
@@ -21,9 +19,8 @@ EXPORT_BASE = Path("data/CSV_Output_dam")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]
+    handlers=[logging.StreamHandler()],
 )
-
 
 
 def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: bool = False):
@@ -37,11 +34,7 @@ def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: boo
     summary = []
     try:
         conn = psycopg2.connect(
-            host=PG_HOST,
-            port=PG_PORT,
-            user=PG_USER,
-            password=PG_PASSWORD,
-            dbname=PG_DB
+            host=PG_HOST, port=PG_PORT, user=PG_USER, password=PG_PASSWORD, dbname=PG_DB
         )
         cur = conn.cursor()
         # SQLAlchemy engine for pandas
@@ -59,10 +52,15 @@ def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: boo
 
         for table in tables:
             try:
-                cur.execute(sql.SQL("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = %s;"), [table])
+                cur.execute(
+                    sql.SQL(
+                        "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = %s;"
+                    ),
+                    [table],
+                )
                 columns_info = cur.fetchall()
                 # انتخاب همه ستون‌های متنی (character varying, text, char, ...)
-                text_types = {'character varying', 'text', 'varchar', 'char', 'character'}
+                text_types = {"character varying", "text", "varchar", "char", "character"}
                 text_cols = [(col, dtype) for col, dtype in columns_info if dtype in text_types]
                 if not text_cols:
                     continue
@@ -81,12 +79,14 @@ def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: boo
                             param = {"val": symbol_or_index}
                         df = pd.read_sql_query(query.as_string(conn), engine, params=param)
                     except Exception as col_err:
-                        logging.error(f"Skipping column '{col}' in table '{table}' (type={dtype}) due to error: {col_err}")
+                        logging.error(
+                            f"Skipping column '{col}' in table '{table}' (type={dtype}) due to error: {col_err}"
+                        )
                         continue
                     if not df.empty:
                         # پیدا کردن آخرین تاریخ اگر ستون تاریخ وجود دارد
                         date_col = None
-                        for dcol in ['date', 'datetime', 'created_at', 'updated_at']:
+                        for dcol in ["date", "datetime", "created_at", "updated_at"]:
                             for c in df.columns:
                                 if c.lower() == dcol:
                                     date_col = c
@@ -98,7 +98,7 @@ def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: boo
                             try:
                                 latest_date = pd.to_datetime(df[date_col]).max()
                                 if pd.notnull(latest_date):
-                                    latest_date = latest_date.strftime('%Y%m%d')
+                                    latest_date = latest_date.strftime("%Y%m%d")
                             except Exception:
                                 latest_date = None
                         fname = f"{table}__{col}"
@@ -108,17 +108,23 @@ def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: boo
                         out_path = export_dir / fname
                         df.to_csv(out_path, index=False)
                         found = True
-                        logging.info(f"Exported {len(df)} rows from table '{table}' (column '{col}') to '{fname}'")
-                        summary.append({
-                            'table': table,
-                            'column': col,
-                            'csv_file': fname,
-                            'row_count': len(df),
-                            'columns': ','.join(df.columns),
-                            'latest_date': latest_date if latest_date else '',
-                        })
+                        logging.info(
+                            f"Exported {len(df)} rows from table '{table}' (column '{col}') to '{fname}'"
+                        )
+                        summary.append(
+                            {
+                                "table": table,
+                                "column": col,
+                                "csv_file": fname,
+                                "row_count": len(df),
+                                "columns": ",".join(df.columns),
+                                "latest_date": latest_date if latest_date else "",
+                            }
+                        )
                 if not found:
-                    logging.info(f"No data found for '{symbol_or_index}' in table '{table}' (any text column)")
+                    logging.info(
+                        f"No data found for '{symbol_or_index}' in table '{table}' (any text column)"
+                    )
             except Exception as e:
                 logging.error(f"Error processing table '{table}': {e}")
 
@@ -137,18 +143,13 @@ def export_symbol_data(symbol_or_index: str, export_base=EXPORT_BASE, fuzzy: boo
         logging.critical(f"Failed to export data: {e}")
 
 
-
 def list_unique_symbols():
     """
     لیست تمام مقادیر منحصربه‌فرد symbol/index/name/ticker در همه جداول دیتابیس را استخراج می‌کند.
     """
     try:
         conn = psycopg2.connect(
-            host=PG_HOST,
-            port=PG_PORT,
-            user=PG_USER,
-            password=PG_PASSWORD,
-            dbname=PG_DB
+            host=PG_HOST, port=PG_PORT, user=PG_USER, password=PG_PASSWORD, dbname=PG_DB
         )
         cur = conn.cursor()
         logging.info(f"Connected to PostgreSQL at {PG_HOST}:{PG_PORT} (DB: {PG_DB})")
@@ -159,14 +160,21 @@ def list_unique_symbols():
         tables = [row[0] for row in cur.fetchall()]
         all_values = set()
         for table in tables:
-            cur.execute(sql.SQL("SELECT column_name FROM information_schema.columns WHERE table_name = %s;"), [table])
+            cur.execute(
+                sql.SQL(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s;"
+                ),
+                [table],
+            )
             columns = [row[0] for row in cur.fetchall()]
             for col in columns:
-                if col.lower() in ['symbol', 'index', 'name', 'ticker']:
+                if col.lower() in ["symbol", "index", "name", "ticker"]:
                     try:
-                        cur.execute(sql.SQL("SELECT DISTINCT {} FROM {} WHERE {} IS NOT NULL").format(
-                            sql.Identifier(col), sql.Identifier(table), sql.Identifier(col)
-                        ))
+                        cur.execute(
+                            sql.SQL("SELECT DISTINCT {} FROM {} WHERE {} IS NOT NULL").format(
+                                sql.Identifier(col), sql.Identifier(table), sql.Identifier(col)
+                            )
+                        )
                         values = [str(row[0]) for row in cur.fetchall() if row[0] is not None]
                         for v in values:
                             all_values.add(v)
@@ -184,8 +192,11 @@ def list_unique_symbols():
     except Exception as e:
         logging.critical(f"Failed to list unique symbols: {e}")
         return []
+
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(
         description="""
         حرفه‌ای: استخراج تمام داده‌های مربوط به یک نماد/شاخص/نام شرکت از تمام جداول دیتابیس PostgreSQL و ذخیره به صورت CSV در فولدر اختصاصی.
@@ -198,11 +209,23 @@ if __name__ == "__main__":
         - با --auto همه مقادیر را به صورت خودکار استخراج و خروجی می‌گیرد.
         """
     )
-    parser.add_argument("symbol", nargs="?", help="نماد، شاخص یا نام شرکت مورد نظر (برای لیست مقادیر موجود، --list را بزنید)")
-    parser.add_argument("--out", default=str(EXPORT_BASE), help="مسیر فولدر خروجی (پیش‌فرض: data/CSV_Output_dam)")
-    parser.add_argument("--list", action="store_true", help="لیست تمام نمادها/شاخص‌ها/نام‌های موجود در دیتابیس")
-    parser.add_argument("--fuzzy", action="store_true", help="جستجوی تقریبی (contains/LIKE) برای نماد یا نام شرکت")
-    parser.add_argument("--auto", action="store_true", help="استخراج خودکار همه مقادیر موجود (batch export)")
+    parser.add_argument(
+        "symbol",
+        nargs="?",
+        help="نماد، شاخص یا نام شرکت مورد نظر (برای لیست مقادیر موجود، --list را بزنید)",
+    )
+    parser.add_argument(
+        "--out", default=str(EXPORT_BASE), help="مسیر فولدر خروجی (پیش‌فرض: data/CSV_Output_dam)"
+    )
+    parser.add_argument(
+        "--list", action="store_true", help="لیست تمام نمادها/شاخص‌ها/نام‌های موجود در دیتابیس"
+    )
+    parser.add_argument(
+        "--fuzzy", action="store_true", help="جستجوی تقریبی (contains/LIKE) برای نماد یا نام شرکت"
+    )
+    parser.add_argument(
+        "--auto", action="store_true", help="استخراج خودکار همه مقادیر موجود (batch export)"
+    )
     args = parser.parse_args()
     if args.list:
         list_unique_symbols()
@@ -214,4 +237,6 @@ if __name__ == "__main__":
     elif args.symbol:
         export_symbol_data(args.symbol, Path(args.out), fuzzy=args.fuzzy)
     else:
-        print("لطفاً نماد/شاخص/نام شرکت را وارد کنید یا --list یا --auto را برای استخراج گروهی بزنید.")
+        print(
+            "لطفاً نماد/شاخص/نام شرکت را وارد کنید یا --list یا --auto را برای استخراج گروهی بزنید."
+        )
