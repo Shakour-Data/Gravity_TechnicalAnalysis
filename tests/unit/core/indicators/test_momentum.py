@@ -1,6 +1,7 @@
 """
 Unit tests for momentum indicators.
 """
+
 import numpy as np
 import pytest
 from gravity_tech.core.indicators.momentum import (
@@ -20,14 +21,14 @@ class TestTSI:
         result = tsi(prices)
 
         assert isinstance(result, dict)
-        assert 'values' in result
-        assert 'signal' in result
-        assert 'confidence' in result
+        assert "values" in result
+        assert "signal" in result
+        assert "confidence" in result
 
-        assert len(result['values']) == len(prices)
-        assert isinstance(result['values'], np.ndarray)
-        assert result['signal'] in [None, 'BUY', 'SELL']
-        assert 0 <= result['confidence'] <= 1
+        assert len(result["values"]) == len(prices)
+        assert isinstance(result["values"], np.ndarray)
+        assert result["signal"] in [None, "BUY", "SELL"]
+        assert 0 <= result["confidence"] <= 1
 
     def test_tsi_insufficient_data(self):
         """Test TSI with insufficient data."""
@@ -40,9 +41,9 @@ class TestTSI:
         prices = np.zeros(50)
         result = tsi(prices)
 
-        assert len(result['values']) == len(prices)
+        assert len(result["values"]) == len(prices)
         # All zeros should give TSI of 0
-        assert np.allclose(result['values'], 0, atol=1e-10)
+        assert np.allclose(result["values"], 0, atol=1e-10)
 
 
 class TestSchaffTrendCycle:
@@ -54,14 +55,14 @@ class TestSchaffTrendCycle:
         result = schaff_trend_cycle(prices)
 
         assert isinstance(result, dict)
-        assert 'values' in result
-        assert 'signal' in result
-        assert 'confidence' in result
+        assert "values" in result
+        assert "signal" in result
+        assert "confidence" in result
 
-        assert len(result['values']) == len(prices)
-        assert isinstance(result['values'], np.ndarray)
-        assert result['signal'] in [None, 'BUY', 'SELL']
-        assert 0 <= result['confidence'] <= 1
+        assert len(result["values"]) == len(prices)
+        assert isinstance(result["values"], np.ndarray)
+        assert result["signal"] in [None, "BUY", "SELL"]
+        assert 0 <= result["confidence"] <= 1
 
     def test_schaff_insufficient_data(self):
         """Test Schaff with insufficient data."""
@@ -79,14 +80,14 @@ class TestConnorsRSI:
         result = connors_rsi(prices)
 
         assert isinstance(result, dict)
-        assert 'values' in result
-        assert 'signal' in result
-        assert 'confidence' in result
+        assert "values" in result
+        assert "signal" in result
+        assert "confidence" in result
 
-        assert len(result['values']) == len(prices)
-        assert isinstance(result['values'], np.ndarray)
-        assert result['signal'] in [None, 'BUY', 'SELL']
-        assert 0 <= result['confidence'] <= 1
+        assert len(result["values"]) == len(prices)
+        assert isinstance(result["values"], np.ndarray)
+        assert result["signal"] in [None, "BUY", "SELL"]
+        assert 0 <= result["confidence"] <= 1
 
     def test_connors_rsi_insufficient_data(self):
         """Test Connors RSI with insufficient data."""
@@ -99,9 +100,9 @@ class TestConnorsRSI:
         prices = np.full(200, 100.0)
         result = connors_rsi(prices)
 
-        assert len(result['values']) == len(prices)
+        assert len(result["values"]) == len(prices)
         # Constant prices should give CRSI of 0 (no momentum)
-        assert np.allclose(result['values'][-10:], 0, atol=1e-10)
+        assert np.allclose(result["values"][-10:], 0, atol=1e-10)
 
 
 class TestMomentumIndicators:
@@ -133,7 +134,7 @@ class TestMomentumIndicators:
                 low=low_price,
                 close=close_price,
                 volume=max(1000, volume),  # Ensure positive volume
-                symbol="TEST"
+                symbol="TEST",
             )
             candles.append(candle)
 
@@ -147,77 +148,79 @@ class TestMomentumIndicators:
         assert len(results) > 0
 
         for result in results:
-            assert hasattr(result, 'indicator_name')
-            assert hasattr(result, 'value')
-            assert hasattr(result, 'signal')
-            assert hasattr(result, 'confidence')
+            assert hasattr(result, "indicator_name")
+            assert hasattr(result, "value")
+            assert hasattr(result, "signal")
+            assert hasattr(result, "confidence")
 
     def test_rsi_basic(self, sample_candles):
         """Test basic RSI calculation."""
         result = MomentumIndicators.rsi(sample_candles, period=14)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'RSI(14)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "RSI(14)"
 
     def test_stochastic_basic(self, sample_candles):
         """Test basic Stochastic calculation."""
         result = MomentumIndicators.stochastic(sample_candles, k_period=14, d_period=3)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Stochastic(14,3)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Stochastic(14,3)"
 
     def test_cci_basic(self, sample_candles):
         """Test basic CCI calculation."""
         result = MomentumIndicators.cci(sample_candles, period=20)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'CCI(20)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "CCI(20)"
 
     def test_roc_basic(self, sample_candles):
         """Test basic ROC calculation."""
         result = MomentumIndicators.roc(sample_candles, period=12)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'ROC(12)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "ROC(12)"
 
     def test_williams_r_basic(self, sample_candles):
         """Test basic Williams %R calculation."""
         result = MomentumIndicators.williams_r(sample_candles, period=14)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Williams %R(14)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Williams %R(14)"
 
     def test_mfi_basic(self, sample_candles):
         """Test basic MFI calculation."""
         result = MomentumIndicators.mfi(sample_candles, period=14)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'MFI(14)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "MFI(14)"
 
     def test_ultimate_oscillator_basic(self, sample_candles):
         """Test basic Ultimate Oscillator calculation."""
-        result = MomentumIndicators.ultimate_oscillator(sample_candles, period1=7, period2=14, period3=28)
+        result = MomentumIndicators.ultimate_oscillator(
+            sample_candles, period1=7, period2=14, period3=28
+        )
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Ultimate Oscillator(7,14,28)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Ultimate Oscillator(7,14,28)"
