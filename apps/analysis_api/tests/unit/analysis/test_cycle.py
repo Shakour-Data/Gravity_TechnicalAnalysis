@@ -11,20 +11,16 @@ Tests cover:
 - Helper functions
 """
 
-import pytest
-import numpy as np
-import pandas as pd
 from datetime import datetime
+
+import numpy as np
+import pytest
+from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult
+from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 from gravity_tech.core.indicators.cycle import (
     CycleIndicators,
     CycleResult,
-    convert_cycle_to_indicator_result
-)
-from gravity_tech.core.domain.entities import (
-    Candle,
-    IndicatorResult,
-    CoreSignalStrength as SignalStrength,
-    IndicatorCategory
+    convert_cycle_to_indicator_result,
 )
 
 
@@ -41,7 +37,7 @@ class TestCycleResult:
             cycle_period=20,
             signal=SignalStrength.BULLISH,
             confidence=0.85,
-            description="Test cycle result"
+            description="Test cycle result",
         )
 
         assert result.value == 10.5
@@ -62,7 +58,7 @@ class TestCycleResult:
             cycle_period=25,
             signal=SignalStrength.NEUTRAL,
             confidence=0.7,
-            description="Immutable test"
+            description="Immutable test",
         )
 
         with pytest.raises(AttributeError):
@@ -94,7 +90,7 @@ class TestCycleIndicators:
                 high=price + 1.0,
                 low=price - 1.0,
                 close=price,
-                volume=1000 + i * 10
+                volume=1000 + i * 10,
             )
             candles.append(candle)
 
@@ -135,9 +131,11 @@ class TestCycleIndicators:
 
         # Signal should be one of the expected values
         assert result.signal in [
-            SignalStrength.VERY_BULLISH, SignalStrength.BULLISH,
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.BULLISH,
             SignalStrength.NEUTRAL,
-            SignalStrength.BEARISH, SignalStrength.VERY_BEARISH
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
         ]
 
         # Confidence should be reasonable
@@ -277,7 +275,7 @@ class TestCycleIndicators:
     def test_estimate_cycle_period_normal(self):
         """Test cycle period estimation helper"""
         # Create oscillator data with known peaks
-        oscillator = np.sin(np.linspace(0, 4*np.pi, 100))  # 25 samples per cycle
+        oscillator = np.sin(np.linspace(0, 4 * np.pi, 100))  # 25 samples per cycle
 
         period = CycleIndicators._estimate_cycle_period(oscillator)
         assert isinstance(period, int)
@@ -292,7 +290,7 @@ class TestCycleIndicators:
 
     def test_calculate_phase_from_oscillator_normal(self):
         """Test phase calculation helper"""
-        oscillator = np.sin(np.linspace(0, 2*np.pi, 50))  # Full cycle
+        oscillator = np.sin(np.linspace(0, 2 * np.pi, 50))  # Full cycle
 
         phase = CycleIndicators._calculate_phase_from_oscillator(oscillator)
         assert isinstance(phase, float)
@@ -336,10 +334,16 @@ class TestCycleIndicators:
 
     def test_all_indicators_with_single_candle(self):
         """Test all indicators with single candle"""
-        single_candle = [Candle(
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
-            open=100, high=101, low=99, close=100.5, volume=1000
-        )]
+        single_candle = [
+            Candle(
+                timestamp=datetime(2024, 1, 1, 12, 0, 0),
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000,
+            )
+        ]
 
         with pytest.raises(ValueError):
             CycleIndicators.dpo(single_candle)
@@ -370,7 +374,9 @@ class TestCycleIndicators:
 
         for indicator_func in indicators:
             result = indicator_func(sample_candles)
-            assert 0 <= result.phase <= 360, f"Phase {result.phase} out of range for {indicator_func.__name__}"
+            assert 0 <= result.phase <= 360, (
+                f"Phase {result.phase} out of range for {indicator_func.__name__}"
+            )
 
     def test_normalized_values_range(self, sample_candles):
         """Test that normalized values are in [-1, 1] range"""
@@ -385,7 +391,9 @@ class TestCycleIndicators:
 
         for indicator_func in indicators:
             result = indicator_func(sample_candles)
-            assert -1 <= result.normalized <= 1, f"Normalized {result.normalized} out of range for {indicator_func.__name__}"
+            assert -1 <= result.normalized <= 1, (
+                f"Normalized {result.normalized} out of range for {indicator_func.__name__}"
+            )
 
     def test_confidence_values_range(self, sample_candles):
         """Test that confidence values are in [0, 1] range"""
@@ -400,7 +408,9 @@ class TestCycleIndicators:
 
         for indicator_func in indicators:
             result = indicator_func(sample_candles)
-            assert 0 <= result.confidence <= 1, f"Confidence {result.confidence} out of range for {indicator_func.__name__}"
+            assert 0 <= result.confidence <= 1, (
+                f"Confidence {result.confidence} out of range for {indicator_func.__name__}"
+            )
 
     def test_cycle_period_positive(self, sample_candles):
         """Test that cycle periods are positive"""
@@ -415,7 +425,9 @@ class TestCycleIndicators:
 
         for indicator_func in indicators:
             result = indicator_func(sample_candles)
-            assert result.cycle_period > 0, f"Cycle period {result.cycle_period} not positive for {indicator_func.__name__}"
+            assert result.cycle_period > 0, (
+                f"Cycle period {result.cycle_period} not positive for {indicator_func.__name__}"
+            )
 
     def test_signal_types(self, sample_candles):
         """Test that signals are valid SignalStrength enums"""
@@ -448,4 +460,3 @@ class TestCycleIndicators:
             result = indicator_func(sample_candles)
             assert isinstance(result.description, str)
             assert len(result.description) > 0
-
