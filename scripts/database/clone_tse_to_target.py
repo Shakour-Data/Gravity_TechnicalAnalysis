@@ -28,7 +28,9 @@ def copy_table(cur_s, cur_d, tbl: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Clone tse_input tables from source to target Postgres.")
+    parser = argparse.ArgumentParser(
+        description="Clone tse_input tables from source to target Postgres."
+    )
     parser.add_argument("--src-dsn", required=True, help="Source DSN (has tse_input data)")
     parser.add_argument("--dst-dsn", required=True, help="Destination DSN")
     args = parser.parse_args()
