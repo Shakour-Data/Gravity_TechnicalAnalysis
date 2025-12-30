@@ -12,9 +12,9 @@ from _paths import REPO_ROOT, extend_sys_path
 extend_sys_path()
 
 # Now import after directory change
-config = importlib.import_module('config')
-database = importlib.import_module('database')
-gravity_tech_db = importlib.import_module('gravity_tech.database.database_manager')
+config = importlib.import_module("config")
+database = importlib.import_module("database")
+gravity_tech_db = importlib.import_module("gravity_tech.database.database_manager")
 
 TSE_DB_FILE = config.TSE_DB_FILE
 TSEDatabaseConnector = database.TSEDatabaseConnector
@@ -31,8 +31,7 @@ def populate_market_data_cache():
 
     # Connect to internal database
     db_manager = DatabaseManager(
-        db_type=DatabaseType.SQLITE,
-        sqlite_path=str(REPO_ROOT / "data" / "TechAnalysis.db")
+        db_type=DatabaseType.SQLITE, sqlite_path=str(REPO_ROOT / "data" / "TechAnalysis.db")
     )
 
     # Get list of symbols with sufficient data
@@ -54,16 +53,18 @@ def populate_market_data_cache():
         # Convert to format expected by upsert_market_data
         rows = []
         for candle in price_data:
-            rows.append({
-                "symbol": symbol,
-                "timeframe": "1d",
-                "timestamp": candle["timestamp"].isoformat(),
-                "open": candle["open"],
-                "high": candle["high"],
-                "low": candle["low"],
-                "close": candle["close"],
-                "volume": candle["volume"]
-            })
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "timeframe": "1d",
+                    "timestamp": candle["timestamp"].isoformat(),
+                    "open": candle["open"],
+                    "high": candle["high"],
+                    "low": candle["low"],
+                    "close": candle["close"],
+                    "volume": candle["volume"],
+                }
+            )
 
         # Upsert to internal database
         count = db_manager.upsert_market_data(rows)
