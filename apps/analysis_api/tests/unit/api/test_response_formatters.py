@@ -198,7 +198,9 @@ class TestResponseFormatters:
         momentum_analysis.momentum_3d.score = -0.4
         momentum_analysis.momentum_3d.confidence = 0.7
 
-        result = format_combined_response(combined_analysis, trend_analysis, momentum_analysis, use_persian=True)
+        result = format_combined_response(
+            combined_analysis, trend_analysis, momentum_analysis, use_persian=True
+        )
 
         assert isinstance(result, dict)
         assert result["recommendation"]["action"] == "SELL"
@@ -210,7 +212,7 @@ class TestResponseFormatters:
             "total_candles": 1000,
             "analysis_time": 2.5,
             "success_rate": 0.95,
-            "error_count": 5
+            "error_count": 5,
         }
 
         result = format_analysis_summary(summary)
@@ -312,7 +314,7 @@ class TestResponseFormatters:
             "total_candles": 1000000,
             "analysis_time": 999.99,
             "success_rate": 1.0,
-            "error_count": 0
+            "error_count": 0,
         }
 
         result = format_analysis_summary(summary)
@@ -332,14 +334,14 @@ class TestResponseFormatters:
         """Test horizon score formatting with Decimal values."""
         horizon_score = Mock()
         horizon_score.horizon = "7d"
-        horizon_score.score = Decimal('0.618')
-        horizon_score.confidence = Decimal('0.85')
+        horizon_score.score = Decimal("0.618")
+        horizon_score.confidence = Decimal("0.85")
 
         result = format_horizon_score(horizon_score)
 
         assert isinstance(result, dict)
-        assert result["raw_score"] == Decimal('0.618')
-        assert result["raw_confidence"] == Decimal('0.85')
+        assert result["raw_score"] == Decimal("0.618")
+        assert result["raw_confidence"] == Decimal("0.85")
 
     def test_format_trend_response_list_horizons(self):
         """Test trend response formatting with list of horizons."""
@@ -386,12 +388,7 @@ class TestResponseFormatters:
 
     def test_format_analysis_summary_zero_values(self):
         """Test analysis summary formatting with zero values."""
-        summary = {
-            "total_candles": 0,
-            "analysis_time": 0.0,
-            "success_rate": 0.0,
-            "error_count": 0
-        }
+        summary = {"total_candles": 0, "analysis_time": 0.0, "success_rate": 0.0, "error_count": 0}
 
         result = format_analysis_summary(summary)
 
