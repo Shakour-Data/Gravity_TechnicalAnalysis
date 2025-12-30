@@ -15,8 +15,6 @@ License: MIT
 """
 
 import os
-
-from gravity_tech.config.paths import ML_MODELS_DIR
 import pickle
 import sys
 from datetime import datetime
@@ -27,9 +25,10 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier,
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import GridSearchCV, cross_validate
 
+from gravity_tech.config.paths import ML_MODELS_DIR
+
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 
 
 class AdvancedPatternTrainer:
@@ -51,9 +50,7 @@ class AdvancedPatternTrainer:
         self.tuning_results = {}
 
     def generate_enhanced_training_data(
-        self,
-        n_samples: int = 5000,
-        noise_level: float = 0.1
+        self, n_samples: int = 5000, noise_level: float = 0.1
     ) -> tuple[np.ndarray, list[str], np.ndarray]:
         """
         Generate enhanced synthetic training data with realistic characteristics.
@@ -71,30 +68,38 @@ class AdvancedPatternTrainer:
         y_type = []
         y_success = []
 
-        patterns = ['gartley', 'butterfly', 'bat', 'crab']
+        patterns = ["gartley", "butterfly", "bat", "crab"]
 
         # Pattern-specific characteristics based on real-world observations
         pattern_params = {
-            'gartley': {
-                'fib_acc_mean': 0.85, 'fib_acc_std': 0.08,
-                'symmetry_mean': 0.75, 'symmetry_std': 0.12,
-                'success_rate': 0.68
+            "gartley": {
+                "fib_acc_mean": 0.85,
+                "fib_acc_std": 0.08,
+                "symmetry_mean": 0.75,
+                "symmetry_std": 0.12,
+                "success_rate": 0.68,
             },
-            'butterfly': {
-                'fib_acc_mean': 0.78, 'fib_acc_std': 0.12,
-                'symmetry_mean': 0.70, 'symmetry_std': 0.15,
-                'success_rate': 0.62
+            "butterfly": {
+                "fib_acc_mean": 0.78,
+                "fib_acc_std": 0.12,
+                "symmetry_mean": 0.70,
+                "symmetry_std": 0.15,
+                "success_rate": 0.62,
             },
-            'bat': {
-                'fib_acc_mean': 0.88, 'fib_acc_std': 0.06,
-                'symmetry_mean': 0.82, 'symmetry_std': 0.08,
-                'success_rate': 0.72
+            "bat": {
+                "fib_acc_mean": 0.88,
+                "fib_acc_std": 0.06,
+                "symmetry_mean": 0.82,
+                "symmetry_std": 0.08,
+                "success_rate": 0.72,
             },
-            'crab': {
-                'fib_acc_mean': 0.72, 'fib_acc_std': 0.15,
-                'symmetry_mean': 0.65, 'symmetry_std': 0.18,
-                'success_rate': 0.58
-            }
+            "crab": {
+                "fib_acc_mean": 0.72,
+                "fib_acc_std": 0.15,
+                "symmetry_mean": 0.65,
+                "symmetry_std": 0.18,
+                "success_rate": 0.58,
+            },
         }
 
         for _ in range(n_samples):
@@ -103,7 +108,7 @@ class AdvancedPatternTrainer:
             params = pattern_params[pattern]
 
             # Generate Fibonacci ratio features
-            base_fib_acc = np.random.normal(params['fib_acc_mean'], params['fib_acc_std'])
+            base_fib_acc = np.random.normal(params["fib_acc_mean"], params["fib_acc_std"])
             fib_noise = np.random.normal(0, noise_level, 4)
 
             xab = np.clip(base_fib_acc + fib_noise[0], 0, 1)
@@ -113,18 +118,17 @@ class AdvancedPatternTrainer:
 
             # Generate geometric features
             symmetry = np.clip(
-                np.random.normal(params['symmetry_mean'], params['symmetry_std']),
-                0, 1
+                np.random.normal(params["symmetry_mean"], params["symmetry_std"]), 0, 1
             )
 
             # Pattern-specific geometry
-            if pattern == 'gartley':
+            if pattern == "gartley":
                 slope = np.random.beta(4, 4)
                 angles = np.random.beta(4, 3, 4)
-            elif pattern == 'butterfly':
+            elif pattern == "butterfly":
                 slope = np.random.beta(3, 5)
                 angles = np.random.beta(3, 4, 4)
-            elif pattern == 'bat':
+            elif pattern == "bat":
                 slope = np.random.beta(5, 3)
                 angles = np.random.beta(5, 3, 4)
             else:  # crab
@@ -150,37 +154,37 @@ class AdvancedPatternTrainer:
 
             # Compile features
             features = [
-                xab, abc, bcd, xad,  # Fibonacci (4)
-                symmetry, slope, *angles,  # Geometric (6)
-                duration, *magnitudes,  # Price action (5)
+                xab,
+                abc,
+                bcd,
+                xad,  # Fibonacci (4)
+                symmetry,
+                slope,
+                *angles,  # Geometric (6)
+                duration,
+                *magnitudes,  # Price action (5)
                 np.clip(volume_at_d, 0, 1),
                 np.clip(volume_trend, 0, 1),
                 np.clip(volume_conf, 0, 1),  # Volume (3)
-                rsi, macd, divergence  # Momentum (3)
+                rsi,
+                macd,
+                divergence,  # Momentum (3)
             ]
 
             X.append(features)
             y_type.append(pattern)
 
             # Success probability based on pattern quality
-            quality_score = np.mean([
-                base_fib_acc,
-                symmetry,
-                volume_quality,
-                divergence
-            ])
+            quality_score = np.mean([base_fib_acc, symmetry, volume_quality, divergence])
 
-            base_success = params['success_rate']
+            base_success = params["success_rate"]
             success_prob = base_success * quality_score + np.random.normal(0, 0.1)
             y_success.append(np.clip(success_prob, 0, 1))
 
         return np.array(X, dtype=np.float32), y_type, np.array(y_success, dtype=np.float32)
 
     def tune_xgboost(
-        self,
-        X_train: np.ndarray,
-        y_train: np.ndarray,
-        cv: int = 5
+        self, X_train: np.ndarray, y_train: np.ndarray, cv: int = 5
     ) -> tuple[xgb.XGBClassifier, dict]:
         """
         Tune XGBoost hyperparameters using GridSearchCV.
@@ -198,30 +202,22 @@ class AdvancedPatternTrainer:
 
         # Parameter grid for tuning
         param_grid = {
-            'n_estimators': [100, 150, 200],
-            'max_depth': [4, 6, 8],
-            'learning_rate': [0.01, 0.05, 0.1],
-            'subsample': [0.8, 0.9, 1.0],
-            'colsample_bytree': [0.8, 0.9, 1.0],
-            'min_child_weight': [1, 3, 5]
+            "n_estimators": [100, 150, 200],
+            "max_depth": [4, 6, 8],
+            "learning_rate": [0.01, 0.05, 0.1],
+            "subsample": [0.8, 0.9, 1.0],
+            "colsample_bytree": [0.8, 0.9, 1.0],
+            "min_child_weight": [1, 3, 5],
         }
 
         # Base model
         base_model = xgb.XGBClassifier(
-            objective='multi:softmax',
-            num_class=4,
-            random_state=self.random_state,
-            n_jobs=-1
+            objective="multi:softmax", num_class=4, random_state=self.random_state, n_jobs=-1
         )
 
         # Grid search
         grid_search = GridSearchCV(
-            base_model,
-            param_grid,
-            cv=cv,
-            scoring='accuracy',
-            n_jobs=-1,
-            verbose=1
+            base_model, param_grid, cv=cv, scoring="accuracy", n_jobs=-1, verbose=1
         )
 
         grid_search.fit(X_train, y_train)
@@ -232,15 +228,13 @@ class AdvancedPatternTrainer:
         print(f"\n✅ Best CV Score: {grid_search.best_score_:.4f}")
 
         return grid_search.best_estimator_, {
-            'best_params': grid_search.best_params_,
-            'best_score': grid_search.best_score_,
-            'cv_results': grid_search.cv_results_
+            "best_params": grid_search.best_params_,
+            "best_score": grid_search.best_score_,
+            "cv_results": grid_search.cv_results_,
         }
 
     def train_random_forest(
-        self,
-        X_train: np.ndarray,
-        y_train: np.ndarray
+        self, X_train: np.ndarray, y_train: np.ndarray
     ) -> RandomForestClassifier:
         """Train Random Forest classifier."""
         print("\n🌲 Training Random Forest...")
@@ -251,7 +245,7 @@ class AdvancedPatternTrainer:
             min_samples_split=5,
             min_samples_leaf=2,
             random_state=self.random_state,
-            n_jobs=-1
+            n_jobs=-1,
         )
 
         rf_model.fit(X_train, y_train)
@@ -260,9 +254,7 @@ class AdvancedPatternTrainer:
         return rf_model
 
     def train_gradient_boosting(
-        self,
-        X_train: np.ndarray,
-        y_train: np.ndarray
+        self, X_train: np.ndarray, y_train: np.ndarray
     ) -> GradientBoostingClassifier:
         """Train Gradient Boosting classifier."""
         print("\n📈 Training Gradient Boosting...")
@@ -272,7 +264,7 @@ class AdvancedPatternTrainer:
             max_depth=6,
             learning_rate=0.05,
             subsample=0.9,
-            random_state=self.random_state
+            random_state=self.random_state,
         )
 
         gb_model.fit(X_train, y_train)
@@ -284,19 +276,19 @@ class AdvancedPatternTrainer:
         self,
         xgb_model: xgb.XGBClassifier,
         rf_model: RandomForestClassifier,
-        gb_model: GradientBoostingClassifier
+        gb_model: GradientBoostingClassifier,
     ) -> VotingClassifier:
         """Create ensemble of multiple models."""
         print("\n🎯 Creating Ensemble Model...")
 
         ensemble = VotingClassifier(
             estimators=[
-                ('xgboost', xgb_model),
-                ('random_forest', rf_model),
-                ('gradient_boosting', gb_model)
+                ("xgboost", xgb_model),
+                ("random_forest", rf_model),
+                ("gradient_boosting", gb_model),
             ],
-            voting='soft',
-            n_jobs=-1
+            voting="soft",
+            n_jobs=-1,
         )
 
         print("✅ Ensemble created (soft voting)")
@@ -308,7 +300,7 @@ class AdvancedPatternTrainer:
         X_train: np.ndarray,
         y_train: np.ndarray,
         X_test: np.ndarray,
-        y_test: np.ndarray
+        y_test: np.ndarray,
     ) -> dict:
         """
         Compare multiple models and select the best.
@@ -341,28 +333,23 @@ class AdvancedPatternTrainer:
             # Metrics
             train_acc = accuracy_score(y_train, y_pred_train)
             test_acc = accuracy_score(y_test, y_pred_test)
-            f1 = f1_score(y_test, y_pred_test, average='weighted')
+            f1 = f1_score(y_test, y_pred_test, average="weighted")
 
             # Cross-validation
             cv_scores = cross_validate(
-                model,
-                X_train,
-                y_train,
-                cv=5,
-                scoring=['accuracy', 'f1_weighted'],
-                n_jobs=-1
+                model, X_train, y_train, cv=5, scoring=["accuracy", "f1_weighted"], n_jobs=-1
             )
 
-            cv_acc = cv_scores['test_accuracy'].mean()
-            cv_f1 = cv_scores['test_f1_weighted'].mean()
+            cv_acc = cv_scores["test_accuracy"].mean()
+            cv_f1 = cv_scores["test_f1_weighted"].mean()
 
             results[name] = {
-                'train_accuracy': train_acc,
-                'test_accuracy': test_acc,
-                'f1_score': f1,
-                'cv_accuracy': cv_acc,
-                'cv_f1': cv_f1,
-                'model': model
+                "train_accuracy": train_acc,
+                "test_accuracy": test_acc,
+                "f1_score": f1,
+                "cv_accuracy": cv_acc,
+                "cv_f1": cv_f1,
+                "model": model,
             }
 
             print(f"   Train Accuracy: {train_acc:.4f}")
@@ -372,8 +359,8 @@ class AdvancedPatternTrainer:
             print(f"   CV F1-Score:    {cv_f1:.4f}")
 
         # Select best model based on CV accuracy
-        best_name = max(results.items(), key=lambda x: x[1]['cv_accuracy'])[0]
-        self.best_model = results[best_name]['model']
+        best_name = max(results.items(), key=lambda x: x[1]["cv_accuracy"])[0]
+        self.best_model = results[best_name]["model"]
 
         print("\n" + "=" * 80)
         print(f"🏆 Best Model: {best_name}")
@@ -382,11 +369,7 @@ class AdvancedPatternTrainer:
 
         return results
 
-    def train_advanced_model(
-        self,
-        n_samples: int = 5000,
-        test_size: float = 0.2
-    ) -> dict:
+    def train_advanced_model(self, n_samples: int = 5000, test_size: float = 0.2) -> dict:
         """
         Complete advanced training pipeline.
 
@@ -406,11 +389,12 @@ class AdvancedPatternTrainer:
         X, y_type, y_success = self.generate_enhanced_training_data(n_samples)
 
         # Convert to indices
-        class_to_idx = {'gartley': 0, 'butterfly': 1, 'bat': 2, 'crab': 3}
+        class_to_idx = {"gartley": 0, "butterfly": 1, "bat": 2, "crab": 3}
         y_idx = np.array([class_to_idx[t] for t in y_type])
 
         # Split data
         from sklearn.model_selection import train_test_split
+
         X_train, X_test, y_train, y_test = train_test_split(
             X, y_idx, test_size=test_size, random_state=self.random_state, stratify=y_idx
         )
@@ -420,7 +404,7 @@ class AdvancedPatternTrainer:
 
         # Step 2: Tune XGBoost
         xgb_model, tuning_results = self.tune_xgboost(X_train, y_train)
-        self.tuning_results['xgboost'] = tuning_results
+        self.tuning_results["xgboost"] = tuning_results
 
         # Step 3: Train other models
         rf_model = self.train_random_forest(X_train, y_train)
@@ -431,21 +415,21 @@ class AdvancedPatternTrainer:
 
         # Step 5: Compare models
         models = {
-            'XGBoost (Tuned)': xgb_model,
-            'Random Forest': rf_model,
-            'Gradient Boosting': gb_model,
-            'Ensemble (Soft Voting)': ensemble_model
+            "XGBoost (Tuned)": xgb_model,
+            "Random Forest": rf_model,
+            "Gradient Boosting": gb_model,
+            "Ensemble (Soft Voting)": ensemble_model,
         }
 
         comparison = self.compare_models(models, X_train, y_train, X_test, y_test)
         self.model_comparison = comparison
 
         return {
-            'comparison': comparison,
-            'tuning_results': self.tuning_results,
-            'best_model': self.best_model,
-            'X_test': X_test,
-            'y_test': y_test
+            "comparison": comparison,
+            "tuning_results": self.tuning_results,
+            "best_model": self.best_model,
+            "X_test": X_test,
+            "y_test": y_test,
         }
 
     def save_best_model(self, filepath: str):
@@ -454,14 +438,14 @@ class AdvancedPatternTrainer:
             raise ValueError("No model trained yet")
 
         model_data = {
-            'model': self.best_model,
-            'comparison': self.model_comparison,
-            'tuning_results': self.tuning_results,
-            'timestamp': datetime.now().isoformat()
+            "model": self.best_model,
+            "comparison": self.model_comparison,
+            "tuning_results": self.tuning_results,
+            "timestamp": datetime.now().isoformat(),
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             pickle.dump(model_data, f)
 
         print(f"\n✅ Best model saved to: {filepath}")
