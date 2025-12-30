@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-
-from gravity_tech.main import app as api_app
 from gravity_tech.config.settings import settings
 from gravity_tech.core.contracts.analysis import TechnicalAnalysisResult
-from gravity_tech.core.domain.entities import Candle
+from gravity_tech.main import app as api_app
 from gravity_tech.middleware.events import event_publisher
 from gravity_tech.services import analysis_service
 from gravity_tech.services.data_ingestor_service import data_ingestor
@@ -47,7 +45,7 @@ def test_analyze_endpoint_persists_when_broker_disabled(monkeypatch):
     monkeypatch.setattr(event_publisher, "publish", fake_publish)
 
     # Build 60 candles to satisfy request validation (API enforces >=60)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     candles = [
         {
             "timestamp": (now - timedelta(minutes=i)).isoformat(),
