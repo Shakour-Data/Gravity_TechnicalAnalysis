@@ -1,20 +1,18 @@
 import json
 import pickle
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
-
 from gravity_tech.core.domain.entities import Candle
+from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 from gravity_tech.ml.pipeline_factory import (
     build_pipeline_from_weights,
     load_cycle_analyzer,
     load_support_resistance_analyzer,
 )
-from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
-from datetime import timezone
 
 
 class DummyFeatureCache:
@@ -142,22 +140,22 @@ def test_support_resistance_analyzer_uses_model_state(tmp_path):
     analyzer = load_support_resistance_analyzer(str(weights_path), str(model_path))
 
     base_features = {
-        'nearest_resistance_dist': 1.0,
-        'resistance_strength': 0.0,
-        'nearest_support_dist': 0.0,
-        'support_strength': 0.0,
-        'sr_position': 0.2,
-        'sr_bias': 0.0,
-        'level_density': 0.1,
-        'fib_signal': 0.0,
-        'camarilla_signal': 0.0,
-        'nearest_level_dist': 1.0,
-        'support_count': 1.0,
-        'resistance_count': 1.0,
+        "nearest_resistance_dist": 1.0,
+        "resistance_strength": 0.0,
+        "nearest_support_dist": 0.0,
+        "support_strength": 0.0,
+        "sr_position": 0.2,
+        "sr_bias": 0.0,
+        "level_density": 0.1,
+        "fib_signal": 0.0,
+        "camarilla_signal": 0.0,
+        "nearest_level_dist": 1.0,
+        "support_count": 1.0,
+        "resistance_count": 1.0,
     }
 
     feature_payload: dict[str, float] = {}
-    for horizon in ['3d', '7d', '30d']:
+    for horizon in ["3d", "7d", "30d"]:
         prefix = f"{horizon}_"
         for key, value in base_features.items():
             feature_payload[f"{prefix}{key}"] = value
@@ -176,7 +174,7 @@ def _write_weights(path: Path, feature_names: list[str]) -> Path:
         "weights": {
             horizon: {
                 "horizon": horizon,
-                "weights": {name: 0.5 for name in feature_names},
+                "weights": dict.fromkeys(feature_names, 0.5),
                 "metrics": {
                     "r2_train": 0.1,
                     "r2_test": 0.1,
@@ -193,7 +191,7 @@ def _write_weights(path: Path, feature_names: list[str]) -> Path:
 
 
 def _make_candles(count: int) -> list[Candle]:
-    base_time = datetime.now(timezone.utc) - timedelta(days=count)
+    base_time = datetime.now(UTC) - timedelta(days=count)
     candles: list[Candle] = []
     price = 100.0
 
@@ -220,26 +218,26 @@ def _make_candles(count: int) -> list[Candle]:
 def _write_sr_assets(tmp_path: Path) -> tuple[Path, Path]:
     weights = {
         horizon: {
-            'nearest_resistance_dist': -0.2,
-            'resistance_strength': -0.1,
-            'nearest_support_dist': 0.2,
-            'support_strength': 0.1,
-            'sr_position': -0.3,
-            'sr_bias': 0.15,
-            'level_density': 0.1,
-            'fib_signal': 0.1,
-            'camarilla_signal': 0.1,
+            "nearest_resistance_dist": -0.2,
+            "resistance_strength": -0.1,
+            "nearest_support_dist": 0.2,
+            "support_strength": 0.1,
+            "sr_position": -0.3,
+            "sr_bias": 0.15,
+            "level_density": 0.1,
+            "fib_signal": 0.1,
+            "camarilla_signal": 0.1,
         }
-        for horizon in ['3d', '7d', '30d']
+        for horizon in ["3d", "7d", "30d"]
     }
     weights_path = tmp_path / "sr_weights.json"
     weights_path.write_text(json.dumps(weights, indent=2), encoding="utf-8")
 
     model_payload = {
         horizon: {
-            'feature_names': list(values.keys()),
-            'weights': list(values.values()),
-            'intercept': 0.0,
+            "feature_names": list(values.keys()),
+            "weights": list(values.values()),
+            "intercept": 0.0,
         }
         for horizon, values in weights.items()
     }
