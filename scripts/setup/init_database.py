@@ -17,13 +17,14 @@ License: MIT
 """
 
 import importlib
+import sys
 
 from _paths import extend_sys_path
 
 extend_sys_path()
 
 # Import after path setup
-gravity_tech_database = importlib.import_module('gravity_tech.database.database_manager')
+gravity_tech_database = importlib.import_module("gravity_tech.database.database_manager")
 DatabaseManager = gravity_tech_database.DatabaseManager
 
 
@@ -80,7 +81,7 @@ def main():
             confidence_score=0.85,
             volatility_level=45.5,
             trend_strength=72.3,
-            volume_profile="high"
+            volume_profile="high",
         )
         print(f"   ✓ Test record created: ID={record_id}")
 
