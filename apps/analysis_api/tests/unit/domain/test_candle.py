@@ -5,9 +5,9 @@ Tests Candle dataclass, properties, and methods.
 Covers validation, properties, and true_range calculations.
 """
 
-import pytest
-import numpy as np
 from datetime import datetime
+
+import pytest
 from gravity_tech.core.domain.entities.candle import Candle, CandleType
 
 
@@ -25,7 +25,7 @@ class TestCandleCreation:
             close=102.0,
             volume=1000.0,
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
         assert candle.timestamp == timestamp
         assert candle.open == 100.0
@@ -40,12 +40,7 @@ class TestCandleCreation:
         """Test candle creation with default values"""
         timestamp = datetime(2023, 1, 1, 12, 0, 0)
         candle = Candle(
-            timestamp=timestamp,
-            open=100.0,
-            high=105.0,
-            low=95.0,
-            close=102.0,
-            volume=1000.0
+            timestamp=timestamp, open=100.0, high=105.0, low=95.0, close=102.0, volume=1000.0
         )
         assert candle.symbol == "UNKNOWN"
         assert candle.timeframe == "1h"
@@ -60,7 +55,7 @@ class TestCandleCreation:
                 high=101.0,  # Less than close
                 low=95.0,
                 close=102.0,
-                volume=1000.0
+                volume=1000.0,
             )
 
     def test_candle_validation_low_too_high(self):
@@ -73,7 +68,7 @@ class TestCandleCreation:
                 high=105.0,
                 low=101.0,  # Greater than open
                 close=102.0,
-                volume=1000.0
+                volume=1000.0,
             )
 
     def test_candle_validation_negative_volume(self):
@@ -81,24 +76,14 @@ class TestCandleCreation:
         timestamp = datetime(2023, 1, 1, 12, 0, 0)
         with pytest.raises(ValueError, match="Volume .* cannot be negative"):
             Candle(
-                timestamp=timestamp,
-                open=100.0,
-                high=105.0,
-                low=95.0,
-                close=102.0,
-                volume=-100.0
+                timestamp=timestamp, open=100.0, high=105.0, low=95.0, close=102.0, volume=-100.0
             )
 
     def test_candle_immutable(self):
         """Test that Candle is immutable (frozen dataclass)"""
         timestamp = datetime(2023, 1, 1, 12, 0, 0)
         candle = Candle(
-            timestamp=timestamp,
-            open=100.0,
-            high=105.0,
-            low=95.0,
-            close=102.0,
-            volume=1000.0
+            timestamp=timestamp, open=100.0, high=105.0, low=95.0, close=102.0, volume=1000.0
         )
         with pytest.raises(AttributeError):
             candle.open = 101.0
@@ -116,7 +101,7 @@ class TestCandleProperties:
             high=105.0,
             low=95.0,
             close=102.0,
-            volume=1000.0
+            volume=1000.0,
         )
 
     @pytest.fixture
@@ -128,7 +113,7 @@ class TestCandleProperties:
             high=105.0,
             low=95.0,
             close=100.0,
-            volume=1000.0
+            volume=1000.0,
         )
 
     @pytest.fixture
@@ -140,7 +125,7 @@ class TestCandleProperties:
             high=105.0,
             low=95.0,
             close=100.05,  # Very small body
-            volume=1000.0
+            volume=1000.0,
         )
 
     def test_candle_type_bullish(self, bullish_candle):
@@ -215,7 +200,7 @@ class TestTrueRange:
             high=105.0,
             low=95.0,
             close=102.0,
-            volume=1000.0
+            volume=1000.0,
         )
 
     @pytest.fixture
@@ -227,7 +212,7 @@ class TestTrueRange:
             high=103.0,
             low=93.0,
             close=101.0,
-            volume=1000.0
+            volume=1000.0,
         )
 
     def test_true_range_no_previous(self, current_candle):
@@ -248,7 +233,7 @@ class TestTrueRange:
             high=110.0,  # High gap up
             low=105.0,
             close=108.0,
-            volume=1000.0
+            volume=1000.0,
         )
         previous = Candle(
             timestamp=datetime(2023, 1, 1, 11, 0, 0),
@@ -256,7 +241,7 @@ class TestTrueRange:
             high=103.0,
             low=93.0,
             close=95.0,  # Previous close much lower
-            volume=1000.0
+            volume=1000.0,
         )
         tr = current.true_range(previous)
         assert tr == 15.0  # |110 - 95|
@@ -269,7 +254,7 @@ class TestTrueRange:
             high=105.0,
             low=85.0,  # Low gap down
             close=90.0,
-            volume=1000.0
+            volume=1000.0,
         )
         previous = Candle(
             timestamp=datetime(2023, 1, 1, 11, 0, 0),
@@ -277,7 +262,7 @@ class TestTrueRange:
             high=103.0,
             low=93.0,
             close=110.0,  # Previous close much higher
-            volume=1000.0
+            volume=1000.0,
         )
         tr = current.true_range(previous)
         assert tr == 25.0  # |85 - 110|
@@ -290,17 +275,20 @@ class TestTrueRange:
             high=100.0,
             low=100.0,
             close=100.0,
-            volume=1000.0
+            volume=1000.0,
         )
         tr = current.true_range()
         assert tr == 0.0
 
-    @pytest.mark.parametrize("current_high,current_low,prev_close,expected", [
-        (105.0, 95.0, 102.0, 10.0),  # Normal range
-        (110.0, 100.0, 95.0, 15.0),  # High gap
-        (105.0, 90.0, 110.0, 20.0),  # Low gap
-        (100.0, 100.0, 100.0, 0.0),  # No range
-    ])
+    @pytest.mark.parametrize(
+        "current_high,current_low,prev_close,expected",
+        [
+            (105.0, 95.0, 102.0, 10.0),  # Normal range
+            (110.0, 100.0, 95.0, 15.0),  # High gap
+            (105.0, 90.0, 110.0, 20.0),  # Low gap
+            (100.0, 100.0, 100.0, 0.0),  # No range
+        ],
+    )
     def test_true_range_parametrized(self, current_high, current_low, prev_close, expected):
         """Parametrized test for true range calculations"""
         current = Candle(
@@ -309,7 +297,7 @@ class TestTrueRange:
             high=current_high,
             low=current_low,
             close=102.0,
-            volume=1000.0
+            volume=1000.0,
         )
         previous = Candle(
             timestamp=datetime(2023, 1, 1, 11, 0, 0),
@@ -317,7 +305,7 @@ class TestTrueRange:
             high=103.0,
             low=93.0,
             close=prev_close,
-            volume=1000.0
+            volume=1000.0,
         )
         tr = current.true_range(previous)
         assert tr == expected
@@ -337,4 +325,3 @@ class TestCandleTypeEnum:
         assert str(CandleType.BULLISH) == "BULLISH"
         assert str(CandleType.BEARISH) == "BEARISH"
         assert str(CandleType.DOJI) == "DOJI"
-
