@@ -8,8 +8,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-
-from src.gravity_tech.ml.pattern_classifier import PatternClassifier
+from gravity_tech.ml.pattern_classifier import PatternClassifier
 
 
 class TestPatternClassifier:
@@ -22,9 +21,9 @@ class TestPatternClassifier:
         assert classifier.n_estimators == 50
         assert classifier.max_depth == 4
         assert classifier.learning_rate == 0.05
-        assert classifier.pattern_classes == ['gartley', 'butterfly', 'bat', 'crab']
-        assert classifier.class_to_idx == {'gartley': 0, 'butterfly': 1, 'bat': 2, 'crab': 3}
-        assert classifier.idx_to_class == {0: 'gartley', 1: 'butterfly', 2: 'bat', 3: 'crab'}
+        assert classifier.pattern_classes == ["gartley", "butterfly", "bat", "crab"]
+        assert classifier.class_to_idx == {"gartley": 0, "butterfly": 1, "bat": 2, "crab": 3}
+        assert classifier.idx_to_class == {0: "gartley", 1: "butterfly", 2: "bat", 3: "crab"}
 
     def test_init_default_params(self):
         """Test PatternClassifier initialization with default parameters."""
@@ -34,9 +33,9 @@ class TestPatternClassifier:
         assert classifier.max_depth == 6
         assert classifier.learning_rate == 0.1
 
-    @patch('src.gravity_tech.ml.pattern_classifier.cross_val_score')
-    @patch('xgboost.XGBClassifier')
-    @patch('xgboost.XGBRegressor')
+    @patch("gravity_tech.ml.pattern_classifier.cross_val_score")
+    @patch("xgboost.XGBClassifier")
+    @patch("xgboost.XGBRegressor")
     def test_train_basic(self, mock_regressor, mock_classifier, mock_cross_val):
         """Test basic training functionality."""
         # Mock the classifiers
@@ -58,7 +57,7 @@ class TestPatternClassifier:
 
         # Mock training data
         X = np.random.rand(100, 20)
-        y_type = ['gartley'] * 25 + ['butterfly'] * 25 + ['bat'] * 25 + ['crab'] * 25
+        y_type = ["gartley"] * 25 + ["butterfly"] * 25 + ["bat"] * 25 + ["crab"] * 25
         y_success = np.random.rand(100)
 
         classifier = PatternClassifier()
@@ -70,8 +69,8 @@ class TestPatternClassifier:
 
         # Verify result structure
         assert isinstance(result, dict)
-        assert 'test_accuracy' in result
-        assert 'r2_score' in result
+        assert "test_accuracy" in result
+        assert "r2_score" in result
 
     def test_train_without_success_labels(self):
         """Test training without success labels."""
@@ -79,13 +78,13 @@ class TestPatternClassifier:
 
         # Mock training data
         X = np.random.rand(50, 15)
-        y_type = ['gartley'] * 25 + ['butterfly'] * 25
+        y_type = ["gartley"] * 25 + ["butterfly"] * 25
 
         result = classifier.train(X, y_type, verbose=False)
 
         # Should still return results
         assert isinstance(result, dict)
-        assert 'test_accuracy' in result
+        assert "test_accuracy" in result
 
     def test_predict(self):
         """Test prediction functionality."""
@@ -97,17 +96,15 @@ class TestPatternClassifier:
 
         # Mock predictions
         classifier.type_classifier.predict.return_value = np.array([0, 1, 2])
-        classifier.type_classifier.predict_proba.return_value = np.array([
-            [0.8, 0.1, 0.05, 0.05],
-            [0.1, 0.7, 0.1, 0.1],
-            [0.05, 0.1, 0.8, 0.05]
-        ])
+        classifier.type_classifier.predict_proba.return_value = np.array(
+            [[0.8, 0.1, 0.05, 0.05], [0.1, 0.7, 0.1, 0.1], [0.05, 0.1, 0.8, 0.05]]
+        )
         classifier.success_regressor.predict.return_value = np.array([0.75, 0.82, 0.65])
 
         X = np.random.rand(3, 10)
         pattern_types, probabilities, success_probs = classifier.predict(X)
 
-        assert pattern_types == ['gartley', 'butterfly', 'bat']
+        assert pattern_types == ["gartley", "butterfly", "bat"]
         assert len(probabilities) == 3
         assert len(success_probs) == 3
         assert success_probs[0] == 0.75
@@ -129,9 +126,9 @@ class TestPatternClassifier:
         result = classifier.predict_single(features)
 
         assert isinstance(result, dict)
-        assert result['pattern_type'] == 'butterfly'
-        assert result['confidence'] == 0.8
-        assert result['success_probability'] == 0.85
+        assert result["pattern_type"] == "butterfly"
+        assert result["confidence"] == 0.8
+        assert result["success_probability"] == 0.85
 
     def test_get_feature_importance(self):
         """Test feature importance extraction."""
@@ -140,12 +137,12 @@ class TestPatternClassifier:
         # Mock trained classifier with feature importance
         classifier.feature_importance = np.array([0.1, 0.2, 0.15, 0.05])
 
-        feature_names = ['feature1', 'feature2', 'feature3', 'feature4']
+        feature_names = ["feature1", "feature2", "feature3", "feature4"]
         importance = classifier.get_feature_importance(feature_names)
 
         assert isinstance(importance, dict)
         assert len(importance) == 4
-        assert importance['feature2'] == 0.2
+        assert importance["feature2"] == 0.2
 
     def test_save_and_load(self):
         """Test saving and loading classifier."""
@@ -155,7 +152,7 @@ class TestPatternClassifier:
         classifier.train_accuracy = 0.85
         classifier.feature_importance = np.array([0.3, 0.2, 0.1])
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp:
             # Save
             classifier.save(tmp.name)
 
@@ -163,4 +160,6 @@ class TestPatternClassifier:
             loaded_classifier = PatternClassifier.load(tmp.name)
 
             assert loaded_classifier.train_accuracy == 0.85
-            np.testing.assert_array_equal(loaded_classifier.feature_importance, np.array([0.3, 0.2, 0.1]))
+            np.testing.assert_array_equal(
+                loaded_classifier.feature_importance, np.array([0.3, 0.2, 0.1])
+            )
