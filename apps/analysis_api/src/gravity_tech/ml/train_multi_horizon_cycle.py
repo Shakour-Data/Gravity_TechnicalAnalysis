@@ -12,17 +12,17 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from config import TSE_DB_FILE
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.database.tse_data_source import tse_data_source
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
-from src.config import TSE_DB_FILE
-
 
 def create_realistic_cycle_data(
     num_samples: int = 2000,
-    cycle_regime: str = 'mixed'  # 'fast', 'slow', 'mixed', 'range'
+    cycle_regime: str = "mixed",  # 'fast', 'slow', 'mixed', 'range'
 ) -> list[Candle]:
     """
     ایجاد داده‌های واقعی با سیکل‌های مختلف
@@ -37,20 +37,20 @@ def create_realistic_cycle_data(
     """
     np.random.seed(42)
 
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1h')
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq="1h")
 
     base_price = 50000
     candles = []
 
     for i in range(num_samples):
         # تعیین cycle period بر اساس regime
-        if cycle_regime == 'fast':
+        if cycle_regime == "fast":
             cycle_period = 12  # 12 کندل
             amplitude = base_price * 0.02  # 2%
-        elif cycle_regime == 'slow':
+        elif cycle_regime == "slow":
             cycle_period = 40  # 40 کندل
             amplitude = base_price * 0.05  # 5%
-        elif cycle_regime == 'range':
+        elif cycle_regime == "range":
             cycle_period = 20
             amplitude = base_price * 0.03  # 3%
         else:  # mixed
@@ -69,7 +69,7 @@ def create_realistic_cycle_data(
         cycle_component = amplitude * np.sin(phase)
 
         # trend (کم یا صفر برای range)
-        if cycle_regime == 'range':
+        if cycle_regime == "range":
             trend_component = 0
         else:
             # trend خیلی ملایم
@@ -115,13 +115,11 @@ def create_realistic_cycle_data(
             high=high_price,
             low=low_price,
             close=close_price,
-            volume=volume
+            volume=volume,
         )
         candles.append(candle)
 
     return candles
-
-
 
 
 def _phase_to_target(phase: float) -> float:
@@ -136,7 +134,9 @@ def _phase_to_target(phase: float) -> float:
     return 0.5
 
 
-def _rows_to_candles(rows: Sequence[dict[str, Any]], symbol: str, timeframe: str = '1d') -> list[Candle]:
+def _rows_to_candles(
+    rows: Sequence[dict[str, Any]], symbol: str, timeframe: str = "1d"
+) -> list[Candle]:
     """Convert raw dictionaries from DB fetchers to Candle objects."""
     candles: list[Candle] = []
     for row in rows:
@@ -167,7 +167,7 @@ def load_tse_instruments(
     max_symbols: int = 8,
     max_market_indices: int = 4,
     max_sector_indices: int = 6,
-    timeframe: str = '1d',
+    timeframe: str = "1d",
     verbose: bool = True,
 ) -> dict[str, list[Candle]]:
     """
@@ -246,23 +246,23 @@ def build_cycle_dataset(
     horizons: Sequence[str],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     extractor = MultiHorizonCycleFeatureExtractor(lookback_period=lookback_period)
-    horizon_steps = {h: int(h.replace('d', '')) for h in horizons}
+    horizon_steps = {h: int(h.replace("d", "")) for h in horizons}
     max_horizon = max(horizon_steps.values())
 
     feature_rows: list[dict[str, float]] = []
     target_rows: list[dict[str, float]] = []
 
     for idx in range(lookback_period, len(candles) - max_horizon):
-        window = candles[idx - lookback_period: idx]
+        window = candles[idx - lookback_period : idx]
         features = extractor.extract_cycle_features(list(window))
         targets: dict[str, float] = {}
 
         for horizon, steps in horizon_steps.items():
             future_end = idx + steps
-            future_window = candles[future_end - lookback_period:future_end]
+            future_window = candles[future_end - lookback_period : future_end]
             future_features = extractor.extract_cycle_features(list(future_window))
-            future_phase = future_features.get('cycle_avg_phase', 0.0)
-            targets[f'return_{horizon}'] = _phase_to_target(future_phase)
+            future_phase = future_features.get("cycle_avg_phase", 0.0)
+            targets[f"return_{horizon}"] = _phase_to_target(future_phase)
 
         feature_rows.append(features)
         target_rows.append(targets)
@@ -277,12 +277,12 @@ def train_cycle_model(
     horizons: Sequence[str] | None = None,
     lookback_period: int = 100,
     test_size: float = 0.2,
-    output_dir: str = 'models/cycle',
+    output_dir: str = "models/cycle",
     verbose: bool = True,
     instrument_candles: Mapping[str, Sequence[Candle]] | None = None,
 ) -> MultiHorizonWeightLearner:
-    horizons = list(horizons or ['3d', '7d', '30d'])
-    horizon_steps = {h: int(h.replace('d', '')) for h in horizons}
+    horizons = list(horizons or ["3d", "7d", "30d"])
+    horizon_steps = {h: int(h.replace("d", "")) for h in horizons}
     max_horizon = max(horizon_steps.values())
     min_required = lookback_period + max_horizon
 
@@ -322,7 +322,9 @@ def train_cycle_model(
         if candles is None:
             raise ValueError("Candles are required when instrument_candles is not provided.")
         if len(candles) < min_required:
-            raise ValueError(f"Not enough candles for training. Need {min_required}, got {len(candles)}.")
+            raise ValueError(
+                f"Not enough candles for training. Need {min_required}, got {len(candles)}."
+            )
         X, Y = build_cycle_dataset(candles, lookback_period, horizons)
 
     if verbose:
@@ -333,20 +335,20 @@ def train_cycle_model(
         test_size=test_size,
         random_state=42,
         lgbm_params={
-            'objective': 'regression',
-            'metric': 'rmse',
-            'verbosity': -1,
-            'n_estimators': 150,
-            'learning_rate': 0.05,
-            'num_leaves': 63,
-            'max_depth': 6,
+            "objective": "regression",
+            "metric": "rmse",
+            "verbosity": -1,
+            "n_estimators": 150,
+            "learning_rate": 0.05,
+            "num_leaves": 63,
+            "max_depth": 6,
         },
     )
     learner.train(X, Y, verbose=verbose)
 
     os.makedirs(output_dir, exist_ok=True)
-    weights_path = os.path.join(output_dir, 'cycle_weights.json')
-    model_path = os.path.join(output_dir, 'cycle_weights.pkl')
+    weights_path = os.path.join(output_dir, "cycle_weights.json")
+    model_path = os.path.join(output_dir, "cycle_weights.pkl")
     learner.save_weights(weights_path)
     learner.save_model_state(model_path)
 
@@ -368,15 +370,15 @@ def main() -> MultiHorizonWeightLearner:
     print("Multi-Horizon Cycle Training Pipeline")
     print("=" * 70)
 
-    horizons = ['3d', '7d', '30d']
+    horizons = ["3d", "7d", "30d"]
     lookback_period = 100
-    max_horizon = max(int(h.replace('d', '')) for h in horizons)
+    max_horizon = max(int(h.replace("d", "")) for h in horizons)
     min_candles = lookback_period + max_horizon
 
     print(f"\U0001f4e5 Trying to load real TSE data from {TSE_DB_FILE} ...")
     instrument_sets = load_tse_instruments(
         min_candles=min_candles,
-        timeframe='1d',
+        timeframe="1d",
         verbose=True,
     )
 
@@ -386,13 +388,13 @@ def main() -> MultiHorizonWeightLearner:
             instrument_candles=instrument_sets,
             horizons=horizons,
             lookback_period=lookback_period,
-            output_dir='models/cycle',
+            output_dir="models/cycle",
             verbose=True,
         )
     else:
         print("\u26a0\ufe0f  Falling back to synthetic cycle generation.")
         training_candles: list[Candle] = []
-        regimes = ['fast', 'slow', 'range', 'mixed']
+        regimes = ["fast", "slow", "range", "mixed"]
         for regime in regimes:
             print(f"\U0001f6a7 Generating {regime} regime samples...")
             training_candles.extend(create_realistic_cycle_data(600, regime))
@@ -401,7 +403,7 @@ def main() -> MultiHorizonWeightLearner:
             candles=training_candles,
             horizons=horizons,
             lookback_period=lookback_period,
-            output_dir='models/cycle',
+            output_dir="models/cycle",
             verbose=True,
         )
 
@@ -411,5 +413,5 @@ def main() -> MultiHorizonWeightLearner:
     return learner
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
