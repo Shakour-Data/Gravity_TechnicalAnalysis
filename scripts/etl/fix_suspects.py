@@ -17,18 +17,18 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
-from pathlib import Path
-from typing import List, Tuple
-
-import psycopg2
 
 # allow running as standalone
 import sys
+from pathlib import Path
+
+import psycopg2
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.etl.run_batch50_full_ingest import ingest_baseline  # type: ignore
 
 
-def load_symbols(path: Path) -> List[str]:
+def load_symbols(path: Path) -> list[str]:
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
@@ -102,7 +102,7 @@ def dedup_all(cur) -> None:
         print(f"dedup {tbl}: removed {removed} rows")
 
 
-def symbols_need_extension(pg_conn, src_db: Path, symbols: List[str]) -> List[str]:
+def symbols_need_extension(pg_conn, src_db: Path, symbols: list[str]) -> list[str]:
     """Return symbols where historical_scores latest date < source latest date."""
     conn = sqlite3.connect(src_db)
     cur_src = conn.cursor()
@@ -124,7 +124,7 @@ def symbols_need_extension(pg_conn, src_db: Path, symbols: List[str]) -> List[st
     pg_max = {row[0]: row[1].date().isoformat() if row[1] else None for row in cur_pg.fetchall()}
     cur_pg.close()
 
-    need: List[str] = []
+    need: list[str] = []
     for sym in symbols:
         smax = src_max.get(sym)
         pmax = pg_max.get(sym)
@@ -134,11 +134,15 @@ def symbols_need_extension(pg_conn, src_db: Path, symbols: List[str]) -> List[st
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fix duplicates and re-ingest missing history for symbols.")
+    parser = argparse.ArgumentParser(
+        description="Fix duplicates and re-ingest missing history for symbols."
+    )
     parser.add_argument("--target-db", required=True, help="Postgres DSN.")
     parser.add_argument("--source-db", required=True, help="SQLite DB with price_data.")
     parser.add_argument("--symbols-file", required=True, help="File with symbols, one per line.")
-    parser.add_argument("--ingest-limit", type=int, default=0, help="Limit candles for re-ingest (0 = all).")
+    parser.add_argument(
+        "--ingest-limit", type=int, default=0, help="Limit candles for re-ingest (0 = all)."
+    )
     args = parser.parse_args()
 
     symbols = load_symbols(Path(args.symbols_file))
@@ -157,7 +161,13 @@ def main() -> None:
     pg.close()
 
     if need:
-        ingest_baseline(need, Path(args.source_db), args.target_db, candle_limit=args.ingest_limit, timeframe="1d")
+        ingest_baseline(
+            need,
+            Path(args.source_db),
+            args.target_db,
+            candle_limit=args.ingest_limit,
+            timeframe="1d",
+        )
     else:
         print("No symbols need re-ingest (historical_scores up-to-date with source).")
 
