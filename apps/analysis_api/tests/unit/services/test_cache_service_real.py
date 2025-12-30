@@ -18,7 +18,8 @@ def mock_redis_for_cache_tests(monkeypatch):
     cache_storage = {}  # {key: (value, expiry_time)}
 
     async def mock_set(self, key, value, ttl=None):
-        from src.gravity_tech.config.settings import settings
+        from gravity_tech.config.settings import settings
+
         ttl = ttl or settings.cache_ttl
         expiry_time = time.time() + ttl
         cache_storage[key] = (value, expiry_time)
@@ -51,7 +52,8 @@ def mock_redis_for_cache_tests(monkeypatch):
         return True
 
     async def mock_mset(self, data, ttl=None):
-        from src.gravity_tech.config.settings import settings
+        from gravity_tech.config.settings import settings
+
         ttl = ttl or settings.cache_ttl
         expiry_time = time.time() + ttl
         for key, value in data.items():
@@ -61,7 +63,8 @@ def mock_redis_for_cache_tests(monkeypatch):
     async def mock_delete_pattern(self, pattern: str):
         """Mock delete pattern - removes keys matching pattern."""
         import re
-        regex = re.compile(pattern.replace('*', '.*'))
+
+        regex = re.compile(pattern.replace("*", ".*"))
         keys_to_delete = [k for k in cache_storage.keys() if regex.match(k)]
         for key in keys_to_delete:
             del cache_storage[key]
@@ -72,7 +75,8 @@ def mock_redis_for_cache_tests(monkeypatch):
         return
 
     # Monkeypatch CacheManager methods
-    from src.gravity_tech.services.cache_service import CacheManager
+    from gravity_tech.services.cache_service import CacheManager
+
     monkeypatch.setattr(CacheManager, "initialize", mock_initialize)
     monkeypatch.setattr(CacheManager, "set", mock_set)
     monkeypatch.setattr(CacheManager, "get", mock_get)
@@ -89,24 +93,26 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_set_get_tse_candles(self, tse_candles_short):
         """Test caching real TSE candle data."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
         # Prepare data
         cache_key = "tse:candles:TOTAL"
-        candles_json = json.dumps([
-            {
-                'timestamp': str(c.timestamp),
-                'open': c.open,
-                'high': c.high,
-                'low': c.low,
-                'close': c.close,
-                'volume': c.volume
-            }
-            for c in tse_candles_short
-        ])
+        candles_json = json.dumps(
+            [
+                {
+                    "timestamp": str(c.timestamp),
+                    "open": c.open,
+                    "high": c.high,
+                    "low": c.low,
+                    "close": c.close,
+                    "volume": c.volume,
+                }
+                for c in tse_candles_short
+            ]
+        )
 
         # Execute
         await cache.set(cache_key, candles_json, ttl=3600)
@@ -120,7 +126,7 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_tse_analysis_results(self, tse_candles_total):
         """Test caching analysis results."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
@@ -128,15 +134,11 @@ class TestCacheManagerWithRealTSEData:
         # Prepare analysis result
         cache_key = "tse:analysis:TOTAL"
         analysis = {
-            'symbol': 'TOTAL',
-            'trend': 'UPTREND',
-            'score': 8.5,
-            'candles_count': len(tse_candles_total),
-            'indicators': {
-                'rsi': 65.5,
-                'macd': 0.25,
-                'ma_20': 11450
-            }
+            "symbol": "TOTAL",
+            "trend": "UPTREND",
+            "score": 8.5,
+            "candles_count": len(tse_candles_total),
+            "indicators": {"rsi": 65.5, "macd": 0.25, "ma_20": 11450},
         }
 
         # Execute
@@ -146,28 +148,29 @@ class TestCacheManagerWithRealTSEData:
         # Verify
         assert result is not None
         cached_analysis = json.loads(result)
-        assert cached_analysis['symbol'] == 'TOTAL'
-        assert cached_analysis['candles_count'] == len(tse_candles_total)
+        assert cached_analysis["symbol"] == "TOTAL"
+        assert cached_analysis["candles_count"] == len(tse_candles_total)
 
     @pytest.mark.asyncio
-    async def test_cache_multiple_tse_symbols(self, tse_candles_total, tse_candles_petroff, tse_candles_iraninoil):
+    async def test_cache_multiple_tse_symbols(
+        self, tse_candles_total, tse_candles_petroff, tse_candles_iraninoil
+    ):
         """Test caching multiple TSE symbols."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-
         symbols_data = {
-            'TOTAL': tse_candles_total,
-            'PETROFF': tse_candles_petroff,
-            'IRANINOIL': tse_candles_iraninoil
+            "TOTAL": tse_candles_total,
+            "PETROFF": tse_candles_petroff,
+            "IRANINOIL": tse_candles_iraninoil,
         }
 
         # Execute - cache each symbol
         for symbol, candles in symbols_data.items():
             cache_key = f"tse:candles:{symbol}"
-            data = json.dumps({'symbol': symbol, 'count': len(candles)})
+            data = json.dumps({"symbol": symbol, "count": len(candles)})
             await cache.set(cache_key, data, ttl=3600)
 
         # Verify - retrieve each
@@ -179,11 +182,10 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_delete_tse_key(self, tse_candles_short):
         """Test deleting cache entry."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
-
 
         # Setup
         cache_key = "tse:temp:data"
@@ -204,11 +206,10 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_ttl_expiration(self, tse_candles_short):
         """Test TTL expiration behavior."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
-
 
         # Setup - set with 2 second TTL
         cache_key = "tse:expire:test"
@@ -226,20 +227,18 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_mset_batch_operation(self, tse_candles_long):
         """Test batch setting multiple keys."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
-
 
         # Prepare batch data
         batch_data = {}
         for i, candle in enumerate(tse_candles_long[:10]):
             key = f"tse:candle:{i}"
-            batch_data[key] = json.dumps({
-                'timestamp': str(candle.timestamp),
-                'close': candle.close
-            })
+            batch_data[key] = json.dumps(
+                {"timestamp": str(candle.timestamp), "close": candle.close}
+            )
 
         # Execute
         await cache.mset(batch_data, ttl=3600)
@@ -253,15 +252,14 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_key_exists(self, tse_candles_short):
         """Test key existence check."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-
         # Setup
         cache_key = "tse:exists:test"
-        data = json.dumps({'test': 'data'})
+        data = json.dumps({"test": "data"})
 
         await cache.set(cache_key, data, ttl=60)
 
@@ -277,16 +275,15 @@ class TestCacheManagerWithRealTSEData:
     @pytest.mark.asyncio
     async def test_cache_clear_all(self, tse_candles_short):
         """Test clearing entire cache."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-
         # Setup - add multiple keys
         for i in range(5):
             key = f"tse:clear:test:{i}"
-            data = json.dumps({'index': i})
+            data = json.dumps({"index": i})
             await cache.set(key, data, ttl=60)
 
         # Execute - clear all
@@ -303,11 +300,10 @@ class TestCacheServicePatterns:
     @pytest.mark.asyncio
     async def test_cache_aside_pattern(self, tse_candles_short):
         """Test cache-aside pattern."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
-
 
         cache_key = "tse:cache_aside"
 
@@ -327,15 +323,14 @@ class TestCacheServicePatterns:
     @pytest.mark.asyncio
     async def test_write_through_pattern(self, tse_candles_short):
         """Test write-through pattern."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-
         # Write through: write to cache and database simultaneously
         cache_key = "tse:write_through"
-        data = json.dumps({'symbol': 'TOTAL', 'count': len(tse_candles_short)})
+        data = json.dumps({"symbol": "TOTAL", "count": len(tse_candles_short)})
 
         # Write to cache
         await cache.set(cache_key, data, ttl=3600)
@@ -347,15 +342,14 @@ class TestCacheServicePatterns:
     @pytest.mark.asyncio
     async def test_write_behind_pattern(self, tse_candles_short):
         """Test write-behind pattern."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-
         # Write behind: write to cache immediately, persist later
         cache_key = "tse:write_behind"
-        data = json.dumps({'symbol': 'TOTAL', 'data': len(tse_candles_short)})
+        data = json.dumps({"symbol": "TOTAL", "data": len(tse_candles_short)})
 
         # Write to cache
         await cache.set(cache_key, data, ttl=3600)
@@ -380,17 +374,15 @@ class TestCachePerformance:
         """Test cache throughput."""
         import time
 
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
 
-
         # Prepare large dataset
-        large_data = json.dumps([
-            {'timestamp': str(c.timestamp), 'close': c.close}
-            for c in tse_candles_long
-        ])
+        large_data = json.dumps(
+            [{"timestamp": str(c.timestamp), "close": c.close} for c in tse_candles_long]
+        )
 
         # Measure write throughput
         start = time.time()
@@ -411,11 +403,10 @@ class TestCachePerformance:
     @pytest.mark.asyncio
     async def test_cache_memory_efficiency(self, tse_candles_short):
         """Test cache memory efficiency."""
-        from src.gravity_tech.services.cache_service import CacheManager
+        from gravity_tech.services.cache_service import CacheManager
 
         cache = CacheManager()
         await cache.initialize()
-
 
         # Store data
         original_data = json.dumps([c.close for c in tse_candles_short])
