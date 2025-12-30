@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.multi_horizon_analysis import TrendScore
 from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
@@ -29,47 +30,50 @@ MIN_CANDLES = 60  # needs >=20 for metrics + buffer for stability
 
 class InteractionType(Enum):
     """نوع تعامل Volume با Dimension"""
-    STRONG_CONFIRM = "STRONG_CONFIRM"      # تایید قوی
-    CONFIRM = "CONFIRM"                     # تایید معمولی
-    NEUTRAL = "NEUTRAL"                     # خنثی
-    WARN = "WARN"                           # هشدار
-    DIVERGENCE = "DIVERGENCE"               # واگرایی
-    FAKE = "FAKE"                           # سیگنال جعلی
+
+    STRONG_CONFIRM = "STRONG_CONFIRM"  # تایید قوی
+    CONFIRM = "CONFIRM"  # تایید معمولی
+    NEUTRAL = "NEUTRAL"  # خنثی
+    WARN = "WARN"  # هشدار
+    DIVERGENCE = "DIVERGENCE"  # واگرایی
+    FAKE = "FAKE"  # سیگنال جعلی
 
 
 @dataclass
 class VolumeMetrics:
     """معیارهای پایه حجم"""
-    volume_ratio: float          # نسبت به میانگین 20 دوره
-    volume_trend: float          # روند حجم (شیب)
-    volume_spike: bool           # آیا spike وجود دارد (>2×)
-    volume_in_bullish: float     # درصد حجم در کندل‌های صعودی
-    volume_in_bearish: float     # درصد حجم در کندل‌های نزولی
-    obv_trend: float             # روند On-Balance Volume
-    avg_volume: float            # میانگین حجم
+
+    volume_ratio: float  # نسبت به میانگین 20 دوره
+    volume_trend: float  # روند حجم (شیب)
+    volume_spike: bool  # آیا spike وجود دارد (>2×)
+    volume_in_bullish: float  # درصد حجم در کندل‌های صعودی
+    volume_in_bearish: float  # درصد حجم در کندل‌های نزولی
+    obv_trend: float  # روند On-Balance Volume
+    avg_volume: float  # میانگین حجم
 
 
 @dataclass
 class VolumeDimensionInteraction:
     """نتیجه تعامل Volume با یک Dimension"""
-    dimension: str                        # نام dimension
+
+    dimension: str  # نام dimension
 
     # معیارهای حجم
     volume_metrics: VolumeMetrics
 
     # معیارهای dimension
-    dimension_score: float                # امتیاز dimension [-1, +1]
-    dimension_strength: float             # قدرت dimension [0, 1]
-    dimension_state: str                  # وضعیت (مثلاً "BULLISH", "BEARISH")
+    dimension_score: float  # امتیاز dimension [-1, +1]
+    dimension_strength: float  # قدرت dimension [0, 1]
+    dimension_state: str  # وضعیت (مثلاً "BULLISH", "BEARISH")
 
     # نتیجه interaction
-    interaction_score: float              # امتیاز interaction [-0.35, +0.35]
-    interaction_type: InteractionType     # نوع interaction
-    confidence: float                     # اطمینان [0, 1]
+    interaction_score: float  # امتیاز interaction [-0.35, +0.35]
+    interaction_type: InteractionType  # نوع interaction
+    confidence: float  # اطمینان [0, 1]
 
     # توضیحات
-    explanation: str                      # توضیح interaction
-    signals: list[str]                    # سیگنال‌های شناسایی شده
+    explanation: str  # توضیح interaction
+    signals: list[str]  # سیگنال‌های شناسایی شده
 
 
 class VolumeDimensionMatrix:
@@ -96,7 +100,9 @@ class VolumeDimensionMatrix:
     def _validate_candles(candles: list[Candle]) -> list[Candle]:
         """Ensure minimum length and finite OHLCV values"""
         if len(candles) < MIN_CANDLES:
-            raise ValueError(f"VolumeDimensionMatrix requires at least {MIN_CANDLES} candles (got {len(candles)})")
+            raise ValueError(
+                f"VolumeDimensionMatrix requires at least {MIN_CANDLES} candles (got {len(candles)})"
+            )
         for c in candles:
             values = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
             if not np.all(np.isfinite(values)):
@@ -151,16 +157,16 @@ class VolumeDimensionMatrix:
             volume_in_bullish=volume_in_bullish,
             volume_in_bearish=volume_in_bearish,
             obv_trend=obv_trend,
-            avg_volume=avg_volume
+            avg_volume=avg_volume,
         )
 
     def _calculate_obv(self) -> list[float]:
         """محاسبه On-Balance Volume"""
         obv = [0.0]
         for i in range(1, len(self.candles)):
-            if self.candles[i].close > self.candles[i-1].close:
+            if self.candles[i].close > self.candles[i - 1].close:
                 obv.append(obv[-1] + self.candles[i].volume)
-            elif self.candles[i].close < self.candles[i-1].close:
+            elif self.candles[i].close < self.candles[i - 1].close:
                 obv.append(obv[-1] - self.candles[i].volume)
             else:
                 obv.append(obv[-1])
@@ -190,8 +196,7 @@ class VolumeDimensionMatrix:
     # ═══════════════════════════════════════════════════════════════════
 
     def calculate_volume_trend_interaction(
-        self,
-        trend_score: TrendScore
+        self, trend_score: TrendScore
     ) -> VolumeDimensionInteraction:
         """
         تعامل حجم با روند
@@ -226,7 +231,7 @@ class VolumeDimensionMatrix:
                 interaction_type=InteractionType.NEUTRAL,
                 confidence=0.5,
                 explanation="روند خنثی - حجم تاثیر کمی دارد",
-                signals=["NEUTRAL_TREND"]
+                signals=["NEUTRAL_TREND"],
             )
 
         # ═══ بررسی هم‌جهتی حجم با روند ═══
@@ -240,10 +245,8 @@ class VolumeDimensionMatrix:
             direction_name = "نزولی"
 
         # 2. هم‌ترازی OBV با روند
-        obv_aligned = (is_bullish and vm.obv_trend > 0.1) or \
-                     (is_bearish and vm.obv_trend < -0.1)
-        obv_divergent = (is_bullish and vm.obv_trend < -0.1) or \
-                       (is_bearish and vm.obv_trend > 0.1)
+        obv_aligned = (is_bullish and vm.obv_trend > 0.1) or (is_bearish and vm.obv_trend < -0.1)
+        obv_divergent = (is_bullish and vm.obv_trend < -0.1) or (is_bearish and vm.obv_trend > 0.1)
 
         # 3. نسبت حجم
         high_volume = vm.volume_ratio > 1.3
@@ -330,7 +333,7 @@ class VolumeDimensionMatrix:
             interaction_type=interaction_type,
             confidence=confidence,
             explanation=explanation,
-            signals=signals
+            signals=signals,
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -338,8 +341,7 @@ class VolumeDimensionMatrix:
     # ═══════════════════════════════════════════════════════════════════
 
     def calculate_volume_momentum_interaction(
-        self,
-        momentum_score: MomentumScore
+        self, momentum_score: MomentumScore
     ) -> VolumeDimensionInteraction:
         """
         تعامل حجم با مومنتوم
@@ -434,7 +436,9 @@ class VolumeDimensionMatrix:
         elif bullish_divergence or (is_oversold and vm.volume_ratio > 1.5):
             interaction_type = InteractionType.STRONG_CONFIRM
         elif abs(interaction_score) > 0.15:
-            interaction_type = InteractionType.WARN if interaction_score < 0 else InteractionType.CONFIRM
+            interaction_type = (
+                InteractionType.WARN if interaction_score < 0 else InteractionType.CONFIRM
+            )
         else:
             interaction_type = InteractionType.NEUTRAL
 
@@ -465,7 +469,7 @@ class VolumeDimensionMatrix:
             interaction_type=interaction_type,
             confidence=confidence,
             explanation=explanation,
-            signals=signals
+            signals=signals,
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -473,8 +477,7 @@ class VolumeDimensionMatrix:
     # ═══════════════════════════════════════════════════════════════════
 
     def calculate_volume_volatility_interaction(
-        self,
-        volatility_score: VolatilityScore
+        self, volatility_score: VolatilityScore
     ) -> VolumeDimensionInteraction:
         """
         تعامل حجم با نوسان
@@ -550,7 +553,9 @@ class VolumeDimensionMatrix:
         elif volatility_expanding and vm.volume_ratio < 0.8:
             interaction_type = InteractionType.FAKE
         elif abs(interaction_score) > 0.15:
-            interaction_type = InteractionType.CONFIRM if interaction_score > 0 else InteractionType.WARN
+            interaction_type = (
+                InteractionType.CONFIRM if interaction_score > 0 else InteractionType.WARN
+            )
         else:
             interaction_type = InteractionType.NEUTRAL
 
@@ -569,7 +574,15 @@ class VolumeDimensionMatrix:
         else:
             explanation = "تعامل معمولی حجم با نوسان"
 
-        state = "SQUEEZE" if bb_squeeze else "EXPANDING" if volatility_expanding else "CONTRACTING" if volatility_contracting else "NORMAL"
+        state = (
+            "SQUEEZE"
+            if bb_squeeze
+            else "EXPANDING"
+            if volatility_expanding
+            else "CONTRACTING"
+            if volatility_contracting
+            else "NORMAL"
+        )
 
         return VolumeDimensionInteraction(
             dimension="Volatility",
@@ -581,7 +594,7 @@ class VolumeDimensionMatrix:
             interaction_type=interaction_type,
             confidence=confidence,
             explanation=explanation,
-            signals=signals
+            signals=signals,
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -589,8 +602,7 @@ class VolumeDimensionMatrix:
     # ═══════════════════════════════════════════════════════════════════
 
     def calculate_volume_cycle_interaction(
-        self,
-        cycle_score: CycleScore
+        self, cycle_score: CycleScore
     ) -> VolumeDimensionInteraction:
         """
         تعامل حجم با سیکل بازار
@@ -697,7 +709,7 @@ class VolumeDimensionMatrix:
             "ACCUMULATION": "انباشت",
             "MARKUP": "صعود",
             "DISTRIBUTION": "توزیع",
-            "MARKDOWN": "نزول"
+            "MARKDOWN": "نزول",
         }
 
         if phase == "ACCUMULATION" and vm.volume_spike:
@@ -721,7 +733,7 @@ class VolumeDimensionMatrix:
             interaction_type=interaction_type,
             confidence=confidence,
             explanation=explanation,
-            signals=signals
+            signals=signals,
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -729,8 +741,7 @@ class VolumeDimensionMatrix:
     # ═══════════════════════════════════════════════════════════════════
 
     def calculate_volume_sr_interaction(
-        self,
-        sr_score: SupportResistanceScore
+        self, sr_score: SupportResistanceScore
     ) -> VolumeDimensionInteraction:
         """
         تعامل حجم با حمایت/مقاومت
@@ -812,7 +823,9 @@ class VolumeDimensionMatrix:
         elif rejection_candle and vm.volume_ratio > 1.5:
             interaction_type = InteractionType.CONFIRM
         elif abs(interaction_score) > 0.15:
-            interaction_type = InteractionType.CONFIRM if interaction_score > 0 else InteractionType.WARN
+            interaction_type = (
+                InteractionType.CONFIRM if interaction_score > 0 else InteractionType.WARN
+            )
         else:
             interaction_type = InteractionType.NEUTRAL
 
@@ -831,7 +844,13 @@ class VolumeDimensionMatrix:
         else:
             explanation = "تعامل معمولی حجم با سطوح S/R"
 
-        state = "AT_SUPPORT" if near_support else "AT_RESISTANCE" if near_resistance else "BETWEEN_LEVELS"
+        state = (
+            "AT_SUPPORT"
+            if near_support
+            else "AT_RESISTANCE"
+            if near_resistance
+            else "BETWEEN_LEVELS"
+        )
 
         return VolumeDimensionInteraction(
             dimension="SupportResistance",
@@ -843,7 +862,7 @@ class VolumeDimensionMatrix:
             interaction_type=interaction_type,
             confidence=confidence,
             explanation=explanation,
-            signals=signals
+            signals=signals,
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -964,7 +983,7 @@ class VolumeDimensionMatrix:
 
         # breakout: قیمت از resistance یا support عبور کرده
         breakout_up = current.close > resistance * 1.005  # 0.5% بالاتر
-        breakout_down = current.close < support * 0.995   # 0.5% پایین‌تر
+        breakout_down = current.close < support * 0.995  # 0.5% پایین‌تر
 
         return breakout_up or breakout_down
 
@@ -997,7 +1016,7 @@ class VolumeDimensionMatrix:
         momentum_score: MomentumScore,
         volatility_score: VolatilityScore,
         cycle_score: CycleScore,
-        sr_score: SupportResistanceScore
+        sr_score: SupportResistanceScore,
     ) -> dict[str, VolumeDimensionInteraction]:
         """
         محاسبه همه 5 interaction به صورت همزمان
@@ -1010,5 +1029,5 @@ class VolumeDimensionMatrix:
             "Momentum": self.calculate_volume_momentum_interaction(momentum_score),
             "Volatility": self.calculate_volume_volatility_interaction(volatility_score),
             "Cycle": self.calculate_volume_cycle_interaction(cycle_score),
-            "SupportResistance": self.calculate_volume_sr_interaction(sr_score)
+            "SupportResistance": self.calculate_volume_sr_interaction(sr_score),
         }
