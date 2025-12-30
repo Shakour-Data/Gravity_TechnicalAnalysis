@@ -37,8 +37,6 @@ This module recognizes major candlestick patterns:
 10. Marubozu
 """
 
-
-
 from gravity_tech.core.domain.entities import Candle, PatternResult, PatternType
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 
@@ -60,9 +58,7 @@ class CandlestickPatterns:
         lower_shadow = candle.lower_shadow
         upper_shadow = candle.upper_shadow
 
-        return (lower_shadow > 2 * body and
-                upper_shadow < body * 0.3 and
-                body > 0)
+        return lower_shadow > 2 * body and upper_shadow < body * 0.3 and body > 0
 
     @staticmethod
     def is_inverted_hammer(candle: Candle) -> bool:
@@ -71,9 +67,7 @@ class CandlestickPatterns:
         lower_shadow = candle.lower_shadow
         upper_shadow = candle.upper_shadow
 
-        return (upper_shadow > 2 * body and
-                lower_shadow < body * 0.3 and
-                body > 0)
+        return upper_shadow > 2 * body and lower_shadow < body * 0.3 and body > 0
 
     @staticmethod
     def is_engulfing(candle1: Candle, candle2: Candle) -> str | None:
@@ -82,16 +76,22 @@ class CandlestickPatterns:
         Returns: 'bullish', 'bearish', or None
         """
         # Bullish Engulfing
-        if (candle1.is_bearish and candle2.is_bullish and
-            candle2.open < candle1.close and
-            candle2.close > candle1.open):
-            return 'bullish'
+        if (
+            candle1.is_bearish
+            and candle2.is_bullish
+            and candle2.open < candle1.close
+            and candle2.close > candle1.open
+        ):
+            return "bullish"
 
         # Bearish Engulfing
-        if (candle1.is_bullish and candle2.is_bearish and
-            candle2.open > candle1.close and
-            candle2.close < candle1.open):
-            return 'bearish'
+        if (
+            candle1.is_bullish
+            and candle2.is_bearish
+            and candle2.open > candle1.close
+            and candle2.close < candle1.open
+        ):
+            return "bearish"
 
         return None
 
@@ -107,18 +107,22 @@ class CandlestickPatterns:
         c1, c2, c3 = candles[-3], candles[-2], candles[-1]
 
         # Morning Star (bullish reversal)
-        if (c1.is_bearish and
-            abs(c2.close - c2.open) < (c1.body_size * 0.3) and
-            c3.is_bullish and
-            c3.close > (c1.open + c1.close) / 2):
-            return 'morning'
+        if (
+            c1.is_bearish
+            and abs(c2.close - c2.open) < (c1.body_size * 0.3)
+            and c3.is_bullish
+            and c3.close > (c1.open + c1.close) / 2
+        ):
+            return "morning"
 
         # Evening Star (bearish reversal)
-        if (c1.is_bullish and
-            abs(c2.close - c2.open) < (c1.body_size * 0.3) and
-            c3.is_bearish and
-            c3.close < (c1.open + c1.close) / 2):
-            return 'evening'
+        if (
+            c1.is_bullish
+            and abs(c2.close - c2.open) < (c1.body_size * 0.3)
+            and c3.is_bearish
+            and c3.close < (c1.open + c1.close) / 2
+        ):
+            return "evening"
 
         return None
 
@@ -129,18 +133,24 @@ class CandlestickPatterns:
         Returns: 'bullish', 'bearish', or None
         """
         # Bullish Harami
-        if (candle1.is_bearish and candle2.is_bullish and
-            candle2.open > candle1.close and
-            candle2.close < candle1.open and
-            candle2.body_size < candle1.body_size * 0.7):
-            return 'bullish'
+        if (
+            candle1.is_bearish
+            and candle2.is_bullish
+            and candle2.open > candle1.close
+            and candle2.close < candle1.open
+            and candle2.body_size < candle1.body_size * 0.7
+        ):
+            return "bullish"
 
         # Bearish Harami
-        if (candle1.is_bullish and candle2.is_bearish and
-            candle2.open < candle1.close and
-            candle2.close > candle1.open and
-            candle2.body_size < candle1.body_size * 0.7):
-            return 'bearish'
+        if (
+            candle1.is_bullish
+            and candle2.is_bearish
+            and candle2.open < candle1.close
+            and candle2.close > candle1.open
+            and candle2.body_size < candle1.body_size * 0.7
+        ):
+            return "bearish"
 
         return None
 
@@ -156,18 +166,32 @@ class CandlestickPatterns:
         c1, c2, c3 = candles[-3], candles[-2], candles[-1]
 
         # Three White Soldiers
-        if (c1.is_bullish and c2.is_bullish and c3.is_bullish and
-            c2.close > c1.close and c3.close > c2.close and
-            c2.open > c1.open and c2.open < c1.close and
-            c3.open > c2.open and c3.open < c2.close):
-            return 'soldiers'
+        if (
+            c1.is_bullish
+            and c2.is_bullish
+            and c3.is_bullish
+            and c2.close > c1.close
+            and c3.close > c2.close
+            and c2.open > c1.open
+            and c2.open < c1.close
+            and c3.open > c2.open
+            and c3.open < c2.close
+        ):
+            return "soldiers"
 
         # Three Black Crows
-        if (c1.is_bearish and c2.is_bearish and c3.is_bearish and
-            c2.close < c1.close and c3.close < c2.close and
-            c2.open < c1.open and c2.open > c1.close and
-            c3.open < c2.open and c3.open > c2.close):
-            return 'crows'
+        if (
+            c1.is_bearish
+            and c2.is_bearish
+            and c3.is_bearish
+            and c2.close < c1.close
+            and c3.close < c2.close
+            and c2.open < c1.open
+            and c2.open > c1.close
+            and c3.open < c2.open
+            and c3.open > c2.close
+        ):
+            return "crows"
 
         return None
 
@@ -192,96 +216,122 @@ class CandlestickPatterns:
 
         # Doji
         if CandlestickPatterns.is_doji(current):
-            patterns.append(PatternResult(
-                pattern_name="Doji",
-                pattern_type=PatternType.CANDLESTICK,
-                signal=SignalStrength.NEUTRAL,
-                confidence=0.6,
-                start_time=current.timestamp,
-                end_time=current.timestamp,
-                description="الگوی دوجی - بی‌تصمیمی بازار"
-            ))
+            patterns.append(
+                PatternResult(
+                    pattern_name="Doji",
+                    pattern_type=PatternType.CANDLESTICK,
+                    signal=SignalStrength.NEUTRAL,
+                    confidence=0.6,
+                    start_time=current.timestamp,
+                    end_time=current.timestamp,
+                    description="الگوی دوجی - بی‌تصمیمی بازار",
+                )
+            )
 
         # Hammer
         if CandlestickPatterns.is_hammer(current):
-            patterns.append(PatternResult(
-                pattern_name="Hammer",
-                pattern_type=PatternType.CANDLESTICK,
-                signal=SignalStrength.BULLISH,
-                confidence=0.7,
-                start_time=current.timestamp,
-                end_time=current.timestamp,
-                description="چکش - الگوی بازگشتی صعودی"
-            ))
+            patterns.append(
+                PatternResult(
+                    pattern_name="Hammer",
+                    pattern_type=PatternType.CANDLESTICK,
+                    signal=SignalStrength.BULLISH,
+                    confidence=0.7,
+                    start_time=current.timestamp,
+                    end_time=current.timestamp,
+                    description="چکش - الگوی بازگشتی صعودی",
+                )
+            )
 
         # Inverted Hammer
         if CandlestickPatterns.is_inverted_hammer(current):
-            patterns.append(PatternResult(
-                pattern_name="Inverted Hammer",
-                pattern_type=PatternType.CANDLESTICK,
-                signal=SignalStrength.BULLISH,
-                confidence=0.65,
-                start_time=current.timestamp,
-                end_time=current.timestamp,
-                description="چکش معکوس - احتمال بازگشت صعودی"
-            ))
+            patterns.append(
+                PatternResult(
+                    pattern_name="Inverted Hammer",
+                    pattern_type=PatternType.CANDLESTICK,
+                    signal=SignalStrength.BULLISH,
+                    confidence=0.65,
+                    start_time=current.timestamp,
+                    end_time=current.timestamp,
+                    description="چکش معکوس - احتمال بازگشت صعودی",
+                )
+            )
 
         # Engulfing
         engulfing = CandlestickPatterns.is_engulfing(prev, current)
         if engulfing:
-            signal = SignalStrength.VERY_BULLISH if engulfing == 'bullish' else SignalStrength.VERY_BEARISH
-            patterns.append(PatternResult(
-                pattern_name=f"{'Bullish' if engulfing == 'bullish' else 'Bearish'} Engulfing",
-                pattern_type=PatternType.CANDLESTICK,
-                signal=signal,
-                confidence=0.8,
-                start_time=prev.timestamp,
-                end_time=current.timestamp,
-                description=f"الگوی در بر گیرنده {'صعودی' if engulfing == 'bullish' else 'نزولی'}"
-            ))
+            signal = (
+                SignalStrength.VERY_BULLISH
+                if engulfing == "bullish"
+                else SignalStrength.VERY_BEARISH
+            )
+            patterns.append(
+                PatternResult(
+                    pattern_name=f"{'Bullish' if engulfing == 'bullish' else 'Bearish'} Engulfing",
+                    pattern_type=PatternType.CANDLESTICK,
+                    signal=signal,
+                    confidence=0.8,
+                    start_time=prev.timestamp,
+                    end_time=current.timestamp,
+                    description=f"الگوی در بر گیرنده {'صعودی' if engulfing == 'bullish' else 'نزولی'}",
+                )
+            )
 
         # Morning/Evening Star
         if len(candles) >= 3:
             star = CandlestickPatterns.is_morning_evening_star(candles)
             if star:
-                signal = SignalStrength.VERY_BULLISH if star == 'morning' else SignalStrength.VERY_BEARISH
-                patterns.append(PatternResult(
-                    pattern_name=f"{'Morning' if star == 'morning' else 'Evening'} Star",
-                    pattern_type=PatternType.CANDLESTICK,
-                    signal=signal,
-                    confidence=0.85,
-                    start_time=candles[-3].timestamp,
-                    end_time=current.timestamp,
-                    description=f"ستاره {'صبحگاهی' if star == 'morning' else 'عصرگاهی'}"
-                ))
+                signal = (
+                    SignalStrength.VERY_BULLISH
+                    if star == "morning"
+                    else SignalStrength.VERY_BEARISH
+                )
+                patterns.append(
+                    PatternResult(
+                        pattern_name=f"{'Morning' if star == 'morning' else 'Evening'} Star",
+                        pattern_type=PatternType.CANDLESTICK,
+                        signal=signal,
+                        confidence=0.85,
+                        start_time=candles[-3].timestamp,
+                        end_time=current.timestamp,
+                        description=f"ستاره {'صبحگاهی' if star == 'morning' else 'عصرگاهی'}",
+                    )
+                )
 
         # Harami
         harami = CandlestickPatterns.is_harami(prev, current)
         if harami:
-            signal = SignalStrength.BULLISH if harami == 'bullish' else SignalStrength.BEARISH
-            patterns.append(PatternResult(
-                pattern_name=f"{'Bullish' if harami == 'bullish' else 'Bearish'} Harami",
-                pattern_type=PatternType.CANDLESTICK,
-                signal=signal,
-                confidence=0.7,
-                start_time=prev.timestamp,
-                end_time=current.timestamp,
-                description=f"الگوی هارامی {'صعودی' if harami == 'bullish' else 'نزولی'}"
-            ))
+            signal = SignalStrength.BULLISH if harami == "bullish" else SignalStrength.BEARISH
+            patterns.append(
+                PatternResult(
+                    pattern_name=f"{'Bullish' if harami == 'bullish' else 'Bearish'} Harami",
+                    pattern_type=PatternType.CANDLESTICK,
+                    signal=signal,
+                    confidence=0.7,
+                    start_time=prev.timestamp,
+                    end_time=current.timestamp,
+                    description=f"الگوی هارامی {'صعودی' if harami == 'bullish' else 'نزولی'}",
+                )
+            )
 
         # Three Soldiers/Crows
         if len(candles) >= 3:
             three_pattern = CandlestickPatterns.is_three_soldiers_crows(candles)
             if three_pattern:
-                signal = SignalStrength.VERY_BULLISH if three_pattern == 'soldiers' else SignalStrength.VERY_BEARISH
-                patterns.append(PatternResult(
-                    pattern_name=f"Three {'White Soldiers' if three_pattern == 'soldiers' else 'Black Crows'}",
-                    pattern_type=PatternType.CANDLESTICK,
-                    signal=signal,
-                    confidence=0.82,
-                    start_time=candles[-3].timestamp,
-                    end_time=current.timestamp,
-                    description=f"{'سه سرباز سفید' if three_pattern == 'soldiers' else 'سه کلاغ سیاه'}"
-                ))
+                signal = (
+                    SignalStrength.VERY_BULLISH
+                    if three_pattern == "soldiers"
+                    else SignalStrength.VERY_BEARISH
+                )
+                patterns.append(
+                    PatternResult(
+                        pattern_name=f"Three {'White Soldiers' if three_pattern == 'soldiers' else 'Black Crows'}",
+                        pattern_type=PatternType.CANDLESTICK,
+                        signal=signal,
+                        confidence=0.82,
+                        start_time=candles[-3].timestamp,
+                        end_time=current.timestamp,
+                        description=f"{'سه سرباز سفید' if three_pattern == 'soldiers' else 'سه کلاغ سیاه'}",
+                    )
+                )
 
         return patterns
