@@ -38,6 +38,7 @@ This module implements 10 comprehensive support/resistance indicators:
 """
 
 import pandas as pd
+
 from gravity_tech.core.domain.entities import (
     Candle,
     IndicatorCategory,
@@ -65,16 +66,19 @@ class SupportResistanceIndicators:
             results.append(SupportResistanceIndicators.pivot_points(candles, method="fibonacci"))
             results.append(SupportResistanceIndicators.camarilla_pivots(candles))
             results.append(SupportResistanceIndicators.fibonacci_retracement(candles, lookback=50))
-            results.append(SupportResistanceIndicators.support_resistance_levels(candles, window=50))
+            results.append(
+                SupportResistanceIndicators.support_resistance_levels(candles, window=50)
+            )
         except Exception as exc:
             # Best-effort aggregation; skip failing indicators
             import logging
+
             logging.getLogger(__name__).warning("sr_calculate_all_error", exc_info=exc)
 
         return results
 
     @staticmethod
-    def pivot_points(candles: list[Candle], method: str = 'standard') -> IndicatorResult:
+    def pivot_points(candles: list[Candle], method: str = "standard") -> IndicatorResult:
         """
         Pivot Points with different calculation methods
 
@@ -93,7 +97,7 @@ class SupportResistanceIndicators:
         high = last_candle.high
         low = last_candle.low
 
-        if method == 'standard':
+        if method == "standard":
             # Standard pivot points
             pivot = (high + low + close) / 3
             r1 = (2 * pivot) - low
@@ -103,7 +107,7 @@ class SupportResistanceIndicators:
             r3 = high + 2 * (pivot - low)
             s3 = low - 2 * (high - pivot)
 
-        elif method == 'woodie':
+        elif method == "woodie":
             # Woodie's pivot points
             pivot = (high + low + 2 * close) / 4
             r1 = (2 * pivot) - low
@@ -113,7 +117,7 @@ class SupportResistanceIndicators:
             r3 = high + 2 * (pivot - low)
             s3 = low - 2 * (high - pivot)
 
-        elif method == 'camarilla':
+        elif method == "camarilla":
             # Camarilla pivot points
             range_hl = high - low
             pivot = (high + low + close) / 3
@@ -126,7 +130,7 @@ class SupportResistanceIndicators:
             s3 = close - (range_hl * 1.1 / 4)
             s4 = close - (range_hl * 1.1 / 2)
 
-        elif method == 'fibonacci':
+        elif method == "fibonacci":
             # Fibonacci pivot points
             pivot = (high + low + close) / 3
             range_hl = high - low
@@ -137,7 +141,7 @@ class SupportResistanceIndicators:
             r3 = pivot + range_hl
             s3 = pivot - range_hl
 
-        elif method == 'demark':
+        elif method == "demark":
             # DeMark pivot points
             if close < last_candle.open:
                 pivot = (high + (2 * low) + close) / 4
@@ -153,7 +157,7 @@ class SupportResistanceIndicators:
             r3 = high + 2 * (pivot - low)
             s3 = low - 2 * (high - pivot)
 
-        elif method == 'floor':
+        elif method == "floor":
             # Floor trader pivot points
             pivot = (high + low + close) / 3
             r1 = (2 * pivot) - low
@@ -167,7 +171,7 @@ class SupportResistanceIndicators:
             raise ValueError(f"Unknown pivot method: {method}")
 
         # Determine signal based on price position
-        if method == 'camarilla':
+        if method == "camarilla":
             if current_price > r3:
                 signal = SignalStrength.VERY_BULLISH
             elif current_price > r2:
@@ -201,26 +205,36 @@ class SupportResistanceIndicators:
         confidence = 0.75
 
         # Prepare additional values based on method
-        if method == 'camarilla':
+        if method == "camarilla":
             additional_values = {
-                "R4": float(r4), "R3": float(r3), "R2": float(r2), "R1": float(r1),
-                "S1": float(s1), "S2": float(s2), "S3": float(s3), "S4": float(s4)
+                "R4": float(r4),
+                "R3": float(r3),
+                "R2": float(r2),
+                "R1": float(r1),
+                "S1": float(s1),
+                "S2": float(s2),
+                "S3": float(s3),
+                "S4": float(s4),
             }
         else:
             additional_values = {
                 "pivot": float(pivot),
-                "r1": float(r1), "r2": float(r2), "r3": float(r3),
-                "s1": float(s1), "s2": float(s2), "s3": float(s3)
+                "r1": float(r1),
+                "r2": float(r2),
+                "r3": float(r3),
+                "s1": float(s1),
+                "s2": float(s2),
+                "s3": float(s3),
             }
 
         return IndicatorResult(
             indicator_name=f"Pivot Points ({method.title()})",
             category=IndicatorCategory.SUPPORT_RESISTANCE,
             signal=signal,
-            value=float(pivot) if method != 'camarilla' else float(close),
+            value=float(pivot) if method != "camarilla" else float(close),
             additional_values=additional_values,
             confidence=confidence,
-            description=f"قیمت {'بالای' if current_price > pivot else 'زیر'} پیوت ({method})"
+            description=f"قیمت {'بالای' if current_price > pivot else 'زیر'} پیوت ({method})",
         )
 
     @staticmethod
@@ -250,7 +264,7 @@ class SupportResistanceIndicators:
             "0.5": high - (0.5 * diff),
             "0.618": high - (0.618 * diff),
             "0.786": high - (0.786 * diff),
-            "1.0": low
+            "1.0": low,
         }
 
         # Find nearest level
@@ -292,7 +306,7 @@ class SupportResistanceIndicators:
             value=float(nearest_price),
             additional_values={"levels": {k: float(v) for k, v in fib_levels.items()}},
             confidence=confidence,
-            description=f"نزدیک به سطح فیبوناچی {nearest_level}"
+            description=f"نزدیک به سطح فیبوناچی {nearest_level}",
         )
 
     @staticmethod
@@ -349,15 +363,23 @@ class SupportResistanceIndicators:
             signal=signal,
             value=float(close),
             additional_values={
-                "R4": float(r4), "R3": float(r3), "R2": float(r2), "R1": float(r1),
-                "S1": float(s1), "S2": float(s2), "S3": float(s3), "S4": float(s4)
+                "R4": float(r4),
+                "R3": float(r3),
+                "R2": float(r2),
+                "R1": float(r1),
+                "S1": float(s1),
+                "S2": float(s2),
+                "S3": float(s3),
+                "S4": float(s4),
             },
             confidence=confidence,
-            description="سطوح کاماریلا"
+            description="سطوح کاماریلا",
         )
 
     @staticmethod
-    def support_resistance_levels(candles: list[Candle], window: int = 50, num_touches: int = 2) -> IndicatorResult:
+    def support_resistance_levels(
+        candles: list[Candle], window: int = 50, num_touches: int = 2
+    ) -> IndicatorResult:
         """
         Dynamic Support and Resistance Levels
 
@@ -378,17 +400,21 @@ class SupportResistanceIndicators:
 
         for i in range(2, len(recent) - 2):
             # Local high
-            if (recent[i].high > recent[i-1].high and
-                recent[i].high > recent[i-2].high and
-                recent[i].high > recent[i+1].high and
-                recent[i].high > recent[i+2].high):
+            if (
+                recent[i].high > recent[i - 1].high
+                and recent[i].high > recent[i - 2].high
+                and recent[i].high > recent[i + 1].high
+                and recent[i].high > recent[i + 2].high
+            ):
                 highs.append(recent[i].high)
 
             # Local low
-            if (recent[i].low < recent[i-1].low and
-                recent[i].low < recent[i-2].low and
-                recent[i].low < recent[i+1].low and
-                recent[i].low < recent[i+2].low):
+            if (
+                recent[i].low < recent[i - 1].low
+                and recent[i].low < recent[i - 2].low
+                and recent[i].low < recent[i + 1].low
+                and recent[i].low < recent[i + 2].low
+            ):
                 lows.append(recent[i].low)
 
         # Find levels with minimum touches
@@ -410,8 +436,13 @@ class SupportResistanceIndicators:
         support_levels = [level for level, count in low_counts.items() if count >= num_touches]
 
         # Find nearest support and resistance
-        resistance = min([h for h in resistance_levels if h > current_price], default=current_price * 1.05)
-        support = max([level for level in support_levels if level < current_price], default=current_price * 0.95)
+        resistance = min(
+            [h for h in resistance_levels if h > current_price], default=current_price * 1.05
+        )
+        support = max(
+            [level for level in support_levels if level < current_price],
+            default=current_price * 0.95,
+        )
 
         # Signal based on position
         range_sr = resistance - support
@@ -439,14 +470,16 @@ class SupportResistanceIndicators:
                 "resistance": float(resistance),
                 "support": float(support),
                 "resistance_levels": resistance_levels,
-                "support_levels": support_levels
+                "support_levels": support_levels,
             },
             confidence=confidence,
-            description=f"موقعیت: {position*100:.1f}% بین حمایت و مقاومت"
+            description=f"موقعیت: {position * 100:.1f}% بین حمایت و مقاومت",
         )
 
     @staticmethod
-    def dynamic_support_resistance(candles: list[Candle], short_period: int = 10, long_period: int = 20) -> IndicatorResult:
+    def dynamic_support_resistance(
+        candles: list[Candle], short_period: int = 10, long_period: int = 20
+    ) -> IndicatorResult:
         """
         Dynamic Support and Resistance based on recent price action
 
@@ -472,7 +505,7 @@ class SupportResistanceIndicators:
 
         # Dynamic levels based on moving averages
         dynamic_resistance = max(short_ma, long_ma) * 1.02  # 2% above higher MA
-        dynamic_support = min(short_ma, long_ma) * 0.98     # 2% below lower MA
+        dynamic_support = min(short_ma, long_ma) * 0.98  # 2% below lower MA
 
         # Determine position relative to dynamic levels
         if current_price > dynamic_resistance:
@@ -499,10 +532,10 @@ class SupportResistanceIndicators:
                 "dynamic_resistance": float(dynamic_resistance),
                 "dynamic_support": float(dynamic_support),
                 "recent_high": float(recent_high),
-                "recent_low": float(recent_low)
+                "recent_low": float(recent_low),
             },
             confidence=confidence,
-            description=description
+            description=description,
         )
 
     @staticmethod
@@ -521,7 +554,7 @@ class SupportResistanceIndicators:
 
         # Find psychological levels (round numbers)
         price_str = f"{current_price:.2f}"
-        base_level = round(current_price, -len(price_str.split('.')[0]) + 1)
+        base_level = round(current_price, -len(price_str.split(".")[0]) + 1)
 
         # Round number levels
         key_levels = []
@@ -557,14 +590,16 @@ class SupportResistanceIndicators:
             additional_values={
                 "key_levels": [float(level) for level in key_levels],
                 "nearest_level": float(nearest_level),
-                "distance": float(distance)
+                "distance": float(distance),
             },
             confidence=confidence,
-            description=description
+            description=description,
         )
 
     @staticmethod
-    def detect_breakout(candles: list[Candle], lookback: int = 20, window: int = 20) -> IndicatorResult:
+    def detect_breakout(
+        candles: list[Candle], lookback: int = 20, window: int = 20
+    ) -> IndicatorResult:
         """
         Detect breakouts above resistance or below support
 
@@ -612,10 +647,10 @@ class SupportResistanceIndicators:
                 "recent_high": float(recent_high),
                 "recent_low": float(recent_low),
                 "breakout_up": breakout_up,
-                "breakout_down": breakout_down
+                "breakout_down": breakout_down,
             },
             confidence=confidence,
-            description=description
+            description=description,
         )
 
     @staticmethod
@@ -644,17 +679,37 @@ class SupportResistanceIndicators:
         zone_size = price_range * zone_width
         zones = []
 
+        if zone_width <= 0 or zone_size <= 0:
+            current_zone = {"start": min_price, "end": max_price, "strength": 1.0}
+            zones.append(current_zone)
+            return IndicatorResult(
+                indicator_name=f"Zone Detection({zone_width:.1%})",
+                category=IndicatorCategory.SUPPORT_RESISTANCE,
+                signal=SignalStrength.NEUTRAL,
+                value=float(current_price),
+                additional_values={
+                    "support_zones": [],
+                    "resistance_zones": [],
+                    "current_zone": current_zone,
+                    "zone_count": len(zones),
+                },
+                confidence=1.0,
+                description="",
+            )
+
         for i in range(int(price_range / zone_size) + 1):
             zone_start = min_price + (i * zone_size)
             zone_end = zone_start + zone_size
             zone_prices = [p for p in prices if zone_start <= p <= zone_end]
 
             if len(zone_prices) > len(prices) * 0.1:  # Zone has 10% of prices
-                zones.append({
-                    "start": zone_start,
-                    "end": zone_end,
-                    "strength": len(zone_prices) / len(prices)
-                })
+                zones.append(
+                    {
+                        "start": zone_start,
+                        "end": zone_end,
+                        "strength": len(zone_prices) / len(prices),
+                    }
+                )
 
         # Find current zone
         current_zone = None
@@ -681,14 +736,16 @@ class SupportResistanceIndicators:
                 "support_zones": [z for z in zones if z["start"] < current_price],
                 "resistance_zones": [z for z in zones if z["end"] > current_price],
                 "current_zone": current_zone,
-                "zone_count": len(zones)
+                "zone_count": len(zones),
             },
             confidence=confidence,
-            description=description
+            description=description,
         )
 
     @staticmethod
-    def price_action_at_level(candles: list[Candle], level: float, tolerance: float = 0.01) -> IndicatorResult:
+    def price_action_at_level(
+        candles: list[Candle], level: float, tolerance: float = 0.01
+    ) -> IndicatorResult:
         """
         Analyze price action at a specific level
 
@@ -704,13 +761,10 @@ class SupportResistanceIndicators:
         # Find touches of the level
         touches = []
         for i, candle in enumerate(candles[-20:]):  # Last 20 candles
-            if (candle.low <= level <= candle.high):
-                touches.append({
-                    "index": i,
-                    "high": candle.high,
-                    "low": candle.low,
-                    "close": candle.close
-                })
+            if candle.low <= level <= candle.high:
+                touches.append(
+                    {"index": i, "high": candle.high, "low": candle.low, "close": candle.close}
+                )
 
         # Analyze price action
         if not touches:
@@ -741,8 +795,8 @@ class SupportResistanceIndicators:
             additional_values={
                 "touches": touches,
                 "touch_count": len(touches),
-                "current_price": float(current_price)
+                "current_price": float(current_price),
             },
             confidence=confidence,
-            description=description
+            description=description,
         )
