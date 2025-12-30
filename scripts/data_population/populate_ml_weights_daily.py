@@ -38,7 +38,9 @@ def fast_pragmas(con: sqlite3.Connection) -> None:
 
 def fetch_window(con: sqlite3.Connection) -> tuple[dt.date, dt.date]:
     cur = con.cursor()
-    cur.execute("select max(date(timestamp)) from historical_scores where timeframe=?", (TIMEFRAME,))
+    cur.execute(
+        "select max(date(timestamp)) from historical_scores where timeframe=?", (TIMEFRAME,)
+    )
     max_ts = cur.fetchone()[0]
     if not max_ts:
         raise RuntimeError("historical_scores is empty for timeframe 1d")
