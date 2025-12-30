@@ -31,6 +31,7 @@ from enum import Enum
 
 class PatternType(str, Enum):
     """Chart pattern types"""
+
     CLASSICAL = "CLASSICAL"
     CANDLESTICK = "CANDLESTICK"
 
