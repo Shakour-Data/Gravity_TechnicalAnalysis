@@ -12,8 +12,7 @@ import sqlite3
 from datetime import datetime
 
 import pytest
-
-from src.database import TSEDatabaseConnector
+from database import TSEDatabaseConnector
 
 
 @pytest.fixture
@@ -57,7 +56,7 @@ class TestTSEDatabaseConnectorRealData:
         assert all(isinstance(symbol, str) for symbol in symbols)
 
         # Should return Persian stock symbols
-        assert any('آ' in symbol or 'ا' in symbol for symbol in symbols)
+        assert any("آ" in symbol or "ا" in symbol for symbol in symbols)
 
     def test_real_list_market_indices(self, real_db_connector):
         """Test listing market indices from real database."""
@@ -100,12 +99,12 @@ class TestTSEDatabaseConnectorRealData:
 
         # Check that records have required fields
         for record in data:
-            assert 'timestamp' in record
-            assert 'open' in record
-            assert 'high' in record
-            assert 'low' in record
-            assert 'close' in record
-            assert 'volume' in record
+            assert "timestamp" in record
+            assert "open" in record
+            assert "high" in record
+            assert "low" in record
+            assert "close" in record
+            assert "volume" in record
 
     def test_real_fetch_price_data_with_date_range(self, real_db_connector):
         """Test fetching price data with date range."""
@@ -117,9 +116,7 @@ class TestTSEDatabaseConnectorRealData:
 
         # Fetch data for a specific date range
         data = real_db_connector.fetch_price_data(
-            symbol,
-            start_date='2023-01-01',
-            end_date='2023-12-31'
+            symbol, start_date="2023-01-01", end_date="2023-12-31"
         )
 
         assert isinstance(data, list)
@@ -128,7 +125,7 @@ class TestTSEDatabaseConnectorRealData:
             assert all(isinstance(record, dict) for record in data)
             # Check that dates are within range
             for record in data:
-                record_date = record['timestamp'].date()
+                record_date = record["timestamp"].date()
                 assert record_date >= datetime(2023, 1, 1).date()
                 assert record_date <= datetime(2023, 12, 31).date()
 
@@ -184,19 +181,19 @@ class TestTSEDatabaseConnectorRealData:
 
         for record in data:
             # Check OHLC relationships
-            assert record['high'] >= record['open']
-            assert record['high'] >= record['close']
-            assert record['low'] <= record['open']
-            assert record['low'] <= record['close']
+            assert record["high"] >= record["open"]
+            assert record["high"] >= record["close"]
+            assert record["low"] <= record["open"]
+            assert record["low"] <= record["close"]
 
             # Volume should be positive
-            assert record['volume'] > 0
+            assert record["volume"] > 0
 
             # Prices should be reasonable (not zero or negative)
-            assert record['open'] > 0
-            assert record['high'] > 0
-            assert record['low'] > 0
-            assert record['close'] > 0
+            assert record["open"] > 0
+            assert record["high"] > 0
+            assert record["low"] > 0
+            assert record["close"] > 0
 
     def test_real_database_performance(self, real_db_connector):
         """Test that database queries perform reasonably."""
