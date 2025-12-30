@@ -14,11 +14,16 @@ from __future__ import annotations
 
 import os
 import ssl
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any
 
-import finpy_tse as _fpy
 import pandas as pd
+
+try:
+    import finpy_tse as _fpy
+except ImportError:  # type: ignore
+    _fpy = None
 
 # Disable SSL verification if the environment requires custom root CAs (common on
 # the legacy TSETMC endpoints).  This mirrors what the original gravity_tse
@@ -46,6 +51,13 @@ def _ensure_dataframe(result: Any) -> DataFrame:
 
 
 def _wrap(name: str) -> Callable[..., DataFrame]:
+    if _fpy is None:
+
+        def _missing(*args: Any, **kwargs: Any) -> DataFrame:
+            raise ModuleNotFoundError("finpy_tse is required for gravity_tse data fetching")
+
+        return _missing
+
     finpy_func: Callable[..., Any] = getattr(_fpy, name)
 
     @wraps(finpy_func)
