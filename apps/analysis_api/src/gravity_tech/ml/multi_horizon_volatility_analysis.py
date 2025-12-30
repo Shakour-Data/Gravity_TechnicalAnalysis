@@ -14,6 +14,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 from gravity_tech.models.schemas import SignalStrength
 
@@ -21,6 +22,7 @@ from gravity_tech.models.schemas import SignalStrength
 @dataclass
 class VolatilityScore:
     """امتیاز نوسان یک افق"""
+
     horizon: str
     score: float  # [-1, 1] (negative=کاهش نوسان, positive=افزایش نوسان)
     confidence: float  # [0, 1]
@@ -66,6 +68,7 @@ class VolatilityScore:
 @dataclass
 class MultiHorizonVolatilityAnalysis:
     """نتیجه تحلیل نوسان چند افقی"""
+
     timestamp: str
 
     # امتیازهای نوسان
@@ -87,50 +90,47 @@ class MultiHorizonVolatilityAnalysis:
 
     def to_dict(self) -> dict:
         return {
-            'timestamp': self.timestamp,
-            'volatility_scores': {
-                '3d': {
-                    'score': self.volatility_3d.score,
-                    'confidence': self.volatility_3d.confidence,
-                    'signal': self.volatility_3d.signal.name,
-                    'strength': self.volatility_3d.get_strength(),
-                    'direction': self.volatility_3d.get_direction()
+            "timestamp": self.timestamp,
+            "volatility_scores": {
+                "3d": {
+                    "score": self.volatility_3d.score,
+                    "confidence": self.volatility_3d.confidence,
+                    "signal": self.volatility_3d.signal.name,
+                    "strength": self.volatility_3d.get_strength(),
+                    "direction": self.volatility_3d.get_direction(),
                 },
-                '7d': {
-                    'score': self.volatility_7d.score,
-                    'confidence': self.volatility_7d.confidence,
-                    'signal': self.volatility_7d.signal.name,
-                    'strength': self.volatility_7d.get_strength(),
-                    'direction': self.volatility_7d.get_direction()
+                "7d": {
+                    "score": self.volatility_7d.score,
+                    "confidence": self.volatility_7d.confidence,
+                    "signal": self.volatility_7d.signal.name,
+                    "strength": self.volatility_7d.get_strength(),
+                    "direction": self.volatility_7d.get_direction(),
                 },
-                '30d': {
-                    'score': self.volatility_30d.score,
-                    'confidence': self.volatility_30d.confidence,
-                    'signal': self.volatility_30d.signal.name,
-                    'strength': self.volatility_30d.get_strength(),
-                    'direction': self.volatility_30d.get_direction()
-                }
+                "30d": {
+                    "score": self.volatility_30d.score,
+                    "confidence": self.volatility_30d.confidence,
+                    "signal": self.volatility_30d.signal.name,
+                    "strength": self.volatility_30d.get_strength(),
+                    "direction": self.volatility_30d.get_direction(),
+                },
             },
-            'combined': {
-                'volatility': self.combined_volatility,
-                'confidence': self.combined_confidence
+            "combined": {
+                "volatility": self.combined_volatility,
+                "confidence": self.combined_confidence,
             },
-            'recommendations': {
-                '3d': self.recommendation_3d,
-                '7d': self.recommendation_7d,
-                '30d': self.recommendation_30d
+            "recommendations": {
+                "3d": self.recommendation_3d,
+                "7d": self.recommendation_7d,
+                "30d": self.recommendation_30d,
             },
-            'volatility_phase': self.volatility_phase
+            "volatility_phase": self.volatility_phase,
         }
 
 
 class MultiHorizonVolatilityAnalyzer:
     """تحلیلگر نوسان چند افقی"""
 
-    def __init__(
-        self,
-        weight_learner: MultiHorizonWeightLearner
-    ):
+    def __init__(self, weight_learner: MultiHorizonWeightLearner):
         """
         Initialize analyzer
 
@@ -138,12 +138,9 @@ class MultiHorizonVolatilityAnalyzer:
             weight_learner: مدل یادگیری وزن‌ها
         """
         self.weight_learner = weight_learner
-        self.horizons = ['3d', '7d', '30d']
+        self.horizons = ["3d", "7d", "30d"]
 
-    def analyze(
-        self,
-        features: dict[str, float]
-    ) -> MultiHorizonVolatilityAnalysis:
+    def analyze(self, features: dict[str, float]) -> MultiHorizonVolatilityAnalysis:
         """
         تحلیل چند افقی نوسان
 
@@ -167,7 +164,7 @@ class MultiHorizonVolatilityAnalyzer:
         # ایجاد VolatilityScore برای هر افق
         volatility_scores = {}
         for horizon in self.horizons:
-            pred_col = f'pred_{horizon}'
+            pred_col = f"pred_{horizon}"
             raw_score = predictions[pred_col].iloc[0]
 
             # دریافت وزن‌ها و confidence
@@ -181,10 +178,7 @@ class MultiHorizonVolatilityAnalyzer:
             signal = self._score_to_signal(normalized_score)
 
             volatility_scores[horizon] = VolatilityScore(
-                horizon=horizon,
-                score=normalized_score,
-                confidence=confidence,
-                signal=signal
+                horizon=horizon, score=normalized_score, confidence=confidence, signal=signal
             )
 
         # محاسبه امتیاز ترکیبی
@@ -194,21 +188,21 @@ class MultiHorizonVolatilityAnalyzer:
         volatility_phase = self._detect_volatility_phase(volatility_scores, features)
 
         # ایجاد توصیه‌ها
-        rec_3d = self._generate_recommendation(volatility_scores['3d'], '3d')
-        rec_7d = self._generate_recommendation(volatility_scores['7d'], '7d')
-        rec_30d = self._generate_recommendation(volatility_scores['30d'], '30d')
+        rec_3d = self._generate_recommendation(volatility_scores["3d"], "3d")
+        rec_7d = self._generate_recommendation(volatility_scores["7d"], "7d")
+        rec_30d = self._generate_recommendation(volatility_scores["30d"], "30d")
 
         return MultiHorizonVolatilityAnalysis(
             timestamp=datetime.now().isoformat(),
-            volatility_3d=volatility_scores['3d'],
-            volatility_7d=volatility_scores['7d'],
-            volatility_30d=volatility_scores['30d'],
+            volatility_3d=volatility_scores["3d"],
+            volatility_7d=volatility_scores["7d"],
+            volatility_30d=volatility_scores["30d"],
             combined_volatility=combined_volatility,
             combined_confidence=combined_confidence,
             recommendation_3d=rec_3d,
             recommendation_7d=rec_7d,
             recommendation_30d=rec_30d,
-            volatility_phase=volatility_phase
+            volatility_phase=volatility_phase,
         )
 
     def _score_to_signal(self, score: float) -> SignalStrength:
@@ -231,8 +225,7 @@ class MultiHorizonVolatilityAnalyzer:
             return SignalStrength.VERY_BEARISH  # نوسان بسیار پایین (فشردگی)
 
     def _smart_combination(
-        self,
-        volatility_scores: dict[str, VolatilityScore]
+        self, volatility_scores: dict[str, VolatilityScore]
     ) -> tuple[float, float]:
         """
         ترکیب هوشمند امتیازها
@@ -255,9 +248,9 @@ class MultiHorizonVolatilityAnalyzer:
 
         if total_confidence > 0:
             # میانگین وزن‌دار بر اساس confidence
-            weighted_score = sum(
-                s * c for s, c in zip(scores, confidences)
-            ) / total_confidence
+            weighted_score = (
+                sum(s * c for s, c in zip(scores, confidences, strict=False)) / total_confidence
+            )
             combined_confidence = total_confidence / len(confidences)
         else:
             weighted_score = 0.0
@@ -266,9 +259,7 @@ class MultiHorizonVolatilityAnalyzer:
         return weighted_score, combined_confidence
 
     def _detect_volatility_phase(
-        self,
-        volatility_scores: dict[str, VolatilityScore],
-        features: dict[str, float]
+        self, volatility_scores: dict[str, VolatilityScore], features: dict[str, float]
     ) -> str:
         """
         تشخیص فاز نوسان بازار
@@ -280,17 +271,22 @@ class MultiHorizonVolatilityAnalyzer:
         - BREAKOUT: شکست از فشردگی (نوسان ناگهانی افزایش)
         - STABLE: نوسان پایدار
         """
-        score_3d = volatility_scores['3d'].score
-        score_7d = volatility_scores['7d'].score
-        score_30d = volatility_scores['30d'].score
+        score_3d = volatility_scores["3d"].score
+        score_7d = volatility_scores["7d"].score
+        score_30d = volatility_scores["30d"].score
 
         # بررسی ATR برای تشخیص squeeze
-        atr_percentile = features.get('atr_percentile', 50)
-        bb_percentile = features.get('bollinger_bands_percentile', 50)
+        atr_percentile = features.get("atr_percentile", 50)
+        bb_percentile = features.get("bollinger_bands_percentile", 50)
 
         # SQUEEZE: همه نوسان‌ها پایین + اندیکاتورها در پایین‌ترین سطح
-        if (score_3d < -0.5 and score_7d < -0.5 and score_30d < -0.5 and
-            atr_percentile < 25 and bb_percentile < 25):
+        if (
+            score_3d < -0.5
+            and score_7d < -0.5
+            and score_30d < -0.5
+            and atr_percentile < 25
+            and bb_percentile < 25
+        ):
             return "SQUEEZE"
 
         # BREAKOUT: نوسان کوتاه‌مدت ناگهان بالا رفته ولی میان‌مدت هنوز پایین
@@ -308,11 +304,7 @@ class MultiHorizonVolatilityAnalyzer:
         # STABLE: نوسان پایدار
         return "STABLE"
 
-    def _generate_recommendation(
-        self,
-        volatility_score: VolatilityScore,
-        horizon: str
-    ) -> str:
+    def _generate_recommendation(self, volatility_score: VolatilityScore, horizon: str) -> str:
         """
         ایجاد توصیه بر اساس امتیاز نوسان
 
@@ -329,11 +321,9 @@ class MultiHorizonVolatilityAnalyzer:
         direction = volatility_score.get_direction()
 
         # فرمت افق
-        horizon_fa = {
-            '3d': 'کوتاه‌مدت (3 روز)',
-            '7d': 'میان‌مدت (هفته)',
-            '30d': 'بلندمدت (ماه)'
-        }.get(horizon, horizon)
+        horizon_fa = {"3d": "کوتاه‌مدت (3 روز)", "7d": "میان‌مدت (هفته)", "30d": "بلندمدت (ماه)"}.get(
+            horizon, horizon
+        )
 
         if strength == "EXPLOSIVE":
             if confidence > 0.7:
@@ -361,10 +351,7 @@ class MultiHorizonVolatilityAnalyzer:
             else:
                 return f"⏳ {horizon_fa}: نوسان بسیار پایین - صبر برای فرصت مناسب"
 
-    def get_trading_advice(
-        self,
-        analysis: MultiHorizonVolatilityAnalysis
-    ) -> dict[str, str]:
+    def get_trading_advice(self, analysis: MultiHorizonVolatilityAnalysis) -> dict[str, str]:
         """
         مشاوره معاملاتی بر اساس تحلیل نوسان
 
@@ -381,36 +368,38 @@ class MultiHorizonVolatilityAnalyzer:
 
         # مشاوره برای Day Traders
         if phase == "SQUEEZE":
-            advice['day_trader'] = "⏳ صبر کنید - بازار در حال فشردگی. بعد از شکست وارد شوید."
+            advice["day_trader"] = "⏳ صبر کنید - بازار در حال فشردگی. بعد از شکست وارد شوید."
         elif phase == "BREAKOUT":
-            advice['day_trader'] = "🚀 فرصت عالی - شکست اتفاق افتاده. با حد ضرر مناسب وارد شوید."
+            advice["day_trader"] = "🚀 فرصت عالی - شکست اتفاق افتاده. با حد ضرر مناسب وارد شوید."
         elif phase == "EXPANSION":
-            advice['day_trader'] = "💰 شرایط ایده‌آل - نوسان بالا = فرصت سود بیشتر"
+            advice["day_trader"] = "💰 شرایط ایده‌آل - نوسان بالا = فرصت سود بیشتر"
         else:
-            advice['day_trader'] = "😴 شرایط معمولی - فرصت‌های محدود"
+            advice["day_trader"] = "😴 شرایط معمولی - فرصت‌های محدود"
 
         # مشاوره برای Swing Traders
         if combined_score > 0.5:
-            advice['swing_trader'] = "⚠️ احتیاط - نوسان بالا می‌تواند استاپ‌ها را فعال کند"
+            advice["swing_trader"] = "⚠️ احتیاط - نوسان بالا می‌تواند استاپ‌ها را فعال کند"
         elif combined_score < -0.5:
-            advice['swing_trader'] = "✅ مناسب - نوسان پایین برای نگهداری میان‌مدت"
+            advice["swing_trader"] = "✅ مناسب - نوسان پایین برای نگهداری میان‌مدت"
         else:
-            advice['swing_trader'] = "➡️ شرایط متوسط - با استاپ‌های محافظانه"
+            advice["swing_trader"] = "➡️ شرایط متوسط - با استاپ‌های محافظانه"
 
         # مشاوره برای Long-term Investors
         if phase in ["SQUEEZE", "CONTRACTION"]:
-            advice['long_term'] = "🎯 فرصت خوب - نوسان پایین برای ورود بلندمدت"
+            advice["long_term"] = "🎯 فرصت خوب - نوسان پایین برای ورود بلندمدت"
         elif phase == "EXPANSION":
-            advice['long_term'] = "⏸️ صبر کنید - بگذارید بازار آرام شود"
+            advice["long_term"] = "⏸️ صبر کنید - بگذارید بازار آرام شود"
         else:
-            advice['long_term'] = "➡️ شرایط عادی - سرمایه‌گذاری تدریجی"
+            advice["long_term"] = "➡️ شرایط عادی - سرمایه‌گذاری تدریجی"
 
         # مشاوره Position Sizing
         if combined_score > 0.7:
-            advice['position_size'] = "🔻 کوچک - نوسان بالا = ریسک بالا - حجم کم معامله کنید"
+            advice["position_size"] = "🔻 کوچک - نوسان بالا = ریسک بالا - حجم کم معامله کنید"
         elif combined_score < -0.5:
-            advice['position_size'] = "🔺 بزرگ‌تر - نوسان پایین = ریسک کم - می‌توانید حجم بیشتر بگیرید"
+            advice["position_size"] = (
+                "🔺 بزرگ‌تر - نوسان پایین = ریسک کم - می‌توانید حجم بیشتر بگیرید"
+            )
         else:
-            advice['position_size'] = "➡️ متوسط - مدیریت ریسک استاندارد"
+            advice["position_size"] = "➡️ متوسط - مدیریت ریسک استاندارد"
 
         return advice
