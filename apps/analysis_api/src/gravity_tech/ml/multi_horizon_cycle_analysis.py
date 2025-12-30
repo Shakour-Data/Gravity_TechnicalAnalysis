@@ -14,6 +14,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.ml.multi_horizon_cycle_features import MultiHorizonCycleFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import HorizonWeights, MultiHorizonWeightLearner
 from gravity_tech.models.schemas import Candle, SignalStrength
@@ -22,6 +23,7 @@ from gravity_tech.models.schemas import Candle, SignalStrength
 @dataclass
 class CycleScore:
     """امتیاز سیکل یک افق"""
+
     horizon: str
     score: float  # [-1, 1] (negative=نزول سیکلی, positive=صعود سیکلی)
     confidence: float  # [0, 1]
@@ -92,6 +94,7 @@ class CycleScore:
 @dataclass
 class MultiHorizonCycleAnalysis:
     """نتیجه تحلیل سیکل چند افقی"""
+
     timestamp: str
 
     # امتیازهای سیکل
@@ -116,50 +119,50 @@ class MultiHorizonCycleAnalysis:
 
     def to_dict(self) -> dict:
         return {
-            'timestamp': self.timestamp,
-            'cycle_scores': {
-                '3d': {
-                    'score': self.cycle_3d.score,
-                    'confidence': self.cycle_3d.confidence,
-                    'signal': self.cycle_3d.signal.name,
-                    'phase': self.cycle_3d.phase,
-                    'phase_name': self.cycle_3d.get_phase_name(),
-                    'position': self.cycle_3d.get_position_in_phase(),
-                    'cycle_period': self.cycle_3d.cycle_period,
-                    'cycle_speed': self.cycle_3d.get_cycle_speed()
+            "timestamp": self.timestamp,
+            "cycle_scores": {
+                "3d": {
+                    "score": self.cycle_3d.score,
+                    "confidence": self.cycle_3d.confidence,
+                    "signal": self.cycle_3d.signal.name,
+                    "phase": self.cycle_3d.phase,
+                    "phase_name": self.cycle_3d.get_phase_name(),
+                    "position": self.cycle_3d.get_position_in_phase(),
+                    "cycle_period": self.cycle_3d.cycle_period,
+                    "cycle_speed": self.cycle_3d.get_cycle_speed(),
                 },
-                '7d': {
-                    'score': self.cycle_7d.score,
-                    'confidence': self.cycle_7d.confidence,
-                    'signal': self.cycle_7d.signal.name,
-                    'phase': self.cycle_7d.phase,
-                    'phase_name': self.cycle_7d.get_phase_name(),
-                    'position': self.cycle_7d.get_position_in_phase(),
-                    'cycle_period': self.cycle_7d.cycle_period,
-                    'cycle_speed': self.cycle_7d.get_cycle_speed()
+                "7d": {
+                    "score": self.cycle_7d.score,
+                    "confidence": self.cycle_7d.confidence,
+                    "signal": self.cycle_7d.signal.name,
+                    "phase": self.cycle_7d.phase,
+                    "phase_name": self.cycle_7d.get_phase_name(),
+                    "position": self.cycle_7d.get_position_in_phase(),
+                    "cycle_period": self.cycle_7d.cycle_period,
+                    "cycle_speed": self.cycle_7d.get_cycle_speed(),
                 },
-                '30d': {
-                    'score': self.cycle_30d.score,
-                    'confidence': self.cycle_30d.confidence,
-                    'signal': self.cycle_30d.signal.name,
-                    'phase': self.cycle_30d.phase,
-                    'phase_name': self.cycle_30d.get_phase_name(),
-                    'position': self.cycle_30d.get_position_in_phase(),
-                    'cycle_period': self.cycle_30d.cycle_period,
-                    'cycle_speed': self.cycle_30d.get_cycle_speed()
-                }
+                "30d": {
+                    "score": self.cycle_30d.score,
+                    "confidence": self.cycle_30d.confidence,
+                    "signal": self.cycle_30d.signal.name,
+                    "phase": self.cycle_30d.phase,
+                    "phase_name": self.cycle_30d.get_phase_name(),
+                    "position": self.cycle_30d.get_position_in_phase(),
+                    "cycle_period": self.cycle_30d.cycle_period,
+                    "cycle_speed": self.cycle_30d.get_cycle_speed(),
+                },
             },
-            'combined': {
-                'cycle_score': self.combined_cycle,
-                'confidence': self.combined_confidence,
-                'dominant_phase': self.dominant_phase,
-                'alignment': self.cycle_alignment
+            "combined": {
+                "cycle_score": self.combined_cycle,
+                "confidence": self.combined_confidence,
+                "dominant_phase": self.dominant_phase,
+                "alignment": self.cycle_alignment,
             },
-            'recommendations': {
-                '3d': self.recommendation_3d,
-                '7d': self.recommendation_7d,
-                '30d': self.recommendation_30d
-            }
+            "recommendations": {
+                "3d": self.recommendation_3d,
+                "7d": self.recommendation_7d,
+                "30d": self.recommendation_30d,
+            },
         }
 
 
@@ -192,10 +195,8 @@ class MultiHorizonCycleAnalyzer:
             horizons: فهرست افق‌ها (پیش‌فرض: ['3d','7d','30d'])
         """
         self.lookback_period = lookback_period
-        self.horizons = horizons or ['3d', '7d', '30d']
-        self.feature_extractor = MultiHorizonCycleFeatureExtractor(
-            lookback_period=lookback_period
-        )
+        self.horizons = horizons or ["3d", "7d", "30d"]
+        self.feature_extractor = MultiHorizonCycleFeatureExtractor(lookback_period=lookback_period)
 
         if weight_learner is not None:
             self.weight_learner = weight_learner
@@ -216,12 +217,14 @@ class MultiHorizonCycleAnalyzer:
         feature_names = self.feature_extractor.get_feature_names()
         learner.feature_names = feature_names
 
-        uniform_weights = {name: 1.0 / len(feature_names) for name in feature_names} if feature_names else {}
+        uniform_weights = (
+            {name: 1.0 / len(feature_names) for name in feature_names} if feature_names else {}
+        )
         metrics = {
-            'r2_test': 0.0,
-            'mae_test': 0.0,
-            'r2_train': 0.0,
-            'mae_train': 0.0,
+            "r2_test": 0.0,
+            "mae_test": 0.0,
+            "r2_train": 0.0,
+            "mae_train": 0.0,
         }
 
         learner.horizon_weights = {
@@ -249,12 +252,12 @@ class MultiHorizonCycleAnalyzer:
         if len(candles) < self.lookback_period:
             return self._get_neutral_analysis()
 
-        feature_window = candles[-self.lookback_period:]
+        feature_window = candles[-self.lookback_period :]
         features = self.feature_extractor.extract_cycle_features(feature_window)
         features_df = pd.DataFrame([features])
         try:
             predictions = self.weight_learner.predict_multi_horizon(features_df)
-            use_heuristic = self.weight_learner.model is None
+            use_heuristic = False
         except RuntimeError:
             predictions = None
             use_heuristic = True
@@ -262,24 +265,25 @@ class MultiHorizonCycleAnalyzer:
         cycle_scores: dict[str, CycleScore] = {}
         for horizon in self.horizons:
             if use_heuristic or predictions is None:
-                cycle_scores[horizon] = self._build_heuristic_cycle_score(horizon, features, feature_window)
+                cycle_scores[horizon] = self._build_heuristic_cycle_score(
+                    horizon, features, feature_window
+                )
             else:
-                pred_col = f'pred_{horizon}'
+                pred_col = f"pred_{horizon}"
                 raw_score = float(predictions[pred_col].iloc[0]) if pred_col in predictions else 0.0
                 cycle_scores[horizon] = self._build_cycle_score(horizon, raw_score, features)
 
-        cycle_3d = cycle_scores.get('3d', self._neutral_score('3d'))
-        cycle_7d = cycle_scores.get('7d', self._neutral_score('7d'))
-        cycle_30d = cycle_scores.get('30d', self._neutral_score('30d'))
+        cycle_3d = cycle_scores.get("3d", self._neutral_score("3d"))
+        cycle_7d = cycle_scores.get("7d", self._neutral_score("7d"))
+        cycle_30d = cycle_scores.get("30d", self._neutral_score("30d"))
 
-        weights = {'3d': 0.3, '7d': 0.4, '30d': 0.3}
+        weights = {"3d": 0.3, "7d": 0.4, "30d": 0.3}
         weighted_sum = sum(
             cycle_scores[horizon].score * cycle_scores[horizon].confidence * weights[horizon]
             for horizon in weights
         )
         confidence_sum = sum(
-            cycle_scores[horizon].confidence * weights[horizon]
-            for horizon in weights
+            cycle_scores[horizon].confidence * weights[horizon] for horizon in weights
         )
 
         combined_cycle = weighted_sum / confidence_sum if confidence_sum else 0.0
@@ -307,7 +311,7 @@ class MultiHorizonCycleAnalyzer:
             recommendation_3d=rec_3d,
             recommendation_7d=rec_7d,
             recommendation_30d=rec_30d,
-            cycle_alignment=alignment
+            cycle_alignment=alignment,
         )
 
     def _build_cycle_score(
@@ -321,8 +325,8 @@ class MultiHorizonCycleAnalyzer:
         horizon_weights = self.weight_learner.get_horizon_weights(horizon)
         confidence = horizon_weights.confidence if horizon_weights else 0.0
         signal = self._score_to_signal(normalized_score)
-        phase = features.get('cycle_avg_phase', 0.0)
-        cycle_period = features.get('cycle_avg_period', 20.0)
+        phase = features.get("cycle_avg_phase", 0.0)
+        cycle_period = features.get("cycle_avg_period", 20.0)
 
         return CycleScore(
             horizon=horizon,
@@ -330,7 +334,7 @@ class MultiHorizonCycleAnalyzer:
             confidence=confidence,
             signal=signal,
             phase=phase,
-            cycle_period=cycle_period
+            cycle_period=cycle_period,
         )
 
     def _build_heuristic_cycle_score(
@@ -385,7 +389,9 @@ class MultiHorizonCycleAnalyzer:
         cycle_consistency = 1.0 - float(features.get("cycle_signal_std", 0.0))
         cycle_consistency = float(np.clip(cycle_consistency, 0.0, 1.0))
 
-        swing_direction = np.sign(horizon_ret if horizon_ret != 0 else (returns[-1] if returns else 0.0))
+        swing_direction = np.sign(
+            horizon_ret if horizon_ret != 0 else (returns[-1] if returns else 0.0)
+        )
         swing_component = swing_direction * swing
 
         base_score = 0.55 * cycle_signal + 0.30 * momentum + 0.15 * swing_component
@@ -523,16 +529,16 @@ class MultiHorizonCycleAnalyzer:
         """تحلیل خنثی در صورت عدم وجود داده کافی"""
         return MultiHorizonCycleAnalysis(
             timestamp=datetime.now().isoformat(),
-            cycle_3d=self._neutral_score('3d'),
-            cycle_7d=self._neutral_score('7d'),
-            cycle_30d=self._neutral_score('30d'),
+            cycle_3d=self._neutral_score("3d"),
+            cycle_7d=self._neutral_score("7d"),
+            cycle_30d=self._neutral_score("30d"),
             combined_cycle=0.0,
             combined_confidence=0.0,
             dominant_phase="ACCUMULATION",
             recommendation_3d="داده کافی نیست",
             recommendation_7d="داده کافی نیست",
             recommendation_30d="داده کافی نیست",
-            cycle_alignment="NEUTRAL"
+            cycle_alignment="NEUTRAL",
         )
 
 
@@ -552,7 +558,7 @@ if __name__ == "__main__":
         count=150,
         base_price=50000,
         volatility=0.02,
-        trend='sideways'  # سیکل بهتر در رنج دیده می‌شود
+        trend="sideways",  # سیکل بهتر در رنج دیده می‌شود
     )
 
     # ایجاد analyzer
@@ -571,9 +577,9 @@ if __name__ == "__main__":
 
     # امتیازهای هر افق
     for horizon_name, cycle_score in [
-        ('3 روزه', analysis.cycle_3d),
-        ('7 روزه', analysis.cycle_7d),
-        ('30 روزه', analysis.cycle_30d)
+        ("3 روزه", analysis.cycle_3d),
+        ("7 روزه", analysis.cycle_7d),
+        ("30 روزه", analysis.cycle_30d),
     ]:
         print(f"\n📊 سیکل {horizon_name}:")
         print(f"  امتیاز: {cycle_score.score:.3f}")
@@ -602,6 +608,7 @@ if __name__ == "__main__":
     print("خروجی JSON:")
     print("=" * 70)
     import json
+
     print(json.dumps(analysis.to_dict(), indent=2, ensure_ascii=False))
 
     print("\n" + "=" * 70)
