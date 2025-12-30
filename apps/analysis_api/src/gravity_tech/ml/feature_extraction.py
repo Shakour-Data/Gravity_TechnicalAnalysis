@@ -12,16 +12,16 @@ Version: 1.0.0
 License: MIT
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
+
+from gravity_tech.core.patterns.candlestick import CandlestickPatterns
 from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.models.schemas import Candle
-from gravity_tech.core.patterns.candlestick import CandlestickPatterns
 from gravity_tech.patterns.classical import ClassicalPatterns
 from gravity_tech.patterns.elliott_wave import ElliottWaveAnalyzer
-from datetime import timezone
 
 
 class FeatureExtractor:
@@ -40,10 +40,7 @@ class FeatureExtractor:
         self.lookback_period = lookback_period
         self.forward_days = forward_days
 
-    def extract_10_indicator_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_10_indicator_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         Extract features from 10 trend indicators
 
@@ -54,17 +51,17 @@ class FeatureExtractor:
             raise ValueError(f"Need at least {self.lookback_period} candles")
 
         # Use last lookback_period candles for indicators
-        recent_candles = candles[-self.lookback_period:]
+        recent_candles = candles[-self.lookback_period :]
 
         # Calculate all 7 available trend indicators
         indicators = {
-            'sma': TrendIndicators.sma(recent_candles, period=20),
-            'ema': TrendIndicators.ema(recent_candles, period=20),
-            'wma': TrendIndicators.wma(recent_candles, period=20),
-            'dema': TrendIndicators.dema(recent_candles, period=20),
-            'tema': TrendIndicators.tema(recent_candles, period=20),
-            'macd': TrendIndicators.macd(recent_candles),
-            'adx': TrendIndicators.adx(recent_candles)
+            "sma": TrendIndicators.sma(recent_candles, period=20),
+            "ema": TrendIndicators.ema(recent_candles, period=20),
+            "wma": TrendIndicators.wma(recent_candles, period=20),
+            "dema": TrendIndicators.dema(recent_candles, period=20),
+            "tema": TrendIndicators.tema(recent_candles, period=20),
+            "macd": TrendIndicators.macd(recent_candles),
+            "adx": TrendIndicators.adx(recent_candles),
         }
 
         # Extract features: signal score + confidence for each
@@ -73,18 +70,15 @@ class FeatureExtractor:
         for name, result in indicators.items():
             # Signal score normalized to [-1, 1]
             signal_score = result.signal.get_score() / 2.0
-            features[f'{name}_signal'] = signal_score
-            features[f'{name}_confidence'] = result.confidence
+            features[f"{name}_signal"] = signal_score
+            features[f"{name}_confidence"] = result.confidence
 
             # Weighted signal (signal × confidence)
-            features[f'{name}_weighted'] = signal_score * result.confidence
+            features[f"{name}_weighted"] = signal_score * result.confidence
 
         return features
 
-    def extract_4_dimension_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_4_dimension_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         Extract features from 4 dimensions of trend analysis
 
@@ -94,7 +88,7 @@ class FeatureExtractor:
         if len(candles) < self.lookback_period:
             raise ValueError(f"Need at least {self.lookback_period} candles")
 
-        recent_candles = candles[-self.lookback_period:]
+        recent_candles = candles[-self.lookback_period :]
         features = {}
 
         # ═══════════════════════════════════════════════════════
@@ -110,7 +104,7 @@ class FeatureExtractor:
                 TrendIndicators.dema(recent_candles, 20),
                 TrendIndicators.tema(recent_candles, 20),
                 TrendIndicators.macd(recent_candles),
-                TrendIndicators.adx(recent_candles)
+                TrendIndicators.adx(recent_candles),
             ]
 
             # Calculate dimension score (weighted by confidence)
@@ -125,9 +119,9 @@ class FeatureExtractor:
             dim1_score = 0.0
             dim1_confidence = 0.5
 
-        features['dim1_indicators_score'] = dim1_score / 2.0  # Normalize to [-1, 1]
-        features['dim1_indicators_confidence'] = dim1_confidence
-        features['dim1_indicators_weighted'] = (dim1_score / 2.0) * dim1_confidence
+        features["dim1_indicators_score"] = dim1_score / 2.0  # Normalize to [-1, 1]
+        features["dim1_indicators_confidence"] = dim1_confidence
+        features["dim1_indicators_weighted"] = (dim1_score / 2.0) * dim1_confidence
 
         # ═══════════════════════════════════════════════════════
         # Dimension 2: Candlestick Patterns
@@ -150,9 +144,9 @@ class FeatureExtractor:
             dim2_score = 0.0
             dim2_confidence = 0.5
 
-        features['dim2_candlestick_score'] = dim2_score / 2.0
-        features['dim2_candlestick_confidence'] = dim2_confidence
-        features['dim2_candlestick_weighted'] = (dim2_score / 2.0) * dim2_confidence
+        features["dim2_candlestick_score"] = dim2_score / 2.0
+        features["dim2_candlestick_confidence"] = dim2_confidence
+        features["dim2_candlestick_weighted"] = (dim2_score / 2.0) * dim2_confidence
 
         # ═══════════════════════════════════════════════════════
         # Dimension 3: Elliott Wave Theory
@@ -168,9 +162,9 @@ class FeatureExtractor:
             dim3_score = 0.0
             dim3_confidence = 0.5
 
-        features['dim3_elliott_score'] = dim3_score / 2.0
-        features['dim3_elliott_confidence'] = dim3_confidence
-        features['dim3_elliott_weighted'] = (dim3_score / 2.0) * dim3_confidence
+        features["dim3_elliott_score"] = dim3_score / 2.0
+        features["dim3_elliott_confidence"] = dim3_confidence
+        features["dim3_elliott_weighted"] = (dim3_score / 2.0) * dim3_confidence
 
         # ═══════════════════════════════════════════════════════
         # Dimension 4: Classical Patterns
@@ -195,17 +189,13 @@ class FeatureExtractor:
             dim4_score = 0.0
             dim4_confidence = 0.5
 
-        features['dim4_classical_score'] = dim4_score / 2.0
-        features['dim4_classical_confidence'] = dim4_confidence
-        features['dim4_classical_weighted'] = (dim4_score / 2.0) * dim4_confidence
+        features["dim4_classical_score"] = dim4_score / 2.0
+        features["dim4_classical_confidence"] = dim4_confidence
+        features["dim4_classical_weighted"] = (dim4_score / 2.0) * dim4_confidence
 
         return features
 
-    def calculate_future_return(
-        self,
-        candles: list[Candle],
-        forward_days: int = None
-    ) -> float:
+    def calculate_future_return(self, candles: list[Candle], forward_days: int = None) -> float:
         """
         Calculate future return as label for supervised learning
 
@@ -230,7 +220,7 @@ class FeatureExtractor:
     def extract_training_dataset(
         self,
         candles: list[Candle],
-        level: str = "indicators"  # "indicators" or "dimensions"
+        level: str = "indicators",  # "indicators" or "dimensions"
     ) -> tuple[pd.DataFrame, pd.Series]:
         """
         Extract complete training dataset
@@ -267,8 +257,7 @@ class FeatureExtractor:
                 # Look forward from the end of the window
                 future_window = candles[i + self.lookback_period : i + required_length + 1]
                 future_return = self.calculate_future_return(
-                    [window[-1]] + future_window,
-                    self.forward_days
+                    [window[-1]] + future_window, self.forward_days
                 )
 
                 all_features.append(features)
@@ -280,7 +269,7 @@ class FeatureExtractor:
 
         # Convert to DataFrame
         features_df = pd.DataFrame(all_features)
-        labels_series = pd.Series(all_labels, name='future_return')
+        labels_series = pd.Series(all_labels, name="future_return")
 
         print(f"✅ Extracted {len(features_df)} training samples")
         print(f"   Features: {list(features_df.columns)[:5]}... ({len(features_df.columns)} total)")
@@ -291,7 +280,7 @@ class FeatureExtractor:
     def create_binary_labels(
         self,
         returns: pd.Series,
-        threshold: float = 0.01  # 1%
+        threshold: float = 0.01,  # 1%
     ) -> pd.Series:
         """
         Convert continuous returns to binary labels (bullish/bearish)
@@ -311,63 +300,58 @@ class FeatureExtractor:
 
         return labels
 
-    def extract_market_context_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_market_context_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         Extract additional market context features
 
         Returns:
             Dictionary with context features (volatility, trend strength, etc.)
         """
-        closes = np.array([c.close for c in candles[-self.lookback_period:]])
-        highs = np.array([c.high for c in candles[-self.lookback_period:]])
-        lows = np.array([c.low for c in candles[-self.lookback_period:]])
-        volumes = np.array([c.volume for c in candles[-self.lookback_period:]])
+        closes = np.array([c.close for c in candles[-self.lookback_period :]])
+        highs = np.array([c.high for c in candles[-self.lookback_period :]])
+        lows = np.array([c.low for c in candles[-self.lookback_period :]])
+        volumes = np.array([c.volume for c in candles[-self.lookback_period :]])
 
         features = {}
 
         # Volatility (ATR-based)
         true_ranges = []
-        for i in range(1, len(candles[-self.lookback_period:])):
+        for i in range(1, len(candles[-self.lookback_period :])):
             high = highs[i]
             low = lows[i]
-            prev_close = closes[i-1]
+            prev_close = closes[i - 1]
 
-            tr = max(
-                high - low,
-                abs(high - prev_close),
-                abs(low - prev_close)
-            )
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
             true_ranges.append(tr)
 
-        features['volatility_atr'] = np.mean(true_ranges) / closes[-1] if true_ranges else 0.0
-        features['volatility_std'] = np.std(closes) / np.mean(closes) if len(closes) > 0 else 0.0
+        features["volatility_atr"] = np.mean(true_ranges) / closes[-1] if true_ranges else 0.0
+        features["volatility_std"] = np.std(closes) / np.mean(closes) if len(closes) > 0 else 0.0
 
         # Trend strength (linear regression slope)
         x = np.arange(len(closes))
         if len(closes) > 1:
             slope, _ = np.polyfit(x, closes, 1)
-            features['trend_strength'] = slope / closes[-1]
+            features["trend_strength"] = slope / closes[-1]
         else:
-            features['trend_strength'] = 0.0
+            features["trend_strength"] = 0.0
 
         # Volume trend
         if len(volumes) > 1:
             volume_slope, _ = np.polyfit(x, volumes, 1)
-            features['volume_trend'] = volume_slope / np.mean(volumes) if np.mean(volumes) > 0 else 0.0
+            features["volume_trend"] = (
+                volume_slope / np.mean(volumes) if np.mean(volumes) > 0 else 0.0
+            )
         else:
-            features['volume_trend'] = 0.0
+            features["volume_trend"] = 0.0
 
         # Price position (current vs. recent high/low)
         recent_high = np.max(highs[-20:]) if len(highs) >= 20 else np.max(highs)
         recent_low = np.min(lows[-20:]) if len(lows) >= 20 else np.min(lows)
 
         if recent_high > recent_low:
-            features['price_position'] = (closes[-1] - recent_low) / (recent_high - recent_low)
+            features["price_position"] = (closes[-1] - recent_low) / (recent_high - recent_low)
         else:
-            features['price_position'] = 0.5
+            features["price_position"] = 0.5
 
         return features
 
@@ -382,7 +366,7 @@ if __name__ == "__main__":
 
     # Fetch data
     connector = DataConnector()
-    end_date = datetime.now(timezone.utc)
+    end_date = datetime.now(UTC)
     start_date = end_date - timedelta(days=365 * 2)  # 2 years
 
     candles = connector.fetch_daily_candles("BTCUSDT", start_date, end_date)
@@ -396,10 +380,7 @@ if __name__ == "__main__":
     print("LEVEL 1: 10 Indicator Features")
     print("=" * 60)
 
-    X_indicators, y_indicators = extractor.extract_training_dataset(
-        candles,
-        level="indicators"
-    )
+    X_indicators, y_indicators = extractor.extract_training_dataset(candles, level="indicators")
 
     print(f"\nShape: {X_indicators.shape}")
     print(f"Features:\n{X_indicators.head()}\n")
@@ -410,10 +391,7 @@ if __name__ == "__main__":
     print("LEVEL 2: 4 Dimension Features")
     print("=" * 60)
 
-    X_dimensions, y_dimensions = extractor.extract_training_dataset(
-        candles,
-        level="dimensions"
-    )
+    X_dimensions, y_dimensions = extractor.extract_training_dataset(candles, level="dimensions")
 
     print(f"\nShape: {X_dimensions.shape}")
     print(f"Features:\n{X_dimensions.head()}\n")
