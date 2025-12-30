@@ -24,6 +24,7 @@ After (DI pattern):
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
+
 from gravity_tech.infrastructure.container import ServiceContainer, get_container
 
 logger = structlog.get_logger()
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api/v1", tags=["Technical Analysis"])
 # ============================================================================
 # Dependency Injection Functions
 # ============================================================================
+
 
 async def get_container_dep() -> ServiceContainer:
     """FastAPI dependency for getting container.
@@ -80,6 +82,7 @@ async def get_cache_service(
 # ============================================================================
 # Endpoints
 # ============================================================================
+
 
 @router.post(
     "/analyze",
@@ -186,6 +189,7 @@ async def health_ready(
 # ============================================================================
 # Integration with main.py
 # ============================================================================
+
 
 def register_endpoints(app):
     """Register all endpoints with application.
