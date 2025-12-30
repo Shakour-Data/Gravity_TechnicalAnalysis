@@ -8,6 +8,7 @@ import os
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.ml.multi_horizon_volatility_features import MultiHorizonVolatilityFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 from gravity_tech.models.schemas import Candle
@@ -15,7 +16,7 @@ from gravity_tech.models.schemas import Candle
 
 def create_realistic_volatility_data(
     num_samples: int = 2000,
-    volatility_regime: str = 'mixed'  # 'low', 'high', 'mixed', 'squeeze'
+    volatility_regime: str = "mixed",  # 'low', 'high', 'mixed', 'squeeze'
 ) -> list[Candle]:
     """
     ایجاد داده‌های واقعی با رژیم‌های مختلف نوسان
@@ -30,7 +31,7 @@ def create_realistic_volatility_data(
     """
     np.random.seed(42)
 
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1h')
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq="1h")
 
     base_price = 30000
     prices = [base_price]
@@ -39,11 +40,11 @@ def create_realistic_volatility_data(
 
     for i in range(num_samples):
         # تعیین volatility بر اساس regime
-        if volatility_regime == 'low':
+        if volatility_regime == "low":
             volatility = 0.005  # 0.5%
-        elif volatility_regime == 'high':
+        elif volatility_regime == "high":
             volatility = 0.03  # 3%
-        elif volatility_regime == 'squeeze':
+        elif volatility_regime == "squeeze":
             # فشردگی در نیمه اول، شکست در نیمه دوم
             if i < num_samples // 2:
                 volatility = 0.003  # بسیار پایین
@@ -91,7 +92,7 @@ def create_realistic_volatility_data(
             high=high_price,
             low=low_price,
             close=close_price,
-            volume=volume
+            volume=volume,
         )
         candles.append(candle)
 
@@ -102,8 +103,8 @@ def train_volatility_model(
     candles: list[Candle],
     horizons: list[str] = None,
     test_size: float = 0.2,
-    output_dir: str = 'models/volatility',
-    verbose: bool = True
+    output_dir: str = "models/volatility",
+    verbose: bool = True,
 ) -> MultiHorizonWeightLearner:
     """
     آموزش مدل نوسان چند افقی
@@ -119,12 +120,12 @@ def train_volatility_model(
         مدل آموزش‌دیده
     """
     if horizons is None:
-        horizons = ['3d', '7d', '30d']
+        horizons = ["3d", "7d", "30d"]
 
     if verbose:
-        print("="*70)
+        print("=" * 70)
         print("🎯 TRAINING MULTI-HORIZON VOLATILITY MODEL")
-        print("="*70)
+        print("=" * 70)
         print(f"\n📊 Dataset: {len(candles)} candles")
         print(f"⏱️  Horizons: {horizons}")
         print(f"✂️  Test Size: {test_size:.0%}")
@@ -134,7 +135,9 @@ def train_volatility_model(
         print("\n🔍 Extracting volatility features...")
 
     extractor = MultiHorizonVolatilityFeatureExtractor(horizons=horizons)
-    X, Y = extractor.create_training_dataset(candles, horizons=[int(h.replace('d', '')) for h in horizons])
+    X, Y = extractor.create_training_dataset(
+        candles, horizons=[int(h.replace("d", "")) for h in horizons]
+    )
 
     if verbose:
         print(f"   ✅ Features: {X.shape[1]} columns")
@@ -155,28 +158,28 @@ def train_volatility_model(
         test_size=test_size,
         random_state=42,
         lgbm_params={
-            'objective': 'regression',
-            'metric': 'rmse',
-            'verbosity': -1,
-            'n_estimators': 150,  # بیشتر از momentum
-            'learning_rate': 0.03,  # کمتر برای دقت بیشتر
-            'num_leaves': 31,
-            'max_depth': 7,
-            'min_child_samples': 20,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'reg_alpha': 0.1,  # L1 regularization
-            'reg_lambda': 0.1   # L2 regularization
-        }
+            "objective": "regression",
+            "metric": "rmse",
+            "verbosity": -1,
+            "n_estimators": 150,  # بیشتر از momentum
+            "learning_rate": 0.03,  # کمتر برای دقت بیشتر
+            "num_leaves": 31,
+            "max_depth": 7,
+            "min_child_samples": 20,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "reg_alpha": 0.1,  # L1 regularization
+            "reg_lambda": 0.1,  # L2 regularization
+        },
     )
 
     learner.train(X, Y, verbose=verbose)
 
     # ذخیره مدل
     os.makedirs(output_dir, exist_ok=True)
-    model_path = os.path.join(output_dir, 'volatility_weights.json')
+    model_path = os.path.join(output_dir, "volatility_weights.json")
     learner.save_weights(model_path)
-    model_state = os.path.join(output_dir, 'volatility_weights.pkl')
+    model_state = os.path.join(output_dir, "volatility_weights.pkl")
     learner.save_model_state(model_state)
 
     if verbose:
@@ -184,9 +187,9 @@ def train_volatility_model(
 
     # نمایش نتایج
     if verbose:
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📈 TRAINING RESULTS")
-        print("="*70)
+        print("=" * 70)
 
         for horizon in horizons:
             weights_info = learner.get_horizon_weights(horizon)
@@ -198,9 +201,7 @@ def train_volatility_model(
 
             # نمایش top features
             top_features = sorted(
-                weights_info.weights.items(),
-                key=lambda x: abs(x[1]),
-                reverse=True
+                weights_info.weights.items(), key=lambda x: abs(x[1]), reverse=True
             )[:5]
 
             print("\n  🔝 Top 5 Features:")
@@ -209,13 +210,19 @@ def train_volatility_model(
 
     # تحلیل اهمیت اندیکاتورها
     if verbose:
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📊 INDICATOR IMPORTANCE ANALYSIS")
-        print("="*70)
+        print("=" * 70)
 
         indicators = [
-            'atr', 'bollinger_bands', 'keltner_channel', 'donchian_channel',
-            'standard_deviation', 'historical_volatility', 'atr_percentage', 'chaikin_volatility'
+            "atr",
+            "bollinger_bands",
+            "keltner_channel",
+            "donchian_channel",
+            "standard_deviation",
+            "historical_volatility",
+            "atr_percentage",
+            "chaikin_volatility",
         ]
 
         for horizon in horizons:
@@ -227,17 +234,18 @@ def train_volatility_model(
             for indicator in indicators:
                 # جمع وزن‌های absolute برای همه ویژگی‌های این اندیکاتور
                 indicator_weights = [
-                    abs(weight) for feat, weight in weights_info.weights.items()
+                    abs(weight)
+                    for feat, weight in weights_info.weights.items()
                     if feat.startswith(indicator)
                 ]
                 if indicator_weights:
-                    indicator_importance[indicator] = sum(indicator_weights) / len(indicator_weights)
+                    indicator_importance[indicator] = sum(indicator_weights) / len(
+                        indicator_weights
+                    )
 
             # مرتب‌سازی
             sorted_importance = sorted(
-                indicator_importance.items(),
-                key=lambda x: x[1],
-                reverse=True
+                indicator_importance.items(), key=lambda x: x[1], reverse=True
             )
 
             for indicator, importance in sorted_importance:
@@ -251,18 +259,15 @@ def main():
     """
     اجرای کامل pipeline آموزش
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🚀 VOLATILITY MODEL TRAINING PIPELINE")
-    print("="*70)
+    print("=" * 70)
 
     # 1. ایجاد داده‌های آموزشی
     print("\n📦 Creating training data...")
     print("   Generating mixed volatility regime data...")
 
-    candles = create_realistic_volatility_data(
-        num_samples=2000,
-        volatility_regime='mixed'
-    )
+    candles = create_realistic_volatility_data(num_samples=2000, volatility_regime="mixed")
 
     print(f"   ✅ Generated {len(candles)} candles")
     print(f"   📅 Date range: {candles[0].timestamp} to {candles[-1].timestamp}")
@@ -276,19 +281,19 @@ def main():
     print(f"      Std:  ${np.std(closes):,.2f}")
 
     # 2. آموزش مدل
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     learner = train_volatility_model(
         candles=candles,
-        horizons=['3d', '7d', '30d'],
+        horizons=["3d", "7d", "30d"],
         test_size=0.2,
-        output_dir='models/volatility',
-        verbose=True
+        output_dir="models/volatility",
+        verbose=True,
     )
 
     # 3. تست مدل
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🧪 TESTING MODEL ON RECENT DATA")
-    print("="*70)
+    print("=" * 70)
 
     # استخراج ویژگی‌های آخرین داده
     extractor = MultiHorizonVolatilityFeatureExtractor()
@@ -303,13 +308,15 @@ def main():
     predictions = learner.predict_multi_horizon(X_test)
 
     print("\n🎯 Predictions:")
-    for horizon in ['3d', '7d', '30d']:
-        pred_value = predictions[f'pred_{horizon}'].iloc[0]
-        print(f"   {horizon}: {pred_value:+.4f} ({'افزایش نوسان' if pred_value > 0 else 'کاهش نوسان'})")
+    for horizon in ["3d", "7d", "30d"]:
+        pred_value = predictions[f"pred_{horizon}"].iloc[0]
+        print(
+            f"   {horizon}: {pred_value:+.4f} ({'افزایش نوسان' if pred_value > 0 else 'کاهش نوسان'})"
+        )
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("✅ TRAINING COMPLETED SUCCESSFULLY")
-    print("="*70)
+    print("=" * 70)
     print("\n💡 Next steps:")
     print("   1. Test the model with real market data")
     print("   2. Integrate with MultiHorizonVolatilityAnalyzer")
@@ -318,5 +325,5 @@ def main():
     print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
