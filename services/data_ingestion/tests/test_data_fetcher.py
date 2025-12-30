@@ -1,5 +1,7 @@
 import unittest
+
 from src.fetcher import DataFetcher
+
 
 class TestDataFetcher(unittest.TestCase):
     def test_load_json(self):
@@ -8,6 +10,7 @@ class TestDataFetcher(unittest.TestCase):
 
     def test_save_json(self):
         self.assertTrue(callable(DataFetcher.save_json))
+
 
 if __name__ == "__main__":
     unittest.main()
