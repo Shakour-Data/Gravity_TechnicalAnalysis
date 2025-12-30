@@ -38,10 +38,7 @@ class TestTokenDataModel:
 
     def test_token_data_creation(self):
         """Test TokenData model initialization"""
-        token_data = TokenData(
-            username="user123",
-            scopes=["read", "write"]
-        )
+        token_data = TokenData(username="user123", scopes=["read", "write"])
         assert token_data.username == "user123"
         assert token_data.scopes == ["read", "write"]
 
@@ -79,10 +76,7 @@ class TestTokenDataModel:
         """Test TokenData with expiration time"""
         exp_time = datetime.now(UTC) + timedelta(hours=1)
 
-        token_data = TokenData(
-            username="user123",
-            exp=exp_time
-        )
+        token_data = TokenData(username="user123", exp=exp_time)
         assert token_data.exp == exp_time
 
 
@@ -100,19 +94,13 @@ class TestTokenCreation:
 
     def test_create_token_with_scopes(self):
         """Test token creation with scopes"""
-        data = {
-            "sub": "user123",
-            "scopes": ["read", "write", "admin"]
-        }
+        data = {"sub": "user123", "scopes": ["read", "write", "admin"]}
         token = create_access_token(data)
 
         # Decode and verify
         import jwt
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
         assert payload["scopes"] == ["read", "write", "admin"]
 
     def test_create_token_with_custom_expiration(self):
@@ -122,11 +110,8 @@ class TestTokenCreation:
         token = create_access_token(data, expires_delta)
 
         import jwt
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
 
         exp_time = datetime.fromtimestamp(payload["exp"], tz=UTC)
         now = datetime.now(UTC)
@@ -141,11 +126,8 @@ class TestTokenCreation:
         token = create_access_token(data)
 
         import jwt
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
 
         exp_time = datetime.fromtimestamp(payload["exp"], tz=UTC)
         now = datetime.now(UTC)
@@ -156,20 +138,12 @@ class TestTokenCreation:
 
     def test_create_token_preserves_additional_claims(self):
         """Test that custom claims are preserved in token"""
-        data = {
-            "sub": "user123",
-            "email": "user@example.com",
-            "role": "analyst",
-            "level": 5
-        }
+        data = {"sub": "user123", "email": "user@example.com", "role": "analyst", "level": 5}
         token = create_access_token(data)
 
         import jwt
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
 
         assert payload["email"] == "user@example.com"
         assert payload["role"] == "analyst"
@@ -239,15 +213,10 @@ class TestTokenVerification:
     def test_verify_token_missing_sub(self):
         """Test verification fails when 'sub' claim missing"""
         import jwt
+
         # Create token without 'sub'
-        payload = {
-            "exp": datetime.now(UTC) + timedelta(hours=1)
-        }
-        token = jwt.encode(
-            payload,
-            settings.secret_key,
-            algorithm=settings.jwt_algorithm
-        )
+        payload = {"exp": datetime.now(UTC) + timedelta(hours=1)}
+        token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
         with pytest.raises(HTTPException) as exc_info:
             verify_token(token)
@@ -256,10 +225,7 @@ class TestTokenVerification:
 
     def test_verify_token_extracts_scopes(self):
         """Test that scopes are properly extracted from token"""
-        data = {
-            "sub": "user123",
-            "scopes": ["read", "write", "delete"]
-        }
+        data = {"sub": "user123", "scopes": ["read", "write", "delete"]}
         token = create_access_token(data)
 
         token_data = verify_token(token)
@@ -268,15 +234,9 @@ class TestTokenVerification:
     def test_verify_token_no_scopes(self):
         """Test that missing scopes default to empty list"""
         import jwt
-        payload = {
-            "sub": "user123",
-            "exp": datetime.now(UTC) + timedelta(hours=1)
-        }
-        token = jwt.encode(
-            payload,
-            settings.secret_key,
-            algorithm=settings.jwt_algorithm
-        )
+
+        payload = {"sub": "user123", "exp": datetime.now(UTC) + timedelta(hours=1)}
+        token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
         token_data = verify_token(token)
         assert token_data.scopes == []
@@ -324,7 +284,7 @@ class TestRateLimiterFunctionality:
             assert limiter.is_allowed("client2") is True
         assert limiter.is_allowed("client2") is False
 
-    @patch('time.time')
+    @patch("time.time")
     def test_rate_limiter_refills_over_time(self, mock_time):
         """Test that tokens refill as time passes"""
         mock_time.return_value = 0
@@ -366,94 +326,61 @@ class TestSecureAnalysisRequest:
 
     def test_valid_analysis_request(self):
         """Test creating valid analysis request"""
-        request = SecureAnalysisRequest(
-            symbol="TOTAL",
-            timeframe="1h"
-        )
+        request = SecureAnalysisRequest(symbol="TOTAL", timeframe="1h")
         assert request.symbol == "TOTAL"
         assert request.timeframe == "1h"
 
     def test_symbol_validation_uppercase(self):
         """Test that symbols are converted to uppercase"""
-        request = SecureAnalysisRequest(
-            symbol="total",
-            timeframe="1h"
-        )
+        request = SecureAnalysisRequest(symbol="total", timeframe="1h")
         assert request.symbol == "TOTAL"
 
     def test_symbol_validation_length(self):
         """Test symbol length validation"""
         with pytest.raises(ValueError) as exc:
-            SecureAnalysisRequest(
-                symbol="",
-                timeframe="1h"
-            )
+            SecureAnalysisRequest(symbol="", timeframe="1h")
         assert "between 1 and 20" in str(exc.value)
 
     def test_symbol_validation_too_long(self):
         """Test symbol too long rejected"""
         with pytest.raises(ValueError):
-            SecureAnalysisRequest(
-                symbol="X" * 21,
-                timeframe="1h"
-            )
+            SecureAnalysisRequest(symbol="X" * 21, timeframe="1h")
 
     def test_symbol_validation_invalid_characters(self):
         """Test symbol with invalid characters rejected"""
         with pytest.raises(ValueError) as exc:
-            SecureAnalysisRequest(
-                symbol="TOTAL@",
-                timeframe="1h"
-            )
+            SecureAnalysisRequest(symbol="TOTAL@", timeframe="1h")
         assert "invalid characters" in str(exc.value)
 
     def test_timeframe_validation_valid(self):
         """Test valid timeframe values"""
         valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"]
         for tf in valid_timeframes:
-            request = SecureAnalysisRequest(
-                symbol="TOTAL",
-                timeframe=tf
-            )
+            request = SecureAnalysisRequest(symbol="TOTAL", timeframe=tf)
             assert request.timeframe == tf
 
     def test_timeframe_validation_invalid(self):
         """Test invalid timeframe rejected"""
         with pytest.raises(ValueError) as exc:
-            SecureAnalysisRequest(
-                symbol="TOTAL",
-                timeframe="2h"
-            )
+            SecureAnalysisRequest(symbol="TOTAL", timeframe="2h")
         assert "Invalid timeframe" in str(exc.value)
 
     def test_max_candles_validation(self):
         """Test max_candles validation"""
         # Valid: 10 to 1000
-        request = SecureAnalysisRequest(
-            symbol="TOTAL",
-            timeframe="1h",
-            max_candles=100
-        )
+        request = SecureAnalysisRequest(symbol="TOTAL", timeframe="1h", max_candles=100)
         assert request.max_candles == 100
 
     def test_max_candles_too_small(self):
         """Test max_candles too small rejected"""
         with pytest.raises(ValueError) as exc:
-            SecureAnalysisRequest(
-                symbol="TOTAL",
-                timeframe="1h",
-                max_candles=5
-            )
+            SecureAnalysisRequest(symbol="TOTAL", timeframe="1h", max_candles=5)
         assert "between 10 and 1000" in str(exc.value)
 
     def test_max_candles_too_large(self):
         """Test max_candles too large rejected"""
         with pytest.raises(ValueError):
-            SecureAnalysisRequest(
-                symbol="TOTAL",
-                timeframe="1h",
-                max_candles=2000
-            )
+            SecureAnalysisRequest(symbol="TOTAL", timeframe="1h", max_candles=2000)
 
     def test_candles_validation_structure(self):
         """Test candles validation for structure"""
@@ -467,43 +394,26 @@ class TestSecureAnalysisRequest:
             {"open": 130, "high": 140, "low": 125, "close": 135, "volume": 1600},
             {"open": 135, "high": 145, "low": 130, "close": 140, "volume": 1700},
             {"open": 140, "high": 150, "low": 135, "close": 145, "volume": 1800},
-            {"open": 145, "high": 155, "low": 140, "close": 150, "volume": 1900}
+            {"open": 145, "high": 155, "low": 140, "close": 150, "volume": 1900},
         ]
-        request = SecureAnalysisRequest(
-            symbol="TOTAL",
-            timeframe="1h",
-            candles=candles
-        )
+        request = SecureAnalysisRequest(symbol="TOTAL", timeframe="1h", candles=candles)
         if request.candles is not None:
             assert len(request.candles) == 10
 
     def test_candles_validation_minimum_count(self):
         """Test candles minimum count requirement"""
-        candles = [
-            {"open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000}
-        ]
+        candles = [{"open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000}]
         with pytest.raises(ValueError) as exc:
-            SecureAnalysisRequest(
-                symbol="TOTAL",
-                timeframe="1h",
-                candles=candles
-            )
+            SecureAnalysisRequest(symbol="TOTAL", timeframe="1h", candles=candles)
         assert "at least 10" in str(exc.value)
 
     def test_candles_validation_negative_values(self):
         """Test that negative candle prices are rejected"""
-        candles = [
-            {"open": -100, "high": 110, "low": 90, "close": 105, "volume": 1000}
-        ] + [
-            {"open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000}
-            for _ in range(9)
+        candles = [{"open": -100, "high": 110, "low": 90, "close": 105, "volume": 1000}] + [
+            {"open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000} for _ in range(9)
         ]
         with pytest.raises(ValueError) as exc:
-            SecureAnalysisRequest(
-                symbol="TOTAL",
-                timeframe="1h",
-                candles=candles
-            )
+            SecureAnalysisRequest(symbol="TOTAL", timeframe="1h", candles=candles)
         assert "non-negative" in str(exc.value)
 
 
@@ -575,10 +485,7 @@ class TestIntegrationFlows:
         verify_token(token)
 
         # Validate secure request
-        request = SecureAnalysisRequest(
-            symbol="PETROFF",
-            timeframe="1h"
-        )
+        request = SecureAnalysisRequest(symbol="PETROFF", timeframe="1h")
         assert request.symbol == "PETROFF"
 
 
@@ -593,7 +500,7 @@ class TestEdgeCases:
             "user_name",
             "user.name",
             "123user",
-            "سلام"  # Persian text
+            "سلام",  # Persian text
         ]
 
         for username in usernames:
@@ -625,16 +532,13 @@ class TestEdgeCases:
         data = {
             "sub": "user123",
             "name": "علی احمد",  # Persian name
-            "city": "تهران"  # Tehran
+            "city": "تهران",  # Tehran
         }
         token = create_access_token(data)
 
         import jwt
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
         assert payload["name"] == "علی احمد"
         assert payload["city"] == "تهران"
 
@@ -645,7 +549,6 @@ class TestEdgeCases:
 
         for _ in range(10):
             verify_token(token)
-
 
     def test_concurrent_rate_limit_behavior(self):
         """Test rate limiter behavior with conceptual concurrency"""
