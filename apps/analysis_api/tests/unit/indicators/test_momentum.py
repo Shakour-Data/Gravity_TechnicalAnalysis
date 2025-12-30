@@ -10,23 +10,20 @@ Tests cover:
 - Helper functions
 """
 
-import pytest
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
-from datetime import datetime
+import pytest
+from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult
+from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 from gravity_tech.core.indicators.momentum import (
     MomentumIndicators,
     _ema,
     _rsi_from_changes,
-    tsi,
+    connors_rsi,
     schaff_trend_cycle,
-    connors_rsi
-)
-from gravity_tech.core.domain.entities import (
-    Candle,
-    IndicatorResult,
-    CoreSignalStrength as SignalStrength,
-    IndicatorCategory
+    tsi,
 )
 
 
@@ -61,7 +58,7 @@ class TestMomentumIndicators:
                 high=price + 1.5,
                 low=price - 1.5,
                 close=price,
-                volume=1000 + i * 10
+                volume=1000 + i * 10,
             )
             candles.append(candle)
 
@@ -113,7 +110,7 @@ class TestMomentumIndicators:
         assert "signal" in result
         assert "confidence" in result
         assert len(result["values"]) == len(prices)
-        assert result["signal"] in ['BUY', 'SELL', None]
+        assert result["signal"] in ["BUY", "SELL", None]
         assert 0 <= result["confidence"] <= 1
 
     def test_schaff_trend_cycle_function(self):
@@ -127,7 +124,7 @@ class TestMomentumIndicators:
         assert "signal" in result
         assert "confidence" in result
         assert len(result["values"]) == len(prices)
-        assert result["signal"] in ['BUY', 'SELL', None]
+        assert result["signal"] in ["BUY", "SELL", None]
         assert 0 <= result["confidence"] <= 1
 
     def test_connors_rsi_function(self):
@@ -140,7 +137,7 @@ class TestMomentumIndicators:
         assert "signal" in result
         assert "confidence" in result
         assert len(result["values"]) == len(prices)
-        assert result["signal"] in ['BUY', 'SELL', None]
+        assert result["signal"] in ["BUY", "SELL", None]
         assert 0 <= result["confidence"] <= 1
 
     def test_rsi_normal_operation(self, sample_candles):
@@ -201,15 +198,17 @@ class TestMomentumIndicators:
         """Test Stochastic calculation accuracy"""
         result = MomentumIndicators.stochastic(sample_candles, k_period=14, d_period=3)
 
-        df = pd.DataFrame({
-            'high': [c.high for c in sample_candles],
-            'low': [c.low for c in sample_candles],
-            'close': [c.close for c in sample_candles]
-        })
+        df = pd.DataFrame(
+            {
+                "high": [c.high for c in sample_candles],
+                "low": [c.low for c in sample_candles],
+                "close": [c.close for c in sample_candles],
+            }
+        )
 
-        low_min = df['low'].rolling(window=14).min()
-        high_max = df['high'].rolling(window=14).max()
-        expected_k = 100 * ((df['close'] - low_min) / (high_max - low_min))
+        low_min = df["low"].rolling(window=14).min()
+        high_max = df["high"].rolling(window=14).max()
+        expected_k = 100 * ((df["close"] - low_min) / (high_max - low_min))
         expected_d = expected_k.rolling(window=3).mean()
 
         assert abs(result.value - expected_k.iloc[-1]) < 0.01
@@ -243,9 +242,7 @@ class TestMomentumIndicators:
 
         typical_prices = pd.Series([c.typical_price for c in sample_candles])
         sma = typical_prices.rolling(window=20).mean()
-        mad = typical_prices.rolling(window=20).apply(
-            lambda x: np.abs(x - x.mean()).mean()
-        )
+        mad = typical_prices.rolling(window=20).apply(lambda x: np.abs(x - x.mean()).mean())
         expected_cci = (typical_prices - sma) / (0.015 * mad)
         expected_cci = expected_cci.iloc[-1]
 
@@ -294,15 +291,17 @@ class TestMomentumIndicators:
         """Test Williams %R calculation accuracy"""
         result = MomentumIndicators.williams_r(sample_candles, period=14)
 
-        df = pd.DataFrame({
-            'high': [c.high for c in sample_candles],
-            'low': [c.low for c in sample_candles],
-            'close': [c.close for c in sample_candles]
-        })
+        df = pd.DataFrame(
+            {
+                "high": [c.high for c in sample_candles],
+                "low": [c.low for c in sample_candles],
+                "close": [c.close for c in sample_candles],
+            }
+        )
 
-        high_max = df['high'].rolling(window=14).max()
-        low_min = df['low'].rolling(window=14).min()
-        expected_wr = -100 * ((high_max - df['close']) / (high_max - low_min))
+        high_max = df["high"].rolling(window=14).max()
+        low_min = df["low"].rolling(window=14).min()
+        expected_wr = -100 * ((high_max - df["close"]) / (high_max - low_min))
         expected_wr = expected_wr.iloc[-1]
 
         assert abs(result.value - expected_wr) < 0.01
@@ -332,17 +331,19 @@ class TestMomentumIndicators:
         """Test MFI calculation accuracy"""
         result = MomentumIndicators.mfi(sample_candles, period=14)
 
-        df = pd.DataFrame({
-            'high': [c.high for c in sample_candles],
-            'low': [c.low for c in sample_candles],
-            'close': [c.close for c in sample_candles],
-            'volume': [c.volume for c in sample_candles],
-            'typical': [c.typical_price for c in sample_candles]
-        })
+        df = pd.DataFrame(
+            {
+                "high": [c.high for c in sample_candles],
+                "low": [c.low for c in sample_candles],
+                "close": [c.close for c in sample_candles],
+                "volume": [c.volume for c in sample_candles],
+                "typical": [c.typical_price for c in sample_candles],
+            }
+        )
 
-        money_flow = df['typical'] * df['volume']
-        positive_flow = money_flow.where(df['typical'] > df['typical'].shift(1), 0)
-        negative_flow = money_flow.where(df['typical'] < df['typical'].shift(1), 0)
+        money_flow = df["typical"] * df["volume"]
+        positive_flow = money_flow.where(df["typical"] > df["typical"].shift(1), 0)
+        negative_flow = money_flow.where(df["typical"] < df["typical"].shift(1), 0)
         positive_mf = positive_flow.rolling(window=14).sum()
         negative_mf = negative_flow.rolling(window=14).sum()
         expected_mfi = 100 - (100 / (1 + (positive_mf / negative_mf)))
@@ -392,10 +393,16 @@ class TestMomentumIndicators:
 
     def test_all_indicators_with_single_candle(self):
         """Test all indicators with single candle"""
-        single_candle = [Candle(
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
-            open=100, high=101, low=99, close=100.5, volume=1000
-        )]
+        single_candle = [
+            Candle(
+                timestamp=datetime(2024, 1, 1, 12, 0, 0),
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000,
+            )
+        ]
 
         # RSI, Stochastic, CCI, ROC, Williams %R, MFI, Ultimate Oscillator باید ValueError بدهند
         with pytest.raises(ValueError):
@@ -426,11 +433,15 @@ class TestMomentumIndicators:
     def test_rsi_with_extreme_values(self, sample_candles):
         """Test RSI with extreme price movements"""
         # Create RSI extreme conditions
-        extreme_up_candles = sample_candles[:14] + [sample_candles[-1]._replace(close=sample_candles[-1].close * 2)]
+        extreme_up_candles = sample_candles[:14] + [
+            sample_candles[-1]._replace(close=sample_candles[-1].close * 2)
+        ]
         result = MomentumIndicators.rsi(extreme_up_candles)
         assert isinstance(result, IndicatorResult)
 
-        extreme_down_candles = sample_candles[:14] + [sample_candles[-1]._replace(close=sample_candles[-1].close * 0.5)]
+        extreme_down_candles = sample_candles[:14] + [
+            sample_candles[-1]._replace(close=sample_candles[-1].close * 0.5)
+        ]
         result = MomentumIndicators.rsi(extreme_down_candles)
         assert isinstance(result, IndicatorResult)
 
@@ -441,9 +452,7 @@ class TestMomentumIndicators:
         base_time = datetime(2024, 1, 1, 12, 0, 0)
         for i in range(20):
             candle = Candle(
-                timestamp=base_time,
-                open=100, high=100, low=100, close=100,
-                volume=1000
+                timestamp=base_time, open=100, high=100, low=100, close=100, volume=1000
             )
             flat_candles.append(candle)
 
@@ -458,9 +467,7 @@ class TestMomentumIndicators:
         base_time = datetime(2024, 1, 1, 12, 0, 0)
         for i in range(25):
             candle = Candle(
-                timestamp=base_time,
-                open=100, high=100, low=100, close=100,
-                volume=1000
+                timestamp=base_time, open=100, high=100, low=100, close=100, volume=1000
             )
             constant_candles.append(candle)
 
@@ -494,12 +501,18 @@ class TestMomentumIndicators:
     def test_indicator_names_formatting(self, sample_candles):
         """Test that indicator names are properly formatted"""
         assert MomentumIndicators.rsi(sample_candles, 21).indicator_name == "RSI(21)"
-        assert MomentumIndicators.stochastic(sample_candles, 21, 5).indicator_name == "Stochastic(21,5)"
+        assert (
+            MomentumIndicators.stochastic(sample_candles, 21, 5).indicator_name
+            == "Stochastic(21,5)"
+        )
         assert MomentumIndicators.cci(sample_candles, 25).indicator_name == "CCI(25)"
         assert MomentumIndicators.roc(sample_candles, 15).indicator_name == "ROC(15)"
         assert MomentumIndicators.williams_r(sample_candles, 21).indicator_name == "Williams %R(21)"
         assert MomentumIndicators.mfi(sample_candles, 21).indicator_name == "MFI(21)"
-        assert "Ultimate Oscillator" in MomentumIndicators.ultimate_oscillator(sample_candles, 10, 15, 30).indicator_name
+        assert (
+            "Ultimate Oscillator"
+            in MomentumIndicators.ultimate_oscillator(sample_candles, 10, 15, 30).indicator_name
+        )
 
     def test_description_content(self, sample_candles):
         """Test that descriptions contain relevant information"""
@@ -588,4 +601,3 @@ class TestMomentumIndicators:
         result = connors_rsi(constant_prices)
         # سیگنال معتبر (مثلاً 'SELL' یا 'BUY' یا 'HOLD') قابل قبول است
         assert result["signal"] in ["SELL", "BUY", "HOLD", None]
-
