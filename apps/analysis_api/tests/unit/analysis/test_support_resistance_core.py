@@ -20,8 +20,8 @@ class TestPivotPoints:
         result = SupportResistanceIndicators.pivot_points(sample_candles)
 
         assert result is not None
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
 
     def test_pivot_levels_in_additional_values(self, sample_candles):
         """Pivot levels should be in additional_values"""
@@ -31,7 +31,7 @@ class TestPivotPoints:
         assert result.additional_values is not None
 
         # Check for resistance and support levels (format: R1, R2, R3, S1, S2, S3)
-        assert 'R1' in result.additional_values or 'r1' in result.additional_values
+        assert "R1" in result.additional_values or "r1" in result.additional_values
 
     def test_pivot_with_uptrend(self, uptrend_candles):
         """Pivot points in uptrend"""
@@ -61,8 +61,8 @@ class TestFibonacciRetracement:
         result = SupportResistanceIndicators.fibonacci_retracement(sample_candles, lookback=50)
 
         assert result is not None
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
 
     def test_fibonacci_levels(self, sample_candles):
         """Fibonacci levels should be in result"""
@@ -98,8 +98,8 @@ class TestCamarillaPivots:
         result = SupportResistanceIndicators.camarilla_pivots(sample_candles)
 
         assert result is not None
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
 
     def test_camarilla_levels(self, sample_candles):
         """Camarilla should have R and S levels"""
@@ -109,7 +109,7 @@ class TestCamarillaPivots:
         assert result.additional_values is not None
 
         # Camarilla uses R1-R4 and S1-S4
-        assert 'R1' in result.additional_values or 'r1' in result.additional_values
+        assert "R1" in result.additional_values or "r1" in result.additional_values
 
 
 class TestSupportResistanceLevels:
@@ -120,7 +120,7 @@ class TestSupportResistanceLevels:
         result = SupportResistanceIndicators.support_resistance_levels(sample_candles, window=50)
 
         assert result is not None
-        assert hasattr(result, 'value')
+        assert hasattr(result, "value")
 
     def test_sr_levels_default_lookback(self, sample_candles):
         """S/R levels with default lookback"""
@@ -160,4 +160,3 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
