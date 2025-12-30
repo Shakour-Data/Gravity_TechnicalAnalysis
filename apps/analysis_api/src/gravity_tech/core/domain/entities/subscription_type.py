@@ -69,7 +69,7 @@ class SubscriptionType(Enum):
         return self.value
 
     @classmethod
-    def from_string(cls, value: str) -> 'SubscriptionType':
+    def from_string(cls, value: str) -> "SubscriptionType":
         """
         Create SubscriptionType from string value.
 
@@ -90,10 +90,7 @@ class SubscriptionType(Enum):
     @property
     def is_market_data(self) -> bool:
         """Check if this is a market data subscription."""
-        return self in {
-            SubscriptionType.MARKET_DATA,
-            SubscriptionType.CANDLE_DATA
-        }
+        return self in {SubscriptionType.MARKET_DATA, SubscriptionType.CANDLE_DATA}
 
     @property
     def is_analysis(self) -> bool:
@@ -102,7 +99,7 @@ class SubscriptionType(Enum):
             SubscriptionType.TECHNICAL_ANALYSIS,
             SubscriptionType.PATTERN_RECOGNITION,
             SubscriptionType.ELLIOTT_WAVE,
-            SubscriptionType.FIBONACCI_LEVELS
+            SubscriptionType.FIBONACCI_LEVELS,
         }
 
     @property
@@ -112,7 +109,7 @@ class SubscriptionType(Enum):
             SubscriptionType.TREND_INDICATORS,
             SubscriptionType.MOMENTUM_INDICATORS,
             SubscriptionType.VOLATILITY_INDICATORS,
-            SubscriptionType.VOLUME_INDICATORS
+            SubscriptionType.VOLUME_INDICATORS,
         }
 
     @property
@@ -123,7 +120,4 @@ class SubscriptionType(Enum):
     @property
     def is_system(self) -> bool:
         """Check if this is a system subscription."""
-        return self in {
-            SubscriptionType.SYSTEM_STATUS,
-            SubscriptionType.ALERTS
-        }
+        return self in {SubscriptionType.SYSTEM_STATUS, SubscriptionType.ALERTS}
