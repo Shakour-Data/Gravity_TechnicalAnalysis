@@ -26,6 +26,7 @@ class TestDisplayFormatters:
         """Test basic price formatting"""
         try:
             from gravity_tech.utils.display_formatters import format_price  # type: ignore
+
             formatted = format_price(1000.5)
             assert isinstance(formatted, str)
             assert "1000" in formatted or "1,000" in formatted
@@ -36,6 +37,7 @@ class TestDisplayFormatters:
         """Test price formatting for large numbers"""
         try:
             from gravity_tech.utils.display_formatters import format_price  # type: ignore
+
             formatted = format_price(1000000)
             assert isinstance(formatted, str)
         except ImportError:
@@ -45,6 +47,7 @@ class TestDisplayFormatters:
         """Test price formatting with decimals"""
         try:
             from gravity_tech.utils.display_formatters import format_price  # type: ignore
+
             formatted = format_price(1234.56)
             assert isinstance(formatted, str)
         except ImportError:
@@ -54,6 +57,7 @@ class TestDisplayFormatters:
         """Test percentage formatting"""
         try:
             from gravity_tech.utils.display_formatters import format_percentage  # type: ignore
+
             formatted = format_percentage(0.1234)
             assert isinstance(formatted, str)
             assert "%" in formatted
@@ -64,6 +68,7 @@ class TestDisplayFormatters:
         """Test volume formatting"""
         try:
             from gravity_tech.utils.display_formatters import format_volume  # type: ignore
+
             formatted = format_volume(1000000)
             assert isinstance(formatted, str)
             # Should contain number or abbreviated form
@@ -75,6 +80,7 @@ class TestDisplayFormatters:
         """Test timestamp formatting"""
         try:
             from gravity_tech.utils.display_formatters import format_timestamp  # type: ignore
+
             ts = datetime.now()
             formatted = format_timestamp(ts)
             assert isinstance(formatted, str)
@@ -89,10 +95,11 @@ class TestSampleDataGenerator:
         """Test sample candle data generation"""
         try:
             from gravity_tech.utils.sample_data import generate_sample_candles
+
             candles = generate_sample_candles(num_candles=100)
             assert len(candles) == 100
-            assert all(hasattr(c, 'open') for c in candles)
-            assert all(hasattr(c, 'close') for c in candles)
+            assert all(hasattr(c, "open") for c in candles)
+            assert all(hasattr(c, "close") for c in candles)
         except ImportError:
             pytest.skip("Sample data generator not available")
 
@@ -100,6 +107,7 @@ class TestSampleDataGenerator:
         """Test uptrend sample data generation"""
         try:
             from gravity_tech.utils.sample_data import generate_uptrend_data  # type: ignore
+
             candles = generate_uptrend_data(count=50)
             if candles and len(candles) > 1:
                 # Check that prices generally increase
@@ -112,6 +120,7 @@ class TestSampleDataGenerator:
         """Test downtrend sample data generation"""
         try:
             from gravity_tech.utils.sample_data import generate_downtrend_data  # type: ignore
+
             candles = generate_downtrend_data(count=50)
             if candles and len(candles) > 1:
                 _closes = [c.close for c in candles]
@@ -124,6 +133,7 @@ class TestSampleDataGenerator:
         """Test volatile sample data generation"""
         try:
             from gravity_tech.utils.sample_data import generate_volatile_data  # type: ignore
+
             candles = generate_volatile_data(count=50)
             assert len(candles) == 50
             # Volatile data should have varying closes
@@ -140,6 +150,7 @@ class TestConversionFunctions:
         """Test timeframe string to seconds conversion"""
         try:
             from gravity_tech.utils import convert_timeframe_to_seconds  # type: ignore
+
             assert convert_timeframe_to_seconds("1m") == 60
             assert convert_timeframe_to_seconds("1h") == 3600
             assert convert_timeframe_to_seconds("1d") == 86400
@@ -150,6 +161,7 @@ class TestConversionFunctions:
         """Test price unit conversion"""
         try:
             from gravity_tech.utils import convert_price  # type: ignore
+
             # Example: convert from decimal to integer representation
             result = convert_price(1234.5)
             assert result > 0
@@ -160,6 +172,7 @@ class TestConversionFunctions:
         """Test time to candle index conversion"""
         try:
             from gravity_tech.utils import get_candle_index  # type: ignore
+
             base_time = datetime.now() - timedelta(hours=100)
             current_time = datetime.now()
             index = get_candle_index(base_time, current_time, timeframe="1h")
@@ -175,6 +188,7 @@ class TestValidationHelpers:
         """Test symbol validation"""
         try:
             from gravity_tech.utils.validators import validate_symbol  # type: ignore
+
             assert validate_symbol("TOTAL") is True or True
             assert validate_symbol("PETROFF") is True or True
         except ImportError:
@@ -184,6 +198,7 @@ class TestValidationHelpers:
         """Test timeframe validation"""
         try:
             from gravity_tech.utils.validators import validate_timeframe  # type: ignore
+
             valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
             for tf in valid_timeframes:
                 assert validate_timeframe(tf) is True or True
@@ -194,6 +209,7 @@ class TestValidationHelpers:
         """Test price range validation"""
         try:
             from gravity_tech.utils.validators import validate_price  # type: ignore
+
             assert validate_price(1000) is True or True
             assert validate_price(0.5) is True or True
         except ImportError:
@@ -203,6 +219,7 @@ class TestValidationHelpers:
         """Test volume validation"""
         try:
             from gravity_tech.utils.validators import validate_volume  # type: ignore
+
             assert validate_volume(100000) is True or True
         except ImportError:
             pytest.skip("Validator not available")
@@ -214,12 +231,7 @@ class TestValidationHelpers:
             from gravity_tech.utils.validators import validate_candle  # type: ignore
 
             candle = Candle(
-                timestamp=datetime.now(),
-                open=100,
-                high=110,
-                low=90,
-                close=105,
-                volume=1000
+                timestamp=datetime.now(), open=100, high=110, low=90, close=105, volume=1000
             )
             assert validate_candle(candle) is True or True
         except ImportError:
@@ -233,6 +245,7 @@ class TestDataAggregation:
         """Test OHLC aggregation from ticks"""
         try:
             from gravity_tech.utils.aggregators import aggregate_ohlc  # type: ignore
+
             # Simulate tick data
             ticks = [
                 {"price": 100, "volume": 1000},
@@ -249,6 +262,7 @@ class TestDataAggregation:
         """Test aggregating data to multiple timeframes"""
         try:
             from gravity_tech.utils.aggregators import resample_timeframe  # type: ignore  # noqa
+
             # This is conceptual - actual implementation varies
             timeframes = ["1m", "5m", "1h", "1d"]
             for _tf in timeframes:
@@ -265,6 +279,7 @@ class TestStatisticalHelpers:
         """Test simple moving average calculation"""
         try:
             from gravity_tech.utils.statistics import calculate_sma  # type: ignore
+
             prices = [100, 102, 101, 103, 104, 103, 105, 106]
             sma = calculate_sma(prices, period=3)
             assert sma is not None
@@ -276,6 +291,7 @@ class TestStatisticalHelpers:
         """Test standard deviation calculation"""
         try:
             from gravity_tech.utils.statistics import calculate_std_dev  # type: ignore
+
             prices = [100, 102, 101, 103, 104]
             std = calculate_std_dev(prices)
             assert std >= 0
@@ -286,6 +302,7 @@ class TestStatisticalHelpers:
         """Test returns calculation"""
         try:
             from gravity_tech.utils.statistics import calculate_returns  # type: ignore
+
             prices = [100, 102, 101, 103, 105]
             returns = calculate_returns(prices)
             assert len(returns) == len(prices) - 1
@@ -296,6 +313,7 @@ class TestStatisticalHelpers:
         """Test correlation calculation"""
         try:
             from gravity_tech.utils.statistics import calculate_correlation  # type: ignore
+
             series1 = [100, 102, 101, 103, 105]
             series2 = [50, 51, 50.5, 52, 53]
             corr = calculate_correlation(series1, series2)
@@ -307,6 +325,7 @@ class TestStatisticalHelpers:
         """Test data normalization"""
         try:
             from gravity_tech.utils.statistics import normalize  # type: ignore
+
             data = [10, 20, 30, 40, 50]
             normalized = normalize(data)
             assert len(normalized) == len(data)
@@ -323,6 +342,7 @@ class TestCacheHelpers:
         """Test cache key generation"""
         try:
             from gravity_tech.utils.cache_utils import generate_cache_key  # type: ignore
+
             key1 = generate_cache_key("TOTAL", "1h", 100)
             key2 = generate_cache_key("TOTAL", "1h", 100)
             assert key1 == key2  # Same inputs should produce same key
@@ -336,6 +356,7 @@ class TestCacheHelpers:
         """Test cache expiration validation"""
         try:
             from gravity_tech.utils.cache_utils import is_cache_expired  # type: ignore
+
             base_time = datetime.now() - timedelta(minutes=5)
             expired = is_cache_expired(base_time, ttl_seconds=300)
             assert expired is True
@@ -350,11 +371,8 @@ class TestLoggingHelpers:
         """Test logging analysis results"""
         try:
             from gravity_tech.utils.logging_utils import log_analysis_result  # type: ignore
-            result = {
-                "symbol": "TOTAL",
-                "signal": "BUY",
-                "confidence": 0.95
-            }
+
+            result = {"symbol": "TOTAL", "signal": "BUY", "confidence": 0.95}
             # Should not raise
             log_analysis_result(result)
         except ImportError:
@@ -364,6 +382,7 @@ class TestLoggingHelpers:
         """Test logging performance metrics"""
         try:
             from gravity_tech.utils.logging_utils import log_performance  # type: ignore
+
             # Should handle performance logging
             log_performance("analysis", elapsed=0.123)
         except ImportError:
@@ -377,6 +396,7 @@ class TestDateTimeHelpers:
         """Test market hours calculation"""
         try:
             from gravity_tech.utils.datetime_utils import get_market_hours  # type: ignore
+
             hours = get_market_hours()
             assert len(hours) == 2  # start and end time
         except ImportError:
@@ -386,6 +406,7 @@ class TestDateTimeHelpers:
         """Test market open status check"""
         try:
             from gravity_tech.utils.datetime_utils import is_market_open  # type: ignore
+
             is_open = is_market_open()
             assert isinstance(is_open, bool)
         except ImportError:
@@ -395,6 +416,7 @@ class TestDateTimeHelpers:
         """Test next trading day calculation"""
         try:
             from gravity_tech.utils.datetime_utils import get_next_trading_day  # type: ignore
+
             next_day = get_next_trading_day()
             assert next_day > datetime.now()
         except ImportError:
@@ -408,6 +430,7 @@ class TestErrorHandling:
         """Test safe division with zero handling"""
         try:
             from gravity_tech.utils.math_utils import safe_divide  # type: ignore
+
             result = safe_divide(10, 0)
             assert result == 0 or result is None
         except ImportError:
@@ -417,6 +440,7 @@ class TestErrorHandling:
         """Test safe float conversion"""
         try:
             from gravity_tech.utils.converters import safe_float  # type: ignore
+
             assert safe_float("123.45") == 123.45
             assert safe_float("invalid") is not None or True  # Should handle gracefully
         except ImportError:
@@ -426,6 +450,7 @@ class TestErrorHandling:
         """Test handling of missing data"""
         try:
             from gravity_tech.utils.data_utils import fill_missing_values  # type: ignore
+
             data = [1, None, 3, None, 5]
             filled = fill_missing_values(data)
             assert None not in filled or True  # Should handle None values
@@ -466,4 +491,3 @@ class TestUtilityIntegration:
             assert isinstance(pct_formatted, str)
         except ImportError:
             pytest.skip("Formatters not available")
-
