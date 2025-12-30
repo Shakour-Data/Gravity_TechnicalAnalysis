@@ -1,7 +1,12 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from gravity_tech.core.contracts.analysis import TechnicalAnalysisResult
-from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult, SignalStrength
+from gravity_tech.core.domain.entities import (
+    Candle,
+    IndicatorCategory,
+    IndicatorResult,
+    SignalStrength,
+)
 from gravity_tech.services.data_ingestor_service import DataIngestorService
 from gravity_tech.services.ingestion_payload import build_ingestion_payload
 
@@ -9,7 +14,7 @@ from gravity_tech.services.ingestion_payload import build_ingestion_payload
 def test_persist_direct_invokes_persist_entry(monkeypatch):
     candles = [
         Candle(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             open=100,
             high=110,
             low=95,
