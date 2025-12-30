@@ -11,19 +11,14 @@ Tests cover:
 - Helper functions
 """
 
-import pytest
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from gravity_tech.core.indicators.volume import (
-    VolumeIndicators
-)
-from gravity_tech.core.domain.entities import (
-    Candle,
-    IndicatorResult,
-    CoreSignalStrength as SignalStrength,
-    IndicatorCategory
-)
+import pytest
+from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult
+from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
+from gravity_tech.core.indicators.volume import VolumeIndicators
 
 
 class TestVolumeIndicators:
@@ -48,14 +43,14 @@ class TestVolumeIndicators:
             volumes.append(max(100, volume))
 
         candles = []
-        for i, (price, volume) in enumerate(zip(prices, volumes)):
+        for i, (price, volume) in enumerate(zip(prices, volumes, strict=False)):
             candle = Candle(
                 timestamp=base_time,
                 open=price - 0.5,
                 high=price + 1.5,
                 low=price - 1.5,
                 close=price,
-                volume=int(volume)
+                volume=int(volume),
             )
             candles.append(candle)
 
@@ -88,17 +83,14 @@ class TestVolumeIndicators:
         result = VolumeIndicators.obv(sample_candles)
 
         # Manual OBV calculation
-        df = pd.DataFrame([{
-            'close': c.close,
-            'volume': c.volume
-        } for c in sample_candles])
+        df = pd.DataFrame([{"close": c.close, "volume": c.volume} for c in sample_candles])
 
         obv_manual = [0]
         for i in range(1, len(df)):
-            if df['close'].iloc[i] > df['close'].iloc[i-1]:
-                obv_manual.append(obv_manual[-1] + df['volume'].iloc[i])
-            elif df['close'].iloc[i] < df['close'].iloc[i-1]:
-                obv_manual.append(obv_manual[-1] - df['volume'].iloc[i])
+            if df["close"].iloc[i] > df["close"].iloc[i - 1]:
+                obv_manual.append(obv_manual[-1] + df["volume"].iloc[i])
+            elif df["close"].iloc[i] < df["close"].iloc[i - 1]:
+                obv_manual.append(obv_manual[-1] - df["volume"].iloc[i])
             else:
                 obv_manual.append(obv_manual[-1])
 
@@ -111,9 +103,13 @@ class TestVolumeIndicators:
 
         # Signal should be based on OBV trend vs price trend
         assert result.signal in [
-            SignalStrength.VERY_BULLISH, SignalStrength.BULLISH,
-            SignalStrength.BEARISH_BROKEN, SignalStrength.NEUTRAL,
-            SignalStrength.BEARISH_BROKEN, SignalStrength.BEARISH, SignalStrength.VERY_BEARISH
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.BULLISH,
+            SignalStrength.BEARISH_BROKEN,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BEARISH_BROKEN,
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
         ]
 
     def test_cmf_normal_operation(self, sample_candles):
@@ -130,17 +126,19 @@ class TestVolumeIndicators:
         """Test CMF calculation accuracy"""
         result = VolumeIndicators.cmf(sample_candles, period=10)
 
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume
-        } for c in sample_candles])
+        df = pd.DataFrame(
+            [
+                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                for c in sample_candles
+            ]
+        )
 
         # Manual CMF calculation
-        mf_multiplier = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low'])
-        mf_volume = mf_multiplier * df['volume']
-        expected_cmf = mf_volume.rolling(window=10).sum() / df['volume'].rolling(window=10).sum()
+        mf_multiplier = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (
+            df["high"] - df["low"]
+        )
+        mf_volume = mf_multiplier * df["volume"]
+        expected_cmf = mf_volume.rolling(window=10).sum() / df["volume"].rolling(window=10).sum()
         expected_cmf = expected_cmf.iloc[-1]
 
         assert abs(result.value - expected_cmf) < 0.01
@@ -174,17 +172,22 @@ class TestVolumeIndicators:
         """Test VWAP calculation accuracy"""
         result = VolumeIndicators.vwap(sample_candles)
 
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume,
-            'typical': lambda c: (c.high + c.low + c.close) / 3
-        } for c in sample_candles])
+        df = pd.DataFrame(
+            [
+                {
+                    "high": c.high,
+                    "low": c.low,
+                    "close": c.close,
+                    "volume": c.volume,
+                    "typical": lambda c: (c.high + c.low + c.close) / 3,
+                }
+                for c in sample_candles
+            ]
+        )
 
-        df['typical'] = df.apply(lambda row: (row['high'] + row['low'] + row['close']) / 3, axis=1)
-        df['pv'] = df['typical'] * df['volume']
-        expected_vwap = df['pv'].cumsum() / df['volume'].cumsum()
+        df["typical"] = df.apply(lambda row: (row["high"] + row["low"] + row["close"]) / 3, axis=1)
+        df["pv"] = df["typical"] * df["volume"]
+        expected_vwap = df["pv"].cumsum() / df["volume"].cumsum()
         expected_vwap = expected_vwap.iloc[-1]
 
         assert abs(result.value - expected_vwap) < 0.01
@@ -195,22 +198,24 @@ class TestVolumeIndicators:
         candles = []
         base_price = 40000
         base_time = datetime.now() - timedelta(days=100)
-        
+
         for i in range(100):
             open_price = base_price + (i * 10)
             close_price = open_price + ((i % 10) - 5) * 50
             high_price = max(open_price, close_price) + 100
             low_price = min(open_price, close_price) - 100
-            
-            candles.append(Candle(
-                timestamp=base_time + timedelta(hours=i),
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=1000 + (i * 10)
-            ))
-        
+
+            candles.append(
+                Candle(
+                    timestamp=base_time + timedelta(hours=i),
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=1000 + (i * 10),
+                )
+            )
+
         # Test price above VWAP
         high_price_candle = candles[-1]._replace(close=candles[-1].close * 1.05)
         test_candles = candles[:-1] + [high_price_candle]
@@ -238,16 +243,16 @@ class TestVolumeIndicators:
         """Test AD Line calculation accuracy"""
         result = VolumeIndicators.ad_line(sample_candles)
 
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume
-        } for c in sample_candles])
+        df = pd.DataFrame(
+            [
+                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                for c in sample_candles
+            ]
+        )
 
         # Manual AD Line calculation
-        clv = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low'])
-        expected_ad = (clv * df['volume']).cumsum()
+        clv = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (df["high"] - df["low"])
+        expected_ad = (clv * df["volume"]).cumsum()
         expected_ad = expected_ad.iloc[-1]
 
         assert abs(result.value - expected_ad) < 0.01
@@ -265,13 +270,10 @@ class TestVolumeIndicators:
         """Test PVT calculation accuracy"""
         result = VolumeIndicators.pvt(sample_candles)
 
-        df = pd.DataFrame([{
-            'close': c.close,
-            'volume': c.volume
-        } for c in sample_candles])
+        df = pd.DataFrame([{"close": c.close, "volume": c.volume} for c in sample_candles])
 
-        price_change = df['close'].pct_change()
-        expected_pvt = (price_change * df['volume']).cumsum()
+        price_change = df["close"].pct_change()
+        expected_pvt = (price_change * df["volume"]).cumsum()
         expected_pvt = expected_pvt.iloc[-1]
 
         assert abs(result.value - expected_pvt) < 0.01
@@ -329,10 +331,16 @@ class TestVolumeIndicators:
 
     def test_all_indicators_with_single_candle(self):
         """Test all indicators with single candle"""
-        single_candle = [Candle(
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
-            open=100, high=101, low=99, close=100.5, volume=1000
-        )]
+        single_candle = [
+            Candle(
+                timestamp=datetime(2024, 1, 1, 12, 0, 0),
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000,
+            )
+        ]
         # همه اندیکاتورها باید ValueError بدهند
         with pytest.raises(ValueError):
             VolumeIndicators.obv(single_candle)
@@ -433,15 +441,24 @@ class TestVolumeIndicators:
         assert VolumeIndicators.vwap(sample_candles).indicator_name == "VWAP"
         assert VolumeIndicators.ad_line(sample_candles).indicator_name == "A/D Line"
         assert VolumeIndicators.pvt(sample_candles).indicator_name == "PVT"
-        assert VolumeIndicators.volume_oscillator(sample_candles, short_period=3, long_period=8).indicator_name == "Volume Oscillator(3,8)"
+        assert (
+            VolumeIndicators.volume_oscillator(
+                sample_candles, short_period=3, long_period=8
+            ).indicator_name
+            == "Volume Oscillator(3,8)"
+        )
 
     def test_description_content(self, sample_candles):
         """Test that descriptions contain relevant information"""
         result_obv = VolumeIndicators.obv(sample_candles)
-        assert "حجم" in result_obv.description and ("تأیید" in result_obv.description or "واگرا" in result_obv.description)
+        assert "حجم" in result_obv.description and (
+            "تأیید" in result_obv.description or "واگرا" in result_obv.description
+        )
 
         result_cmf = VolumeIndicators.cmf(sample_candles)
-        assert "جریان پول" in result_cmf.description and ("مثبت" in result_cmf.description or "منفی" in result_cmf.description)
+        assert "جریان پول" in result_cmf.description and (
+            "مثبت" in result_cmf.description or "منفی" in result_cmf.description
+        )
 
         result_vwap = VolumeIndicators.vwap(sample_candles)
         assert "VWAP" in result_vwap.description and "%" in result_vwap.description
@@ -489,4 +506,3 @@ class TestVolumeIndicators:
 
         result_ad = VolumeIndicators.ad_line(divergence_candles)
         assert isinstance(result_ad, IndicatorResult)
-
