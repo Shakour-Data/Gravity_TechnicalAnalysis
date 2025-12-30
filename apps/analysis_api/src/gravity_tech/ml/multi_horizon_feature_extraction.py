@@ -7,13 +7,13 @@ Multi-Horizon Feature Extraction for ML Weight Learning
 - 30 روز (بلندمدت - Position Trading)
 """
 
-
 import logging
 from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.patterns.candlestick import CandlestickPatterns
@@ -32,7 +32,9 @@ class TrendSeriesCache:
     lows: np.ndarray
     volumes: np.ndarray
 
+
 logger = logging.getLogger(__name__)
+
 
 class MultiHorizonFeatureExtractor:
     """
@@ -42,11 +44,7 @@ class MultiHorizonFeatureExtractor:
     # افق‌های زمانی (روز)
     HORIZONS = [3, 7, 30]
 
-    def __init__(
-        self,
-        lookback_period: int = 100,
-        horizons: list[int | str] | None = None
-    ):
+    def __init__(self, lookback_period: int = 100, horizons: list[int | str] | None = None):
         """
         Initialize multi-horizon feature extractor
 
@@ -57,11 +55,13 @@ class MultiHorizonFeatureExtractor:
             (پارامترها قابل‌تنظیم برای اسکریپت‌های آموزش)
         """
         self.lookback_period = lookback_period
+
         # تبدیل robust horizons به int (حتی اگر ورودی ['3d', ...] یا ترکیبی باشد)
         def _to_int_horizon(h):
             if isinstance(h, str):
-                return int(h.lower().replace('d','').strip())
+                return int(h.lower().replace("d", "").strip())
             return int(h)
+
         if horizons is None:
             self.horizons = self.HORIZONS
         else:
@@ -69,10 +69,7 @@ class MultiHorizonFeatureExtractor:
         # حداکثر افق برای محاسبات
         self.max_horizon = max(self.horizons)
 
-    def extract_indicator_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_indicator_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         استخراج ویژگی‌های اندیکاتورها (سطح 1)
 
@@ -84,13 +81,13 @@ class MultiHorizonFeatureExtractor:
 
         # 7 اندیکاتور موجود
         indicators = {
-            'sma': TrendIndicators.sma(candles, period=20),
-            'ema': TrendIndicators.ema(candles, period=20),
-            'wma': TrendIndicators.wma(candles, period=20),
-            'dema': TrendIndicators.dema(candles, period=20),
-            'tema': TrendIndicators.tema(candles, period=20),
-            'macd': TrendIndicators.macd(candles),
-            'adx': TrendIndicators.adx(candles)
+            "sma": TrendIndicators.sma(candles, period=20),
+            "ema": TrendIndicators.ema(candles, period=20),
+            "wma": TrendIndicators.wma(candles, period=20),
+            "dema": TrendIndicators.dema(candles, period=20),
+            "tema": TrendIndicators.tema(candles, period=20),
+            "macd": TrendIndicators.macd(candles),
+            "adx": TrendIndicators.adx(candles),
         }
 
         features = {}
@@ -99,16 +96,13 @@ class MultiHorizonFeatureExtractor:
             # سیگنال نرمال شده [-1, 1]
             signal_score = result.signal.get_score() / 2.0
 
-            features[f'{name}_signal'] = signal_score
-            features[f'{name}_confidence'] = result.confidence
-            features[f'{name}_weighted'] = signal_score * result.confidence
+            features[f"{name}_signal"] = signal_score
+            features[f"{name}_confidence"] = result.confidence
+            features[f"{name}_weighted"] = signal_score * result.confidence
 
         return features
 
-    def extract_dimension_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_dimension_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         استخراج ویژگی‌های 4 بُعد (سطح 2)
 
@@ -131,7 +125,7 @@ class MultiHorizonFeatureExtractor:
                 TrendIndicators.dema(candles, 20),
                 TrendIndicators.tema(candles, 20),
                 TrendIndicators.macd(candles),
-                TrendIndicators.adx(candles)
+                TrendIndicators.adx(candles),
             ]
 
             weighted_sum = sum(
@@ -148,9 +142,9 @@ class MultiHorizonFeatureExtractor:
             dim1_score = 0.0
             dim1_confidence = 0.5
 
-        features['dim1_indicators_score'] = dim1_score / 2.0  # نرمال به [-1, 1]
-        features['dim1_indicators_confidence'] = dim1_confidence
-        features['dim1_indicators_weighted'] = (dim1_score / 2.0) * dim1_confidence
+        features["dim1_indicators_score"] = dim1_score / 2.0  # نرمال به [-1, 1]
+        features["dim1_indicators_confidence"] = dim1_confidence
+        features["dim1_indicators_weighted"] = (dim1_score / 2.0) * dim1_confidence
 
         # ═══════════════════════════════════════════════════════
         # بُعد 2: الگوهای شمعی
@@ -174,9 +168,9 @@ class MultiHorizonFeatureExtractor:
             dim2_score = 0.0
             dim2_confidence = 0.5
 
-        features['dim2_candlestick_score'] = dim2_score
-        features['dim2_candlestick_confidence'] = dim2_confidence
-        features['dim2_candlestick_weighted'] = dim2_score * dim2_confidence
+        features["dim2_candlestick_score"] = dim2_score
+        features["dim2_candlestick_confidence"] = dim2_confidence
+        features["dim2_candlestick_weighted"] = dim2_score * dim2_confidence
 
         # ═══════════════════════════════════════════════════════
         # بُعد 3: امواج الیوت
@@ -196,9 +190,9 @@ class MultiHorizonFeatureExtractor:
             dim3_score = 0.0
             dim3_confidence = 0.5
 
-        features['dim3_elliott_score'] = dim3_score
-        features['dim3_elliott_confidence'] = dim3_confidence
-        features['dim3_elliott_weighted'] = dim3_score * dim3_confidence
+        features["dim3_elliott_score"] = dim3_score
+        features["dim3_elliott_confidence"] = dim3_confidence
+        features["dim3_elliott_weighted"] = dim3_score * dim3_confidence
 
         # ═══════════════════════════════════════════════════════
         # بُعد 4: الگوهای کلاسیک
@@ -221,16 +215,14 @@ class MultiHorizonFeatureExtractor:
             dim4_score = 0.0
             dim4_confidence = 0.5
 
-        features['dim4_classical_score'] = dim4_score
-        features['dim4_classical_confidence'] = dim4_confidence
-        features['dim4_classical_weighted'] = dim4_score * dim4_confidence
+        features["dim4_classical_score"] = dim4_score
+        features["dim4_classical_confidence"] = dim4_confidence
+        features["dim4_classical_weighted"] = dim4_score * dim4_confidence
 
         return features
 
     def calculate_multi_horizon_returns(
-        self,
-        candles: list[Candle],
-        current_idx: int
+        self, candles: list[Candle], current_idx: int
     ) -> dict[str, float]:
         """
         محاسبه بازدهی برای چندین افق زمانی
@@ -257,20 +249,22 @@ class MultiHorizonFeatureExtractor:
                 future_candle = candles[future_idx]
                 # Validate future candle
                 if not isinstance(future_candle, Candle):
-                    raise TypeError(f"Expected Candle at index {future_idx}, got {type(future_candle)}")
+                    raise TypeError(
+                        f"Expected Candle at index {future_idx}, got {type(future_candle)}"
+                    )
                 future_price = future_candle.close
                 return_pct = (future_price - current_price) / current_price
-                returns[f'return_{horizon}d'] = return_pct
+                returns[f"return_{horizon}d"] = return_pct
             else:
                 # داده کافی نیست
-                returns[f'return_{horizon}d'] = None
+                returns[f"return_{horizon}d"] = None
 
         return returns
 
     def extract_training_dataset(
         self,
         candles: list[Candle],
-        level: str = "indicators"  # "indicators" or "dimensions"
+        level: str = "indicators",  # "indicators" or "dimensions"
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         استخراج دیتاست آموزشی با چندین هدف
@@ -340,7 +334,7 @@ class MultiHorizonFeatureExtractor:
         )
 
         for horizon in self.horizons:
-            col = f'return_{horizon}d'
+            col = f"return_{horizon}d"
             mean_return = Y[col].mean()
             std_return = Y[col].std()
             logger.debug(
@@ -387,31 +381,27 @@ class MultiHorizonFeatureExtractor:
             val = series[idx]
             if np.isnan(val):
                 return None
-            targets[f'return_{horizon}d'] = float(val)
+            targets[f"return_{horizon}d"] = float(val)
         return targets
 
-    def create_summary_statistics(
-        self,
-        X: pd.DataFrame,
-        Y: pd.DataFrame
-    ) -> dict:
+    def create_summary_statistics(self, X: pd.DataFrame, Y: pd.DataFrame) -> dict:
         """
         آمار خلاصه از دیتاست
         """
         return {
-            'n_samples': len(X),
-            'n_features': X.shape[1],
-            'n_horizons': Y.shape[1],
-            'horizons': self.horizons,
-            'feature_names': list(X.columns),
-            'target_statistics': {
-                f'return_{h}d': {
-                    'mean': Y[f'return_{h}d'].mean(),
-                    'std': Y[f'return_{h}d'].std(),
-                    'min': Y[f'return_{h}d'].min(),
-                    'max': Y[f'return_{h}d'].max(),
-                    'positive_ratio': (Y[f'return_{h}d'] > 0).mean()
+            "n_samples": len(X),
+            "n_features": X.shape[1],
+            "n_horizons": Y.shape[1],
+            "horizons": self.horizons,
+            "feature_names": list(X.columns),
+            "target_statistics": {
+                f"return_{h}d": {
+                    "mean": Y[f"return_{h}d"].mean(),
+                    "std": Y[f"return_{h}d"].std(),
+                    "min": Y[f"return_{h}d"].min(),
+                    "max": Y[f"return_{h}d"].max(),
+                    "positive_ratio": (Y[f"return_{h}d"] > 0).mean(),
                 }
                 for h in self.horizons
-            }
+            },
         }
