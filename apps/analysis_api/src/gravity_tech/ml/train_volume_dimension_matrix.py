@@ -22,12 +22,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
 from gravity_tech.models.schemas import Candle
 
 
 @dataclass
 class TrainingScenario:
     """یک سناریوی آموزشی"""
+
     name: str
     description: str
     candles: list[Candle]
@@ -58,7 +60,7 @@ class VolumeMatrixTrainer:
             "momentum": {},
             "volatility": {},
             "cycle": {},
-            "support_resistance": {}
+            "support_resistance": {},
         }
 
     # ═══════════════════════════════════════════════════════════════════
@@ -84,14 +86,16 @@ class VolumeMatrixTrainer:
             # حجم بالا در کندل‌های صعودی
             volume = np.random.uniform(1800, 2500)  # بالاتر از میانگین
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -104,7 +108,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=+0.08,
             expected_cycle_adjustment=+0.15,
             expected_sr_adjustment=+0.12,
-            explanation="حجم روند صعودی را تایید و تقویت می‌کند"
+            explanation="حجم روند صعودی را تایید و تقویت می‌کند",
         )
 
     def create_scenario_2_strong_trend_divergent_volume(self) -> TrainingScenario:
@@ -127,14 +131,16 @@ class VolumeMatrixTrainer:
             volume = 2000 - (i * 20)  # کاهش تدریجی
             volume = max(volume, 800)
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -147,7 +153,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=-0.05,
             expected_cycle_adjustment=-0.10,
             expected_sr_adjustment=-0.08,
-            explanation="واگرایی حجم نشانه ضعف روند است"
+            explanation="واگرایی حجم نشانه ضعف روند است",
         )
 
     def create_scenario_3_overbought_high_volume(self) -> TrainingScenario:
@@ -167,14 +173,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 50)
             volume = np.random.uniform(2200, 3000)  # حجم خیلی بالا
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -186,14 +194,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 100)
             volume = np.random.uniform(2500, 3500)  # حجم بیشتر!
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + (i + 30) * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + (i + 30) * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -206,7 +216,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=+0.10,  # نوسان افزایش
             expected_cycle_adjustment=-0.12,
             expected_sr_adjustment=-0.10,
-            explanation="حجم بالا در اشباع خرید نشانه exhaustion"
+            explanation="حجم بالا در اشباع خرید نشانه exhaustion",
         )
 
     def create_scenario_4_bb_squeeze_volume_spike(self) -> TrainingScenario:
@@ -226,14 +236,16 @@ class VolumeMatrixTrainer:
             low_price = min(open_price, close_price) - np.random.uniform(0, 50)
             volume = np.random.uniform(800, 1200)  # حجم پایین
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
         # مرحله 2: Volume Spike (شکست) - 20 کندل
         for i in range(20):
@@ -243,14 +255,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 50)
             volume = np.random.uniform(2500, 3500)  # volume spike!
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + (i + 30) * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + (i + 30) * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -263,7 +277,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=+0.22,  # تاثیر قوی
             expected_cycle_adjustment=+0.18,
             expected_sr_adjustment=+0.20,
-            explanation="Volume spike بعد از squeeze نشانه شکست قوی"
+            explanation="Volume spike بعد از squeeze نشانه شکست قوی",
         )
 
     def create_scenario_5_breakout_high_volume(self) -> TrainingScenario:
@@ -284,14 +298,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 100)
             volume = np.random.uniform(1200, 1600)
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
         # مرحله 2: شکست با حجم بالا (25 کندل)
         base_price = resistance_level
@@ -302,14 +318,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 80)
             volume = np.random.uniform(2800, 3800)  # حجم 3× میانگین
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + (i + 25) * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + (i + 25) * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -322,7 +340,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=+0.12,
             expected_cycle_adjustment=+0.16,
             expected_sr_adjustment=+0.28,  # تاثیر بسیار قوی
-            explanation="حجم بالا breakout را تایید می‌کند"
+            explanation="حجم بالا breakout را تایید می‌کند",
         )
 
     def create_scenario_6_breakout_low_volume(self) -> TrainingScenario:
@@ -343,14 +361,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 100)
             volume = np.random.uniform(1400, 1800)
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
         # مرحله 2: fake breakout با حجم پایین (10 کندل)
         base_price = resistance_level
@@ -361,14 +381,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 50)
             volume = np.random.uniform(900, 1300)  # حجم پایین!
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + (i + 20) * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + (i + 20) * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -380,14 +402,16 @@ class VolumeMatrixTrainer:
             low_price = close_price - np.random.uniform(0, 100)
             volume = np.random.uniform(1600, 2200)
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + (i + 30) * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + (i + 30) * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -400,7 +424,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=-0.08,
             expected_cycle_adjustment=-0.10,
             expected_sr_adjustment=-0.25,  # تاثیر منفی قوی
-            explanation="حجم پایین نشانه fake breakout"
+            explanation="حجم پایین نشانه fake breakout",
         )
 
     def create_scenario_7_accumulation_volume_spike(self) -> TrainingScenario:
@@ -420,14 +444,16 @@ class VolumeMatrixTrainer:
             low_price = min(open_price, close_price) - np.random.uniform(0, 80)
             volume = np.random.uniform(900, 1300)  # حجم پایین
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + i * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + i * 3600,
+                )
+            )
 
         # مرحله 2: Volume Spike + شروع صعود (15 کندل)
         for i in range(15):
@@ -437,14 +463,16 @@ class VolumeMatrixTrainer:
             low_price = open_price - np.random.uniform(0, 50)
             volume = np.random.uniform(2500, 3500)  # volume spike
 
-            candles.append(Candle(
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-                timestamp=1700000000 + (i + 35) * 3600
-            ))
+            candles.append(
+                Candle(
+                    open=open_price,
+                    high=high_price,
+                    low=low_price,
+                    close=close_price,
+                    volume=volume,
+                    timestamp=1700000000 + (i + 35) * 3600,
+                )
+            )
 
             base_price = close_price
 
@@ -457,7 +485,7 @@ class VolumeMatrixTrainer:
             expected_volatility_adjustment=+0.15,
             expected_cycle_adjustment=+0.25,  # تاثیر قوی
             expected_sr_adjustment=+0.16,
-            explanation="Volume spike در accumulation = شروع markup"
+            explanation="Volume spike در accumulation = شروع markup",
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -519,36 +547,36 @@ class VolumeMatrixTrainer:
                 "std": float(np.std(trend_adjustments)),
                 "min": float(np.min(trend_adjustments)),
                 "max": float(np.max(trend_adjustments)),
-                "median": float(np.median(trend_adjustments))
+                "median": float(np.median(trend_adjustments)),
             },
             "momentum": {
                 "mean": float(np.mean(momentum_adjustments)),
                 "std": float(np.std(momentum_adjustments)),
                 "min": float(np.min(momentum_adjustments)),
                 "max": float(np.max(momentum_adjustments)),
-                "median": float(np.median(momentum_adjustments))
+                "median": float(np.median(momentum_adjustments)),
             },
             "volatility": {
                 "mean": float(np.mean(volatility_adjustments)),
                 "std": float(np.std(volatility_adjustments)),
                 "min": float(np.min(volatility_adjustments)),
                 "max": float(np.max(volatility_adjustments)),
-                "median": float(np.median(volatility_adjustments))
+                "median": float(np.median(volatility_adjustments)),
             },
             "cycle": {
                 "mean": float(np.mean(cycle_adjustments)),
                 "std": float(np.std(cycle_adjustments)),
                 "min": float(np.min(cycle_adjustments)),
                 "max": float(np.max(cycle_adjustments)),
-                "median": float(np.median(cycle_adjustments))
+                "median": float(np.median(cycle_adjustments)),
             },
             "support_resistance": {
                 "mean": float(np.mean(sr_adjustments)),
                 "std": float(np.std(sr_adjustments)),
                 "min": float(np.min(sr_adjustments)),
                 "max": float(np.max(sr_adjustments)),
-                "median": float(np.median(sr_adjustments))
-            }
+                "median": float(np.median(sr_adjustments)),
+            },
         }
 
         # ذخیره وزن‌ها (در اینجا فقط آمار است)
@@ -574,7 +602,7 @@ class VolumeMatrixTrainer:
         filepath_obj = Path(filepath)
         filepath_obj.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self.weights, f, indent=2, ensure_ascii=False)
 
         print(f"\n✅ Weights saved to: {filepath}")
@@ -601,6 +629,7 @@ class VolumeMatrixTrainer:
 # ═══════════════════════════════════════════════════════════════════
 # Main Execution
 # ═══════════════════════════════════════════════════════════════════
+
 
 def main():
     """اجرای کامل آموزش"""
