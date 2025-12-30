@@ -74,10 +74,10 @@ def accumulation_distribution(candles: list[Candle]) -> IndicatorResult:
     # Calculate Accumulation/Distribution Line
     adl = mfv.cumsum()
 
-    adl_current = adl[-1]
+    adl_current = adl.iloc[-1]
 
     # Signal based on trend
-    if adl_current > adl[-10:].mean():
+    if adl_current > adl.iloc[-10:].mean():
         signal = SignalStrength.BULLISH
         confidence = 0.7
     elif adl_current < adl[-10:].mean():
@@ -119,7 +119,7 @@ def volume_rate_of_change(candles: list[Candle], period: int = 14) -> IndicatorR
     # Calculate Volume Rate of Change
     vroc = ((volumes - volumes.shift(period)) / volumes.shift(period)) * 100
 
-    vroc_current = vroc[-1]
+    vroc_current = vroc.iloc[-1]
 
     # Signal based on VROC levels
     if vroc_current > 50:
@@ -252,7 +252,7 @@ def volume_oscillator(
     # Calculate Volume Oscillator
     vo = pd.Series(((short_ma - long_ma) / long_ma) * 100)
 
-    vo_current = vo[-1]
+    vo_current = vo.iloc[-1]
 
     # Signal based on VO levels
     if vo_current > 20:
@@ -399,7 +399,7 @@ def cmf(candles: list[Candle], period: int = 20) -> IndicatorResult:
     volume_sum = df["volume"].rolling(window=period).sum()
     volume_sum = pd.Series(volume_sum).replace(0, 1.0)
     cmf = pd.Series(mf_volume.rolling(window=period).sum() / volume_sum)
-    cmf_current = cmf[-1]
+    cmf_current = cmf.iloc[-1]
 
     if pd.isna(cmf_current):
         cmf_current = 0.0
@@ -508,11 +508,11 @@ def ad_line(candles: list[Candle]) -> IndicatorResult:
     clv = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (df["high"] - df["low"])
     ad = (clv * df["volume"]).cumsum()
 
-    ad_current = ad[-1]
+    ad_current = ad.iloc[-1]
     ad_sma = ad.rolling(window=20).mean()
 
     if not ad_sma.empty:
-        ad_sma_current = ad_sma[-1]
+        ad_sma_current = ad_sma.iloc[-1]
     else:
         ad_sma_current = ad_current
 
@@ -566,14 +566,14 @@ def pvt(candles: list[Candle]) -> IndicatorResult:
     price_change = df["close"].pct_change()
     pvt = (price_change * df["volume"]).cumsum()
 
-    pvt_current = pvt[-1]
+    pvt_current = pvt.iloc[-1]
     pvt_sma = pvt.rolling(window=20).mean()
 
     # Check trend
     pvt_trend = pvt.tail(5).diff().mean()
 
     if not pvt_sma.empty:
-        pvt_sma_current = pvt_sma[-1]
+        pvt_sma_current = pvt_sma.iloc[-1]
     else:
         pvt_sma_current = pvt_current
 
