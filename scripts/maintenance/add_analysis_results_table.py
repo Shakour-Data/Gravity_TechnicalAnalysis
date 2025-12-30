@@ -2,6 +2,7 @@
 """
 Add analysis_results table to the database
 """
+
 import sqlite3
 from pathlib import Path
 
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS analysis_results (
 );
 """
 
+
 def main():
     if not db_path.exists():
         print(f"❌ Database not found at {db_path}")
@@ -43,6 +45,7 @@ def main():
         print(f"❌ Error creating table: {e}")
     finally:
         conn.close()
+
 
 if __name__ == "__main__":
     main()
