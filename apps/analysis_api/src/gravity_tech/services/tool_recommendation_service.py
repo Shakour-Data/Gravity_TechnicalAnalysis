@@ -17,6 +17,7 @@ from typing import Any
 from uuid import uuid4
 
 import numpy as np
+
 from gravity_tech.core.contracts.analysis import AnalysisRequest
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.indicators.momentum import MomentumIndicators
@@ -32,7 +33,10 @@ class ToolRecommendationService:
     """Concrete implementation consumed by the API layer."""
 
     def __init__(self, catalog_path: Path | None = None) -> None:
-        self.catalog_path = catalog_path or Path(__file__).resolve().parents[2] / "configs" / "tools" / "catalog.json"
+        self.catalog_path = (
+            catalog_path
+            or Path(__file__).resolve().parents[2] / "configs" / "tools" / "catalog.json"
+        )
         self.catalog = self._load_catalog()
         self._tool_lookup = {tool["name"].lower(): tool for tool in self.catalog}
         self._cache: dict[str, dict[str, Any]] = {}
@@ -154,8 +158,12 @@ class ToolRecommendationService:
             )
             if include_ml_scoring:
                 ml_scoring = {
-                    "overall_signal": analysis.overall_signal.value if analysis.overall_signal else "NEUTRAL",
-                    "trend_signal": analysis.overall_trend_signal.value if analysis.overall_trend_signal else "NEUTRAL",
+                    "overall_signal": analysis.overall_signal.value
+                    if analysis.overall_signal
+                    else "NEUTRAL",
+                    "trend_signal": analysis.overall_trend_signal.value
+                    if analysis.overall_trend_signal
+                    else "NEUTRAL",
                     "momentum_signal": analysis.overall_momentum_signal.value
                     if analysis.overall_momentum_signal
                     else "NEUTRAL",
@@ -164,8 +172,12 @@ class ToolRecommendationService:
             if include_patterns and analysis.candlestick_patterns:
                 patterns = [
                     {
-                        "type": pattern.pattern_type.value if hasattr(pattern.pattern_type, "value") else str(pattern.pattern_type),
-                        "signal": pattern.signal.value if hasattr(pattern.signal, "value") else str(pattern.signal),
+                        "type": pattern.pattern_type.value
+                        if hasattr(pattern.pattern_type, "value")
+                        else str(pattern.pattern_type),
+                        "signal": pattern.signal.value
+                        if hasattr(pattern.signal, "value")
+                        else str(pattern.signal),
                         "confidence": pattern.confidence,
                     }
                     for pattern in analysis.candlestick_patterns[:5]
@@ -174,16 +186,24 @@ class ToolRecommendationService:
             summary = {
                 "overall_signal": ml_scoring["overall_signal"] if ml_scoring else "UNKNOWN",
                 "tools_analyzed": len(selected_tools),
-                "bullish_tools": sum(1 for r in tool_results.values() if r["signal"].startswith("BULL")),
-                "bearish_tools": sum(1 for r in tool_results.values() if r["signal"].startswith("BEAR")),
+                "bullish_tools": sum(
+                    1 for r in tool_results.values() if r["signal"].startswith("BULL")
+                ),
+                "bearish_tools": sum(
+                    1 for r in tool_results.values() if r["signal"].startswith("BEAR")
+                ),
                 "neutral_tools": sum(1 for r in tool_results.values() if r["signal"] == "NEUTRAL"),
             }
         else:
             summary = {
                 "overall_signal": "UNKNOWN",
                 "tools_analyzed": len(selected_tools),
-                "bullish_tools": sum(1 for r in tool_results.values() if r["signal"].startswith("BULL")),
-                "bearish_tools": sum(1 for r in tool_results.values() if r["signal"].startswith("BEAR")),
+                "bullish_tools": sum(
+                    1 for r in tool_results.values() if r["signal"].startswith("BULL")
+                ),
+                "bearish_tools": sum(
+                    1 for r in tool_results.values() if r["signal"].startswith("BEAR")
+                ),
                 "neutral_tools": sum(1 for r in tool_results.values() if r["signal"] == "NEUTRAL"),
             }
 
@@ -377,7 +397,9 @@ class ToolRecommendationService:
 
         return buckets
 
-    def _build_reason(self, tool: dict[str, Any], context: dict[str, Any], analysis_goal: str) -> str:
+    def _build_reason(
+        self, tool: dict[str, Any], context: dict[str, Any], analysis_goal: str
+    ) -> str:
         pieces = []
         if context["regime"] in tool.get("ideal_regimes", []):
             pieces.append("Aligned with current market regime")
@@ -393,7 +415,9 @@ class ToolRecommendationService:
         primaries = [t["name"] for t in buckets["must_use"][:3]]
         supporting = [t["name"] for t in buckets["recommended"][:3]]
         confidence_values = [t["confidence"] for t in buckets["must_use"][:3]]
-        confidence = round(sum(confidence_values) / len(confidence_values), 2) if confidence_values else 0.5
+        confidence = (
+            round(sum(confidence_values) / len(confidence_values), 2) if confidence_values else 0.5
+        )
 
         return {
             "primary_tools": primaries,
@@ -404,7 +428,9 @@ class ToolRecommendationService:
             "expected_accuracy": f"{confidence * 100:.1f}%",
         }
 
-    def _run_tool_evaluations(self, tool_names: Iterable[str], candles: list[Candle]) -> dict[str, Any]:
+    def _run_tool_evaluations(
+        self, tool_names: Iterable[str], candles: list[Candle]
+    ) -> dict[str, Any]:
         results: dict[str, Any] = {}
 
         evaluators = {
@@ -435,7 +461,9 @@ class ToolRecommendationService:
             try:
                 indicator = evaluator()
                 results[tool] = {
-                    "signal": indicator.signal.value if hasattr(indicator.signal, "value") else str(indicator.signal),
+                    "signal": indicator.signal.value
+                    if hasattr(indicator.signal, "value")
+                    else str(indicator.signal),
                     "value": indicator.value,
                     "confidence": indicator.confidence,
                     "description": indicator.description,
@@ -447,4 +475,3 @@ class ToolRecommendationService:
                 }
 
         return results
-
