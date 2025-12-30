@@ -35,7 +35,7 @@ class TestSupportResistanceIndicators:
                 close=close_price,
                 volume=volume,
                 symbol="BTCUSDT",
-                timeframe="1h"
+                timeframe="1h",
             )
             candles.append(candle)
             base_price += 0.1  # Slight upward trend
@@ -49,108 +49,114 @@ class TestSupportResistanceIndicators:
         assert isinstance(results, list)
         assert len(results) > 0
         for result in results:
-            assert hasattr(result, 'indicator_name')
-            assert hasattr(result, 'value')
-            assert hasattr(result, 'signal')
-            assert hasattr(result, 'confidence')
+            assert hasattr(result, "indicator_name")
+            assert hasattr(result, "value")
+            assert hasattr(result, "signal")
+            assert hasattr(result, "confidence")
 
     def test_pivot_points_basic(self, sample_candles):
         """Test basic pivot points calculation."""
-        result = SupportResistanceIndicators.pivot_points(sample_candles, method='standard')
+        result = SupportResistanceIndicators.pivot_points(sample_candles, method="standard")
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Pivot Points (Standard)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Pivot Points (Standard)"
 
     def test_pivot_points_camarilla(self, sample_candles):
         """Test Camarilla pivot points calculation."""
-        result = SupportResistanceIndicators.pivot_points(sample_candles, method='camarilla')
+        result = SupportResistanceIndicators.pivot_points(sample_candles, method="camarilla")
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Pivot Points (Camarilla)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Pivot Points (Camarilla)"
 
     def test_fibonacci_retracement_basic(self, sample_candles):
         """Test basic Fibonacci retracement calculation."""
         result = SupportResistanceIndicators.fibonacci_retracement(sample_candles, lookback=50)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Fibonacci Retracement(50)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Fibonacci Retracement(50)"
 
     def test_camarilla_pivots_basic(self, sample_candles):
         """Test basic Camarilla pivots calculation."""
         result = SupportResistanceIndicators.camarilla_pivots(sample_candles)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Camarilla Pivots'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Camarilla Pivots"
 
     def test_support_resistance_levels_basic(self, sample_candles):
         """Test basic support/resistance levels calculation."""
-        result = SupportResistanceIndicators.support_resistance_levels(sample_candles, window=50, num_touches=2)
+        result = SupportResistanceIndicators.support_resistance_levels(
+            sample_candles, window=50, num_touches=2
+        )
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Support/Resistance(50)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Support/Resistance(50)"
 
     def test_dynamic_support_resistance_basic(self, sample_candles):
         """Test basic dynamic support/resistance calculation."""
-        result = SupportResistanceIndicators.dynamic_support_resistance(sample_candles, short_period=10, long_period=20)
+        result = SupportResistanceIndicators.dynamic_support_resistance(
+            sample_candles, short_period=10, long_period=20
+        )
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Dynamic S/R(10,20)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Dynamic S/R(10,20)"
 
     def test_identify_key_levels_basic(self, sample_candles):
         """Test basic key levels identification."""
         result = SupportResistanceIndicators.identify_key_levels(sample_candles, lookback=50)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Key Levels(50)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Key Levels(50)"
 
     def test_detect_breakout_basic(self, sample_candles):
         """Test basic breakout detection."""
         result = SupportResistanceIndicators.detect_breakout(sample_candles, lookback=20, window=20)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Breakout Detection(20)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Breakout Detection(20)"
 
     def test_detect_zones_basic(self, sample_candles):
         """Test basic zone detection."""
         result = SupportResistanceIndicators.detect_zones(sample_candles, zone_width=0.005)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Zone Detection(0.5%)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Zone Detection(0.5%)"
 
     def test_price_action_at_level_basic(self, sample_candles):
         """Test basic price action at level."""
         level = 105.0  # A level within the price range
-        result = SupportResistanceIndicators.price_action_at_level(sample_candles, level, tolerance=0.01)
+        result = SupportResistanceIndicators.price_action_at_level(
+            sample_candles, level, tolerance=0.01
+        )
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Price Action at 105.00'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Price Action at 105.00"
