@@ -17,6 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.ml.multi_horizon_support_resistance_analysis import (
     MultiHorizonSupportResistanceAnalyzer,
 )
@@ -27,8 +28,7 @@ from gravity_tech.models.schemas import Candle
 
 
 def create_bounce_scenario(
-    base_price: float = 50000,
-    num_candles: int = 100
+    base_price: float = 50000, num_candles: int = 100
 ) -> tuple[list[Candle], float]:
     """
     ایجاد سناریو Bounce (برگشت از حمایت/مقاومت)
@@ -73,7 +73,7 @@ def create_bounce_scenario(
             high=high,
             low=low,
             close=close,
-            volume=np.random.uniform(1000, 2000)
+            volume=np.random.uniform(1000, 2000),
         )
         candles.append(candle)
         price = close
@@ -102,7 +102,7 @@ def create_bounce_scenario(
             high=high,
             low=low,
             close=close,
-            volume=volume
+            volume=volume,
         )
         candles.append(candle)
         price = close
@@ -111,8 +111,7 @@ def create_bounce_scenario(
 
 
 def create_breakout_scenario(
-    base_price: float = 50000,
-    num_candles: int = 100
+    base_price: float = 50000, num_candles: int = 100
 ) -> tuple[list[Candle], float]:
     """
     ایجاد سناریو Breakout (شکست سطح)
@@ -157,7 +156,7 @@ def create_breakout_scenario(
             high=high,
             low=low,
             close=close,
-            volume=np.random.uniform(1000, 1500)
+            volume=np.random.uniform(1000, 1500),
         )
         candles.append(candle)
         price = close
@@ -185,7 +184,7 @@ def create_breakout_scenario(
             high=high,
             low=low,
             close=close,
-            volume=volume
+            volume=volume,
         )
         candles.append(candle)
         price = close
@@ -194,8 +193,7 @@ def create_breakout_scenario(
 
 
 def create_consolidation_scenario(
-    base_price: float = 50000,
-    num_candles: int = 100
+    base_price: float = 50000, num_candles: int = 100
 ) -> tuple[list[Candle], float]:
     """
     ایجاد سناریو Consolidation (نوسان در محدوده)
@@ -240,7 +238,7 @@ def create_consolidation_scenario(
             high=high,
             low=low,
             close=close,
-            volume=np.random.uniform(800, 1200)
+            volume=np.random.uniform(800, 1200),
         )
         candles.append(candle)
         price = close
@@ -250,8 +248,7 @@ def create_consolidation_scenario(
 
 
 def create_fake_out_scenario(
-    base_price: float = 50000,
-    num_candles: int = 100
+    base_price: float = 50000, num_candles: int = 100
 ) -> tuple[list[Candle], float]:
     """
     ایجاد سناریو Fake-out (شکست موقت و برگشت)
@@ -294,7 +291,7 @@ def create_fake_out_scenario(
             high=high,
             low=low,
             close=close,
-            volume=np.random.uniform(1000, 1500)
+            volume=np.random.uniform(1000, 1500),
         )
         candles.append(candle)
         price = close
@@ -320,7 +317,7 @@ def create_fake_out_scenario(
             high=high,
             low=low,
             close=close,
-            volume=volume
+            volume=volume,
         )
         candles.append(candle)
         price = close
@@ -346,7 +343,7 @@ def create_fake_out_scenario(
             high=high,
             low=low,
             close=close,
-            volume=volume
+            volume=volume,
         )
         candles.append(candle)
         price = close
@@ -361,10 +358,7 @@ class MultiHorizonSupportResistanceTrainer:
         """Initialize trainer"""
         self.feature_extractor = MultiHorizonSupportResistanceFeatureExtractor()
 
-    def prepare_training_data(
-        self,
-        num_samples: int = 2000
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def prepare_training_data(self, num_samples: int = 2000) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         تولید داده آموزش
 
@@ -382,10 +376,10 @@ class MultiHorizonSupportResistanceTrainer:
         samples_per_scenario = num_samples // 4
 
         scenarios = [
-            ('bounce', create_bounce_scenario),
-            ('breakout', create_breakout_scenario),
-            ('consolidation', create_consolidation_scenario),
-            ('fake_out', create_fake_out_scenario)
+            ("bounce", create_bounce_scenario),
+            ("breakout", create_breakout_scenario),
+            ("consolidation", create_consolidation_scenario),
+            ("fake_out", create_fake_out_scenario),
         ]
 
         for scenario_name, scenario_func in scenarios:
@@ -404,10 +398,10 @@ class MultiHorizonSupportResistanceTrainer:
 
                     # Target برای هر افق
                     targets = {
-                        '3d_target': target_score,
-                        '7d_target': target_score * 0.9,  # کمی ملایم‌تر
-                        '30d_target': target_score * 0.7,  # خیلی ملایم‌تر
-                        'scenario': scenario_name
+                        "3d_target": target_score,
+                        "7d_target": target_score * 0.9,  # کمی ملایم‌تر
+                        "30d_target": target_score * 0.7,  # خیلی ملایم‌تر
+                        "scenario": scenario_name,
                     }
 
                     all_features.append(features)
@@ -429,7 +423,7 @@ class MultiHorizonSupportResistanceTrainer:
         self,
         features_df: pd.DataFrame,
         targets_df: pd.DataFrame,
-        output_path: str = "models/support_resistance/sr_weights.json"
+        output_path: str = "models/support_resistance/sr_weights.json",
     ):
         """
         آموزش وزن‌ها
@@ -444,13 +438,13 @@ class MultiHorizonSupportResistanceTrainer:
         weights = {}
         model_state: dict[str, dict[str, object]] = {}
 
-        for horizon in ['3d', '7d', '30d']:
+        for horizon in ["3d", "7d", "30d"]:
             print(f"\n  📊 آموزش {horizon}...")
 
             # انتخاب ویژگی‌های مربوط به این افق
-            horizon_features = [col for col in features_df.columns if col.startswith(f'{horizon}_')]
+            horizon_features = [col for col in features_df.columns if col.startswith(f"{horizon}_")]
             X = features_df[horizon_features].values
-            y = targets_df[f'{horizon}_target'].values
+            y = targets_df[f"{horizon}_target"].values
 
             # محاسبه وزن‌ها با Linear Regression ساده
             # X.T @ X @ weights = X.T @ y
@@ -471,15 +465,15 @@ class MultiHorizonSupportResistanceTrainer:
                 clean_names: list[str] = []
                 for i, feature_name in enumerate(horizon_features):
                     # حذف prefix افق
-                    clean_name = feature_name.replace(f'{horizon}_', '')
+                    clean_name = feature_name.replace(f"{horizon}_", "")
                     horizon_weights[clean_name] = float(w[i])
                     clean_names.append(clean_name)
 
                 weights[horizon] = horizon_weights
                 model_state[horizon] = {
-                    'feature_names': clean_names,
-                    'weights': [float(value) for value in w.tolist()],
-                    'intercept': 0.0
+                    "feature_names": clean_names,
+                    "weights": [float(value) for value in w.tolist()],
+                    "intercept": 0.0,
                 }
 
                 # ارزیابی
@@ -500,20 +494,20 @@ class MultiHorizonSupportResistanceTrainer:
                 default_weights = self._get_default_weights(horizon)
                 weights[horizon] = default_weights
                 model_state[horizon] = {
-                    'feature_names': list(default_weights.keys()),
-                    'weights': list(default_weights.values()),
-                    'intercept': 0.0
+                    "feature_names": list(default_weights.keys()),
+                    "weights": list(default_weights.values()),
+                    "intercept": 0.0,
                 }
 
         # ذخیره وزن‌ها
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(weights, f, indent=2)
 
-        model_file = output_file.with_suffix('.pkl')
-        with open(model_file, 'wb') as fh:
+        model_file = output_file.with_suffix(".pkl")
+        with open(model_file, "wb") as fh:
             pickle.dump(model_state, fh)
 
         print(f"\n✅ وزن‌ها ذخیره شد: {output_path}")
@@ -524,15 +518,15 @@ class MultiHorizonSupportResistanceTrainer:
     def _get_default_weights(self, horizon: str) -> dict[str, float]:
         """وزن‌های پیش‌فرض"""
         return {
-            'nearest_resistance_dist': -0.3,
-            'resistance_strength': -0.2,
-            'nearest_support_dist': 0.3,
-            'support_strength': 0.2,
-            'sr_position': -0.35,
-            'sr_bias': 0.25,
-            'level_density': 0.15,
-            'fib_signal': 0.2,
-            'camarilla_signal': 0.15
+            "nearest_resistance_dist": -0.3,
+            "resistance_strength": -0.2,
+            "nearest_support_dist": 0.3,
+            "support_strength": 0.2,
+            "sr_position": -0.35,
+            "sr_bias": 0.25,
+            "level_density": 0.15,
+            "fib_signal": 0.2,
+            "camarilla_signal": 0.15,
         }
 
 
@@ -570,18 +564,18 @@ if __name__ == "__main__":
     # تست روی چند نمونه
     print("\nتست روی نمونه‌های validation:")
 
-    for scenario in ['bounce', 'breakout', 'consolidation', 'fake_out']:
-        scenario_indices = targets_val[targets_val['scenario'] == scenario].index[:3]
+    for scenario in ["bounce", "breakout", "consolidation", "fake_out"]:
+        scenario_indices = targets_val[targets_val["scenario"] == scenario].index[:3]
 
         print(f"\n📊 سناریو: {scenario.upper()}")
 
         for idx in scenario_indices:
             # ایجاد مجدد candles (برای سادگی از یک نمونه استفاده می‌کنیم)
-            if scenario == 'bounce':
+            if scenario == "bounce":
                 candles, _ = create_bounce_scenario()
-            elif scenario == 'breakout':
+            elif scenario == "breakout":
                 candles, _ = create_breakout_scenario()
-            elif scenario == 'consolidation':
+            elif scenario == "consolidation":
                 candles, _ = create_consolidation_scenario()
             else:
                 candles, _ = create_fake_out_scenario()
