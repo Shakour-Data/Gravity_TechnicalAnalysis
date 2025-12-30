@@ -7,8 +7,7 @@ Tests cache management functionality.
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-from src.gravity_tech.services.cache_service import CacheManager, CacheWarmer, cache_key_generator
+from gravity_tech.services.cache_service import CacheManager, CacheWarmer, cache_key_generator
 
 
 class TestCacheManager:
@@ -29,7 +28,7 @@ class TestCacheManager:
         assert manager.connection_pool is None
         assert manager._is_available is False
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_initialize_success(self, mock_from_url):
         """Test successful cache initialization."""
         mock_redis = AsyncMock()
@@ -43,7 +42,7 @@ class TestCacheManager:
         assert manager._is_available is True
         mock_from_url.assert_called_once()
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_initialize_failure(self, mock_from_url):
         """Test cache initialization failure."""
         mock_from_url.side_effect = Exception("Connection failed")
@@ -69,7 +68,7 @@ class TestCacheManager:
         result = await manager.set("test_key", "value")
         assert result is False
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_get_success(self, mock_from_url):
         """Test successful get operation."""
         mock_redis = AsyncMock()
@@ -84,7 +83,7 @@ class TestCacheManager:
         assert result == {"data": "value"}
         mock_redis.get.assert_called_once_with("test_key")
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_get_none(self, mock_from_url):
         """Test get operation returning None."""
         mock_redis = AsyncMock()
@@ -98,7 +97,7 @@ class TestCacheManager:
 
         assert result is None
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_set_success(self, mock_from_url):
         """Test successful set operation."""
         mock_redis = AsyncMock()
@@ -113,7 +112,7 @@ class TestCacheManager:
         assert result is True
         mock_redis.setex.assert_called_once_with("test_key", 300, '{"data": "value"}')
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_delete_success(self, mock_from_url):
         """Test successful delete operation."""
         mock_redis = AsyncMock()
@@ -128,7 +127,7 @@ class TestCacheManager:
         assert result is True
         mock_redis.delete.assert_called_once_with("test_key")
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_exists_success(self, mock_from_url):
         """Test successful exists operation."""
         mock_redis = AsyncMock()
@@ -143,7 +142,7 @@ class TestCacheManager:
         assert result is True
         mock_redis.exists.assert_called_once_with("test_key")
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_health_check_success(self, mock_from_url):
         """Test successful health check."""
         mock_redis = AsyncMock()
@@ -158,7 +157,7 @@ class TestCacheManager:
         assert result is True
         mock_redis.ping.assert_called_once()
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_health_check_failure(self, mock_from_url):
         """Test health check failure."""
         mock_redis = AsyncMock()
@@ -181,7 +180,7 @@ class TestCacheManager:
         assert "symbol" in key
         assert "timeframe" in key
 
-    @patch('redis.asyncio.from_url')
+    @patch("redis.asyncio.from_url")
     async def test_close(self, mock_from_url):
         """Test cache manager close operation."""
         mock_redis = AsyncMock()
