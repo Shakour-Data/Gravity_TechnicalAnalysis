@@ -38,7 +38,7 @@ class TestCycleIndicators:
                 close=close_price,
                 volume=volume,
                 symbol="BTCUSDT",
-                timeframe="1h"
+                timeframe="1h",
             )
             candles.append(candle)
             base_price += 0.1  # Slight upward trend
@@ -49,10 +49,10 @@ class TestCycleIndicators:
         """Test basic DPO calculation."""
         result = CycleIndicators.dpo(sample_candles, period=20)
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')  # Instead of strength
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")  # Instead of strength
+        assert hasattr(result, "cycle_period")
         assert isinstance(result.value, (int, float))
         assert isinstance(result.phase, (int, float))
         assert 0 <= result.phase <= 360
@@ -69,10 +69,10 @@ class TestCycleIndicators:
         """Test basic Ehler's cycle period calculation."""
         result = CycleIndicators.ehlers_cycle_period(sample_candles, smooth_period=5)
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "cycle_period")
         assert isinstance(result.cycle_period, int)
         assert result.cycle_period > 0
 
@@ -80,10 +80,10 @@ class TestCycleIndicators:
         """Test basic dominant cycle calculation."""
         result = CycleIndicators.dominant_cycle(sample_candles, min_period=8, max_period=50)
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "cycle_period")
         assert isinstance(result.cycle_period, int)
         assert 8 <= result.cycle_period <= 50
 
@@ -91,40 +91,40 @@ class TestCycleIndicators:
         """Test basic Schaff Trend Cycle calculation."""
         result = CycleIndicators.schaff_trend_cycle(sample_candles, fast=23, slow=50, cycle=10)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'STC(23,50,10)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "STC(23,50,10)"
 
     def test_phase_accumulation_basic(self, sample_candles):
         """Test basic phase accumulation calculation."""
         result = CycleIndicators.phase_accumulation(sample_candles, period=14)
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "cycle_period")
         assert 0 <= result.phase <= 360
 
     def test_hilbert_transform_phase_basic(self, sample_candles):
         """Test basic Hilbert transform phase calculation."""
         result = CycleIndicators.hilbert_transform_phase(sample_candles, period=7)
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "cycle_period")
         assert 0 <= result.phase <= 360
 
     def test_market_cycle_model_basic(self, sample_candles):
         """Test basic market cycle model calculation."""
         result = CycleIndicators.market_cycle_model(sample_candles, lookback=50)
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "cycle_period")
         assert isinstance(result.phase, (int, float))
         assert 0 <= result.phase <= 360
 
@@ -135,28 +135,28 @@ class TestCycleIndicators:
         assert isinstance(results, list)
         assert len(results) > 0
         for result in results:
-            assert hasattr(result, 'indicator_name')
-            assert hasattr(result, 'value')
-            assert hasattr(result, 'signal')
-            assert hasattr(result, 'confidence')
+            assert hasattr(result, "indicator_name")
+            assert hasattr(result, "value")
+            assert hasattr(result, "signal")
+            assert hasattr(result, "confidence")
 
     def test_detrended_price_oscillator_basic(self, sample_candles):
         """Test detrended price oscillator calculation."""
         result = CycleIndicators.dpo(sample_candles, period=20)  # DPO is detrended price oscillator
 
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'phase')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'cycle_period')
+        assert hasattr(result, "value")
+        assert hasattr(result, "phase")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "cycle_period")
         assert isinstance(result.value, (int, float))
 
     def test_convert_cycle_to_indicator_result(self, sample_candles):
         """Test conversion from CycleResult to IndicatorResult."""
         cycle_result = CycleIndicators.dpo(sample_candles, period=20)
-        indicator_result = convert_cycle_to_indicator_result(cycle_result, 'DPO')
+        indicator_result = convert_cycle_to_indicator_result(cycle_result, "DPO")
 
-        assert hasattr(indicator_result, 'indicator_name')
-        assert hasattr(indicator_result, 'value')
-        assert hasattr(indicator_result, 'signal')
-        assert hasattr(indicator_result, 'confidence')
-        assert indicator_result.indicator_name == 'DPO'
+        assert hasattr(indicator_result, "indicator_name")
+        assert hasattr(indicator_result, "value")
+        assert hasattr(indicator_result, "signal")
+        assert hasattr(indicator_result, "confidence")
+        assert indicator_result.indicator_name == "DPO"
