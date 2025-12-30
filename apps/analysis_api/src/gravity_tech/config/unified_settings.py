@@ -15,7 +15,6 @@ Usage:
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
 
 import structlog
 
@@ -24,6 +23,7 @@ logger = structlog.get_logger()
 
 class Environment(str, Enum):
     """Supported environments"""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -32,13 +32,14 @@ class Environment(str, Enum):
 @dataclass
 class DatabaseConfig:
     """Database configuration"""
+
     engine: str = "sqlite"  # sqlite, postgresql, mysql
     url: str = "sqlite:///./gravity.db"
     echo: bool = False
     pool_size: int = 10
     max_overflow: int = 20
     timeout: int = 30
-    
+
     def __post_init__(self):
         if not self.url:
             raise ValueError("DATABASE_URL is required")
@@ -47,16 +48,17 @@ class DatabaseConfig:
 @dataclass
 class CacheConfig:
     """Cache backend configuration"""
+
     enabled: bool = True
     backend: str = "memory"  # redis, memory, none
     host: str = "localhost"
     port: int = 6379
-    password: Optional[str] = None
+    password: str | None = None
     db: int = 0
     ttl_seconds: int = 300
     key_prefix: str = "gravity:"
     connection_timeout: int = 5
-    
+
     def __post_init__(self):
         if self.backend not in ["redis", "memory", "none"]:
             raise ValueError(f"Invalid cache backend: {self.backend}")
@@ -65,6 +67,7 @@ class CacheConfig:
 @dataclass
 class MLConfig:
     """Machine Learning configuration"""
+
     enabled: bool = True
     model_path: str = "ml_models/"
     pattern_classifier_enabled: bool = True
@@ -78,31 +81,32 @@ class MLConfig:
 @dataclass
 class FeatureFlags:
     """Feature flags - centralized"""
+
     # Analysis features
     enable_scenarios: bool = False
     enable_harmonic_patterns: bool = True
     enable_multi_horizon: bool = True
     enable_elliott_waves: bool = True
-    
+
     # API features
     expose_db_explorer: bool = False
     expose_metrics: bool = True
     enable_api_caching: bool = True
-    
+
     # Data ingestion
     enable_data_ingestion: bool = True
     enable_ingestion_validation: bool = True
     enable_data_deduplication: bool = True
-    
+
     # ML features
     enable_ml_inference: bool = True
     enable_ml_caching: bool = True
-    
+
     # Infrastructure
     eureka_enabled: bool = False
     kafka_enabled: bool = False
     rabbitmq_enabled: bool = False
-    
+
     # Observability
     metrics_enabled: bool = True
     tracing_enabled: bool = False
@@ -111,6 +115,7 @@ class FeatureFlags:
 @dataclass
 class LoggingConfig:
     """Logging configuration"""
+
     level: str = "INFO"
     format: str = "json"  # json, text
     file_enabled: bool = False
@@ -122,6 +127,7 @@ class LoggingConfig:
 @dataclass
 class ObservabilityConfig:
     """Observability configuration"""
+
     metrics_enabled: bool = True
     metrics_port: int = 9090
     metrics_path: str = "/metrics"
@@ -133,13 +139,13 @@ class ObservabilityConfig:
 @dataclass
 class Settings:
     """Master settings object - single source of truth"""
-    
+
     # Application
     environment: Environment = Environment.DEVELOPMENT
     app_name: str = "Gravity Technical Analysis"
     app_version: str = "1.0.0"
     debug: bool = False
-    
+
     # Components
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
@@ -147,7 +153,7 @@ class Settings:
     features: FeatureFlags = field(default_factory=FeatureFlags)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
-    
+
     # API
     api_host: str = "0.0.0.0"
     api_port: int = 8000
@@ -155,24 +161,24 @@ class Settings:
     api_reload: bool = False
     api_title: str = "Gravity Technical Analysis API"
     api_docs_enabled: bool = True
-    
+
     # Security
     jwt_secret: str = "dev-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 24
-    cors_origins: List[str] = field(default_factory=lambda: ["*"])
+    cors_origins: list[str] = field(default_factory=lambda: ["*"])
     rate_limit_enabled: bool = True
     rate_limit_requests: int = 1000
     rate_limit_period_seconds: int = 60
-    
+
     # External Services
-    data_service_base_url: Optional[str] = None
+    data_service_base_url: str | None = None
     data_service_timeout: int = 30
-    
+
     @classmethod
     def from_env(cls) -> "Settings":
         """Load settings from environment variables"""
-        
+
         # Environment
         env_str = os.getenv("ENVIRONMENT", "development").lower()
         try:
@@ -180,11 +186,11 @@ class Settings:
         except ValueError:
             logger.warning("invalid_environment", env=env_str, default="development")
             environment = Environment.DEVELOPMENT
-        
+
         # Database
         db_url = os.getenv("DATABASE_URL", "sqlite:///./gravity.db")
         db_engine = os.getenv("DB_ENGINE", "sqlite")
-        
+
         database = DatabaseConfig(
             engine=db_engine,
             url=db_url,
@@ -193,7 +199,7 @@ class Settings:
             max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "20")),
             timeout=int(os.getenv("DB_TIMEOUT", "30")),
         )
-        
+
         # Cache
         cache_enabled = os.getenv("CACHE_ENABLED", "true").lower() == "true"
         cache_backend = os.getenv("CACHE_BACKEND", "memory")
@@ -201,7 +207,7 @@ class Settings:
         cache_port = int(os.getenv("REDIS_PORT", "6379"))
         cache_password = os.getenv("REDIS_PASSWORD")
         cache_db = int(os.getenv("REDIS_DB", "0"))
-        
+
         cache = CacheConfig(
             enabled=cache_enabled,
             backend=cache_backend,
@@ -212,28 +218,32 @@ class Settings:
             ttl_seconds=int(os.getenv("CACHE_TTL", "300")),
             key_prefix=os.getenv("CACHE_KEY_PREFIX", "gravity:"),
         )
-        
+
         # ML
         ml = MLConfig(
             enabled=os.getenv("ML_ENABLED", "true").lower() == "true",
             model_path=os.getenv("ML_MODEL_PATH", "ml_models/"),
-            pattern_classifier_enabled=os.getenv("ML_PATTERN_CLASSIFIER_ENABLED", "true").lower() == "true",
-            pattern_classifier_path=os.getenv("ML_PATTERN_CLASSIFIER_PATH", "ml_models/pattern_classifier_btcusdt.pkl"),
+            pattern_classifier_enabled=os.getenv("ML_PATTERN_CLASSIFIER_ENABLED", "true").lower()
+            == "true",
+            pattern_classifier_path=os.getenv(
+                "ML_PATTERN_CLASSIFIER_PATH", "ml_models/pattern_classifier_btcusdt.pkl"
+            ),
             gpu_enabled=os.getenv("ML_GPU_ENABLED", "false").lower() == "true",
         )
-        
+
         # Feature Flags
         features = FeatureFlags(
             enable_scenarios=os.getenv("ENABLE_SCENARIOS", "false").lower() == "true",
             expose_db_explorer=os.getenv("EXPOSE_DB_EXPLORER", "false").lower() == "true",
-            enable_harmonic_patterns=os.getenv("ENABLE_HARMONIC_PATTERNS", "true").lower() == "true",
+            enable_harmonic_patterns=os.getenv("ENABLE_HARMONIC_PATTERNS", "true").lower()
+            == "true",
             eureka_enabled=os.getenv("EUREKA_ENABLED", "false").lower() == "true",
             kafka_enabled=os.getenv("KAFKA_ENABLED", "false").lower() == "true",
             rabbitmq_enabled=os.getenv("RABBITMQ_ENABLED", "false").lower() == "true",
             metrics_enabled=os.getenv("METRICS_ENABLED", "true").lower() == "true",
             tracing_enabled=os.getenv("TRACING_ENABLED", "false").lower() == "true",
         )
-        
+
         # Logging
         logging_config = LoggingConfig(
             level=os.getenv("LOG_LEVEL", "INFO"),
@@ -241,21 +251,21 @@ class Settings:
             file_enabled=os.getenv("LOG_FILE_ENABLED", "false").lower() == "true",
             file_path=os.getenv("LOG_FILE_PATH", "logs/gravity.log"),
         )
-        
+
         # Observability
         observability = ObservabilityConfig(
             metrics_enabled=os.getenv("METRICS_ENABLED", "true").lower() == "true",
             metrics_port=int(os.getenv("METRICS_PORT", "9090")),
             tracing_enabled=os.getenv("TRACING_ENABLED", "false").lower() == "true",
         )
-        
+
         # Security
         jwt_secret = os.getenv("JWT_SECRET")
         if not jwt_secret and environment == Environment.PRODUCTION:
             raise ValueError("JWT_SECRET required in production")
-        
+
         cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
-        
+
         settings = cls(
             environment=environment,
             app_version=os.getenv("APP_VERSION", "1.0.0"),
@@ -276,19 +286,19 @@ class Settings:
             rate_limit_requests=int(os.getenv("RATE_LIMIT_REQUESTS", "1000")),
             rate_limit_period_seconds=int(os.getenv("RATE_LIMIT_PERIOD", "60")),
         )
-        
+
         logger.info(
             "settings_loaded",
             environment=environment.value,
             db_engine=db_engine,
             cache_backend=cache_backend,
         )
-        
+
         return settings
 
 
 # Global instance (lazy loaded)
-_settings_instance: Optional[Settings] = None
+_settings_instance: Settings | None = None
 
 
 def get_settings() -> Settings:
@@ -308,7 +318,7 @@ def reset_settings():
 if __name__ == "__main__":
     # Test loading
     settings = Settings.from_env()
-    print(f"✅ Settings loaded successfully")
+    print("✅ Settings loaded successfully")
     print(f"   Environment: {settings.environment.value}")
     print(f"   Database: {settings.database.engine}")
     print(f"   Cache: {settings.cache.backend}")
