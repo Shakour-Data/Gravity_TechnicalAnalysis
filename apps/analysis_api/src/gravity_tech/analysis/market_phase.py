@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from enum import Enum
 
 import numpy as np
+
 from gravity_tech.indicators.momentum import MomentumIndicators
 from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.indicators.volume import VolumeIndicators
@@ -33,6 +34,7 @@ from gravity_tech.models.schemas import Candle
 
 class MarketPhase(str, Enum):
     """Market phases based on Dow Theory"""
+
     ACCUMULATION = "انباشت"  # Accumulation
     MARKUP = "صعود"  # Markup (Bullish trend)
     DISTRIBUTION = "توزیع"  # Distribution
@@ -42,6 +44,7 @@ class MarketPhase(str, Enum):
 
 class PhaseStrength(str, Enum):
     """Strength of current phase"""
+
     VERY_STRONG = "بسیار قوی"
     STRONG = "قوی"
     MODERATE = "متوسط"
@@ -84,11 +87,11 @@ class MarketPhaseAnalysis:
         window = 5
         for i in range(window, len(candles) - window):
             # Check for swing high
-            if all(highs[i] >= highs[j] for j in range(i-window, i+window+1) if j != i):
+            if all(highs[i] >= highs[j] for j in range(i - window, i + window + 1) if j != i):
                 swing_highs.append((i, highs[i]))
 
             # Check for swing low
-            if all(lows[i] <= lows[j] for j in range(i-window, i+window+1) if j != i):
+            if all(lows[i] <= lows[j] for j in range(i - window, i + window + 1) if j != i):
                 swing_lows.append((i, lows[i]))
 
         # Analyze trend structure
@@ -97,15 +100,19 @@ class MarketPhaseAnalysis:
             recent_highs = swing_highs[-3:] if len(swing_highs) >= 3 else swing_highs
             recent_lows = swing_lows[-3:] if len(swing_lows) >= 3 else swing_lows
 
-            higher_highs = all(recent_highs[i][1] < recent_highs[i+1][1]
-                              for i in range(len(recent_highs)-1))
-            higher_lows = all(recent_lows[i][1] < recent_lows[i+1][1]
-                             for i in range(len(recent_lows)-1))
+            higher_highs = all(
+                recent_highs[i][1] < recent_highs[i + 1][1] for i in range(len(recent_highs) - 1)
+            )
+            higher_lows = all(
+                recent_lows[i][1] < recent_lows[i + 1][1] for i in range(len(recent_lows) - 1)
+            )
 
-            lower_highs = all(recent_highs[i][1] > recent_highs[i+1][1]
-                             for i in range(len(recent_highs)-1))
-            lower_lows = all(recent_lows[i][1] > recent_lows[i+1][1]
-                            for i in range(len(recent_lows)-1))
+            lower_highs = all(
+                recent_highs[i][1] > recent_highs[i + 1][1] for i in range(len(recent_highs) - 1)
+            )
+            lower_lows = all(
+                recent_lows[i][1] > recent_lows[i + 1][1] for i in range(len(recent_lows) - 1)
+            )
 
             if higher_highs and higher_lows:
                 structure = "uptrend"
@@ -125,7 +132,7 @@ class MarketPhaseAnalysis:
             "swing_highs": swing_highs,
             "swing_lows": swing_lows,
             "last_high": swing_highs[-1][1] if swing_highs else None,
-            "last_low": swing_lows[-1][1] if swing_lows else None
+            "last_low": swing_lows[-1][1] if swing_lows else None,
         }
 
     @staticmethod
@@ -146,7 +153,6 @@ class MarketPhaseAnalysis:
 
         recent = candles[-period:]
         volumes = [c.volume for c in recent]
-        closes = [c.close for c in recent]
 
         avg_volume = np.mean(volumes)
 
@@ -155,19 +161,24 @@ class MarketPhaseAnalysis:
         down_days_volume = []
 
         for i in range(1, len(recent)):
-            if recent[i].close > recent[i-1].close:
+            if recent[i].close > recent[i - 1].close:
                 up_days_volume.append(recent[i].volume)
-            elif recent[i].close < recent[i-1].close:
+            elif recent[i].close < recent[i - 1].close:
                 down_days_volume.append(recent[i].volume)
 
         avg_up_volume = np.mean(up_days_volume) if up_days_volume else 0
         avg_down_volume = np.mean(down_days_volume) if down_days_volume else 0
 
         # Volume trend
-        first_half_vol = np.mean(volumes[:period//2])
-        second_half_vol = np.mean(volumes[period//2:])
-        volume_trend = "increasing" if second_half_vol > first_half_vol * 1.1 else \
-                      "decreasing" if second_half_vol < first_half_vol * 0.9 else "stable"
+        first_half_vol = np.mean(volumes[: period // 2])
+        second_half_vol = np.mean(volumes[period // 2 :])
+        volume_trend = (
+            "increasing"
+            if second_half_vol > first_half_vol * 1.1
+            else "decreasing"
+            if second_half_vol < first_half_vol * 0.9
+            else "stable"
+        )
 
         return {
             "status": "analyzed",
@@ -176,11 +187,11 @@ class MarketPhaseAnalysis:
             "avg_down_volume": avg_down_volume,
             "volume_trend": volume_trend,
             "up_volume_dominance": avg_up_volume > avg_down_volume * 1.2,
-            "down_volume_dominance": avg_down_volume > avg_up_volume * 1.2
+            "down_volume_dominance": avg_down_volume > avg_up_volume * 1.2,
         }
 
     @staticmethod
-    def calculate_price_momentum(candles: list[Candle], periods: list[int] = [10, 20, 50]) -> dict:
+    def calculate_price_momentum(candles: list[Candle], periods: list[int] | None = None) -> dict:
         """
         Calculate price momentum across multiple timeframes
 
@@ -191,6 +202,8 @@ class MarketPhaseAnalysis:
         Returns:
             Dictionary with momentum information
         """
+        if periods is None:
+            periods = [10, 20, 50]
         if len(candles) < max(periods):
             return {"status": "insufficient_data"}
 
@@ -204,7 +217,7 @@ class MarketPhaseAnalysis:
                 change = ((current_price - past_price) / past_price) * 100
                 momentum[f"period_{period}"] = {
                     "change_pct": change,
-                    "direction": "up" if change > 0 else "down" if change < 0 else "flat"
+                    "direction": "up" if change > 0 else "down" if change < 0 else "flat",
                 }
 
         return momentum
@@ -230,12 +243,9 @@ class MarketPhaseAnalysis:
         # Get indicator signals
         sma_20 = TrendIndicators.sma(candles, 20)
         sma_50 = TrendIndicators.sma(candles, 50)
-        ema_20 = TrendIndicators.ema(candles, 20)
 
         macd = TrendIndicators.macd(candles)
         rsi = MomentumIndicators.rsi(candles, 14)
-
-        obv = VolumeIndicators.obv(candles)
 
         closes = [c.close for c in candles]
         current_price = closes[-1]
@@ -245,7 +255,7 @@ class MarketPhaseAnalysis:
             "trend": 50,  # Neutral start
             "volume": 50,
             "momentum": 50,
-            "price_position": 50
+            "price_position": 50,
         }
 
         # 1. Trend Structure Analysis
@@ -303,9 +313,11 @@ class MarketPhaseAnalysis:
         # - Price above moving averages
         # - Volume increasing on rallies
         # - Strong momentum
-        if (trend_structure["structure"] == "uptrend" and
-            overall_score > 60 and
-            scores["momentum"] > 60):
+        if (
+            trend_structure["structure"] == "uptrend"
+            and overall_score > 60
+            and scores["momentum"] > 60
+        ):
             phase = MarketPhase.MARKUP
 
             if overall_score > 75:
@@ -320,9 +332,11 @@ class MarketPhaseAnalysis:
         # - Price below moving averages
         # - Volume increasing on declines
         # - Weak momentum
-        elif (trend_structure["structure"] == "downtrend" and
-              overall_score < 40 and
-              scores["momentum"] < 40):
+        elif (
+            trend_structure["structure"] == "downtrend"
+            and overall_score < 40
+            and scores["momentum"] < 40
+        ):
             phase = MarketPhase.MARKDOWN
 
             if overall_score < 25:
@@ -338,10 +352,11 @@ class MarketPhaseAnalysis:
         # - Volume decreasing (quiet period)
         # - Coming after downtrend
         # - Smart money buying
-        elif (trend_structure["structure"] in ["contraction", "mixed"] and
-              40 <= overall_score <= 60 and
-              volume_behavior.get("volume_trend") != "increasing"):
-
+        elif (
+            trend_structure["structure"] in ["contraction", "mixed"]
+            and 40 <= overall_score <= 60
+            and volume_behavior.get("volume_trend") != "increasing"
+        ):
             # Check if coming from downtrend (look at longer-term trend)
             if len(candles) >= 100:
                 long_term_change = ((closes[-1] - closes[-100]) / closes[-100]) * 100
@@ -349,9 +364,11 @@ class MarketPhaseAnalysis:
                     phase = MarketPhase.ACCUMULATION
 
                     # Check for accumulation signs
-                    if (scores["volume"] > 50 and
-                        rsi.value < 50 and
-                        volume_behavior.get("volume_trend") == "stable"):
+                    if (
+                        scores["volume"] > 50
+                        and rsi.value < 50
+                        and volume_behavior.get("volume_trend") == "stable"
+                    ):
                         strength = PhaseStrength.STRONG
                     else:
                         strength = PhaseStrength.MODERATE
@@ -361,10 +378,11 @@ class MarketPhaseAnalysis:
         # - Price near resistance
         # - Volume may be high (smart money selling)
         # - Momentum weakening
-        elif (trend_structure["structure"] in ["contraction", "mixed", "expansion"] and
-              overall_score > 50 and
-              scores["momentum"] < 60):
-
+        elif (
+            trend_structure["structure"] in ["contraction", "mixed", "expansion"]
+            and overall_score > 50
+            and scores["momentum"] < 60
+        ):
             # Check if coming from uptrend
             if len(candles) >= 100:
                 long_term_change = ((closes[-1] - closes[-100]) / closes[-100]) * 100
@@ -372,9 +390,11 @@ class MarketPhaseAnalysis:
                     phase = MarketPhase.DISTRIBUTION
 
                     # Check for distribution signs
-                    if (volume_behavior.get("volume_trend") == "increasing" and
-                        rsi.value > 50 and
-                        scores["momentum"] < 55):
+                    if (
+                        volume_behavior.get("volume_trend") == "increasing"
+                        and rsi.value > 50
+                        and scores["momentum"] < 55
+                    ):
                         strength = PhaseStrength.STRONG
                     else:
                         strength = PhaseStrength.MODERATE
@@ -392,14 +412,16 @@ class MarketPhaseAnalysis:
             "sma_20": sma_20.value,
             "sma_50": sma_50.value,
             "rsi": rsi.value,
-            "macd_histogram": macd.additional_values.get("histogram") if macd.additional_values else None,
+            "macd_histogram": macd.additional_values.get("histogram")
+            if macd.additional_values
+            else None,
             "indicators_alignment": {
                 "price_above_sma20": current_price > sma_20.value,
                 "price_above_sma50": current_price > sma_50.value,
                 "sma20_above_sma50": sma_20.value > sma_50.value,
                 "rsi_overbought": rsi.value > 70,
-                "rsi_oversold": rsi.value < 30
-            }
+                "rsi_oversold": rsi.value < 30,
+            },
         }
 
         return phase, strength, detailed_analysis
@@ -422,7 +444,7 @@ class MarketPhaseAnalysis:
             MarketPhase.MARKUP: "بازار در فاز صعودی است. روند صعودی قوی و عموم سرمایه‌گذاران وارد بازار می‌شوند. قیمت‌ها در حال افزایش هستند.",
             MarketPhase.DISTRIBUTION: "بازار در فاز توزیع است. سرمایه‌گذاران باتجربه در حال فروش تدریجی هستند. این فاز معمولاً پس از یک روند صعودی اتفاق می‌افتد.",
             MarketPhase.MARKDOWN: "بازار در فاز نزولی است. روند نزولی قوی و فشار فروش بالا است. قیمت‌ها در حال کاهش هستند.",
-            MarketPhase.TRANSITION: "بازار در فاز انتقالی است. جهت واضحی وجود ندارد و بازار در حال تصمیم‌گیری برای حرکت بعدی است."
+            MarketPhase.TRANSITION: "بازار در فاز انتقالی است. جهت واضحی وجود ندارد و بازار در حال تصمیم‌گیری برای حرکت بعدی است.",
         }
 
         # Trading recommendations based on Dow Theory
@@ -435,12 +457,12 @@ class MarketPhaseAnalysis:
             "description": descriptions[phase],
             "detailed_analysis": detailed,
             "recommendations": recommendations,
-            "dow_theory_compliance": True  # Always compliant with Dow Theory
+            "dow_theory_compliance": True,  # Always compliant with Dow Theory
         }
 
-    def _generate_recommendations(self, phase: MarketPhase,
-                                  strength: PhaseStrength,
-                                  detailed: dict) -> list[str]:
+    def _generate_recommendations(
+        self, phase: MarketPhase, strength: PhaseStrength, detailed: dict
+    ) -> list[str]:
         """Generate trading recommendations based on phase"""
         recommendations = []
 
