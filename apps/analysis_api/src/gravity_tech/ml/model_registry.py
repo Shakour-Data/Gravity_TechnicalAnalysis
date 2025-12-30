@@ -10,7 +10,7 @@ from __future__ import annotations
 import pickle
 import threading
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -20,7 +20,7 @@ from gravity_tech.config.paths import ML_MODELS_DIR
 class PatternClassifierRegistry:
     """Singleton-style loader for the harmonic pattern classifier."""
 
-    _instance: "PatternClassifierRegistry | None" = None
+    _instance: PatternClassifierRegistry | None = None
 
     def __new__(cls, models_dir: Path | None = None):
         if cls._instance is None:
@@ -31,7 +31,7 @@ class PatternClassifierRegistry:
             cls._instance._lock = threading.Lock()
         return cls._instance
 
-    def get_classifier(self) -> Tuple[Any, str]:
+    def get_classifier(self) -> tuple[Any, str]:
         """Return the cached classifier, loading it if necessary."""
         if self._model is None:
             with self._lock:
@@ -39,7 +39,7 @@ class PatternClassifierRegistry:
                     self._model, self._version = self._load_classifier()
         return self._model, self._version  # type: ignore[return-value]
 
-    def _load_classifier(self) -> Tuple[Any, str]:
+    def _load_classifier(self) -> tuple[Any, str]:
         preferred = [
             ("pattern_classifier_advanced_v2.pkl", "v2"),
             ("pattern_classifier_v1.pkl", "v1"),
@@ -84,8 +84,10 @@ def run_classifier(model: Any, feature_array: np.ndarray) -> dict[str, Any]:
     else:
         class_names = ["gartley", "butterfly", "bat", "crab"]
 
-    predicted_pattern = class_names[prediction] if isinstance(prediction, (int, np.integer)) else prediction
-    prob_dict = {name: float(prob) for name, prob in zip(class_names, probabilities)}
+    predicted_pattern = (
+        class_names[prediction] if isinstance(prediction, (int, np.integer)) else prediction
+    )
+    prob_dict = {name: float(prob) for name, prob in zip(class_names, probabilities, strict=False)}
     confidence = max(prob_dict.values()) if prob_dict else 0.0
 
     return {
