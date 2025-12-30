@@ -19,8 +19,6 @@ Version: 1.0.0
 License: MIT
 """
 
-
-
 from gravity_tech.models.schemas import Candle, IndicatorCategory, IndicatorResult, SignalStrength
 
 
@@ -82,10 +80,10 @@ class SupportResistanceIndicators:
                 "R3": float(r3),
                 "S1": float(s1),
                 "S2": float(s2),
-                "S3": float(s3)
+                "S3": float(s3),
             },
             confidence=confidence,
-            description=f"قیمت {'بالای' if current_price > pivot else 'زیر'} پیوت"
+            description=f"قیمت {'بالای' if current_price > pivot else 'زیر'} پیوت",
         )
 
     @staticmethod
@@ -115,7 +113,7 @@ class SupportResistanceIndicators:
             "0.5": high - (0.5 * diff),
             "0.618": high - (0.618 * diff),
             "0.786": high - (0.786 * diff),
-            "1.0": low
+            "1.0": low,
         }
 
         # Find nearest level
@@ -152,7 +150,7 @@ class SupportResistanceIndicators:
             value=float(nearest_price),
             additional_values={k: float(v) for k, v in fib_levels.items()},
             confidence=confidence,
-            description=f"نزدیک به سطح فیبوناچی {nearest_level}"
+            description=f"نزدیک به سطح فیبوناچی {nearest_level}",
         )
 
     @staticmethod
@@ -209,11 +207,17 @@ class SupportResistanceIndicators:
             signal=signal,
             value=float(close),
             additional_values={
-                "R4": float(r4), "R3": float(r3), "R2": float(r2), "R1": float(r1),
-                "S1": float(s1), "S2": float(s2), "S3": float(s3), "S4": float(s4)
+                "R4": float(r4),
+                "R3": float(r3),
+                "R2": float(r2),
+                "R1": float(r1),
+                "S1": float(s1),
+                "S2": float(s2),
+                "S3": float(s3),
+                "S4": float(s4),
             },
             confidence=confidence,
-            description="سطوح کاماریلا"
+            description="سطوح کاماریلا",
         )
 
     @staticmethod
@@ -237,17 +241,21 @@ class SupportResistanceIndicators:
 
         for i in range(2, len(recent) - 2):
             # Local high
-            if (recent[i].high > recent[i-1].high and
-                recent[i].high > recent[i-2].high and
-                recent[i].high > recent[i+1].high and
-                recent[i].high > recent[i+2].high):
+            if (
+                recent[i].high > recent[i - 1].high
+                and recent[i].high > recent[i - 2].high
+                and recent[i].high > recent[i + 1].high
+                and recent[i].high > recent[i + 2].high
+            ):
                 highs.append(recent[i].high)
 
             # Local low
-            if (recent[i].low < recent[i-1].low and
-                recent[i].low < recent[i-2].low and
-                recent[i].low < recent[i+1].low and
-                recent[i].low < recent[i+2].low):
+            if (
+                recent[i].low < recent[i - 1].low
+                and recent[i].low < recent[i - 2].low
+                and recent[i].low < recent[i + 1].low
+                and recent[i].low < recent[i + 2].low
+            ):
                 lows.append(recent[i].low)
 
         # Find nearest support and resistance
@@ -276,12 +284,9 @@ class SupportResistanceIndicators:
             category=IndicatorCategory.SUPPORT_RESISTANCE,
             signal=signal,
             value=float(current_price),
-            additional_values={
-                "resistance": float(resistance),
-                "support": float(support)
-            },
+            additional_values={"resistance": float(resistance), "support": float(support)},
             confidence=confidence,
-            description=f"موقعیت: {position*100:.1f}% بین حمایت و مقاومت"
+            description=f"موقعیت: {position * 100:.1f}% بین حمایت و مقاومت",
         )
 
     @staticmethod
