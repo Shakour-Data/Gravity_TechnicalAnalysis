@@ -12,7 +12,7 @@ Version: 1.0.0
 License: MIT
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -21,7 +21,6 @@ from pydantic import BaseModel, Field, validator
 
 from gravity_tech.services.tool_recommendation_service import ToolRecommendationService
 
-
 router = APIRouter(prefix="/tools", tags=["tools"])
 tool_service = ToolRecommendationService()
 VALID_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d", "1w"]
@@ -29,8 +28,10 @@ VALID_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d
 
 # ==================== Enums ====================
 
+
 class TradingStyle(str, Enum):
     """سبک معامله‌گری"""
+
     SCALP = "scalp"
     DAY = "day"
     SWING = "swing"
@@ -39,6 +40,7 @@ class TradingStyle(str, Enum):
 
 class AnalysisGoal(str, Enum):
     """هدف تحلیل"""
+
     ENTRY_SIGNAL = "entry_signal"
     EXIT_SIGNAL = "exit_signal"
     RISK_MANAGEMENT = "risk_management"
@@ -48,6 +50,7 @@ class AnalysisGoal(str, Enum):
 
 class ToolPriority(str, Enum):
     """اولویت ابزار"""
+
     MUST_USE = "must_use"
     RECOMMENDED = "recommended"
     OPTIONAL = "optional"
@@ -56,6 +59,7 @@ class ToolPriority(str, Enum):
 
 class ToolCategory(str, Enum):
     """دسته‌بندی ابزارها"""
+
     TREND_INDICATORS = "trend_indicators"
     MOMENTUM_INDICATORS = "momentum_indicators"
     VOLATILITY_INDICATORS = "volatility_indicators"
@@ -70,32 +74,22 @@ class ToolCategory(str, Enum):
 
 # ==================== Request Models ====================
 
+
 class ToolRecommendationRequest(BaseModel):
     """درخواست پیشنهاد ابزارها"""
+
     symbol: str = Field(..., description="نماد دارایی (مثلاً BTCUSDT)")
     timeframe: str = Field(default="1d", description="بازه زمانی (1m, 5m, 15m, 1h, 4h, 1d)")
-    analysis_goal: AnalysisGoal = Field(
-        default=AnalysisGoal.ENTRY_SIGNAL,
-        description="هدف تحلیل"
-    )
+    analysis_goal: AnalysisGoal = Field(default=AnalysisGoal.ENTRY_SIGNAL, description="هدف تحلیل")
     trading_style: TradingStyle | None = Field(
-        default=TradingStyle.SWING,
-        description="سبک معامله‌گری"
+        default=TradingStyle.SWING, description="سبک معامله‌گری"
     )
     limit_candles: int = Field(
-        default=200,
-        ge=60,
-        le=1000,
-        description="تعداد کندل برای تحلیل (min 60)"
+        default=200, ge=60, le=1000, description="تعداد کندل برای تحلیل (min 60)"
     )
-    top_n: int = Field(
-        default=15,
-        ge=5,
-        le=50,
-        description="تعداد ابزارهای پیشنهادی"
-    )
+    top_n: int = Field(default=15, ge=5, le=50, description="تعداد ابزارهای پیشنهادی")
 
-    @validator('timeframe')
+    @validator("timeframe")
     def validate_timeframe(cls, v):
         valid = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d", "1w"]
         if v not in valid:
@@ -105,58 +99,40 @@ class ToolRecommendationRequest(BaseModel):
 
 class CustomAnalysisRequest(BaseModel):
     """درخواست تحلیل با ابزارهای دلخواه"""
+
     symbol: str = Field(..., description="نماد دارایی")
     timeframe: str = Field(default="1d", description="بازه زمانی")
     selected_tools: list[str] = Field(
-        ...,
-        min_items=1,
-        max_items=30,
-        description="ابزارهای انتخاب شده"
+        ..., min_items=1, max_items=30, description="ابزارهای انتخاب شده"
     )
-    include_ml_scoring: bool = Field(
-        default=True,
-        description="آیا امتیازدهی ML انجام شود؟"
+    include_ml_scoring: bool = Field(default=True, description="آیا امتیازدهی ML انجام شود؟")
+    include_patterns: bool = Field(default=True, description="آیا الگوهای قیمتی شناسایی شوند؟")
+    limit_candles: int = Field(
+        default=200, ge=60, le=1000, description="تعداد کندل برای تحلیل (min 60)"
     )
-    include_patterns: bool = Field(
-        default=True,
-        description="آیا الگوهای قیمتی شناسایی شوند؟"
-    )
-    limit_candles: int = Field(default=200, ge=60, le=1000, description="تعداد کندل برای تحلیل (min 60)")
 
-    @validator('timeframe')
+    @validator("timeframe")
     def validate_timeframe(cls, v):
         if v not in VALID_TIMEFRAMES:
             raise ValueError(f"Timeframe must be one of {VALID_TIMEFRAMES}")
         return v
 
 
-
 class ToolFilterRequest(BaseModel):
     """فیلتر ابزارها"""
-    categories: list[ToolCategory] | None = Field(
-        default=None,
-        description="فیلتر بر اساس دسته"
-    )
-    min_accuracy: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="حداقل دقت تاریخی"
-    )
-    timeframe: str | None = Field(
-        default=None,
-        description="مناسب برای timeframe خاص"
-    )
-    trading_style: TradingStyle | None = Field(
-        default=None,
-        description="مناسب برای سبک معامله‌گری"
-    )
+
+    categories: list[ToolCategory] | None = Field(default=None, description="فیلتر بر اساس دسته")
+    min_accuracy: float | None = Field(default=None, ge=0.0, le=1.0, description="حداقل دقت تاریخی")
+    timeframe: str | None = Field(default=None, description="مناسب برای timeframe خاص")
+    trading_style: TradingStyle | None = Field(default=None, description="مناسب برای سبک معامله‌گری")
 
 
 # ==================== Response Models ====================
 
+
 class ToolInfo(BaseModel):
     """اطلاعات یک ابزار"""
+
     name: str
     category: ToolCategory
     description: str
@@ -168,6 +144,7 @@ class ToolInfo(BaseModel):
 
 class ToolRecommendation(BaseModel):
     """پیشنهاد یک ابزار"""
+
     name: str
     category: ToolCategory
     ml_weight: float = Field(..., description="وزن ML")
@@ -180,6 +157,7 @@ class ToolRecommendation(BaseModel):
 
 class MarketContextInfo(BaseModel):
     """اطلاعات کانتکست بازار"""
+
     regime: str = Field(..., description="trending_bullish, trending_bearish, ranging, volatile")
     volatility: float = Field(..., ge=0.0, le=100.0)
     trend_strength: float = Field(..., ge=0.0, le=100.0)
@@ -188,6 +166,7 @@ class MarketContextInfo(BaseModel):
 
 class DynamicStrategy(BaseModel):
     """استراتژی پیشنهادی"""
+
     primary_tools: list[str]
     supporting_tools: list[str]
     confidence: float
@@ -198,12 +177,12 @@ class DynamicStrategy(BaseModel):
 
 class ToolRecommendationResponse(BaseModel):
     """پاسخ کامل پیشنهاد ابزارها"""
+
     symbol: str
     market_context: MarketContextInfo
     analysis_goal: str
     recommendations: dict[str, list[ToolRecommendation]] = Field(
-        ...,
-        description="دسته‌بندی شده: must_use, recommended, optional, avoid"
+        ..., description="دسته‌بندی شده: must_use, recommended, optional, avoid"
     )
     dynamic_strategy: DynamicStrategy
     ml_metadata: dict[str, Any]
@@ -212,20 +191,16 @@ class ToolRecommendationResponse(BaseModel):
 
 class CustomAnalysisResponse(BaseModel):
     """پاسخ تحلیل با ابزارهای دلخواه"""
+
     symbol: str
     timeframe: str
     selected_tools: list[str]
-    tool_results: dict[str, Any] = Field(
-        ...,
-        description="نتایج هر ابزار"
-    )
+    tool_results: dict[str, Any] = Field(..., description="نتایج هر ابزار")
     ml_scoring: dict[str, Any] | None = Field(
-        default=None,
-        description="امتیازدهی ML (اگر فعال باشد)"
+        default=None, description="امتیازدهی ML (اگر فعال باشد)"
     )
     patterns_detected: list[dict[str, Any]] | None = Field(
-        default=None,
-        description="الگوهای شناسایی شده"
+        default=None, description="الگوهای شناسایی شده"
     )
     summary: dict[str, Any]
     timestamp: datetime
@@ -233,6 +208,7 @@ class CustomAnalysisResponse(BaseModel):
 
 class ToolListResponse(BaseModel):
     """لیست ابزارها"""
+
     total_tools: int
     categories: dict[ToolCategory, int]
     tools: list[ToolInfo]
@@ -271,17 +247,18 @@ def _ensure_valid_limit_candles(limit_candles: int) -> int:
 
 # ==================== API Endpoints ====================
 
+
 @router.get(
     "/",
     response_model=ToolListResponse,
     summary="لیست تمام ابزارهای موجود",
-    description="دریافت لیست کامل 95+ ابزار تحلیل تکنیکال با فیلتر"
+    description="دریافت لیست کامل 95+ ابزار تحلیل تکنیکال با فیلتر",
 )
 async def list_tools(
     category: ToolCategory | None = Query(None, description="فیلتر بر اساس دسته"),
     timeframe: str | None = Query(None, description="مناسب برای timeframe"),
     min_accuracy: float | None = Query(None, ge=0.0, le=1.0, description="حداقل دقت"),
-    limit: int = Query(100, ge=1, le=200, description="حداکثر تعداد")
+    limit: int = Query(100, ge=1, le=200, description="حداکثر تعداد"),
 ):
     """
     GET /api/v1/tools/
@@ -313,7 +290,7 @@ async def list_tools(
         total_tools=len(tools),
         categories=category_counts,
         tools=tool_infos,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
 
@@ -321,7 +298,7 @@ async def list_tools(
     "/recommend",
     response_model=ToolRecommendationResponse,
     summary="پیشنهاد پویای ابزارها",
-    description="دریافت پیشنهادات هوشمند ML-based برای بهترین ابزارها"
+    description="دریافت پیشنهادات هوشمند ML-based برای بهترین ابزارها",
 )
 async def recommend_tools(request: ToolRecommendationRequest):
     """
@@ -357,14 +334,16 @@ async def recommend_tools(request: ToolRecommendationRequest):
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to build recommendations: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to build recommendations: {exc}"
+        ) from exc
 
 
 @router.post(
     "/analyze/custom",
     response_model=CustomAnalysisResponse,
     summary="تحلیل با ابزارهای دلخواه",
-    description="اجرای تحلیل با ابزارهای انتخابی کاربر"
+    description="اجرای تحلیل با ابزارهای انتخابی کاربر",
 )
 async def analyze_with_custom_tools(request: CustomAnalysisRequest):
     """
@@ -397,13 +376,15 @@ async def analyze_with_custom_tools(request: CustomAnalysisRequest):
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to analyze custom tools: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze custom tools: {exc}"
+        ) from exc
 
 
 @router.get(
     "/categories",
     summary="لیست دسته‌بندی ابزارها",
-    description="دریافت لیست تمام دسته‌ها و تعداد ابزارها در هر دسته"
+    description="دریافت لیست تمام دسته‌ها و تعداد ابزارها در هر دسته",
 )
 async def list_categories():
     """
@@ -418,53 +399,53 @@ async def list_categories():
         "trend_indicators": {
             "count": 10,
             "description": "اندیکاتورهای روند",
-            "examples": ["SMA", "EMA", "MACD", "ADX"]
+            "examples": ["SMA", "EMA", "MACD", "ADX"],
         },
         "momentum_indicators": {
             "count": 8,
             "description": "اندیکاتورهای مومنتوم",
-            "examples": ["RSI", "Stochastic", "CCI", "Williams_R"]
+            "examples": ["RSI", "Stochastic", "CCI", "Williams_R"],
         },
         "volatility_indicators": {
             "count": 10,
             "description": "اندیکاتورهای نوسان",
-            "examples": ["Bollinger_Bands", "ATR", "Keltner_Channels"]
+            "examples": ["Bollinger_Bands", "ATR", "Keltner_Channels"],
         },
         "volume_indicators": {
             "count": 10,
             "description": "اندیکاتورهای حجم",
-            "examples": ["OBV", "VWAP", "Volume_Profile"]
+            "examples": ["OBV", "VWAP", "Volume_Profile"],
         },
         "cycle_indicators": {
             "count": 10,
             "description": "اندیکاتورهای چرخه‌ای",
-            "examples": ["Detrended_Price", "Schaff_Trend_Cycle"]
+            "examples": ["Detrended_Price", "Schaff_Trend_Cycle"],
         },
         "support_resistance": {
             "count": 12,
             "description": "سطوح حمایت و مقاومت",
-            "examples": ["Pivot_Points", "Fibonacci", "Gann_Levels"]
+            "examples": ["Pivot_Points", "Fibonacci", "Gann_Levels"],
         },
         "candlestick_patterns": {
             "count": 40,
             "description": "الگوهای کندل استیک",
-            "examples": ["Doji", "Hammer", "Engulfing", "Morning_Star"]
+            "examples": ["Doji", "Hammer", "Engulfing", "Morning_Star"],
         },
         "classical_patterns": {
             "count": 15,
             "description": "الگوهای کلاسیک",
-            "examples": ["Head_Shoulders", "Double_Top", "Triangle"]
+            "examples": ["Head_Shoulders", "Double_Top", "Triangle"],
         },
         "elliott_wave": {
             "count": 1,
             "description": "تحلیل امواج الیوت",
-            "examples": ["Elliott_Wave_Analysis"]
+            "examples": ["Elliott_Wave_Analysis"],
         },
         "divergence": {
             "count": 3,
             "description": "تحلیل واگرایی",
-            "examples": ["RSI_Divergence", "MACD_Divergence"]
-        }
+            "examples": ["RSI_Divergence", "MACD_Divergence"],
+        },
     }
 
     total = sum(cat["count"] for cat in categories.values())
@@ -473,7 +454,7 @@ async def list_categories():
         "total_tools": total,
         "total_categories": len(categories),
         "categories": categories,
-        "timestamp": datetime.now(timezone.utc)
+        "timestamp": datetime.now(UTC),
     }
 
 
@@ -481,7 +462,7 @@ async def list_categories():
     "/tool/{tool_name}",
     response_model=ToolInfo,
     summary="اطلاعات یک ابزار",
-    description="دریافت اطلاعات کامل درباره یک ابزار خاص"
+    description="دریافت اطلاعات کامل درباره یک ابزار خاص",
 )
 async def get_tool_info(tool_name: str):
     """
@@ -501,11 +482,8 @@ async def get_tool_info(tool_name: str):
 
 # ==================== Health Check ====================
 
+
 @router.get("/health", include_in_schema=False)
 async def health_check():
     """بررسی سلامت API"""
-    return {
-        "status": "healthy",
-        "service": "tool_recommendation",
-        "timestamp": datetime.now(timezone.utc)
-    }
+    return {"status": "healthy", "service": "tool_recommendation", "timestamp": datetime.now(UTC)}
