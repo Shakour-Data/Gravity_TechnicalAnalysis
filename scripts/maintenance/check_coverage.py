@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, timedelta
 
-conn = sqlite3.connect('data/TechAnalysis.db')
+conn = sqlite3.connect("data/TechAnalysis.db")
 cursor = conn.cursor()
 
 # Get unique symbols in analysis_results
@@ -21,18 +21,23 @@ ninety_days_ago = current_date - timedelta(days=90)
 print(f"90 days ago: {ninety_days_ago.isoformat()}")
 
 # Count records within last 90 days
-cursor.execute("SELECT COUNT(*) FROM analysis_results WHERE analysis_date >= ?", (ninety_days_ago.isoformat(),))
+cursor.execute(
+    "SELECT COUNT(*) FROM analysis_results WHERE analysis_date >= ?", (ninety_days_ago.isoformat(),)
+)
 count_recent = cursor.fetchone()[0]
 total_count = cursor.execute("SELECT COUNT(*) FROM analysis_results").fetchone()[0]
 print(f"Records in last 90 days: {count_recent} out of {total_count}")
 
 # Check if all symbols have data in last 90 days
-cursor.execute("""
+cursor.execute(
+    """
 SELECT symbol, COUNT(*) as count
 FROM analysis_results
 WHERE analysis_date >= ?
 GROUP BY symbol
-""", (ninety_days_ago.isoformat(),))
+""",
+    (ninety_days_ago.isoformat(),),
+)
 symbols_with_recent_data = cursor.fetchall()
 print(f"Symbols with data in last 90 days: {len(symbols_with_recent_data)}")
 
