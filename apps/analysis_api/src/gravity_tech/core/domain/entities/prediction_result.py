@@ -17,6 +17,7 @@ from typing import Any
 
 class PredictionSignal(str, Enum):
     """Prediction signal enumeration"""
+
     BULLISH = "BULLISH"
     BEARISH = "BEARISH"
     NEUTRAL = "NEUTRAL"
@@ -68,11 +69,11 @@ class PredictionResult:
             "prediction_timestamp": self.prediction_timestamp.isoformat(),
             "input_features": self.input_features,
             "metadata": self.metadata,
-            "description": self.description
+            "description": self.description,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'PredictionResult':
+    def from_dict(cls, data: dict[str, Any]) -> "PredictionResult":
         """Create from dictionary representation"""
         return cls(
             predictions=data["predictions"],
@@ -82,9 +83,8 @@ class PredictionResult:
             prediction_timestamp=datetime.fromisoformat(data["prediction_timestamp"]),
             input_features=data.get("input_features"),
             metadata=data.get("metadata"),
-            description=data["description"]
+            description=data["description"],
         )
-
 
     def get_primary_prediction(self) -> float:
         """Get the primary (first) prediction value"""
@@ -120,7 +120,7 @@ class PredictionResult:
         signal_desc = {
             PredictionSignal.BULLISH: "Bullish",
             PredictionSignal.BEARISH: "Bearish",
-            PredictionSignal.NEUTRAL: "Neutral"
+            PredictionSignal.NEUTRAL: "Neutral",
         }.get(self.signal, "Unknown")
 
         strength = self.get_signal_strength()
