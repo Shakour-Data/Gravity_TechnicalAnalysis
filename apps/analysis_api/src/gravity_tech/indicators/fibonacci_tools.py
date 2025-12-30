@@ -17,6 +17,7 @@ License: MIT
 from typing import Any
 
 import numpy as np
+
 from gravity_tech.models.schemas import Candle, FibonacciLevel, FibonacciResult, SignalStrength
 
 
@@ -24,11 +25,11 @@ class FibonacciTools:
     """Comprehensive Fibonacci analysis tools"""
 
     FIBONACCI_RATIOS = {
-        'retracement': [0.236, 0.382, 0.5, 0.618, 0.786],
-        'extension': [0.618, 1.0, 1.272, 1.382, 1.618, 2.0, 2.618],
-        'arc': [0.382, 0.5, 0.618, 0.786],
-        'fan': [0.382, 0.5, 0.618, 0.786],
-        'time_zone': [0.618, 1.0, 1.618, 2.618]
+        "retracement": [0.236, 0.382, 0.5, 0.618, 0.786],
+        "extension": [0.618, 1.0, 1.272, 1.382, 1.618, 2.0, 2.618],
+        "arc": [0.382, 0.5, 0.618, 0.786],
+        "fan": [0.382, 0.5, 0.618, 0.786],
+        "time_zone": [0.618, 1.0, 1.618, 2.618],
     }
 
     @staticmethod
@@ -46,7 +47,7 @@ class FibonacciTools:
         diff = high - low
         retracements = {}
 
-        for ratio in FibonacciTools.FIBONACCI_RATIOS['retracement']:
+        for ratio in FibonacciTools.FIBONACCI_RATIOS["retracement"]:
             level = high - (diff * ratio)
             retracements[f"{ratio:.3f}"] = level
 
@@ -68,7 +69,7 @@ class FibonacciTools:
         diff = high - low
         extensions = {}
 
-        for ratio in FibonacciTools.FIBONACCI_RATIOS['extension']:
+        for ratio in FibonacciTools.FIBONACCI_RATIOS["extension"]:
             if direction == "up":
                 level = high + (diff * ratio)
             else:
@@ -78,7 +79,9 @@ class FibonacciTools:
         return extensions
 
     @staticmethod
-    def calculate_arcs(center: float, radius: float, angle_range: tuple[float, float] = (0, 180)) -> dict[str, float]:
+    def calculate_arcs(
+        center: float, radius: float, angle_range: tuple[float, float] = (0, 180)
+    ) -> dict[str, float]:
         """
         Calculate Fibonacci arc levels
 
@@ -92,9 +95,12 @@ class FibonacciTools:
         """
         arcs = {}
         start_deg, end_deg = angle_range
-        start_rad, end_rad = np.deg2rad(min(start_deg, end_deg)), np.deg2rad(max(start_deg, end_deg))
+        start_rad, end_rad = (
+            np.deg2rad(min(start_deg, end_deg)),
+            np.deg2rad(max(start_deg, end_deg)),
+        )
 
-        for ratio in FibonacciTools.FIBONACCI_RATIOS['arc']:
+        for ratio in FibonacciTools.FIBONACCI_RATIOS["arc"]:
             angle = np.arccos(1 - 2 * ratio)  # Convert ratio to angle
             if not (start_rad <= angle <= end_rad):
                 continue
@@ -104,7 +110,9 @@ class FibonacciTools:
         return arcs
 
     @staticmethod
-    def calculate_fan_lines(start_point: tuple[float, float], end_point: tuple[float, float]) -> dict[str, tuple[float, float]]:
+    def calculate_fan_lines(
+        start_point: tuple[float, float], end_point: tuple[float, float]
+    ) -> dict[str, tuple[float, float]]:
         """
         Calculate Fibonacci fan lines
 
@@ -118,18 +126,18 @@ class FibonacciTools:
         x1, y1 = start_point
         x2, y2 = end_point
 
-        slope = (y2 - y1) / (x2 - x1) if x2 != x1 else float('inf')
+        slope = (y2 - y1) / (x2 - x1) if x2 != x1 else float("inf")
 
         fans = {}
 
-        for ratio in FibonacciTools.FIBONACCI_RATIOS['fan']:
-            if slope != float('inf'):
+        for ratio in FibonacciTools.FIBONACCI_RATIOS["fan"]:
+            if slope != float("inf"):
                 fan_slope = slope * ratio
                 fan_intercept = y1 - fan_slope * x1
                 fans[f"fan_{ratio:.3f}"] = (fan_slope, fan_intercept)
             else:
                 # Vertical line case
-                fans[f"fan_{ratio:.3f}"] = (float('inf'), x1)
+                fans[f"fan_{ratio:.3f}"] = (float("inf"), x1)
 
         return fans
 
@@ -164,7 +172,10 @@ class FibonacciTools:
             # Check how many times price touched this level
             touches = 0
             for candle in recent_candles:
-                if abs(candle.high - price) / price < 0.001 or abs(candle.low - price) / price < 0.001:
+                if (
+                    abs(candle.high - price) / price < 0.001
+                    or abs(candle.low - price) / price < 0.001
+                ):
                     touches += 1
 
             # Calculate strength based on touches and recency
@@ -181,14 +192,16 @@ class FibonacciTools:
             else:
                 level_type = "WEAK"
 
-            levels.append(FibonacciLevel(
-                price=float(price),
-                ratio=float(ratio_str),
-                level_type=level_type,
-                strength=strength,
-                touches=touches,
-                description=f"Fibonacci {ratio_str} retracement level"
-            ))
+            levels.append(
+                FibonacciLevel(
+                    price=float(price),
+                    ratio=float(ratio_str),
+                    level_type=level_type,
+                    strength=strength,
+                    touches=touches,
+                    description=f"Fibonacci {ratio_str} retracement level",
+                )
+            )
 
         # Sort by strength
         levels.sort(key=lambda x: x.strength, reverse=True)
@@ -196,7 +209,9 @@ class FibonacciTools:
         return levels
 
     @staticmethod
-    def analyze_fibonacci_confluence(candles: list[Candle], current_price: float) -> FibonacciResult | None:
+    def analyze_fibonacci_confluence(
+        candles: list[Candle], current_price: float
+    ) -> FibonacciResult | None:
         """
         Analyze Fibonacci confluence zones
 
@@ -234,36 +249,44 @@ class FibonacciTools:
 
             if len(zone_levels) >= 2:  # At least 2 levels in confluence
                 avg_price = sum(zone_levels) / len(zone_levels)
-                confluence_zones.append({
-                    'price': avg_price,
-                    'levels': len(zone_levels),
-                    'strength': len(zone_levels) / 3.0  # Max 3 levels
-                })
+                confluence_zones.append(
+                    {
+                        "price": avg_price,
+                        "levels": len(zone_levels),
+                        "strength": len(zone_levels) / 3.0,  # Max 3 levels
+                    }
+                )
 
             i = j
 
         # Find nearest confluence zone to current price
         if confluence_zones:
-            nearest_zone = min(confluence_zones, key=lambda x: abs(x['price'] - current_price))
+            nearest_zone = min(confluence_zones, key=lambda x: abs(x["price"] - current_price))
 
             # Determine signal based on position relative to zone
-            if abs(current_price - nearest_zone['price']) / current_price < 0.01:  # Within 1%
+            if abs(current_price - nearest_zone["price"]) / current_price < 0.01:  # Within 1%
                 signal = SignalStrength.NEUTRAL
-                description = f"Price at Fibonacci confluence zone ({nearest_zone['levels']} levels)"
-            elif current_price > nearest_zone['price']:
+                description = (
+                    f"Price at Fibonacci confluence zone ({nearest_zone['levels']} levels)"
+                )
+            elif current_price > nearest_zone["price"]:
                 signal = SignalStrength.BULLISH
-                description = f"Price above Fibonacci confluence zone ({nearest_zone['levels']} levels)"
+                description = (
+                    f"Price above Fibonacci confluence zone ({nearest_zone['levels']} levels)"
+                )
             else:
                 signal = SignalStrength.BEARISH
-                description = f"Price below Fibonacci confluence zone ({nearest_zone['levels']} levels)"
+                description = (
+                    f"Price below Fibonacci confluence zone ({nearest_zone['levels']} levels)"
+                )
 
             return FibonacciResult(
                 retracement_levels=retracements,
                 extension_levels=FibonacciTools.calculate_extensions(recent_high, recent_low),
                 confluence_zones=[nearest_zone],
                 signal=signal,
-                confidence=min(0.8, nearest_zone['strength']),
-                description=description
+                confidence=min(0.8, nearest_zone["strength"]),
+                description=description,
             )
 
         return None
@@ -309,7 +332,9 @@ class FibonacciTools:
         return analysis
 
 
-def analyze_fibonacci_levels(candles: list[Candle], current_price: float | None = None) -> FibonacciResult | None:
+def analyze_fibonacci_levels(
+    candles: list[Candle], current_price: float | None = None
+) -> FibonacciResult | None:
     """
     Convenience function for Fibonacci analysis
 
