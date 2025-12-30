@@ -19,6 +19,7 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
 from gravity_tech.ml.multi_horizon_weights import HorizonWeights, MultiHorizonWeightLearner
 
@@ -40,6 +41,7 @@ class MarketPattern(Enum):
     """
     الگوهای بازار ترکیبی از سه افق
     """
+
     STRONG_UPTREND = "STRONG_UPTREND"  # همه مثبت
     STRONG_DOWNTREND = "STRONG_DOWNTREND"  # همه منفی
     BUY_THE_DIP = "BUY_THE_DIP"  # کوتاه منفی، میان و بلند مثبت
@@ -55,6 +57,7 @@ class HorizonScore:
     """
     امتیاز یک افق زمانی
     """
+
     horizon: str  # "3d", "7d", "30d"
     score: float  # [-1, 1] - منفی: نزولی، مثبت: صعودی
     confidence: float  # [0, 1]
@@ -106,6 +109,7 @@ class MultiHorizonAnalysis:
     """
     نتیجه تحلیل چند افقی
     """
+
     timestamp: str
 
     # امتیازهای سه افق
@@ -128,40 +132,34 @@ class MultiHorizonAnalysis:
 
     def to_dict(self) -> dict:
         return {
-            'timestamp': self.timestamp,
-            'scores': {
-                '3d': {
-                    'score': self.score_3d.score,
-                    'confidence': self.score_3d.confidence,
-                    'signal': self.score_3d.signal.name,
-                    'strength': self.score_3d.get_strength()
+            "timestamp": self.timestamp,
+            "scores": {
+                "3d": {
+                    "score": self.score_3d.score,
+                    "confidence": self.score_3d.confidence,
+                    "signal": self.score_3d.signal.name,
+                    "strength": self.score_3d.get_strength(),
                 },
-                '7d': {
-                    'score': self.score_7d.score,
-                    'confidence': self.score_7d.confidence,
-                    'signal': self.score_7d.signal.name,
-                    'strength': self.score_7d.get_strength()
+                "7d": {
+                    "score": self.score_7d.score,
+                    "confidence": self.score_7d.confidence,
+                    "signal": self.score_7d.signal.name,
+                    "strength": self.score_7d.get_strength(),
                 },
-                '30d': {
-                    'score': self.score_30d.score,
-                    'confidence': self.score_30d.confidence,
-                    'signal': self.score_30d.signal.name,
-                    'strength': self.score_30d.get_strength()
-                }
+                "30d": {
+                    "score": self.score_30d.score,
+                    "confidence": self.score_30d.confidence,
+                    "signal": self.score_30d.signal.name,
+                    "strength": self.score_30d.get_strength(),
+                },
             },
-            'pattern': {
-                'type': self.pattern.value,
-                'confidence': self.pattern_confidence
+            "pattern": {"type": self.pattern.value, "confidence": self.pattern_confidence},
+            "combined": {"score": self.combined_score, "confidence": self.combined_confidence},
+            "recommendations": {
+                "3d": self.recommendation_3d,
+                "7d": self.recommendation_7d,
+                "30d": self.recommendation_30d,
             },
-            'combined': {
-                'score': self.combined_score,
-                'confidence': self.combined_confidence
-            },
-            'recommendations': {
-                '3d': self.recommendation_3d,
-                '7d': self.recommendation_7d,
-                '30d': self.recommendation_30d
-            }
         }
 
     def to_trend_score(self) -> TrendScore:
@@ -172,7 +170,7 @@ class MultiHorizonAnalysis:
             confidence=self.combined_confidence,
             signal=signal,
             pattern=self.pattern,
-            recommendation=self.recommendation_7d
+            recommendation=self.recommendation_7d,
         )
 
 
@@ -181,10 +179,7 @@ class MultiHorizonTrendAnalyzer:
     تحلیلگر روند چند افقی
     """
 
-    def __init__(
-        self,
-        weight_learner: MultiHorizonWeightLearner
-    ):
+    def __init__(self, weight_learner: MultiHorizonWeightLearner):
         """
         Initialize analyzer
 
@@ -192,12 +187,9 @@ class MultiHorizonTrendAnalyzer:
             weight_learner: مدل آموزش دیده با وزن‌ها
         """
         self.weight_learner = weight_learner
-        self.horizons = ['3d', '7d', '30d']
+        self.horizons = ["3d", "7d", "30d"]
 
-    def analyze(
-        self,
-        features: dict[str, float]
-    ) -> MultiHorizonAnalysis:
+    def analyze(self, features: dict[str, float]) -> MultiHorizonAnalysis:
         """
         تحلیل چند افقی بر اساس ویژگی‌های فعلی
 
@@ -216,7 +208,7 @@ class MultiHorizonTrendAnalyzer:
         # ایجاد HorizonScore برای هر افق
         horizon_scores = {}
         for horizon in self.horizons:
-            pred_col = f'pred_{horizon}'
+            pred_col = f"pred_{horizon}"
             raw_score = predictions[pred_col].iloc[0]
 
             # دریافت وزن‌ها و confidence
@@ -232,10 +224,7 @@ class MultiHorizonTrendAnalyzer:
             signal = self._score_to_signal(normalized_score)
 
             horizon_scores[horizon] = HorizonScore(
-                horizon=horizon,
-                score=normalized_score,
-                confidence=confidence,
-                signal=signal
+                horizon=horizon, score=normalized_score, confidence=confidence, signal=signal
             )
 
         # تشخیص الگوی ترکیبی
@@ -245,22 +234,22 @@ class MultiHorizonTrendAnalyzer:
         combined_score, combined_confidence = self._smart_combination(horizon_scores)
 
         # ایجاد توصیه‌ها
-        rec_3d = self._generate_recommendation(horizon_scores['3d'], pattern)
-        rec_7d = self._generate_recommendation(horizon_scores['7d'], pattern)
-        rec_30d = self._generate_recommendation(horizon_scores['30d'], pattern)
+        rec_3d = self._generate_recommendation(horizon_scores["3d"], pattern)
+        rec_7d = self._generate_recommendation(horizon_scores["7d"], pattern)
+        rec_30d = self._generate_recommendation(horizon_scores["30d"], pattern)
 
         return MultiHorizonAnalysis(
             timestamp=pd.Timestamp.now().isoformat(),
-            score_3d=horizon_scores['3d'],
-            score_7d=horizon_scores['7d'],
-            score_30d=horizon_scores['30d'],
+            score_3d=horizon_scores["3d"],
+            score_7d=horizon_scores["7d"],
+            score_30d=horizon_scores["30d"],
             pattern=pattern,
             pattern_confidence=pattern_confidence,
             combined_score=combined_score,
             combined_confidence=combined_confidence,
             recommendation_3d=rec_3d,
             recommendation_7d=rec_7d,
-            recommendation_30d=rec_30d
+            recommendation_30d=rec_30d,
         )
 
     def _score_to_signal(self, score: float) -> SignalStrength:
@@ -268,8 +257,7 @@ class MultiHorizonTrendAnalyzer:
         return score_to_signal(score)
 
     def _detect_pattern(
-        self,
-        horizon_scores: dict[str, HorizonScore]
+        self, horizon_scores: dict[str, HorizonScore]
     ) -> tuple[MarketPattern, float]:
         """
         تشخیص الگوی ترکیبی از سه افق
@@ -277,13 +265,13 @@ class MultiHorizonTrendAnalyzer:
         Returns:
             (pattern, confidence)
         """
-        s3 = horizon_scores['3d'].score
-        s7 = horizon_scores['7d'].score
-        s30 = horizon_scores['30d'].score
+        s3 = horizon_scores["3d"].score
+        s7 = horizon_scores["7d"].score
+        s30 = horizon_scores["30d"].score
 
-        c3 = horizon_scores['3d'].confidence
-        c7 = horizon_scores['7d'].confidence
-        c30 = horizon_scores['30d'].confidence
+        c3 = horizon_scores["3d"].confidence
+        c7 = horizon_scores["7d"].confidence
+        c30 = horizon_scores["30d"].confidence
 
         # اعتماد کلی
         avg_confidence = (c3 + c7 + c30) / 3
@@ -323,10 +311,7 @@ class MultiHorizonTrendAnalyzer:
         # بقیه → MIXED_SIGNALS
         return MarketPattern.MIXED_SIGNALS, avg_confidence
 
-    def _smart_combination(
-        self,
-        horizon_scores: dict[str, HorizonScore]
-    ) -> tuple[float, float]:
+    def _smart_combination(self, horizon_scores: dict[str, HorizonScore]) -> tuple[float, float]:
         """
         ترکیب هوشمند امتیازها با وزن‌دهی اعتماد
 
@@ -345,9 +330,9 @@ class MultiHorizonTrendAnalyzer:
         total_confidence = sum(confidences)
 
         if total_confidence > 0:
-            weighted_score = sum(
-                s * c for s, c in zip(scores, confidences, strict=True)
-            ) / total_confidence
+            weighted_score = (
+                sum(s * c for s, c in zip(scores, confidences, strict=True)) / total_confidence
+            )
 
             combined_confidence = total_confidence / len(confidences)
         else:
@@ -356,11 +341,7 @@ class MultiHorizonTrendAnalyzer:
 
         return weighted_score, combined_confidence
 
-    def _generate_recommendation(
-        self,
-        horizon_score: HorizonScore,
-        pattern: MarketPattern
-    ) -> str:
+    def _generate_recommendation(self, horizon_score: HorizonScore, pattern: MarketPattern) -> str:
         """
         ایجاد توصیه برای یک افق
         """
@@ -380,13 +361,13 @@ class MultiHorizonTrendAnalyzer:
             return "⛔ STRONG SELL - All horizons bearish"
 
         elif pattern == MarketPattern.BUY_THE_DIP:
-            if horizon == '3d':
+            if horizon == "3d":
                 return "💎 BUY THE DIP - Short-term correction, long-term bullish"
             else:
                 return "📈 HOLD/BUY - Long-term trend positive"
 
         elif pattern == MarketPattern.SELL_THE_RALLY:
-            if horizon == '3d':
+            if horizon == "3d":
                 return "💰 TAKE PROFIT - Short-term rally, long-term bearish"
             else:
                 return "📉 SELL - Long-term trend negative"
@@ -409,40 +390,34 @@ class MultiHorizonTrendAnalyzer:
         else:
             return f"📉 SELL - {horizon} bearish (confidence: {confidence:.0%})"
 
-    def analyze_batch(
-        self,
-        features_list: list[dict[str, float]]
-    ) -> list[MultiHorizonAnalysis]:
+    def analyze_batch(self, features_list: list[dict[str, float]]) -> list[MultiHorizonAnalysis]:
         """
         تحلیل دسته‌ای
         """
         return [self.analyze(features) for features in features_list]
 
-    def print_analysis(
-        self,
-        analysis: MultiHorizonAnalysis
-    ):
+    def print_analysis(self, analysis: MultiHorizonAnalysis):
         """
         نمایش زیبای نتیجه تحلیل
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🔮 MULTI-HORIZON TREND ANALYSIS")
-        print("="*70)
+        print("=" * 70)
 
         print(f"\n📅 Timestamp: {analysis.timestamp}")
 
         print(f"\n🎯 Pattern: {analysis.pattern.value}")
         print(f"   Confidence: {analysis.pattern_confidence:.0%}")
 
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("📊 HORIZON SCORES")
-        print("-"*70)
+        print("-" * 70)
 
-        for horizon in ['3d', '7d', '30d']:
-            if horizon == '3d':
+        for horizon in ["3d", "7d", "30d"]:
+            if horizon == "3d":
                 hs = analysis.score_3d
                 rec = analysis.recommendation_3d
-            elif horizon == '7d':
+            elif horizon == "7d":
                 hs = analysis.score_7d
                 rec = analysis.recommendation_7d
             else:
@@ -455,13 +430,13 @@ class MultiHorizonTrendAnalyzer:
             print(f"  Signal:     {hs.signal.name}")
             print(f"  💡 {rec}")
 
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("🧠 COMBINED ANALYSIS")
-        print("-"*70)
+        print("-" * 70)
         print(f"  Combined Score:      {analysis.combined_score:+.3f}")
         print(f"  Combined Confidence: {analysis.combined_confidence:.0%}")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -472,29 +447,29 @@ if __name__ == "__main__":
     from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
     # ساخت learner مصنوعی برای تست
-    learner = MultiHorizonWeightLearner(horizons=['3d', '7d', '30d'])
+    learner = MultiHorizonWeightLearner(horizons=["3d", "7d", "30d"])
 
     # شبیه‌سازی وزن‌های آموخته شده
-    learner.feature_names = [f'feature_{i}' for i in range(21)]
+    learner.feature_names = [f"feature_{i}" for i in range(21)]
     learner.horizon_weights = {
-        '3d': HorizonWeights(
-            horizon='3d',
-            weights={f'feature_{i}': np.random.rand() for i in range(21)},
-            metrics={'r2_test': 0.25, 'mae_test': 0.04},
-            confidence=0.6
+        "3d": HorizonWeights(
+            horizon="3d",
+            weights={f"feature_{i}": np.random.rand() for i in range(21)},
+            metrics={"r2_test": 0.25, "mae_test": 0.04},
+            confidence=0.6,
         ),
-        '7d': HorizonWeights(
-            horizon='7d',
-            weights={f'feature_{i}': np.random.rand() for i in range(21)},
-            metrics={'r2_test': 0.30, 'mae_test': 0.06},
-            confidence=0.7
+        "7d": HorizonWeights(
+            horizon="7d",
+            weights={f"feature_{i}": np.random.rand() for i in range(21)},
+            metrics={"r2_test": 0.30, "mae_test": 0.06},
+            confidence=0.7,
         ),
-        '30d': HorizonWeights(
-            horizon='30d',
-            weights={f'feature_{i}': np.random.rand() for i in range(21)},
-            metrics={'r2_test': 0.35, 'mae_test': 0.10},
-            confidence=0.75
-        )
+        "30d": HorizonWeights(
+            horizon="30d",
+            weights={f"feature_{i}": np.random.rand() for i in range(21)},
+            metrics={"r2_test": 0.35, "mae_test": 0.10},
+            confidence=0.75,
+        ),
     }
 
     # ساخت مدل مصنوعی
@@ -507,7 +482,7 @@ if __name__ == "__main__":
     analyzer = MultiHorizonTrendAnalyzer(learner)
 
     # ویژگی‌های تست (شبیه‌سازی)
-    features = {f'feature_{i}': np.random.randn() for i in range(21)}
+    features = {f"feature_{i}": np.random.randn() for i in range(21)}
 
     # تحلیل
     print("Testing multi-horizon analysis with synthetic data...")
