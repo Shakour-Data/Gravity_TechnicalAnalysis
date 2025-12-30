@@ -10,12 +10,8 @@ License: MIT
 """
 
 
-
-
 def calculate_pattern_strength(
-    ratio: float,
-    completion_percentage: float,
-    volume_confirmation: bool
+    ratio: float, completion_percentage: float, volume_confirmation: bool
 ) -> float:
     """
     Calculate pattern strength based on various factors.
@@ -65,7 +61,7 @@ def get_reliability_score(pattern_name: str) -> float | None:
         "HARAMI": 0.70,
         "MORNING_STAR": 0.85,
         "EVENING_STAR": 0.85,
-        "DIVERGENCE": 0.95
+        "DIVERGENCE": 0.95,
     }
 
     return reliability_scores.get(pattern_name.upper())
@@ -95,7 +91,7 @@ def get_pattern_hierarchy(pattern_name: str) -> int | None:
         "FLAG": 4,
         "WEDGE": 4,
         "HAMMER": 5,
-        "DOJI": 5
+        "DOJI": 5,
     }
 
     return hierarchy.get(pattern_name.upper())
