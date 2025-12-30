@@ -56,10 +56,9 @@ __all__ = [
     "Decision",
     "DecisionType",
     "ConfidenceLevel",
-
     # NEW (Phase 2.1)
     "CoreSignalStrength",  # From signal_strength.py (new, with Persian labels, 7 levels)
-    "SignalStrength",      # Alias for backward compatibility
+    "SignalStrength",  # Alias for backward compatibility
     "IndicatorCategory",
     "IndicatorResult",
     "PatternType",
@@ -68,13 +67,11 @@ __all__ = [
     "ElliottWaveResult",
     "FibonacciLevel",
     "FibonacciResult",
-
     # NEW (Phase 2.1 - Task 1.4 - Real-time entities)
     "SubscriptionType",
     "WebSocketMessage",
     "SSEMessage",
     "MarketData",
-
     # NEW (Phase 2.1 - Task 1.5 - ML entities)
     "LSTMResult",
     "PredictionResult",
