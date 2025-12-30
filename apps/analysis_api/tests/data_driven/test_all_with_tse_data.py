@@ -10,28 +10,26 @@ Date: December 4, 2025
 License: MIT
 """
 
-import pytest
-from datetime import datetime, timedelta
-from typing import List
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add src to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from gravity_tech.core.domain.entities import Candle
-from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.momentum import MomentumIndicators
+from gravity_tech.core.indicators.trend import TrendIndicators
 from gravity_tech.core.indicators.volatility import VolatilityIndicators
 from gravity_tech.core.indicators.volume import VolumeIndicators
 from gravity_tech.core.patterns.candlestick import CandlestickPatterns
 from gravity_tech.core.patterns.classical import ClassicalPatterns
 
-
 # ============================================================================
 # Test: Trend Analysis with TSE Data
 # ============================================================================
+
 
 class TestTrendAnalysisWithTSE:
     """تست تحلیل ترند با داده‌های TSE"""
@@ -40,7 +38,7 @@ class TestTrendAnalysisWithTSE:
         """SMA را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = TrendIndicators.sma(tse_candles_long, period=20)
         assert result is not None
 
@@ -48,7 +46,7 @@ class TestTrendAnalysisWithTSE:
         """EMA را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = TrendIndicators.ema(tse_candles_long, period=20)
         assert result is not None
 
@@ -56,7 +54,7 @@ class TestTrendAnalysisWithTSE:
         """MACD را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 30:
             pytest.skip("Insufficient data")
-        
+
         result = TrendIndicators.macd(tse_candles_long)
         assert result is not None
 
@@ -64,7 +62,7 @@ class TestTrendAnalysisWithTSE:
         """ADX را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 30:
             pytest.skip("Insufficient data")
-        
+
         result = TrendIndicators.adx(tse_candles_long)
         assert result is not None
 
@@ -80,6 +78,7 @@ class TestTrendAnalysisWithTSE:
 # Test: Momentum Analysis with TSE Data
 # ============================================================================
 
+
 class TestMomentumAnalysisWithTSE:
     """تست تحلیل مومنتوم با داده‌های TSE"""
 
@@ -87,7 +86,7 @@ class TestMomentumAnalysisWithTSE:
         """RSI را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 30:
             pytest.skip("Insufficient data")
-        
+
         result = MomentumIndicators.rsi(tse_candles_long, period=14)
         assert result is not None
 
@@ -95,7 +94,7 @@ class TestMomentumAnalysisWithTSE:
         """Stochastic را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 30:
             pytest.skip("Insufficient data")
-        
+
         result = MomentumIndicators.stochastic(tse_candles_long, k_period=14, d_period=3)
         assert result is not None
 
@@ -103,7 +102,7 @@ class TestMomentumAnalysisWithTSE:
         """CCI را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = MomentumIndicators.cci(tse_candles_long)
         assert result is not None
 
@@ -111,7 +110,7 @@ class TestMomentumAnalysisWithTSE:
         """ROC را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = MomentumIndicators.roc(tse_candles_long)
         assert result is not None
 
@@ -120,6 +119,7 @@ class TestMomentumAnalysisWithTSE:
 # Test: Volatility Analysis with TSE Data
 # ============================================================================
 
+
 class TestVolatilityAnalysisWithTSE:
     """تست تحلیل نوسان‌پذیری با داده‌های TSE"""
 
@@ -127,7 +127,7 @@ class TestVolatilityAnalysisWithTSE:
         """ATR را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolatilityIndicators.atr(tse_candles_long)
         assert result is not None
 
@@ -135,7 +135,7 @@ class TestVolatilityAnalysisWithTSE:
         """Bollinger Bands را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolatilityIndicators.bollinger_bands(tse_candles_long)
         assert result is not None
 
@@ -144,6 +144,7 @@ class TestVolatilityAnalysisWithTSE:
 # Test: Volume Analysis with TSE Data
 # ============================================================================
 
+
 class TestVolumeAnalysisWithTSE:
     """تست تحلیل حجم با داده‌های TSE"""
 
@@ -151,7 +152,7 @@ class TestVolumeAnalysisWithTSE:
         """OBV را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolumeIndicators.on_balance_volume(tse_candles_long)
         assert result is not None
 
@@ -159,7 +160,7 @@ class TestVolumeAnalysisWithTSE:
         """CMF را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolumeIndicators.cmf(tse_candles_long)
         assert result is not None
 
@@ -167,7 +168,7 @@ class TestVolumeAnalysisWithTSE:
         """A/D را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolumeIndicators.accumulation_distribution(tse_candles_long)
         assert result is not None
 
@@ -175,7 +176,7 @@ class TestVolumeAnalysisWithTSE:
         """A/D Line را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolumeIndicators.ad_line(tse_candles_long)
         assert result is not None
 
@@ -185,7 +186,7 @@ class TestVolumeAnalysisWithTSE:
             pytest.skip("Insufficient data")
 
         # MFI might not be available
-        if not hasattr(VolumeIndicators, 'money_flow_index'):
+        if not hasattr(VolumeIndicators, "money_flow_index"):
             pytest.skip("MFI not available")
         else:
             result = VolumeIndicators.money_flow_index(tse_candles_long)
@@ -195,7 +196,7 @@ class TestVolumeAnalysisWithTSE:
         """PVT را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolumeIndicators.pvt(tse_candles_long)
         assert result is not None
 
@@ -203,7 +204,7 @@ class TestVolumeAnalysisWithTSE:
         """VWAP را بر روی داده‌های واقعی TSE محاسبه کنید"""
         if len(tse_candles_long) < 20:
             pytest.skip("Insufficient data")
-        
+
         result = VolumeIndicators.vwap(tse_candles_long)
         assert result is not None
 
@@ -211,6 +212,7 @@ class TestVolumeAnalysisWithTSE:
 # ============================================================================
 # Test: Candlestick Patterns with TSE Data
 # ============================================================================
+
 
 class TestCandlestickPatternsWithTSE:
     """تست الگوهای شمعی با داده‌های TSE"""
@@ -233,8 +235,7 @@ class TestCandlestickPatternsWithTSE:
             # test a few pairs
             for i in range(1, min(5, len(tse_candles_short))):
                 result = CandlestickPatterns.is_engulfing(
-                    tse_candles_short[i-1], 
-                    tse_candles_short[i]
+                    tse_candles_short[i - 1], tse_candles_short[i]
                 )
                 # Result could be None, bool, or dict
                 assert result is None or isinstance(result, (bool, dict))
@@ -256,6 +257,7 @@ class TestCandlestickPatternsWithTSE:
 # ============================================================================
 # Test: Classical Patterns with TSE Data
 # ============================================================================
+
 
 class TestClassicalPatternsWithTSE:
     """تست الگوهای کلاسیک با داده‌های TSE"""
@@ -293,21 +295,19 @@ class TestClassicalPatternsWithTSE:
 # Test: Multi-Symbol Analysis with TSE Data
 # ============================================================================
 
+
 class TestMultiSymbolAnalysisWithTSE:
     """تست تحلیل چند نماد با داده‌های TSE"""
 
     def test_multiple_symbols(self, tse_candles_total, tse_candles_petroff):
         """تحلیل چند نماد از بازار ایران"""
-        candles_list = [
-            ("TOTAL", tse_candles_total),
-            ("PETROFF", tse_candles_petroff)
-        ]
-        
+        candles_list = [("TOTAL", tse_candles_total), ("PETROFF", tse_candles_petroff)]
+
         for symbol, candles in candles_list:
             if len(candles) >= 20:
                 sma = TrendIndicators.sma(candles, period=20)
                 rsi = MomentumIndicators.rsi(candles, period=14)
-                
+
                 assert sma is not None
                 assert rsi is not None
 
@@ -316,27 +316,28 @@ class TestMultiSymbolAnalysisWithTSE:
 # Test: Performance Benchmarks with TSE Data
 # ============================================================================
 
+
 class TestPerformanceWithTSE:
     """تست کارایی تحلیل‌ها با داده‌های TSE"""
 
     def test_batch_analysis_performance(self, tse_candles_long):
         """تست کارایی تحلیل جمعی با داده‌های واقعی"""
         import time
-        
+
         start = time.time()
         for _ in range(10):
             TrendIndicators.sma(tse_candles_long, period=20)
             MomentumIndicators.rsi(tse_candles_long, period=14)
             VolatilityIndicators.atr(tse_candles_long)
         end = time.time()
-        
+
         # باید کمتر از 5 ثانیه طول بکشد
         assert (end - start) < 5.0
 
     def test_large_dataset_analysis(self, tse_candles_long):
         """تست تحلیل مجموعه داده‌های بزرگ"""
         assert len(tse_candles_long) >= 200
-        
+
         result = TrendIndicators.sma(tse_candles_long, period=50)
         assert result is not None
 
@@ -344,6 +345,7 @@ class TestPerformanceWithTSE:
 # ============================================================================
 # Test: Data Quality Validation with TSE Data
 # ============================================================================
+
 
 class TestDataQualityWithTSE:
     """تست کیفیت داده‌های TSE"""
@@ -359,8 +361,9 @@ class TestDataQualityWithTSE:
     def test_timestamp_ordering(self, tse_candles_long):
         """ترتیب timestamps را بررسی کنید"""
         for i in range(1, len(tse_candles_long)):
-            assert tse_candles_long[i].timestamp >= tse_candles_long[i-1].timestamp, \
+            assert tse_candles_long[i].timestamp >= tse_candles_long[i - 1].timestamp, (
                 "Timestamps should be in ascending order"
+            )
 
     def test_no_duplicate_timestamps(self, tse_candles_long):
         """تکرار شدن timestamps را بررسی کنید"""
