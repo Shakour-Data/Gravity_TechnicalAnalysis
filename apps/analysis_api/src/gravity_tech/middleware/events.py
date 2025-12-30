@@ -22,6 +22,7 @@ import structlog
 # Make aiokafka optional
 try:
     from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+
     KAFKA_AVAILABLE = True
 except ImportError:
     KAFKA_AVAILABLE = False
@@ -33,6 +34,7 @@ except ImportError:
 try:
     from aio_pika import Channel, Connection, DeliveryMode, Message, connect_robust
     from aio_pika.pool import Pool
+
     RABBITMQ_AVAILABLE = True
 except ImportError:
     RABBITMQ_AVAILABLE = False
@@ -54,6 +56,7 @@ logger = structlog.get_logger()
 
 class MessageType(Enum):
     """انواع پیام‌های event"""
+
     ANALYSIS_STARTED = "analysis.started"
     ANALYSIS_COMPLETED = "analysis.completed"
     ANALYSIS_FAILED = "analysis.failed"
@@ -111,9 +114,9 @@ class EventPublisher:
         """راه‌اندازی Kafka Producer"""
         try:
             self.kafka_producer = AIOKafkaProducer(
-                bootstrap_servers=getattr(settings, 'kafka_bootstrap_servers', 'localhost:9092'),
-                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                compression_type='gzip',
+                bootstrap_servers=getattr(settings, "kafka_bootstrap_servers", "localhost:9092"),
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                compression_type="gzip",
                 max_batch_size=16384,
                 linger_ms=10,
             )
@@ -130,7 +133,7 @@ class EventPublisher:
         if not RABBITMQ_AVAILABLE:
             raise RuntimeError("RabbitMQ dependencies not available")
         try:
-            rabbitmq_url = getattr(settings, 'rabbitmq_url', 'amqp://guest:guest@localhost/')
+            rabbitmq_url = getattr(settings, "rabbitmq_url", "amqp://guest:guest@localhost/")
 
             async def get_connection() -> Connection:  # type: ignore[valid-type]
                 return await connect_robust(rabbitmq_url)  # type: ignore
@@ -149,10 +152,7 @@ class EventPublisher:
             raise
 
     async def publish(
-        self,
-        event_type: MessageType,
-        data: dict[str, Any],
-        routing_key: str | None = None
+        self, event_type: MessageType, data: dict[str, Any], routing_key: str | None = None
     ):
         """
         انتشار یک event
@@ -167,7 +167,7 @@ class EventPublisher:
             "data": data,
             "timestamp": str(asyncio.get_event_loop().time()),
             "service": settings.app_name,
-            "version": settings.app_version
+            "version": settings.app_version,
         }
 
         try:
@@ -175,23 +175,13 @@ class EventPublisher:
                 await self._publish_kafka(event_type.value, message)
             elif self.broker_type == "rabbitmq":
                 await self._publish_rabbitmq(
-                    event_type.value,
-                    message,
-                    routing_key or event_type.value
+                    event_type.value, message, routing_key or event_type.value
                 )
 
-            logger.info(
-                "event_published",
-                event_type=event_type.value,
-                data_keys=list(data.keys())
-            )
+            logger.info("event_published", event_type=event_type.value, data_keys=list(data.keys()))
 
         except Exception as e:
-            logger.error(
-                "event_publish_failed",
-                event_type=event_type.value,
-                error=str(e)
-            )
+            logger.error("event_publish_failed", event_type=event_type.value, error=str(e))
             raise
 
     async def _publish_kafka(self, topic: str, message: dict):
@@ -201,32 +191,23 @@ class EventPublisher:
 
         await self.kafka_producer.send(topic, message)
 
-    async def _publish_rabbitmq(
-        self,
-        exchange: str,
-        message: dict,
-        routing_key: str
-    ):
+    async def _publish_rabbitmq(self, exchange: str, message: dict, routing_key: str):
         """ارسال به RabbitMQ"""
         if not self.rabbitmq_channel_pool:
             raise RuntimeError("RabbitMQ not initialized")
 
         async with self.rabbitmq_channel_pool.acquire() as channel:
             # اعلام exchange
-            await channel.declare_exchange(
-                exchange,
-                type='topic',
-                durable=True
-            )
+            await channel.declare_exchange(exchange, type="topic", durable=True)
 
             # ارسال پیام
             await channel.default_exchange.publish(
                 Message(  # type: ignore
                     body=json.dumps(message).encode(),
                     delivery_mode=DeliveryMode.PERSISTENT,  # type: ignore
-                    content_type='application/json',
+                    content_type="application/json",
                 ),
-                routing_key=routing_key
+                routing_key=routing_key,
             )
 
     async def close(self):
@@ -279,10 +260,10 @@ class EventConsumer:
     async def _init_kafka(self):
         """راه‌اندازی Kafka Consumer"""
         self.kafka_consumer = AIOKafkaConsumer(
-            bootstrap_servers=getattr(settings, 'kafka_bootstrap_servers', 'localhost:9092'),
+            bootstrap_servers=getattr(settings, "kafka_bootstrap_servers", "localhost:9092"),
             group_id=settings.app_name,
-            value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-            auto_offset_reset='earliest',
+            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+            auto_offset_reset="earliest",
             enable_auto_commit=True,
         )
 
@@ -291,7 +272,7 @@ class EventConsumer:
 
     async def _init_rabbitmq(self):
         """راه‌اندازی RabbitMQ Consumer"""
-        rabbitmq_url = getattr(settings, 'rabbitmq_url', 'amqp://guest:guest@localhost/')
+        rabbitmq_url = getattr(settings, "rabbitmq_url", "amqp://guest:guest@localhost/")
 
         async def get_connection() -> Connection:  # type: ignore[valid-type]
             return await connect_robust(rabbitmq_url)  # type: ignore
@@ -299,11 +280,7 @@ class EventConsumer:
         self.rabbitmq_connection_pool = Pool(get_connection, max_size=10)  # type: ignore
         logger.info("rabbitmq_consumer_initialized")
 
-    async def subscribe(
-        self,
-        event_type: MessageType,
-        handler: Callable[[dict], Any]
-    ):
+    async def subscribe(self, event_type: MessageType, handler: Callable[[dict], Any]):
         """
         اشتراک در یک event و تعریف handler
 
@@ -336,11 +313,7 @@ class EventConsumer:
                     await self.handlers[event_type](data)
                     logger.info("event_processed", event_type=event_type)
                 except Exception as e:
-                    logger.error(
-                        "event_processing_failed",
-                        event_type=event_type,
-                        error=str(e)
-                    )
+                    logger.error("event_processing_failed", event_type=event_type, error=str(e))
 
     async def _consume_rabbitmq(self):
         """مصرف پیام‌ها از RabbitMQ"""
@@ -349,8 +322,7 @@ class EventConsumer:
 
             for event_type, handler in self.handlers.items():
                 queue = await channel.declare_queue(
-                    f"{settings.app_name}.{event_type}",
-                    durable=True
+                    f"{settings.app_name}.{event_type}", durable=True
                 )
 
                 async def on_message(message, handler=handler, event_type=event_type):
@@ -361,9 +333,7 @@ class EventConsumer:
                             logger.info("event_processed", event_type=event_type)
                         except Exception as e:
                             logger.error(
-                                "event_processing_failed",
-                                event_type=event_type,
-                                error=str(e)
+                                "event_processing_failed", event_type=event_type, error=str(e)
                             )
 
                 await queue.consume(on_message)
