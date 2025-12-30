@@ -20,18 +20,18 @@ License: MIT
 import os
 import sqlite3
 import sys
+from collections.abc import Generator
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Generator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import structlog
+from httpx import ASGITransport, AsyncClient
 
 # Add src to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
-sys.path.insert(0, str(project_root))
 
 logger = structlog.get_logger()
 
@@ -39,7 +39,7 @@ logger = structlog.get_logger()
 # Dependency Injection & Container Fixtures
 # ============================================================================
 
-from gravity_tech.config.unified_settings import Environment, Settings, reset_settings
+from gravity_tech.config.unified_settings import reset_settings
 from gravity_tech.core.domain.entities import Candle  # noqa: E402
 from gravity_tech.infrastructure.adapters.memory_cache import MemoryCacheAdapter
 from gravity_tech.infrastructure.container import (
@@ -54,19 +54,14 @@ from gravity_tech.infrastructure.contracts import CacheBackend, DatabaseBackend
 # Iranian Stock Market (TSE) Database Path
 # ============================================================================
 # Fixed real-data path (no mock fallbacks allowed) with env override for portability
-TSE_DB_PATH = os.getenv(
-    "TSE_DB_PATH",
-    r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
-)
+TSE_DB_PATH = os.getenv("TSE_DB_PATH", r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db")
 
 
 @pytest.fixture(scope="session")
 def tse_db_connection():
     """Session-scoped fixture to provide TSE database connection."""
     if not os.path.exists(TSE_DB_PATH):
-        raise FileNotFoundError(
-            f"Real TSE database not found at {TSE_DB_PATH}. Provide the real dataset; mocks are disallowed."
-        )
+        pytest.skip(f"Real TSE database not found at {TSE_DB_PATH}. Set TSE_DB_PATH to enable.")
     conn = sqlite3.connect(TSE_DB_PATH)
     conn.row_factory = sqlite3.Row
     print(f"✅ اتصال به پایگاه داده TSE برقرار شد: {TSE_DB_PATH}")
@@ -74,16 +69,11 @@ def tse_db_connection():
     conn.close()
 
 
-@pytest.fixture
-def sample_candles():
-    """Load sample real candles (no synthetic data)."""
-    return load_tse_real_data(symbol="TOTAL", limit=100)
-
-
 # ============================================================================
 # تابع بارگذاری داده‌های واقعی TSE
 # Real TSE Data Loading Functions
 # ============================================================================
+
 
 def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle]:
     """
@@ -98,9 +88,7 @@ def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle]:
         لیست اشیاء Candle با داده‌های واقعی
     """
     if not TSE_DB_PATH or not os.path.exists(TSE_DB_PATH):
-        raise FileNotFoundError(
-            f"Real TSE database not found at {TSE_DB_PATH}. Provide the real dataset; mocks are disallowed."
-        )
+        pytest.skip(f"Real TSE database not found at {TSE_DB_PATH}. Set TSE_DB_PATH to enable.")
     candles: list[Candle] = []
 
     try:
@@ -139,7 +127,7 @@ def load_tse_real_data(symbol: str = "TOTAL", limit: int = 200) -> list[Candle]:
                 high=float(high_val),
                 low=float(low_val),
                 close=float(close_val),
-                volume=float(volume_val)
+                volume=float(volume_val),
             )
             candles.append(candle)
 
@@ -186,7 +174,9 @@ def insufficient_candles():
     return data[:5]
 
 
-def _generate_trend_candles(length: int = 120, start_price: float = 100.0, drift_pct: float = -0.2) -> list[Candle]:
+def _generate_trend_candles(
+    length: int = 120, start_price: float = 100.0, drift_pct: float = -0.2
+) -> list[Candle]:
     """Generate simple synthetic candles following a consistent trend."""
     candles: list[Candle] = []
     price = start_price
@@ -194,7 +184,7 @@ def _generate_trend_candles(length: int = 120, start_price: float = 100.0, drift
 
     for i in range(length):
         # apply deterministic drift
-        price *= (1 + drift_pct / 100)
+        price *= 1 + drift_pct / 100
         # Candle shape follows trend direction: red for down, green for up
         if drift_pct < 0:
             open_price = price * (1 + 0.001)
@@ -214,7 +204,7 @@ def _generate_trend_candles(length: int = 120, start_price: float = 100.0, drift
                 high=high_price,
                 low=low_price,
                 close=close_price,
-                volume=volume
+                volume=volume,
             )
         )
 
@@ -234,14 +224,16 @@ def tse_sample_candles(tse_db_connection) -> list[Candle]:
 
     candles = []
     for row in cursor.fetchall():
-        candles.append(Candle(
-            timestamp=datetime.fromisoformat(row['timestamp']),
-            open=float(row['open']),
-            high=float(row['high']),
-            low=float(row['low']),
-            close=float(row['close']),
-            volume=int(row['volume'])
-        ))
+        candles.append(
+            Candle(
+                timestamp=datetime.fromisoformat(row["timestamp"]),
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=int(row["volume"]),
+            )
+        )
 
     return candles
 
@@ -250,6 +242,7 @@ def tse_sample_candles(tse_db_connection) -> list[Candle]:
 # Fixtures برای داده‌های واقعی و شبه‌سازی‌شده TSE
 # Fixtures for Real and Simulated TSE Data
 # ============================================================================
+
 
 @pytest.fixture(scope="session")
 def tse_candles_total() -> list[Candle]:
@@ -314,7 +307,6 @@ def tse_candles_long() -> list[Candle]:
     return generate_tse_like_data(symbol="TOTAL", limit=500)
 
 
-
 @pytest.fixture
 def tse_candles_realistic() -> list[Candle]:
     """
@@ -328,27 +320,32 @@ def tse_candles_realistic() -> list[Candle]:
 def tse_multiple_symbols(tse_db_connection) -> dict[str, list[Candle]]:
     """Load candle data for multiple TSE symbols."""
     cursor = tse_db_connection.cursor()
-    symbols = ['شستا', 'فملی', 'وبملت', 'شپنا']
+    symbols = ["شستا", "فملی", "وبملت", "شپنا"]
 
     symbol_data = {}
     for symbol in symbols:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM candles
             WHERE symbol = ?
             ORDER BY timestamp ASC
             LIMIT 50
-        """, (symbol,))
+        """,
+            (symbol,),
+        )
 
         candles = []
         for row in cursor.fetchall():
-            candles.append(Candle(
-                timestamp=datetime.fromisoformat(row['timestamp']),
-                open=float(row['open']),
-                high=float(row['high']),
-                low=float(row['low']),
-                close=float(row['close']),
-                volume=int(row['volume'])
-            ))
+            candles.append(
+                Candle(
+                    timestamp=datetime.fromisoformat(row["timestamp"]),
+                    open=float(row["open"]),
+                    high=float(row["high"]),
+                    low=float(row["low"]),
+                    close=float(row["close"]),
+                    volume=int(row["volume"]),
+                )
+            )
 
         if candles:  # Only include symbols with data
             symbol_data[symbol] = candles
@@ -369,14 +366,16 @@ def large_tse_dataset(tse_db_connection) -> list[Candle]:
 
     candles = []
     for row in cursor.fetchall():
-        candles.append(Candle(
-            timestamp=datetime.fromisoformat(row['timestamp']),
-            open=float(row['open']),
-            high=float(row['high']),
-            low=float(row['low']),
-            close=float(row['close']),
-            volume=int(row['volume'])
-        ))
+        candles.append(
+            Candle(
+                timestamp=datetime.fromisoformat(row["timestamp"]),
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=int(row["volume"]),
+            )
+        )
 
     return candles
 
@@ -396,10 +395,10 @@ def tse_price_ranges(tse_db_connection) -> dict[str, dict[str, float]]:
 
     ranges = {}
     for row in cursor.fetchall():
-        ranges[row['symbol']] = {
-            'min_price': row['min_price'],
-            'max_price': row['max_price'],
-            'avg_price': row['avg_price']
+        ranges[row["symbol"]] = {
+            "min_price": row["min_price"],
+            "max_price": row["max_price"],
+            "avg_price": row["avg_price"],
         }
 
     return ranges
@@ -409,59 +408,33 @@ def tse_price_ranges(tse_db_connection) -> dict[str, dict[str, float]]:
 # Pytest Configuration
 # ============================================================================
 
-def pytest_configure(config):
-    """Configure pytest markers."""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "ml: marks tests requiring ML libraries"
-    )
-    config.addinivalue_line(
-        "markers", "performance: marks performance benchmarking tests"
-    )
-    config.addinivalue_line(
-        "markers", "database: marks tests requiring database access"
-    )
-    config.addinivalue_line(
-        "markers", "fibonacci: marks Fibonacci-related tests"
-    )
-    config.addinivalue_line(
-        "markers", "realtime: marks real-time feature tests"
-    )
-    config.addinivalue_line(
-        "markers", "backtesting: marks backtesting-related tests"
-    )
-
 
 def pytest_collection_modifyitems(config, items):
     """Modify test collection to add markers automatically."""
     for item in items:
         # Add 'integration' marker to tests in integration/ folder
-        if 'integration' in str(item.fspath):
+        if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
 
         # Add 'database' marker to tests using database fixtures
-        if 'tse_db' in str(item.fixturenames):
+        if "tse_db" in str(item.fixturenames):
             item.add_marker(pytest.mark.database)
 
         # Add specific markers based on test file names
-        if 'fibonacci' in str(item.fspath):
+        if "fibonacci" in str(item.fspath):
             item.add_marker(pytest.mark.fibonacci)
-        if 'realtime' in str(item.fspath):
+        if "realtime" in str(item.fspath):
             item.add_marker(pytest.mark.realtime)
-        if 'backtesting' in str(item.fspath):
+        if "backtesting" in str(item.fspath):
             item.add_marker(pytest.mark.backtesting)
-        if 'deep_learning' in str(item.fspath):
+        if "deep_learning" in str(item.fspath):
             item.add_marker(pytest.mark.ml)
 
 
 # ============================================================================
 # Custom Test Utilities
 # ============================================================================
+
 
 class TestDataLoader:
     """Utility class for loading test data."""
@@ -472,23 +445,28 @@ class TestDataLoader:
     def get_symbol_candles(self, symbol: str, limit: int = 100) -> list[Candle]:
         """Get candle data for a specific symbol."""
         cursor = self.db.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM candles
             WHERE symbol = ?
             ORDER BY timestamp ASC
             LIMIT ?
-        """, (symbol, limit))
+        """,
+            (symbol, limit),
+        )
 
         candles = []
         for row in cursor.fetchall():
-            candles.append(Candle(
-                timestamp=datetime.fromisoformat(row['timestamp']),
-                open=float(row['open']),
-                high=float(row['high']),
-                low=float(row['low']),
-                close=float(row['close']),
-                volume=int(row['volume'])
-            ))
+            candles.append(
+                Candle(
+                    timestamp=datetime.fromisoformat(row["timestamp"]),
+                    open=float(row["open"]),
+                    high=float(row["high"]),
+                    low=float(row["low"]),
+                    close=float(row["close"]),
+                    volume=int(row["volume"]),
+                )
+            )
 
         return candles
 
@@ -497,22 +475,22 @@ class TestDataLoader:
         cursor = self.db.cursor()
         cursor.execute("SELECT DISTINCT symbol FROM candles ORDER BY symbol")
 
-        return [row['symbol'] for row in cursor.fetchall()]
+        return [row["symbol"] for row in cursor.fetchall()]
 
     def get_date_range(self, symbol: str) -> tuple:
         """Get date range for a symbol."""
         cursor = self.db.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT MIN(timestamp) as start_date, MAX(timestamp) as end_date
             FROM candles
             WHERE symbol = ?
-        """, (symbol,))
+        """,
+            (symbol,),
+        )
 
         row = cursor.fetchone()
-        return (
-            datetime.fromisoformat(row['start_date']),
-            datetime.fromisoformat(row['end_date'])
-        )
+        return (datetime.fromisoformat(row["start_date"]), datetime.fromisoformat(row["end_date"]))
 
 
 @pytest.fixture
@@ -524,8 +502,6 @@ def data_loader(tse_db_connection):
 @pytest.fixture
 def mock_cache_manager(monkeypatch):
     """Mock CacheManager for testing without Redis."""
-    from unittest.mock import AsyncMock, MagicMock
-
     mock_cache = MagicMock()
     mock_cache._is_available = True
     mock_cache._cache_dict = {}
@@ -553,11 +529,12 @@ def mock_cache_manager(monkeypatch):
 # New: Mock Services & Containers (Phase 2)
 # ============================================================================
 
+
 @pytest.fixture
 def mock_cache() -> AsyncMock:
     """
     Provide async mock cache
-    
+
     Use for: Unit tests where cache is a dependency
     """
     cache = AsyncMock(spec=CacheBackend)
@@ -575,7 +552,7 @@ def mock_cache() -> AsyncMock:
 def memory_cache() -> MemoryCacheAdapter:
     """
     Provide real in-memory cache
-    
+
     Use for: Integration tests, cache behavior testing
     """
     return MemoryCacheAdapter(default_ttl=60)
@@ -585,7 +562,7 @@ def memory_cache() -> MemoryCacheAdapter:
 def mock_database() -> AsyncMock:
     """
     Provide async mock database
-    
+
     Use for: Unit tests where database is a dependency
     """
     db = AsyncMock(spec=DatabaseBackend)
@@ -601,9 +578,9 @@ def mock_database() -> AsyncMock:
 def test_container(memory_cache: MemoryCacheAdapter, mock_database: AsyncMock) -> ServiceContainer:
     """
     Provide test container with mocks
-    
+
     Use for: Service layer tests
-    
+
     Example:
         def test_analysis_service(test_container):
             service = test_container.get("analysis_service")
@@ -611,11 +588,11 @@ def test_container(memory_cache: MemoryCacheAdapter, mock_database: AsyncMock) -
             assert result is not None
     """
     container = create_test_container()
-    
+
     # Register mocked/test services
     container.register("cache", lambda _: memory_cache, singleton=True)
     container.register("database", lambda _: mock_database, singleton=True)
-    
+
     return container
 
 
@@ -623,7 +600,7 @@ def test_container(memory_cache: MemoryCacheAdapter, mock_database: AsyncMock) -
 def isolated_container() -> Generator[ServiceContainer, None, None]:
     """
     Provide fresh container for each test
-    
+
     Use for: Tests that need complete isolation
     """
     container = create_test_container()
@@ -636,11 +613,11 @@ def isolated_container() -> Generator[ServiceContainer, None, None]:
 def reset_global_state():
     """
     Reset global state before each test
-    
+
     Ensures test isolation
     """
     yield
-    
+
     # Cleanup after test
     reset_global_container()
     reset_settings()
@@ -667,53 +644,18 @@ def sample_candles_new() -> list:
 # Marker Registration
 # ============================================================================
 
-def pytest_configure(config):
-    """Register custom markers"""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
-    config.addinivalue_line(
-        "markers", "api: marks tests as API endpoint tests"
-    )
-    async def mock_initialize():
-        return None
-
-    async def mock_mset(mapping: dict):
-        for key, value in mapping.items():
-            mock_cache._cache_dict[key] = value
-        return True
-
-    async def mock_mget(keys: list):
-        return [mock_cache._cache_dict.get(key) for key in keys]
-
-    mock_cache.initialize = AsyncMock(side_effect=mock_initialize)
-    mock_cache.set = AsyncMock(side_effect=mock_set)
-    mock_cache.get = AsyncMock(side_effect=mock_get)
-    mock_cache.delete = AsyncMock(side_effect=mock_delete)
-    mock_cache.exists = AsyncMock(side_effect=mock_exists)
-    mock_cache.clear = AsyncMock(side_effect=mock_clear)
-    mock_cache.mset = AsyncMock(side_effect=mock_mset)
-    mock_cache.mget = AsyncMock(side_effect=mock_mget)
-
-    return mock_cache
-
 
 # ============================================================================
 # PHASE 4: TEST DATA FACTORIES
 # ============================================================================
 
+
 class CandleFactory:
     """Factory for creating test candles"""
-    
+
     @staticmethod
     def create(
-        timestamp = None,
+        timestamp=None,
         open_price: float = 100.0,
         high_price: float = 110.0,
         low_price: float = 90.0,
@@ -723,7 +665,7 @@ class CandleFactory:
         """Create a single candle"""
         if timestamp is None:
             timestamp = datetime.now()
-        
+
         return Candle(
             timestamp=timestamp,
             open=open_price,
@@ -732,29 +674,29 @@ class CandleFactory:
             close=close_price,
             volume=volume,
         )
-    
+
     @staticmethod
     def create_series(
         count: int = 100,
-        start_date = None,
-        trend: str = "neutral"  # "up", "down", "neutral"
+        start_date=None,
+        trend: str = "neutral",  # "up", "down", "neutral"
     ) -> list:
         """Create a series of candles"""
         if start_date is None:
             start_date = datetime.now() - timedelta(days=count)
-        
+
         candles = []
         price = 100.0
-        
+
         for i in range(count):
             timestamp = start_date + timedelta(days=i)
-            
+
             # Apply trend
             if trend == "up":
                 price += 0.5
             elif trend == "down":
                 price -= 0.5
-            
+
             candle = CandleFactory.create(
                 timestamp=timestamp,
                 open_price=price,
@@ -764,7 +706,7 @@ class CandleFactory:
                 volume=1000 + i * 10,
             )
             candles.append(candle)
-        
+
         return candles
 
 
@@ -796,18 +738,19 @@ def sample_downtrend_candles() -> list:
 # PHASE 4: REQUEST/RESPONSE BUILDERS
 # ============================================================================
 
+
 class RequestBuilder:
     """Builder for test requests"""
-    
+
     @staticmethod
     def analysis_request(
         symbol: str = "BTCUSDT",
-        candles = None,
+        candles=None,
     ) -> dict:
         """Build analysis request"""
         if candles is None:
             candles = CandleFactory.create_series(50)
-        
+
         return {
             "symbol": symbol,
             "candles": candles,
@@ -816,12 +759,12 @@ class RequestBuilder:
 
 class ResponseBuilder:
     """Builder for test responses"""
-    
+
     @staticmethod
     def analysis_response(
         signal: str = "BUY",
         confidence: float = 75.0,
-        indicators = None,
+        indicators=None,
     ) -> dict:
         """Build analysis response"""
         if indicators is None:
@@ -830,7 +773,7 @@ class ResponseBuilder:
                 "sma_50": 100.2,
                 "rsi": 65.0,
             }
-        
+
         return {
             "signal": signal,
             "confidence": confidence,
@@ -855,6 +798,7 @@ def response_builder() -> ResponseBuilder:
 # PHASE 4: PYTEST HOOKS & MARKERS
 # ============================================================================
 
+
 def pytest_configure(config):
     """Configure pytest with Phase 4 markers"""
     config.addinivalue_line("markers", "unit: unit tests")
@@ -864,3 +808,11 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: slow tests (optional skip)")
     config.addinivalue_line("markers", "asyncio: async tests")
 
+
+@pytest.fixture
+async def client():
+    from gravity_tech.main import app as api_app
+
+    transport = ASGITransport(app=api_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
