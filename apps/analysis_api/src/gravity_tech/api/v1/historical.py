@@ -13,13 +13,13 @@ License: MIT
 import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
-from gravity_tech.database.historical_manager import HistoricalScoreManager
 from pydantic import BaseModel, Field
-from datetime import timezone
+
+from gravity_tech.database.historical_manager import HistoricalScoreManager
 
 logger = structlog.get_logger()
 
@@ -33,8 +33,10 @@ executor = ThreadPoolExecutor(max_workers=4)
 # Request/Response Models
 # ============================================================================
 
+
 class HistoricalAnalysisRequest(BaseModel):
     """درخواست تحلیل historical"""
+
     symbol: str = Field(..., description="نماد معاملاتی")
     timeframe: str = Field(..., description="تایم‌فریم")
     start_date: datetime | None = Field(default=None, description="تاریخ شروع")
@@ -44,6 +46,7 @@ class HistoricalAnalysisRequest(BaseModel):
 
 class HistoricalScoreSummary(BaseModel):
     """خلاصه امتیازات historical"""
+
     symbol: str
     timeframe: str
     date: datetime
@@ -58,11 +61,12 @@ class HistoricalScoreSummary(BaseModel):
 # API Endpoints
 # ============================================================================
 
+
 @router.post(
     "/analyze",
     response_model=list[HistoricalScoreSummary],
     summary="Historical Analysis Query",
-    description="دریافت تحلیل‌های historical از دیتابیس"
+    description="دریافت تحلیل‌های historical از دیتابیس",
 )
 async def get_historical_analysis(request: HistoricalAnalysisRequest):
     """
@@ -81,13 +85,13 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
         if not database_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database configuration missing"
+                detail="Database configuration missing",
             )
 
         manager = HistoricalScoreManager(database_url)
 
         # تنظیم تاریخ‌ها اگر مشخص نشده
-        end_date = request.end_date or datetime.now(timezone.utc)
+        end_date = request.end_date or datetime.now(UTC)
         start_date = request.start_date or (end_date - timedelta(days=30))
 
         # اجرای synchronous database query در thread pool
@@ -99,29 +103,31 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
                 timeframe=request.timeframe,
                 start_date=start_date,
                 end_date=end_date,
-                limit=request.limit
-            )
+                limit=request.limit,
+            ),
         )
 
         # تبدیل به response model
         results = []
         for entry in entries:
-            results.append(HistoricalScoreSummary(
-                symbol=entry.symbol,
-                timeframe=entry.timeframe,
-                date=entry.timestamp,
-                combined_score=entry.combined_score,
-                combined_confidence=entry.combined_confidence,
-                combined_signal=entry.combined_signal,
-                trend_score=entry.trend_score,
-                momentum_score=entry.momentum_score
-            ))
+            results.append(
+                HistoricalScoreSummary(
+                    symbol=entry.symbol,
+                    timeframe=entry.timeframe,
+                    date=entry.timestamp,
+                    combined_score=entry.combined_score,
+                    combined_confidence=entry.combined_confidence,
+                    combined_signal=entry.combined_signal,
+                    trend_score=entry.trend_score,
+                    momentum_score=entry.momentum_score,
+                )
+            )
 
         logger.info(
             "historical_analysis_retrieved",
             symbol=request.symbol,
             timeframe=request.timeframe,
-            count=len(results)
+            count=len(results),
         )
 
         return results
@@ -130,14 +136,14 @@ async def get_historical_analysis(request: HistoricalAnalysisRequest):
         logger.error("historical_analysis_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Historical analysis failed: {str(e)}"
+            detail=f"Historical analysis failed: {str(e)}",
         ) from e
 
 
 @router.get(
     "/symbols",
     summary="Available Symbols",
-    description="دریافت لیست نمادهای موجود در historical data"
+    description="دریافت لیست نمادهای موجود در historical data",
 )
 async def get_available_symbols():
     """دریافت لیست نمادهای موجود در دیتابیس historical"""
@@ -146,7 +152,7 @@ async def get_available_symbols():
         if not database_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database configuration missing"
+                detail="Database configuration missing",
             )
 
         loop = asyncio.get_event_loop()
@@ -158,14 +164,14 @@ async def get_available_symbols():
         logger.error("get_symbols_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get symbols: {str(e)}"
+            detail=f"Failed to get symbols: {str(e)}",
         ) from e
 
 
 @router.get(
     "/timeframes",
     summary="Available Timeframes",
-    description="دریافت لیست تایم‌فریم‌های موجود در historical data"
+    description="دریافت لیست تایم‌فریم‌های موجود در historical data",
 )
 async def get_available_timeframes(symbol: str | None = None):
     """دریافت لیست تایم‌فریم‌های موجود"""
@@ -174,26 +180,26 @@ async def get_available_timeframes(symbol: str | None = None):
         if not database_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database configuration missing"
+                detail="Database configuration missing",
             )
 
         loop = asyncio.get_event_loop()
         manager = HistoricalScoreManager(database_url)
-        timeframes = await loop.run_in_executor(executor, lambda: manager.get_available_timeframes(symbol))
+        timeframes = await loop.run_in_executor(
+            executor, lambda: manager.get_available_timeframes(symbol)
+        )
         return {"timeframes": timeframes}
 
     except Exception as e:
         logger.error("get_timeframes_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get timeframes: {str(e)}"
+            detail=f"Failed to get timeframes: {str(e)}",
         ) from e
 
 
 @router.get(
-    "/stats/{symbol}",
-    summary="Symbol Statistics",
-    description="آمار historical برای یک نماد"
+    "/stats/{symbol}", summary="Symbol Statistics", description="آمار historical برای یک نماد"
 )
 async def get_symbol_stats(symbol: str, timeframe: str | None = None):
     """دریافت آمار historical برای یک نماد"""
@@ -202,26 +208,26 @@ async def get_symbol_stats(symbol: str, timeframe: str | None = None):
         if not database_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database configuration missing"
+                detail="Database configuration missing",
             )
 
         loop = asyncio.get_event_loop()
         manager = HistoricalScoreManager(database_url)
-        stats = await loop.run_in_executor(executor, lambda: manager.get_symbol_statistics(symbol, timeframe))
+        stats = await loop.run_in_executor(
+            executor, lambda: manager.get_symbol_statistics(symbol, timeframe)
+        )
         return stats
 
     except Exception as e:
         logger.error("get_stats_error", symbol=symbol, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get statistics: {str(e)}"
+            detail=f"Failed to get statistics: {str(e)}",
         ) from e
 
 
 @router.delete(
-    "/cleanup",
-    summary="Cleanup Old Data",
-    description="پاک کردن داده‌های قدیمی‌تر از تاریخ مشخص"
+    "/cleanup", summary="Cleanup Old Data", description="پاک کردن داده‌های قدیمی‌تر از تاریخ مشخص"
 )
 async def cleanup_old_data(days: int = Query(90, description="تعداد روز برای نگهداری داده‌ها")):
     """پاک کردن داده‌های قدیمی برای مدیریت فضای دیتابیس"""
@@ -230,7 +236,7 @@ async def cleanup_old_data(days: int = Query(90, description="تعداد روز 
         if not database_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database configuration missing"
+                detail="Database configuration missing",
             )
 
         loop = asyncio.get_event_loop()
@@ -238,17 +244,16 @@ async def cleanup_old_data(days: int = Query(90, description="تعداد روز 
 
         deleted_count = await loop.run_in_executor(executor, lambda: manager.cleanup_old_data(days))
 
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
         logger.info("historical_data_cleaned", deleted_count=deleted_count, cutoff_date=cutoff_date)
 
         return {
             "message": f"Cleaned up {deleted_count} old records",
-            "cutoff_date": cutoff_date.isoformat()
+            "cutoff_date": cutoff_date.isoformat(),
         }
 
     except Exception as e:
         logger.error("cleanup_error", error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Cleanup failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Cleanup failed: {str(e)}"
         ) from e
