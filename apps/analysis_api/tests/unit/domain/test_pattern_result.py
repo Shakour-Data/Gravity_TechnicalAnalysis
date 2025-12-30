@@ -4,8 +4,9 @@ Unit tests for src/core/domain/entities/pattern_result.py
 Tests PatternResult dataclass creation, validation, and properties.
 """
 
+from datetime import datetime
+
 import pytest
-from datetime import datetime, timedelta
 from gravity_tech.core.domain.entities.pattern_result import PatternResult
 from gravity_tech.core.domain.entities.pattern_type import PatternType
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
@@ -27,7 +28,7 @@ class TestPatternResultCreation:
             end_time=end_time,
             description="Bearish reversal pattern detected",
             price_target=95.0,
-            stop_loss=110.0
+            stop_loss=110.0,
         )
         assert result.pattern_name == "Head and Shoulders"
         assert result.pattern_type == PatternType.CLASSICAL
@@ -50,7 +51,7 @@ class TestPatternResultCreation:
             confidence=0.6,
             start_time=start_time,
             end_time=end_time,
-            description="Indecision pattern"
+            description="Indecision pattern",
         )
         assert result.price_target is None
         assert result.stop_loss is None
@@ -66,7 +67,7 @@ class TestPatternResultCreation:
             confidence=0.75,
             start_time=start_time,
             end_time=end_time,
-            description="Bullish reversal pattern"
+            description="Bullish reversal pattern",
         )
         with pytest.raises(AttributeError):
             result.confidence = 0.8
@@ -83,7 +84,7 @@ class TestPatternResultCreation:
                 confidence=-0.1,
                 start_time=start_time,
                 end_time=end_time,
-                description="Test pattern"
+                description="Test pattern",
             )
 
     def test_pattern_result_validation_confidence_too_high(self):
@@ -98,7 +99,7 @@ class TestPatternResultCreation:
                 confidence=1.5,
                 start_time=start_time,
                 end_time=end_time,
-                description="Test pattern"
+                description="Test pattern",
             )
 
     def test_pattern_result_validation_end_time_before_start(self):
@@ -113,7 +114,7 @@ class TestPatternResultCreation:
                 confidence=0.5,
                 start_time=start_time,
                 end_time=end_time,
-                description="Test pattern"
+                description="Test pattern",
             )
 
     def test_pattern_result_validation_empty_name(self):
@@ -128,7 +129,7 @@ class TestPatternResultCreation:
                 confidence=0.5,
                 start_time=start_time,
                 end_time=end_time,
-                description="Test pattern"
+                description="Test pattern",
             )
 
     def test_pattern_result_validation_whitespace_name(self):
@@ -143,7 +144,7 @@ class TestPatternResultCreation:
                 confidence=0.5,
                 start_time=start_time,
                 end_time=end_time,
-                description="Test pattern"
+                description="Test pattern",
             )
 
     def test_pattern_result_validation_price_target_negative(self):
@@ -159,7 +160,7 @@ class TestPatternResultCreation:
                 start_time=start_time,
                 end_time=end_time,
                 description="Test pattern",
-                price_target=-10.0
+                price_target=-10.0,
             )
 
     def test_pattern_result_validation_price_target_zero(self):
@@ -175,7 +176,7 @@ class TestPatternResultCreation:
                 start_time=start_time,
                 end_time=end_time,
                 description="Test pattern",
-                price_target=0.0
+                price_target=0.0,
             )
 
     def test_pattern_result_validation_stop_loss_negative(self):
@@ -191,7 +192,7 @@ class TestPatternResultCreation:
                 start_time=start_time,
                 end_time=end_time,
                 description="Test pattern",
-                stop_loss=-5.0
+                stop_loss=-5.0,
             )
 
     def test_pattern_result_validation_stop_loss_zero(self):
@@ -207,7 +208,7 @@ class TestPatternResultCreation:
                 start_time=start_time,
                 end_time=end_time,
                 description="Test pattern",
-                stop_loss=0.0
+                stop_loss=0.0,
             )
 
     @pytest.mark.parametrize("confidence", [0.0, 0.5, 1.0])
@@ -222,7 +223,7 @@ class TestPatternResultCreation:
             confidence=confidence,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         assert result.confidence == confidence
 
@@ -239,7 +240,7 @@ class TestPatternResultCreation:
                 confidence=invalid_confidence,
                 start_time=start_time,
                 end_time=end_time,
-                description="Test pattern"
+                description="Test pattern",
             )
 
 
@@ -260,7 +261,7 @@ class TestPatternResultProperties:
             end_time=end_time,
             description="Bullish reversal pattern with high confidence",
             price_target=120.0,
-            stop_loss=95.0
+            stop_loss=95.0,
         )
 
     def test_pattern_result_attributes_access(self, sample_result):
@@ -286,7 +287,7 @@ class TestPatternResultProperties:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         result2 = PatternResult(
             pattern_name="Test",
@@ -295,7 +296,7 @@ class TestPatternResultProperties:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         result3 = PatternResult(
             pattern_name="Different",
@@ -304,7 +305,7 @@ class TestPatternResultProperties:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         assert result1 == result2
         assert result1 != result3
@@ -320,7 +321,7 @@ class TestPatternResultProperties:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         result_set = {result}
         assert len(result_set) == 1
@@ -346,7 +347,7 @@ class TestPatternResultEdgeCases:
             confidence=0.5,
             start_time=time,
             end_time=time,
-            description="Single candle pattern"
+            description="Single candle pattern",
         )
         assert result.start_time == result.end_time
 
@@ -361,7 +362,7 @@ class TestPatternResultEdgeCases:
             confidence=0.9,
             start_time=start_time,
             end_time=end_time,
-            description="Long-term bullish pattern"
+            description="Long-term bullish pattern",
         )
         assert (result.end_time - result.start_time).days == 9
 
@@ -377,11 +378,11 @@ class TestPatternResultEdgeCases:
             start_time=start_time,
             end_time=end_time,
             description="Test extreme values",
-            price_target=float('inf'),
-            stop_loss=float('inf')
+            price_target=float("inf"),
+            stop_loss=float("inf"),
         )
-        assert result.price_target == float('inf')
-        assert result.stop_loss == float('inf')
+        assert result.price_target == float("inf")
+        assert result.stop_loss == float("inf")
 
     @pytest.mark.parametrize("pattern_type", [PatternType.CLASSICAL, PatternType.CANDLESTICK])
     def test_pattern_result_all_pattern_types(self, pattern_type):
@@ -395,19 +396,22 @@ class TestPatternResultEdgeCases:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         assert result.pattern_type == pattern_type
 
-    @pytest.mark.parametrize("signal", [
-        SignalStrength.VERY_BULLISH,
-        SignalStrength.BULLISH,
-        SignalStrength.BULLISH_BROKEN,
-        SignalStrength.NEUTRAL,
-        SignalStrength.BEARISH_BROKEN,
-        SignalStrength.BEARISH,
-        SignalStrength.VERY_BEARISH,
-    ])
+    @pytest.mark.parametrize(
+        "signal",
+        [
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.BULLISH,
+            SignalStrength.BULLISH_BROKEN,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BEARISH_BROKEN,
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+        ],
+    )
     def test_pattern_result_all_signals(self, signal):
         """Test PatternResult with all signal strengths"""
         start_time = datetime(2023, 1, 1, 12, 0, 0)
@@ -419,7 +423,7 @@ class TestPatternResultEdgeCases:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test pattern"
+            description="Test pattern",
         )
         assert result.signal == signal
 
@@ -435,7 +439,7 @@ class TestPatternResultEdgeCases:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description="Test long name"
+            description="Test long name",
         )
         assert result.pattern_name == long_name
 
@@ -451,7 +455,6 @@ class TestPatternResultEdgeCases:
             confidence=0.5,
             start_time=start_time,
             end_time=end_time,
-            description=long_desc
+            description=long_desc,
         )
         assert result.description == long_desc
-
