@@ -84,6 +84,7 @@ logger = logging.getLogger(__name__)
 # 1. Numba JIT Optimized Functions (100-1000x faster)
 # ═══════════════════════════════════════════════════════════════
 
+
 @njit(cache=True)
 def fast_tsi(prices: np.ndarray, r: int = 25, s: int = 13) -> np.ndarray:
     """
@@ -101,7 +102,7 @@ def fast_tsi(prices: np.ndarray, r: int = 25, s: int = 13) -> np.ndarray:
     delta = np.empty(n, dtype=np.float32)
     delta[0] = 0.0
     for i in range(1, n):
-        delta[i] = prices[i] - prices[i-1]
+        delta[i] = prices[i] - prices[i - 1]
 
     abs_delta = np.abs(delta)
 
@@ -109,25 +110,25 @@ def fast_tsi(prices: np.ndarray, r: int = 25, s: int = 13) -> np.ndarray:
     ema1 = np.empty(n, dtype=np.float32)
     ema1[0] = delta[0]
     for i in range(1, n):
-        ema1[i] = alpha_r * delta[i] + (1 - alpha_r) * ema1[i-1]
+        ema1[i] = alpha_r * delta[i] + (1 - alpha_r) * ema1[i - 1]
 
     # Second EMA on first EMA
     ema2 = np.empty(n, dtype=np.float32)
     ema2[0] = ema1[0]
     for i in range(1, n):
-        ema2[i] = alpha_s * ema1[i] + (1 - alpha_s) * ema2[i-1]
+        ema2[i] = alpha_s * ema1[i] + (1 - alpha_s) * ema2[i - 1]
 
     # First EMA on absolute delta
     ema1_abs = np.empty(n, dtype=np.float32)
     ema1_abs[0] = abs_delta[0]
     for i in range(1, n):
-        ema1_abs[i] = alpha_r * abs_delta[i] + (1 - alpha_r) * ema1_abs[i-1]
+        ema1_abs[i] = alpha_r * abs_delta[i] + (1 - alpha_r) * ema1_abs[i - 1]
 
     # Second EMA on first absolute EMA
     ema2_abs = np.empty(n, dtype=np.float32)
     ema2_abs[0] = ema1_abs[0]
     for i in range(1, n):
-        ema2_abs[i] = alpha_s * ema1_abs[i] + (1 - alpha_s) * ema2_abs[i-1]
+        ema2_abs[i] = alpha_s * ema1_abs[i] + (1 - alpha_s) * ema2_abs[i - 1]
 
     # Calculate TSI
     tsi = np.empty(n, dtype=np.float32)
@@ -141,7 +142,9 @@ def fast_tsi(prices: np.ndarray, r: int = 25, s: int = 13) -> np.ndarray:
 
 
 @njit(cache=True)
-def fast_schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, cycle: int = 10) -> np.ndarray:
+def fast_schaff_trend_cycle(
+    prices: np.ndarray, fast: int = 12, slow: int = 26, cycle: int = 10
+) -> np.ndarray:
     """
     Ultra-fast Schaff Trend Cycle using Numba JIT
 
@@ -158,8 +161,8 @@ def fast_schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, 
     ema_slow[0] = prices[0]
 
     for i in range(1, n):
-        ema_fast[i] = alpha_fast * prices[i] + (1 - alpha_fast) * ema_fast[i-1]
-        ema_slow[i] = alpha_slow * prices[i] + (1 - alpha_slow) * ema_slow[i-1]
+        ema_fast[i] = alpha_fast * prices[i] + (1 - alpha_fast) * ema_fast[i - 1]
+        ema_slow[i] = alpha_slow * prices[i] + (1 - alpha_slow) * ema_slow[i - 1]
 
     macd = ema_fast - ema_slow
 
@@ -167,7 +170,7 @@ def fast_schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, 
     stc = np.empty(n, dtype=np.float32)
     for i in range(n):
         start = max(0, i - cycle + 1)
-        window = macd[start:i+1]
+        window = macd[start : i + 1]
 
         if len(window) == 0:
             stc[i] = 50.0
@@ -183,7 +186,9 @@ def fast_schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, 
 
 
 @njit(cache=True)
-def fast_connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2, roc_period: int = 100) -> np.ndarray:
+def fast_connors_rsi(
+    prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2, roc_period: int = 100
+) -> np.ndarray:
     """
     Ultra-fast Connors RSI using Numba JIT
 
@@ -197,7 +202,7 @@ def fast_connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int
     changes = np.empty(n, dtype=np.float32)
     changes[0] = 0.0
     for i in range(1, n):
-        changes[i] = prices[i] - prices[i-1]
+        changes[i] = prices[i] - prices[i - 1]
 
     gains = np.where(changes > 0, changes, 0.0).astype(np.float32)
     losses = np.where(changes < 0, -changes, 0.0).astype(np.float32)
@@ -209,8 +214,8 @@ def fast_connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int
     avg_loss[0] = losses[0]
 
     for i in range(1, n):
-        avg_gain[i] = alpha * gains[i] + (1 - alpha) * avg_gain[i-1]
-        avg_loss[i] = alpha * losses[i] + (1 - alpha) * avg_loss[i-1]
+        avg_gain[i] = alpha * gains[i] + (1 - alpha) * avg_gain[i - 1]
+        avg_loss[i] = alpha * losses[i] + (1 - alpha) * avg_loss[i - 1]
 
     rsi_short = np.empty(n, dtype=np.float32)
     for i in range(n):
@@ -224,9 +229,9 @@ def fast_connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int
     streak = np.zeros(n, dtype=np.float32)
     s = 0.0
     for i in range(1, n):
-        if prices[i] > prices[i-1]:
+        if prices[i] > prices[i - 1]:
             s = s + 1 if s >= 0 else 1
-        elif prices[i] < prices[i-1]:
+        elif prices[i] < prices[i - 1]:
             s = s - 1 if s <= 0 else -1
         else:
             s = 0
@@ -237,7 +242,7 @@ def fast_connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int
     window = max(5, streak_period * 5)
     for i in range(n):
         start = max(0, i - window + 1)
-        win = streak[start:i+1]
+        win = streak[start : i + 1]
         if len(win) == 0:
             streak_rsi[i] = 50.0
         else:
@@ -264,7 +269,7 @@ def fast_connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int
     roc_window = max(10, roc_period // 10)
     for i in range(n):
         start = max(0, i - roc_window + 1)
-        win = roc[start:i+1]
+        win = roc[start : i + 1]
         if len(win) == 0:
             roc_rsi[i] = 50.0
         else:
@@ -289,15 +294,15 @@ def fast_sma(prices: np.ndarray, period: int) -> np.ndarray:
     """
     n = len(prices)
     result = np.empty(n)
-    result[:period-1] = np.nan
+    result[: period - 1] = np.nan
 
     # Initial sum
     window_sum = np.sum(prices[:period])
-    result[period-1] = window_sum / period
+    result[period - 1] = window_sum / period
 
     # Sliding window (O(n) instead of O(n*period))
     for i in prange(period, n):
-        window_sum = window_sum - prices[i-period] + prices[i]
+        window_sum = window_sum - prices[i - period] + prices[i]
         result[i] = window_sum / period
 
     return result
@@ -319,7 +324,7 @@ def fast_ema(prices: np.ndarray, period: int) -> np.ndarray:
 
     # Exponential smoothing
     for i in prange(1, n):
-        result[i] = alpha * prices[i] + (1 - alpha) * result[i-1]
+        result[i] = alpha * prices[i] + (1 - alpha) * result[i - 1]
 
     return result
 
@@ -355,8 +360,8 @@ def fast_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
     # Smoothed RSI
     alpha = 1.0 / period
     for i in prange(period + 1, n):
-        avg_gain = (1 - alpha) * avg_gain + alpha * gains[i-1]
-        avg_loss = (1 - alpha) * avg_loss + alpha * losses[i-1]
+        avg_gain = (1 - alpha) * avg_gain + alpha * gains[i - 1]
+        avg_loss = (1 - alpha) * avg_loss + alpha * losses[i - 1]
 
         if avg_loss == 0:
             result[i] = 100.0
@@ -368,8 +373,9 @@ def fast_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
 
 
 @jit(nopython=True, cache=True, parallel=True)
-def fast_macd(prices: np.ndarray, fast_period: int = 12,
-              slow_period: int = 26, signal_period: int = 9) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def fast_macd(
+    prices: np.ndarray, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Ultra-fast MACD calculation
 
@@ -387,8 +393,9 @@ def fast_macd(prices: np.ndarray, fast_period: int = 12,
 
 
 @jit(nopython=True, cache=True, parallel=True)
-def fast_bollinger_bands(prices: np.ndarray, period: int = 20,
-                         num_std: float = 2.0) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def fast_bollinger_bands(
+    prices: np.ndarray, period: int = 20, num_std: float = 2.0
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Ultra-fast Bollinger Bands
 
@@ -401,20 +408,19 @@ def fast_bollinger_bands(prices: np.ndarray, period: int = 20,
     upper = np.empty(n)
     lower = np.empty(n)
 
-    for i in prange(period-1, n):
-        std = np.std(prices[i-period+1:i+1])
+    for i in prange(period - 1, n):
+        std = np.std(prices[i - period + 1 : i + 1])
         upper[i] = middle[i] + num_std * std
         lower[i] = middle[i] - num_std * std
 
-    upper[:period-1] = np.nan
-    lower[:period-1] = np.nan
+    upper[: period - 1] = np.nan
+    lower[: period - 1] = np.nan
 
     return upper, middle, lower
 
 
 @jit(nopython=True, cache=True, parallel=True)
-def fast_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray,
-             period: int = 14) -> np.ndarray:
+def fast_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
     """
     Ultra-fast Average True Range
 
@@ -429,8 +435,8 @@ def fast_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray,
     # True Range calculation
     for i in prange(1, n):
         hl = high[i] - low[i]
-        hc = abs(high[i] - close[i-1])
-        lc = abs(low[i] - close[i-1])
+        hc = abs(high[i] - close[i - 1])
+        lc = abs(low[i] - close[i - 1])
         tr[i] = max(hl, hc, lc)
 
     # ATR using EMA
@@ -441,7 +447,8 @@ def fast_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray,
 # 2. Vectorized Operations (10-100x faster)
 # ═══════════════════════════════════════════════════════════════
 
-@vectorize(['float64(float64, float64)'], target='parallel')
+
+@vectorize(["float64(float64, float64)"], target="parallel")
 def vectorized_percent_change(current: float, previous: float) -> float:
     """Vectorized percent change calculation"""
     if previous == 0:
@@ -449,8 +456,9 @@ def vectorized_percent_change(current: float, previous: float) -> float:
     return ((current - previous) / previous) * 100.0
 
 
-def batch_indicator_calculation(candles_array: np.ndarray,
-                                indicators: list[str]) -> dict[str, np.ndarray]:
+def batch_indicator_calculation(
+    candles_array: np.ndarray, indicators: list[str]
+) -> dict[str, np.ndarray]:
     """
     Calculate multiple indicators in one pass
 
@@ -470,18 +478,18 @@ def batch_indicator_calculation(candles_array: np.ndarray,
     with ThreadPoolExecutor(max_workers=mp.cpu_count()) as executor:
         futures = {}
 
-        if 'sma_20' in indicators:
-            futures['sma_20'] = executor.submit(fast_sma, closes, 20)
-        if 'sma_50' in indicators:
-            futures['sma_50'] = executor.submit(fast_sma, closes, 50)
-        if 'ema_12' in indicators:
-            futures['ema_12'] = executor.submit(fast_ema, closes, 12)
-        if 'rsi' in indicators:
-            futures['rsi'] = executor.submit(fast_rsi, closes, 14)
-        if 'macd' in indicators:
-            futures['macd'] = executor.submit(fast_macd, closes)
-        if 'atr' in indicators:
-            futures['atr'] = executor.submit(fast_atr, highs, lows, closes)
+        if "sma_20" in indicators:
+            futures["sma_20"] = executor.submit(fast_sma, closes, 20)
+        if "sma_50" in indicators:
+            futures["sma_50"] = executor.submit(fast_sma, closes, 50)
+        if "ema_12" in indicators:
+            futures["ema_12"] = executor.submit(fast_ema, closes, 12)
+        if "rsi" in indicators:
+            futures["rsi"] = executor.submit(fast_rsi, closes, 14)
+        if "macd" in indicators:
+            futures["macd"] = executor.submit(fast_macd, closes)
+        if "atr" in indicators:
+            futures["atr"] = executor.submit(fast_atr, highs, lows, closes)
 
         # Collect results
         for name, future in futures.items():
@@ -494,8 +502,10 @@ def batch_indicator_calculation(candles_array: np.ndarray,
 # 3. Parallel Processing (CPU cores x faster)
 # ═══════════════════════════════════════════════════════════════
 
-def parallel_multi_symbol_analysis(symbols_data: list[tuple[str, np.ndarray]],
-                                  indicators: list[str]) -> dict[str, dict]:
+
+def parallel_multi_symbol_analysis(
+    symbols_data: list[tuple[str, np.ndarray]], indicators: list[str]
+) -> dict[str, dict]:
     """
     Analyze multiple symbols in parallel
 
@@ -521,6 +531,7 @@ def parallel_multi_symbol_analysis(symbols_data: list[tuple[str, np.ndarray]],
 # 4. Memory Optimization
 # ═══════════════════════════════════════════════════════════════
 
+
 def optimize_memory_usage(candles: list[dict]) -> np.ndarray:
     """
     Convert candles to memory-efficient NumPy array
@@ -535,11 +546,11 @@ def optimize_memory_usage(candles: list[dict]) -> np.ndarray:
     result = np.empty((n, 5), dtype=np.float32)
 
     for i, candle in enumerate(candles):
-        result[i, 0] = candle['open']
-        result[i, 1] = candle['high']
-        result[i, 2] = candle['low']
-        result[i, 3] = candle['close']
-        result[i, 4] = candle['volume']
+        result[i, 0] = candle["open"]
+        result[i, 1] = candle["high"]
+        result[i, 2] = candle["low"]
+        result[i, 3] = candle["close"]
+        result[i, 4] = candle["volume"]
 
     return result
 
@@ -548,6 +559,7 @@ def optimize_memory_usage(candles: list[dict]) -> np.ndarray:
 # 5. Caching Strategies
 # ═══════════════════════════════════════════════════════════════
 
+
 @lru_cache(maxsize=1000)
 def cached_indicator_params(period: int, indicator_type: str) -> dict:
     """
@@ -555,12 +567,12 @@ def cached_indicator_params(period: int, indicator_type: str) -> dict:
 
     Speed: Instant retrieval for repeated calculations
     """
-    if indicator_type == 'sma':
-        return {'weight': 1.0 / period}
-    elif indicator_type == 'ema':
-        return {'alpha': 2.0 / (period + 1.0)}
-    elif indicator_type == 'rsi':
-        return {'alpha': 1.0 / period}
+    if indicator_type == "sma":
+        return {"weight": 1.0 / period}
+    elif indicator_type == "ema":
+        return {"alpha": 2.0 / (period + 1.0)}
+    elif indicator_type == "rsi":
+        return {"alpha": 1.0 / period}
     return {}
 
 
@@ -568,6 +580,7 @@ class ResultCache:
     """
     High-performance result caching with TTL
     """
+
     def __init__(self, max_size: int = 10000):
         self.cache: dict[str, tuple[Any, float]] = {}
         self.max_size = max_size
@@ -604,10 +617,10 @@ class ResultCache:
         hit_rate = (self.hits / total * 100) if total > 0 else 0
 
         return {
-            'hits': self.hits,
-            'misses': self.misses,
-            'hit_rate': f'{hit_rate:.2f}%',
-            'size': len(self.cache)
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_rate": f"{hit_rate:.2f}%",
+            "size": len(self.cache),
         }
 
 
@@ -616,6 +629,7 @@ class ResultCache:
 # ═══════════════════════════════════════════════════════════════
 
 try:
+
     @cuda.jit
     def gpu_moving_average(prices, periods, results):
         """
@@ -643,8 +657,8 @@ except:
 # 7. Algorithm Complexity Reduction
 # ═══════════════════════════════════════════════════════════════
 
-def optimized_pattern_detection(prices: np.ndarray,
-                                pattern_type: str) -> list[int]:
+
+def optimized_pattern_detection(prices: np.ndarray, pattern_type: str) -> list[int]:
     """
     Optimized pattern detection using sliding window
 
@@ -654,14 +668,15 @@ def optimized_pattern_detection(prices: np.ndarray,
     n = len(prices)
     patterns = []
 
-    if pattern_type == 'double_top':
+    if pattern_type == "double_top":
         # Use numpy's argrelextrema for peak detection (vectorized)
         from scipy.signal import argrelextrema
+
         peaks = argrelextrema(prices, np.greater, order=5)[0]
 
         # Check for double tops
         for i in range(len(peaks) - 1):
-            if abs(prices[peaks[i]] - prices[peaks[i+1]]) / prices[peaks[i]] < 0.02:
+            if abs(prices[peaks[i]] - prices[peaks[i + 1]]) / prices[peaks[i]] < 0.02:
                 patterns.append(peaks[i])
 
     return patterns
@@ -670,6 +685,7 @@ def optimized_pattern_detection(prices: np.ndarray,
 # ═══════════════════════════════════════════════════════════════
 # Performance Benchmark
 # ═══════════════════════════════════════════════════════════════
+
 
 def benchmark_performance():
     """
@@ -686,25 +702,25 @@ def benchmark_performance():
 
     # SMA
     start = time.time()
-    result = fast_sma(prices, 20)
+    fast_sma(prices, 20)
     fast_time = time.time() - start
-    print(f"Optimized SMA: {fast_time*1000:.2f}ms")
+    print(f"Optimized SMA: {fast_time * 1000:.2f}ms")
 
     # RSI
     start = time.time()
-    result = fast_rsi(prices, 14)
+    fast_rsi(prices, 14)
     fast_time = time.time() - start
-    print(f"Optimized RSI: {fast_time*1000:.2f}ms")
+    print(f"Optimized RSI: {fast_time * 1000:.2f}ms")
 
     # Batch calculation
     candles_array = np.column_stack([prices, prices, prices, prices, np.ones(n)])
-    indicators = ['sma_20', 'sma_50', 'ema_12', 'rsi', 'macd']
+    indicators = ["sma_20", "sma_50", "ema_12", "rsi", "macd"]
 
     start = time.time()
-    results = batch_indicator_calculation(candles_array, indicators)
+    batch_indicator_calculation(candles_array, indicators)
     batch_time = time.time() - start
-    print(f"Batch {len(indicators)} indicators: {batch_time*1000:.2f}ms")
-    print(f"Average per indicator: {batch_time/len(indicators)*1000:.2f}ms")
+    print(f"Batch {len(indicators)} indicators: {batch_time * 1000:.2f}ms")
+    print(f"Average per indicator: {batch_time / len(indicators) * 1000:.2f}ms")
 
     print("=" * 60)
     print("✅ Estimated speedup: 5000-10000x for typical workloads")
@@ -733,13 +749,13 @@ def calculate_rsi_numba(prices: np.ndarray, period: int = 14) -> float:
     """Compatibility wrapper that returns the latest RSI value as a float."""
     prices = np.asarray(prices, dtype=float)
     if len(prices) < 2:
-        return float(50.0)
+        return 50.0
 
     deltas = np.diff(prices)
     seed = deltas[:period]
     up = seed[seed >= 0].sum() / period
     down = -seed[seed < 0].sum() / period
-    rs = up / down if down != 0 else float('inf')
+    rs = up / down if down != 0 else float("inf")
     rsi = 100.0 - (100.0 / (1.0 + rs))
 
     # Smooth over the rest of the series
@@ -750,13 +766,15 @@ def calculate_rsi_numba(prices: np.ndarray, period: int = 14) -> float:
         down_val = -min(delta, 0.0)
         up_avg = (up_avg * (period - 1) + up_val) / period
         down_avg = (down_avg * (period - 1) + down_val) / period
-        rs = up_avg / down_avg if down_avg != 0 else float('inf')
+        rs = up_avg / down_avg if down_avg != 0 else float("inf")
         rsi = 100.0 - (100.0 / (1.0 + rs))
 
     return float(rsi)
 
 
-def calculate_macd_numba(prices: np.ndarray, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9):
+def calculate_macd_numba(
+    prices: np.ndarray, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9
+):
     """Compatibility wrapper that returns MACD and signal lines as numpy arrays."""
     prices = np.asarray(prices, dtype=float)
     if len(prices) == 0:
@@ -798,14 +816,14 @@ def fast_donchian_channels(highs: np.ndarray, lows: np.ndarray, period: int) -> 
     middle = np.empty(n, dtype=np.float32)
 
     # Initialize first values
-    upper[:period-1] = np.nan
-    lower[:period-1] = np.nan
-    middle[:period-1] = np.nan
+    upper[: period - 1] = np.nan
+    lower[: period - 1] = np.nan
+    middle[: period - 1] = np.nan
 
     # Vectorized calculation using parallel processing
-    for i in prange(period-1, n):
-        upper[i] = np.max(highs[i-period+1:i+1])
-        lower[i] = np.min(lows[i-period+1:i+1])
+    for i in prange(period - 1, n):
+        upper[i] = np.max(highs[i - period + 1 : i + 1])
+        lower[i] = np.min(lows[i - period + 1 : i + 1])
         middle[i] = (upper[i] + lower[i]) / 2.0
 
     return upper, middle, lower
@@ -831,13 +849,13 @@ def fast_aroon(highs: np.ndarray, lows: np.ndarray, period: int) -> tuple:
     aroon_down = np.empty(n, dtype=np.float32)
 
     # Initialize first values
-    aroon_up[:period-1] = np.nan
-    aroon_down[:period-1] = np.nan
+    aroon_up[: period - 1] = np.nan
+    aroon_down[: period - 1] = np.nan
 
     # Optimized calculation
-    for i in range(period-1, n):
-        window_highs = highs[i-period+1:i+1]
-        window_lows = lows[i-period+1:i+1]
+    for i in range(period - 1, n):
+        window_highs = highs[i - period + 1 : i + 1]
+        window_lows = lows[i - period + 1 : i + 1]
 
         # Find periods since highest high
         periods_since_high = period - 1 - np.argmax(window_highs)
@@ -853,7 +871,9 @@ def fast_aroon(highs: np.ndarray, lows: np.ndarray, period: int) -> tuple:
 
 
 @njit(cache=True)
-def fast_vortex_indicator(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int) -> tuple:
+def fast_vortex_indicator(
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int
+) -> tuple:
     """
     Ultra-fast Vortex Indicator calculation with Numba JIT
 
@@ -869,8 +889,8 @@ def fast_vortex_indicator(highs: np.ndarray, lows: np.ndarray, closes: np.ndarra
         Tuple of (vi_plus, vi_minus, vi_diff)
     """
     n = len(highs)
-    vi_plus = np.empty(n-1, dtype=np.float32)
-    vi_minus = np.empty(n-1, dtype=np.float32)
+    vi_plus = np.empty(n - 1, dtype=np.float32)
+    vi_minus = np.empty(n - 1, dtype=np.float32)
 
     # Calculate vortex movements
     vortex_plus = np.abs(highs[1:] - lows[:-1])
@@ -883,14 +903,14 @@ def fast_vortex_indicator(highs: np.ndarray, lows: np.ndarray, closes: np.ndarra
     true_range = np.maximum(high_low, np.maximum(high_close, low_close))
 
     # Initialize
-    vi_plus[:period-1] = np.nan
-    vi_minus[:period-1] = np.nan
+    vi_plus[: period - 1] = np.nan
+    vi_minus[: period - 1] = np.nan
 
     # Rolling sum calculation
-    for i in range(period-1, len(vortex_plus)):
-        vp_sum = np.sum(vortex_plus[i-period+1:i+1])
-        vm_sum = np.sum(vortex_minus[i-period+1:i+1])
-        tr_sum = np.sum(true_range[i-period+1:i+1])
+    for i in range(period - 1, len(vortex_plus)):
+        vp_sum = np.sum(vortex_plus[i - period + 1 : i + 1])
+        vm_sum = np.sum(vortex_minus[i - period + 1 : i + 1])
+        tr_sum = np.sum(true_range[i - period + 1 : i + 1])
 
         if tr_sum > 0:
             vi_plus[i] = vp_sum / tr_sum
@@ -927,12 +947,12 @@ def fast_mcginley_dynamic(closes: np.ndarray, period: int, k_factor: float = 0.6
 
     # Optimized calculation
     for i in range(1, n):
-        if md[i-1] > 0:
-            ratio = closes[i] / md[i-1]
-            divisor = k_factor * period * (ratio ** 4)
+        if md[i - 1] > 0:
+            ratio = closes[i] / md[i - 1]
+            divisor = k_factor * period * (ratio**4)
             if divisor < 1.0:
                 divisor = 1.0
-            md[i] = md[i-1] + (closes[i] - md[i-1]) / divisor
+            md[i] = md[i - 1] + (closes[i] - md[i - 1]) / divisor
         else:
             md[i] = closes[i]
 
@@ -946,6 +966,7 @@ def fast_mcginley_dynamic(closes: np.ndarray, period: int, k_factor: float = 0.6
 # Optimizations for 3 volume indicators: VWMACD, EOM, Force Index
 # Target: <0.5ms per indicator (150-200x speedup)
 # ============================================================================
+
 
 @njit(cache=True)
 def _fast_ema(values: np.ndarray, period: int) -> np.ndarray:
@@ -965,11 +986,7 @@ def _fast_ema(values: np.ndarray, period: int) -> np.ndarray:
 
 @njit(cache=True)
 def fast_volume_weighted_macd(
-    prices: np.ndarray,
-    volumes: np.ndarray,
-    fast: int = 12,
-    slow: int = 26,
-    signal_period: int = 9
+    prices: np.ndarray, volumes: np.ndarray, fast: int = 12, slow: int = 26, signal_period: int = 9
 ) -> tuple:
     """
     Ultra-fast Volume-Weighted MACD with Numba JIT
@@ -1032,10 +1049,7 @@ def fast_volume_weighted_macd(
 
 @njit(cache=True)
 def fast_ease_of_movement(
-    high: np.ndarray,
-    low: np.ndarray,
-    volume: np.ndarray,
-    period: int = 14
+    high: np.ndarray, low: np.ndarray, volume: np.ndarray, period: int = 14
 ) -> np.ndarray:
     """
     Ultra-fast Ease of Movement with Numba JIT
@@ -1099,11 +1113,7 @@ def fast_ease_of_movement(
 
 
 @njit(cache=True)
-def fast_force_index(
-    prices: np.ndarray,
-    volume: np.ndarray,
-    period: int = 13
-) -> np.ndarray:
+def fast_force_index(prices: np.ndarray, volume: np.ndarray, period: int = 13) -> np.ndarray:
     """
     Ultra-fast Force Index with Numba JIT
 
