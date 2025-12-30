@@ -14,7 +14,7 @@ python scripts/etl/auto_validate_report.py \
   --target-db "postgresql://gravity:gravity_db_pass@127.0.0.1:5545/tech_analysis" \
   --source-db "E:\\Shakour\\MyProjects\\GravityTseHisPrice\\data\\tse_data.db" \
   --symbols-file batch1_symbols.txt \
-  --outfile docs/validation_report_batch1.md \
+  --outfile docs/reports/validation_report.md \
   --limit 500
 """
 
@@ -243,7 +243,9 @@ def main() -> None:
     report.append(f"- میانگین کندل (تا limit): {avg_c:.1f}")
     report.append(f"- حداقل کندل (تا limit): {min_c}")
 
-    Path(args.outfile).write_text("\n".join(report), encoding="utf-8")
+    out_path = Path(args.outfile)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(report), encoding="utf-8")
     print(f"Report saved to {args.outfile}")
 
 
