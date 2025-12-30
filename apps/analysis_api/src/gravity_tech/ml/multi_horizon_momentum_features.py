@@ -18,6 +18,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 from gravity_tech.patterns.divergence import DivergenceDetector
@@ -120,9 +121,7 @@ class MultiHorizonMomentumFeatureExtractor:
         """
         total_needed = self.lookback_period + self.max_horizon
         if len(candles) < total_needed:
-            raise ValueError(
-                f"Need at least {total_needed} candles for multi-horizon dataset"
-            )
+            raise ValueError(f"Need at least {total_needed} candles for multi-horizon dataset")
 
         logger.info(
             "Extracting multi-horizon momentum features",
@@ -290,9 +289,7 @@ class MultiHorizonMomentumFeatureExtractor:
 
         # --- Momentum ---
         mom_value = cache.momentum[current_index]
-        mom_signal, mom_conf = self._momentum_signal_conf(
-            mom_value, cache.closes[current_index]
-        )
+        mom_signal, mom_conf = self._momentum_signal_conf(mom_value, cache.closes[current_index])
         features["momentum_signal"] = mom_signal.get_score() / 2.0
         features["momentum_confidence"] = mom_conf
         features["momentum_weighted"] = features["momentum_signal"] * mom_conf
@@ -484,10 +481,9 @@ class MultiHorizonMomentumFeatureExtractor:
         df: pd.DataFrame,
         period: int = 20,
     ) -> np.ndarray:
-        multiplier = (
-            ((df["close"] - df["low"]) - (df["high"] - df["close"]))
-            / (df["high"] - df["low"]).replace(0, 1)
-        )
+        multiplier = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (
+            df["high"] - df["low"]
+        ).replace(0, 1)
         mf_volume = multiplier * df["volume"]
         cmf = mf_volume.rolling(window=period).sum() / df["volume"].rolling(
             window=period
@@ -601,9 +597,7 @@ class MultiHorizonMomentumFeatureExtractor:
             confidence = min(0.9, 0.5 + (momentum_value / max(current_price, 1e-9)) * 10)
         else:
             signal = SignalStrength.BEARISH
-            confidence = min(
-                0.9, 0.5 + (abs(momentum_value) / max(current_price, 1e-9)) * 10
-            )
+            confidence = min(0.9, 0.5 + (abs(momentum_value) / max(current_price, 1e-9)) * 10)
         return signal, confidence
 
     def _obv_signal_conf(
