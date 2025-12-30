@@ -25,7 +25,7 @@ from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
 pytestmark = [pytest.mark.integration, pytest.mark.fast]
 
-DEFAULT_HORIZONS = ['3d', '7d', '30d']
+DEFAULT_HORIZONS = ["3d", "7d", "30d"]
 BULLISH_ACTIONS = {
     ActionRecommendation.STRONG_BUY,
     ActionRecommendation.BUY,
@@ -52,12 +52,7 @@ class FeatureSet:
 @pytest.fixture(scope="module")
 def candles() -> list[Candle]:
     """Synthetic TSE-like market data with an uptrend bias."""
-    df = create_realistic_market_data(
-        num_samples=1500,
-        trend='uptrend',
-        market='tse',
-        seed=1234
-    )
+    df = create_realistic_market_data(num_samples=1500, trend="uptrend", market="tse", seed=1234)
     return dataframe_to_candles(df)
 
 
@@ -70,10 +65,7 @@ def feature_sets(candles: list[Candle]) -> FeatureSet:
     momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=DEFAULT_HORIZONS)  # type: ignore
     X_momentum, Y_momentum = momentum_extractor.extract_training_dataset(candles)
 
-    return FeatureSet(
-        trend=(X_trend, Y_trend),
-        momentum=(X_momentum, Y_momentum)
-    )
+    return FeatureSet(trend=(X_trend, Y_trend), momentum=(X_momentum, Y_momentum))
 
 
 @pytest.fixture(scope="module")
@@ -85,7 +77,7 @@ def trained_models(feature_sets: FeatureSet):
     trend_learner = MultiHorizonWeightLearner(
         horizons=DEFAULT_HORIZONS,  # type: ignore
         test_size=0.2,
-        random_state=42
+        random_state=42,
     )
     trend_learner.train(X_trend, Y_trend, verbose=False)
     trend_analyzer = MultiHorizonAnalyzer(trend_learner)
@@ -93,7 +85,7 @@ def trained_models(feature_sets: FeatureSet):
     momentum_learner = MultiHorizonWeightLearner(
         horizons=DEFAULT_HORIZONS,  # type: ignore
         test_size=0.2,
-        random_state=42
+        random_state=42,
     )
     momentum_learner.train(X_momentum, Y_momentum, verbose=False)
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
@@ -123,7 +115,9 @@ def test_trend_system_detects_uptrend(trained_models, feature_sets):
     # Allow minor negative values for 7d due to ML/model noise
     assert analysis.score_7d.score > -0.2
     # Allow minor negative values for 30d due to ML/model noise and long-horizon uncertainty
-    assert analysis.score_30d.score > -0.1  # Professional tolerance for ML/model noise on long horizon
+    assert (
+        analysis.score_30d.score > -0.1
+    )  # Professional tolerance for ML/model noise on long horizon
     _assert_confidence_range(analysis.score_3d.confidence)
     _assert_confidence_range(analysis.score_7d.confidence)
     _assert_confidence_range(analysis.score_30d.confidence)
@@ -180,8 +174,8 @@ def test_combined_system_reflects_market_direction(trend_type, expected_actions)
     df = create_realistic_market_data(
         num_samples=200,  # Sufficient data for multi-horizon feature extraction and training
         trend=trend_type,
-        market='tse',
-        seed=_seed_for_scenario(trend_type)
+        market="tse",
+        seed=_seed_for_scenario(trend_type),
     )
     candles = dataframe_to_candles(df)
 
@@ -198,24 +192,17 @@ def test_combined_system_reflects_market_direction(trend_type, expected_actions)
     momentum_learner.train(X_momentum, Y_momentum, verbose=False)
 
     analyzer = CombinedTrendMomentumAnalyzer(
-        MultiHorizonAnalyzer(trend_learner),
-        MultiHorizonMomentumAnalyzer(momentum_learner)
+        MultiHorizonAnalyzer(trend_learner), MultiHorizonMomentumAnalyzer(momentum_learner)
     )
 
-    combined = analyzer.analyze(
-        X_trend.iloc[-1].to_dict(),
-        X_momentum.iloc[-1].to_dict()
-    )
+    combined = analyzer.analyze(X_trend.iloc[-1].to_dict(), X_momentum.iloc[-1].to_dict())
 
     assert combined.final_action in expected_actions
     _assert_confidence_range(combined.final_confidence)
 
 
 def create_realistic_market_data(
-    num_samples: int = 2000,
-    trend: str = 'mixed',
-    market: str = 'tse',
-    seed: int | None = None
+    num_samples: int = 2000, trend: str = "mixed", market: str = "tse", seed: int | None = None
 ) -> pd.DataFrame:
     """
     Create realistic market data with deterministic but scenario-specific randomness.
@@ -224,9 +211,9 @@ def create_realistic_market_data(
         seed if seed is not None else _seed_for_scenario((trend, market, num_samples))
     )
 
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1d')
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq="1d")
 
-    if market.lower() == 'tse':
+    if market.lower() == "tse":
         base_price = 15000
         volatility = 0.025
         base_volume = 500_000
@@ -241,17 +228,17 @@ def create_realistic_market_data(
     volumes: list[int] = []
 
     for i in range(1, num_samples):
-        if trend == 'uptrend':
-            drift = 0.003 if market == 'tse' else 0.002
-        elif trend == 'downtrend':
-            drift = -0.003 if market == 'tse' else -0.004  # More extreme downtrend
+        if trend == "uptrend":
+            drift = 0.003 if market == "tse" else 0.002
+        elif trend == "downtrend":
+            drift = -0.003 if market == "tse" else -0.004  # More extreme downtrend
         else:  # mixed
             if i < num_samples // 3:
-                drift = 0.002 if market == 'tse' else 0.003
+                drift = 0.002 if market == "tse" else 0.003
             elif i < 2 * num_samples // 3:
-                drift = -0.001 if market == 'tse' else -0.002
+                drift = -0.001 if market == "tse" else -0.002
             else:
-                drift = 0.0005 if market == 'tse' else 0.001
+                drift = 0.0005 if market == "tse" else 0.001
 
         change = drift + rng.normal(0, volatility)
         new_price = prices[-1] * (1 + change)
@@ -262,27 +249,24 @@ def create_realistic_market_data(
 
     volumes.insert(0, base_volume)
 
-    df = pd.DataFrame({
-        'timestamp': dates,
-        'close': prices
-    })
+    df = pd.DataFrame({"timestamp": dates, "close": prices})
 
-    df['open'] = df['close'].shift(1).fillna(df['close'].iloc[0])
+    df["open"] = df["close"].shift(1).fillna(df["close"].iloc[0])
 
-    open_prices = df['open'].to_numpy()
-    close_prices = df['close'].to_numpy()
+    open_prices = df["open"].to_numpy()
+    close_prices = df["close"].to_numpy()
 
     body_highs = np.maximum(open_prices, close_prices)
     body_lows = np.minimum(open_prices, close_prices)
 
-    wick_multiplier = 0.008 if market == 'tse' else 0.005
+    wick_multiplier = 0.008 if market == "tse" else 0.005
     wick_ranges = np.abs(close_prices) * wick_multiplier
     wick_above = rng.uniform(0, wick_ranges)
     wick_below = rng.uniform(0, wick_ranges)
 
-    df['high'] = body_highs + wick_above
-    df['low'] = body_lows - wick_below
-    df['volume'] = volumes
+    df["high"] = body_highs + wick_above
+    df["low"] = body_lows - wick_below
+    df["volume"] = volumes
 
     return df
 
@@ -293,12 +277,12 @@ def dataframe_to_candles(df: pd.DataFrame) -> list[Candle]:
     for _, row in df.iterrows():
         candles.append(
             Candle(
-                timestamp=row['timestamp'],
-                open=row['open'],
-                high=row['high'],
-                low=row['low'],
-                close=row['close'],
-                volume=row['volume']
+                timestamp=row["timestamp"],
+                open=row["open"],
+                high=row["high"],
+                low=row["low"],
+                close=row["close"],
+                volume=row["volume"],
             )
         )
     return candles
@@ -317,6 +301,7 @@ def _seed_for_scenario(key) -> int:
     }
     try:
         import hashlib
+
         scenario_key = key[0] if isinstance(key, (list, tuple)) else key
         if isinstance(scenario_key, str) and scenario_key in scenario_seeds:
             return scenario_seeds[scenario_key]
