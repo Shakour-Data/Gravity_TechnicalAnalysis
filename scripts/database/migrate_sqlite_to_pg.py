@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+from collections.abc import Iterable, Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence
 
 import psycopg2
 from psycopg2.extras import execute_values
@@ -135,7 +135,14 @@ def migrate_tse(sqlite_path: Path, pg_conn):
             panel_id = EXCLUDED.panel_id,
             market_id = EXCLUDED.market_id
         """,
-        lambda r: (r["company_id"], r["ticker"], r["name"], r["sector_id"], r["panel_id"], r["market_id"]),
+        lambda r: (
+            r["company_id"],
+            r["ticker"],
+            r["name"],
+            r["sector_id"],
+            r["panel_id"],
+            r["market_id"],
+        ),
     )
 
     # indices_info
@@ -338,9 +345,13 @@ def mirror_price_to_market_cache(pg_conn, batch_size: int = 5000):
 
 def main():
     parser = argparse.ArgumentParser(description="Migrate SQLite data to PostgreSQL.")
-    parser.add_argument("--tse-sqlite", default=r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db")
+    parser.add_argument(
+        "--tse-sqlite", default=r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
+    )
     parser.add_argument("--tech-sqlite", default="data/TechAnalysis.db")
-    parser.add_argument("--pg-dsn", default=None, help="Postgres DSN, e.g. postgresql://user:pass@host:5432/db")
+    parser.add_argument(
+        "--pg-dsn", default=None, help="Postgres DSN, e.g. postgresql://user:pass@host:5432/db"
+    )
     args = parser.parse_args()
 
     pg_dsn = args.pg_dsn or Path(".env")
