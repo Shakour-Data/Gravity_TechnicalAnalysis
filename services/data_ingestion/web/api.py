@@ -6,17 +6,17 @@ import sys
 # Add src to path for runtime imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-src_dir = os.path.join(parent_dir, 'src')
+src_dir = os.path.join(parent_dir, "src")
 sys.path.insert(0, src_dir)
 sys.path.insert(0, parent_dir)
 
-from flask import Flask, jsonify, request  # noqa: E402
-from flask_cors import CORS  # noqa: E402
 import sqlite3  # noqa: E402
-import pandas as pd  # noqa: E402
 
+import pandas as pd  # noqa: E402
 from config import DB_FILE  # noqa: E402  # type: ignore
 from encoding_utils import ensure_utf8_console  # noqa: E402  # type: ignore
+from flask import Flask, jsonify, request  # noqa: E402
+from flask_cors import CORS  # noqa: E402
 
 ensure_utf8_console()
 
@@ -57,54 +57,62 @@ def _safe_ticker(raw_ticker):
         return None
     return ticker
 
+
 def get_db_connection():
     """Get database connection"""
     return sqlite3.connect(DB_FILE)
 
-@app.route('/api/summary', methods=['GET'])
+
+@app.route("/api/summary", methods=["GET"])
 def get_summary():
     """Get market summary statistics"""
     try:
         conn = get_db_connection()
 
         # Get total companies
-        companies_count = pd.read_sql("SELECT COUNT(*) as count FROM companies", conn).iloc[0]['count']
+        companies_count = pd.read_sql("SELECT COUNT(*) as count FROM companies", conn).iloc[0][
+            "count"
+        ]
 
         # Get total price records
-        price_records = pd.read_sql("SELECT COUNT(*) as count FROM price_data", conn).iloc[0]['count']
+        price_records = pd.read_sql("SELECT COUNT(*) as count FROM price_data", conn).iloc[0][
+            "count"
+        ]
 
         # Get latest update date
-        latest_update = pd.read_sql("SELECT MAX(date) as latest FROM price_data", conn).iloc[0]['latest']
+        latest_update = pd.read_sql("SELECT MAX(date) as latest FROM price_data", conn).iloc[0][
+            "latest"
+        ]
 
         # Get sectors count
-        sectors_count = pd.read_sql("SELECT COUNT(*) as count FROM sectors", conn).iloc[0]['count']
+        sectors_count = pd.read_sql("SELECT COUNT(*) as count FROM sectors", conn).iloc[0]["count"]
 
         conn.close()
 
-        return jsonify({
-            'status': 'success',
-            'data': {
-                'companies': companies_count,
-                'price_records': price_records,
-                'latest_update': latest_update,
-                'sectors': sectors_count
+        return jsonify(
+            {
+                "status": "success",
+                "data": {
+                    "companies": companies_count,
+                    "price_records": price_records,
+                    "latest_update": latest_update,
+                    "sectors": sectors_count,
+                },
             }
-        })
+        )
     except Exception:
         logger.exception("failed to fetch sectors")
-        return jsonify({
-            'status': 'error',
-            'message': 'internal error'
-        }), 500
+        return jsonify({"status": "error", "message": "internal error"}), 500
 
-@app.route('/api/companies', methods=['GET'])
+
+@app.route("/api/companies", methods=["GET"])
 def get_companies():
     """Get companies list with optional filtering"""
     try:
         conn = get_db_connection()
 
-        sector_id = _safe_sector_id(request.args.get('sector_id'))
-        limit = _safe_limit(request.args.get('limit', 100))
+        sector_id = _safe_sector_id(request.args.get("sector_id"))
+        limit = _safe_limit(request.args.get("limit", 100))
 
         query = """
             SELECT c.ticker, c.name, c.sector_id, s.sector_name
@@ -123,27 +131,22 @@ def get_companies():
         df = pd.read_sql(query, conn, params=params)
         conn.close()
 
-        return jsonify({
-            'status': 'success',
-            'data': df.to_dict('records')
-        })
+        return jsonify({"status": "success", "data": df.to_dict("records")})
     except Exception:
         logger.exception("failed to fetch companies")
-        return jsonify({
-            'status': 'error',
-            'message': 'internal error'
-        }), 500
+        return jsonify({"status": "error", "message": "internal error"}), 500
 
-@app.route('/api/price-data/<ticker>', methods=['GET'])
+
+@app.route("/api/price-data/<ticker>", methods=["GET"])
 def get_price_data(ticker):
     """Get price data for a specific ticker"""
     try:
         conn = get_db_connection()
 
-        limit = _safe_limit(request.args.get('limit', 100))
+        limit = _safe_limit(request.args.get("limit", 100))
         safe_ticker = _safe_ticker(ticker)
         if safe_ticker is None:
-            return jsonify({'status': 'error', 'message': 'invalid ticker'}), 400
+            return jsonify({"status": "error", "message": "invalid ticker"}), 400
 
         query = """
             SELECT date, adj_open, adj_high, adj_low, adj_close, adj_final, adj_volume
@@ -156,19 +159,13 @@ def get_price_data(ticker):
         df = pd.read_sql(query, conn, params=(safe_ticker, limit))
         conn.close()
 
-        return jsonify({
-            'status': 'success',
-            'ticker': safe_ticker,
-            'data': df.to_dict('records')
-        })
+        return jsonify({"status": "success", "ticker": safe_ticker, "data": df.to_dict("records")})
     except Exception:
         logger.exception("failed to fetch price data for %s", ticker)
-        return jsonify({
-            'status': 'error',
-            'message': 'internal error'
-        }), 500
+        return jsonify({"status": "error", "message": "internal error"}), 500
 
-@app.route('/api/sectors', methods=['GET'])
+
+@app.route("/api/sectors", methods=["GET"])
 def get_sectors():
     """Get all sectors"""
     try:
@@ -185,24 +182,19 @@ def get_sectors():
         df = pd.read_sql(query, conn)
         conn.close()
 
-        return jsonify({
-            'status': 'success',
-            'data': df.to_dict('records')
-        })
+        return jsonify({"status": "success", "data": df.to_dict("records")})
     except Exception:
         logger.exception("failed to fetch sectors")
-        return jsonify({
-            'status': 'error',
-            'message': 'internal error'
-        }), 500
+        return jsonify({"status": "error", "message": "internal error"}), 500
 
-@app.route('/api/market-indices', methods=['GET'])
+
+@app.route("/api/market-indices", methods=["GET"])
 def get_market_indices():
     """Get market indices data (joined with index metadata)."""
     try:
         conn = get_db_connection()
 
-        limit = _safe_limit(request.args.get('limit', 100))
+        limit = _safe_limit(request.args.get("limit", 100))
 
         query = """
             SELECT
@@ -223,18 +215,13 @@ def get_market_indices():
         df = pd.read_sql(query, conn, params=(limit,))
         conn.close()
 
-        return jsonify({
-            'status': 'success',
-            'data': df.to_dict('records')
-        })
+        return jsonify({"status": "success", "data": df.to_dict("records")})
     except Exception:
         logger.exception("failed to fetch market indices")
-        return jsonify({
-            'status': 'error',
-            'message': 'internal error'
-        }), 500
+        return jsonify({"status": "error", "message": "internal error"}), 500
 
-@app.route('/health', methods=['GET'])
+
+@app.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint"""
     try:
@@ -242,23 +229,17 @@ def health_check():
         conn.execute("SELECT 1")
         conn.close()
 
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected',
-            'version': '2.0.0'
-        })
+        return jsonify({"status": "healthy", "database": "connected", "version": "2.0.0"})
     except Exception:
         logger.exception("health check failed")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': 'internal error'
-        }), 500
+        return jsonify({"status": "unhealthy", "error": "internal error"}), 500
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("🔌 Starting GravityTseHisPrice API Server...")
     print("📡 API will be available at: http://127.0.0.1:5000/")
     print("📖 API Documentation: http://127.0.0.1:5000/health")
     print("❌ Press Ctrl+C to stop the server")
     print()
 
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
