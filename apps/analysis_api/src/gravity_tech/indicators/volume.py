@@ -19,8 +19,8 @@ Version: 1.0.0
 License: MIT
 """
 
-
 import pandas as pd
+
 from gravity_tech.models.schemas import Candle, IndicatorCategory, IndicatorResult, SignalStrength
 
 
@@ -38,17 +38,14 @@ class VolumeIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'close': c.close,
-            'volume': c.volume
-        } for c in candles])
+        df = pd.DataFrame([{"close": c.close, "volume": c.volume} for c in candles])
 
         obv = [0]
         for i in range(1, len(df)):
-            if df['close'].iloc[i] > df['close'].iloc[i-1]:
-                obv.append(obv[-1] + df['volume'].iloc[i])
-            elif df['close'].iloc[i] < df['close'].iloc[i-1]:
-                obv.append(obv[-1] - df['volume'].iloc[i])
+            if df["close"].iloc[i] > df["close"].iloc[i - 1]:
+                obv.append(obv[-1] + df["volume"].iloc[i])
+            elif df["close"].iloc[i] < df["close"].iloc[i - 1]:
+                obv.append(obv[-1] - df["volume"].iloc[i])
             else:
                 obv.append(obv[-1])
 
@@ -60,7 +57,7 @@ class VolumeIndicators:
 
         # Signal based on OBV trend and position relative to MA
         obv_trend = obv_series.iloc[-5:].diff().mean()
-        price_trend = df['close'].iloc[-5:].diff().mean()
+        price_trend = df["close"].iloc[-5:].diff().mean()
 
         # Check divergence
         if obv_trend > 0 and price_trend > 0:
@@ -88,7 +85,7 @@ class VolumeIndicators:
             signal=signal,
             value=float(obv_current),
             confidence=confidence,
-            description=f"حجم {'تأیید کننده' if obv_trend * price_trend > 0 else 'واگرا با'} قیمت"
+            description=f"حجم {'تأیید کننده' if obv_trend * price_trend > 0 else 'واگرا با'} قیمت",
         )
 
     @staticmethod
@@ -103,17 +100,16 @@ class VolumeIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume
-        } for c in candles])
+        df = pd.DataFrame(
+            [{"high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in candles]
+        )
 
-        mf_multiplier = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low'])
-        mf_volume = mf_multiplier * df['volume']
+        mf_multiplier = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (
+            df["high"] - df["low"]
+        )
+        mf_volume = mf_multiplier * df["volume"]
 
-        cmf = mf_volume.rolling(window=period).sum() / df['volume'].rolling(window=period).sum()
+        cmf = mf_volume.rolling(window=period).sum() / df["volume"].rolling(window=period).sum()
         cmf_current = cmf.iloc[-1]
 
         # Signal based on CMF value
@@ -140,7 +136,7 @@ class VolumeIndicators:
             signal=signal,
             value=float(cmf_current),
             confidence=min(0.95, confidence),
-            description=f"جریان پول {'مثبت' if cmf_current > 0 else 'منفی'}: {cmf_current:.3f}"
+            description=f"جریان پول {'مثبت' if cmf_current > 0 else 'منفی'}: {cmf_current:.3f}",
         )
 
     @staticmethod
@@ -154,20 +150,25 @@ class VolumeIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume,
-            'typical': c.typical_price
-        } for c in candles])
+        df = pd.DataFrame(
+            [
+                {
+                    "high": c.high,
+                    "low": c.low,
+                    "close": c.close,
+                    "volume": c.volume,
+                    "typical": c.typical_price,
+                }
+                for c in candles
+            ]
+        )
 
         # Calculate VWAP (reset daily in production)
-        df['pv'] = df['typical'] * df['volume']
-        vwap = df['pv'].cumsum() / df['volume'].cumsum()
+        df["pv"] = df["typical"] * df["volume"]
+        vwap = df["pv"].cumsum() / df["volume"].cumsum()
 
         vwap_current = vwap.iloc[-1]
-        current_price = df['close'].iloc[-1]
+        current_price = df["close"].iloc[-1]
 
         diff_pct = ((current_price - vwap_current) / vwap_current) * 100
 
@@ -195,7 +196,7 @@ class VolumeIndicators:
             signal=signal,
             value=float(vwap_current),
             confidence=confidence,
-            description=f"قیمت {abs(diff_pct):.2f}% {'بالای' if diff_pct > 0 else 'زیر'} VWAP"
+            description=f"قیمت {abs(diff_pct):.2f}% {'بالای' if diff_pct > 0 else 'زیر'} VWAP",
         )
 
     @staticmethod
@@ -209,22 +210,19 @@ class VolumeIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume
-        } for c in candles])
+        df = pd.DataFrame(
+            [{"high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in candles]
+        )
 
-        clv = ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low'])
-        ad = (clv * df['volume']).cumsum()
+        clv = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (df["high"] - df["low"])
+        ad = (clv * df["volume"]).cumsum()
 
         ad_current = ad.iloc[-1]
         ad_sma = ad.rolling(window=20).mean().iloc[-1]
 
         # Check trend
         ad_trend = ad.iloc[-5:].diff().mean()
-        price_trend = df['close'].iloc[-5:].diff().mean()
+        price_trend = df["close"].iloc[-5:].diff().mean()
 
         # Signal based on AD line trend and divergence
         if ad_trend > 0 and price_trend > 0:
@@ -252,7 +250,7 @@ class VolumeIndicators:
             signal=signal,
             value=float(ad_current),
             confidence=confidence,
-            description=f"خط انباشت/توزیع {'صعودی' if ad_trend > 0 else 'نزولی'}"
+            description=f"خط انباشت/توزیع {'صعودی' if ad_trend > 0 else 'نزولی'}",
         )
 
     @staticmethod
@@ -266,13 +264,10 @@ class VolumeIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'close': c.close,
-            'volume': c.volume
-        } for c in candles])
+        df = pd.DataFrame([{"close": c.close, "volume": c.volume} for c in candles])
 
-        price_change = df['close'].pct_change()
-        pvt = (price_change * df['volume']).cumsum()
+        price_change = df["close"].pct_change()
+        pvt = (price_change * df["volume"]).cumsum()
 
         pvt_current = pvt.iloc[-1]
         pvt_sma = pvt.rolling(window=20).mean().iloc[-1]
@@ -303,7 +298,7 @@ class VolumeIndicators:
             signal=signal,
             value=float(pvt_current),
             confidence=confidence,
-            description=f"روند قیمت-حجم {'مثبت' if pvt_trend > 0 else 'منفی'}"
+            description=f"روند قیمت-حجم {'مثبت' if pvt_trend > 0 else 'منفی'}",
         )
 
     @staticmethod
@@ -351,7 +346,7 @@ class VolumeIndicators:
             signal=signal,
             value=float(vo_current),
             confidence=confidence,
-            description=f"نوسانگر حجم: {vo_current:.2f}%"
+            description=f"نوسانگر حجم: {vo_current:.2f}%",
         )
 
     @staticmethod
