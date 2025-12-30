@@ -5,7 +5,7 @@ Validates OHLCV data quality and consistency.
 """
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 
@@ -16,7 +16,7 @@ logger = structlog.get_logger()
 
 class DataQualityValidator(Validator):
     """Validate OHLCV data quality"""
-    
+
     def __init__(
         self,
         check_ohlc: bool = True,
@@ -27,7 +27,7 @@ class DataQualityValidator(Validator):
     ):
         """
         Initialize validator
-        
+
         Args:
             check_ohlc: Validate high >= low, etc
             check_volume: Check volume >= 0
@@ -41,38 +41,38 @@ class DataQualityValidator(Validator):
         self.check_timestamps = check_timestamps
         self.check_nan_inf = check_nan_inf
         self.check_duplicates = check_duplicates
-    
-    async def validate(self, candles: List[Dict[str, Any]]) -> Tuple[int, int]:
+
+    async def validate(self, candles: list[dict[str, Any]]) -> tuple[int, int]:
         """
         Validate candles
-        
+
         Returns:
             (valid_count, invalid_count)
         """
-        
+
         logger.info("validation_starting", count=len(candles))
-        
+
         valid = []
         invalid = 0
         seen_timestamps = set()
-        
+
         for candle in candles:
             try:
                 # Check for NaN/Inf values
                 if self.check_nan_inf:
                     if self._has_nan_inf(candle):
                         raise ValueError("Contains NaN or Inf values")
-                
+
                 # Validate OHLC relationships
                 if self.check_ohlc:
                     if not self._validate_ohlc(candle):
                         raise ValueError("Invalid OHLC relationship")
-                
+
                 # Check volume
                 if self.check_volume:
                     if not self._validate_volume(candle):
                         raise ValueError("Invalid volume")
-                
+
                 # Check timestamps
                 if self.check_timestamps:
                     ts = candle.get("timestamp")
@@ -80,26 +80,26 @@ class DataQualityValidator(Validator):
                         raise ValueError(f"Duplicate timestamp: {ts}")
                     if ts:
                         seen_timestamps.add(ts)
-                
+
                 valid.append(candle)
                 self.checked_count += 1
-            
+
             except Exception as e:
                 invalid += 1
                 self.invalid_count += 1
                 logger.debug("validation_error", error=str(e), candle=candle)
                 continue
-        
+
         logger.info("validation_complete", valid=len(valid), invalid=invalid)
         return len(valid), invalid
-    
-    def _has_nan_inf(self, candle: Dict) -> bool:
+
+    def _has_nan_inf(self, candle: dict) -> bool:
         """Check if candle has NaN or Inf values"""
         for field in ["open", "high", "low", "close", "volume"]:
             val = candle.get(field)
             if val is None:
                 continue
-            
+
             try:
                 f = float(val)
                 if math.isnan(f) or math.isinf(f):
@@ -107,52 +107,52 @@ class DataQualityValidator(Validator):
                     return True
             except (ValueError, TypeError):
                 pass
-        
+
         return False
-    
-    def _validate_ohlc(self, candle: Dict) -> bool:
+
+    def _validate_ohlc(self, candle: dict) -> bool:
         """Validate OHLC relationships"""
-        
+
         try:
             o = float(candle.get("open", 0))
             h = float(candle.get("high", 0))
-            l = float(candle.get("low", 0))
+            low = float(candle.get("low", 0))
             c = float(candle.get("close", 0))
         except (ValueError, TypeError):
             return False
-        
+
         # High must be >= Low
-        if h < l:
-            logger.debug("high_less_than_low", high=h, low=l)
+        if h < low:
+            logger.debug("high_less_than_low", high=h, low=low)
             return False
-        
+
         # Open and Close should be within High-Low range (with 5% tolerance)
-        tolerance = (h - l) * 0.05 if (h - l) > 0 else 0
-        
-        if o is not None and (o < l - tolerance or o > h + tolerance):
-            logger.debug("open_outside_range", open=o, high=h, low=l)
+        tolerance = (h - low) * 0.05 if (h - low) > 0 else 0
+
+        if o is not None and (o < low - tolerance or o > h + tolerance):
+            logger.debug("open_outside_range", open=o, high=h, low=low)
             # Don't fail, but warn
-        
-        if c is not None and (c < l - tolerance or c > h + tolerance):
-            logger.debug("close_outside_range", close=c, high=h, low=l)
+
+        if c is not None and (c < low - tolerance or c > h + tolerance):
+            logger.debug("close_outside_range", close=c, high=h, low=low)
             # Don't fail, but warn
-        
+
         return True
-    
-    def _validate_volume(self, candle: Dict) -> bool:
+
+    def _validate_volume(self, candle: dict) -> bool:
         """Validate volume"""
         try:
             volume = float(candle.get("volume", 0))
-            
+
             if volume < 0:
                 logger.debug("negative_volume", volume=volume)
                 return False
-            
+
             # Warn if zero volume (but don't fail)
             if volume == 0:
                 logger.debug("zero_volume")
-            
+
             return True
-        
+
         except (ValueError, TypeError):
             return False
