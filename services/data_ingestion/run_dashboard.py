@@ -6,19 +6,18 @@ This script starts the web-based dashboard for the TSE data analysis system.
 """
 
 import os
-import sys
 import subprocess
+import sys
+
 
 def check_dependencies():
     """Check if required packages are installed"""
-    required_packages = [
-        'dash', 'plotly', 'dash-bootstrap-components', 'pandas'
-    ]
+    required_packages = ["dash", "plotly", "dash-bootstrap-components", "pandas"]
 
     missing_packages = []
     for package in required_packages:
         try:
-            __import__(package.replace('-', '_'))
+            __import__(package.replace("-", "_"))
         except ImportError:
             missing_packages.append(package)
 
@@ -32,9 +31,10 @@ def check_dependencies():
 
     return True
 
+
 def check_database():
     """Check if database exists and has data"""
-    db_path = os.path.join(os.path.dirname(__file__), 'data', 'tse_data.db')
+    db_path = os.path.join(os.path.dirname(__file__), "data", "tse_data.db")
     if not os.path.exists(db_path):
         print("⚠️  پایگاه داده یافت نشد!")
         print("💡 لطفاً ابتدا دیتابیس را راه‌اندازی کنید:")
@@ -45,6 +45,7 @@ def check_database():
         return False
 
     return True
+
 
 def main():
     """Main function to run the dashboard"""
@@ -67,7 +68,7 @@ def main():
 
     try:
         # Run the dashboard
-        dashboard_path = os.path.join(os.path.dirname(__file__), 'web', 'dashboard.py')
+        dashboard_path = os.path.join(os.path.dirname(__file__), "web", "dashboard.py")
         subprocess.run([sys.executable, dashboard_path], check=True)
     except KeyboardInterrupt:
         print("\n👋 Dashboard stopped by user")
@@ -76,5 +77,6 @@ def main():
     except FileNotFoundError:
         print("❌ Dashboard file not found!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
