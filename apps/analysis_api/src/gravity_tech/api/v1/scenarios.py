@@ -9,9 +9,10 @@ Version: 1.0.0
 License: MIT
 """
 
-
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
+from prometheus_client import Counter, Histogram
+
 from gravity_tech.analysis.scenario_analysis import (
     ScenarioAnalyzer,
     ScenarioResult,
@@ -19,7 +20,6 @@ from gravity_tech.analysis.scenario_analysis import (
 )
 from gravity_tech.clients.data_service_client import DataServiceClient
 from gravity_tech.config.settings import get_settings
-from prometheus_client import Counter, Histogram
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/scenarios", tags=["Scenario Analysis"])
@@ -27,9 +27,7 @@ router = APIRouter(prefix="/api/v1/scenarios", tags=["Scenario Analysis"])
 SCENARIO_API_REQUESTS = Counter(
     "api_scenario_requests_total", "Total scenario API requests", ["status"]
 )
-SCENARIO_API_LATENCY = Histogram(
-    "api_scenario_latency_seconds", "Scenario API latency in seconds"
-)
+SCENARIO_API_LATENCY = Histogram("api_scenario_latency_seconds", "Scenario API latency in seconds")
 
 
 def get_data_client() -> DataServiceClient:
@@ -40,12 +38,12 @@ def get_data_client() -> DataServiceClient:
         timeout=30.0,
         max_retries=3,
         redis_url=settings.REDIS_URL,
-        cache_ttl=21600  # 6 hours
+        cache_ttl=21600,  # 6 hours
     )
 
 
 def get_scenario_analyzer(
-    data_client: DataServiceClient = Depends(get_data_client)
+    data_client: DataServiceClient = Depends(get_data_client),
 ) -> ScenarioAnalyzer:
     """Dependency: Get Scenario Analyzer with Data Service client."""
     return ScenarioAnalyzer(data_service_client=data_client)
@@ -56,7 +54,7 @@ async def analyze_scenarios(
     symbol: str,
     timeframe: str = Query(default="1d", regex="^(1m|5m|15m|1h|4h|1d|1w)$"),
     lookback_days: int = Query(default=365, ge=30, le=1825),
-    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer)
+    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer),
 ):
     """
     تحلیل سه‌سناریویی (خوشبینانه، خنثی، بدبینانه)
@@ -123,20 +121,16 @@ async def analyze_scenarios(
         503: اگر Data Service در دسترس نباشد
     """
     logger.info(
-        "scenario_analysis_request",
-        symbol=symbol,
-        timeframe=timeframe,
-        lookback_days=lookback_days
+        "scenario_analysis_request", symbol=symbol, timeframe=timeframe, lookback_days=lookback_days
     )
 
     try:
         import time
+
         start = time.perf_counter()
         # تحلیل سناریوها (داده از Data Service دریافت می‌شود)
         analysis = await analyzer.analyze_from_service(
-            symbol=symbol,
-            timeframe=timeframe,
-            lookback_days=lookback_days
+            symbol=symbol, timeframe=timeframe, lookback_days=lookback_days
         )
         duration = time.perf_counter() - start
         SCENARIO_API_REQUESTS.labels("success").inc()
@@ -147,7 +141,7 @@ async def analyze_scenarios(
             symbol=symbol,
             expected_return=analysis.expected_return,
             sharpe_ratio=analysis.sharpe_ratio,
-            recommended_scenario=analysis.recommended_scenario
+            recommended_scenario=analysis.recommended_scenario,
         )
 
         return analysis
@@ -160,15 +154,9 @@ async def analyze_scenarios(
     except Exception as e:
         SCENARIO_API_REQUESTS.labels("error").inc()
         logger.error(
-            "scenario_analysis_error",
-            symbol=symbol,
-            error=str(e),
-            error_type=type(e).__name__
+            "scenario_analysis_error", symbol=symbol, error=str(e), error_type=type(e).__name__
         )
-        raise HTTPException(
-            status_code=503,
-            detail=f"Failed to analyze scenarios: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=503, detail=f"Failed to analyze scenarios: {str(e)}") from e
 
 
 @router.get("/{symbol}/optimistic", response_model=ScenarioResult)
@@ -176,7 +164,7 @@ async def get_optimistic_scenario(
     symbol: str,
     timeframe: str = Query(default="1d", regex="^(1m|5m|15m|1h|4h|1d|1w)$"),
     lookback_days: int = Query(default=365, ge=30, le=1825),
-    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer)
+    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer),
 ):
     """
     فقط سناریو خوشبینانه
@@ -198,7 +186,7 @@ async def get_neutral_scenario(
     symbol: str,
     timeframe: str = Query(default="1d", regex="^(1m|5m|15m|1h|4h|1d|1w)$"),
     lookback_days: int = Query(default=365, ge=30, le=1825),
-    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer)
+    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer),
 ):
     """
     فقط سناریو خنثی
@@ -220,7 +208,7 @@ async def get_pessimistic_scenario(
     symbol: str,
     timeframe: str = Query(default="1d", regex="^(1m|5m|15m|1h|4h|1d|1w)$"),
     lookback_days: int = Query(default=365, ge=30, le=1825),
-    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer)
+    analyzer: ScenarioAnalyzer = Depends(get_scenario_analyzer),
 ):
     """
     فقط سناریو بدبینانه
