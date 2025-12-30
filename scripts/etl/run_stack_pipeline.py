@@ -140,14 +140,36 @@ def run_analysis(pg_dsn: str, limit: int, lookback_days: int) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run ingestion + migration + analysis in one shot.")
-    parser.add_argument("--pg-dsn", required=True, help="Postgres DSN, e.g. postgresql://user:pass@host:5432/db")
-    parser.add_argument("--mode", choices=["init", "daily"], default="daily", help="Init = full bootstrap, daily = incremental.")
-    parser.add_argument("--analysis-limit", type=int, default=80, help="Max symbols to process during analysis (0 = all).")
-    parser.add_argument("--lookback-days", type=int, default=365, help="Lookback horizon for candles.")
-    parser.add_argument("--skip-ingestion", action="store_true", help="Skip calling the ingestion CLI.")
-    parser.add_argument("--skip-migration", action="store_true", help="Skip copying SQLite output into Postgres.")
-    parser.add_argument("--skip-analysis", action="store_true", help="Skip the historical analysis batch.")
+    parser = argparse.ArgumentParser(
+        description="Run ingestion + migration + analysis in one shot."
+    )
+    parser.add_argument(
+        "--pg-dsn", required=True, help="Postgres DSN, e.g. postgresql://user:pass@host:5432/db"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["init", "daily"],
+        default="daily",
+        help="Init = full bootstrap, daily = incremental.",
+    )
+    parser.add_argument(
+        "--analysis-limit",
+        type=int,
+        default=80,
+        help="Max symbols to process during analysis (0 = all).",
+    )
+    parser.add_argument(
+        "--lookback-days", type=int, default=365, help="Lookback horizon for candles."
+    )
+    parser.add_argument(
+        "--skip-ingestion", action="store_true", help="Skip calling the ingestion CLI."
+    )
+    parser.add_argument(
+        "--skip-migration", action="store_true", help="Skip copying SQLite output into Postgres."
+    )
+    parser.add_argument(
+        "--skip-analysis", action="store_true", help="Skip the historical analysis batch."
+    )
     return parser.parse_args()
 
 
