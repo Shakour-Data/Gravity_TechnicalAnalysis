@@ -1,15 +1,13 @@
 import os
-import sys
-import json
-import types
 import sqlite3
+import sys
+import types
 import unittest
 from datetime import datetime
 
 import pandas as pd
-
-from src.database import init_price_data
 from src import cli
+from src.database import init_price_data
 from src.fetcher import DataFetcher
 
 
@@ -68,9 +66,7 @@ class TestTablesAndSchema(BaseDBTest):
         cur = conn.cursor()
         tables = {
             r[0]
-            for r in cur.execute(
-                "select name from sqlite_master where type='table'"
-            ).fetchall()
+            for r in cur.execute("select name from sqlite_master where type='table'").fetchall()
         }
         expected = {
             "sectors",
@@ -149,7 +145,10 @@ class TestInsertPriceData(BaseDBTest):
     def setUp(self):
         super().setUp()
         init_price_data.insert_companies(
-            [{"CompanyID": f"C{i}", "Ticker": f"T{i}", "Name": "N", "SectorCode": 1} for i in range(1, 6)]
+            [
+                {"CompanyID": f"C{i}", "Ticker": f"T{i}", "Name": "N", "SectorCode": 1}
+                for i in range(1, 6)
+            ]
         )
 
 
@@ -165,8 +164,8 @@ def _add_price_case(idx, record):
         self.assertIsNotNone(row)
         self.assertEqual(row[0], record.get("Date"))
         # adj_volume derived from value / adj_final when available
-        expected_volume = (
-            record.get("Value", 0) / record.get("Adj Final", record.get("AdjFinal", 1))
+        expected_volume = record.get("Value", 0) / record.get(
+            "Adj Final", record.get("AdjFinal", 1)
         )
         self.assertAlmostEqual(row[1], expected_volume)
         conn.close()
@@ -316,7 +315,10 @@ class TestCLIFlows(BaseDBTest):
 def _make_cli_list_test(idx, sector_id):
     def test(self):
         conn = sqlite3.connect(self.db_path)
-        conn.execute("insert into sectors (sector_id, sector_name) values (?, ?)", (sector_id, f"Sector {sector_id}"))
+        conn.execute(
+            "insert into sectors (sector_id, sector_name) values (?, ?)",
+            (sector_id, f"Sector {sector_id}"),
+        )
         conn.commit()
         conn.close()
         sys_stdout = sys.stdout
@@ -383,8 +385,10 @@ class TestDataFetcherOps(BaseDBTest):
 def _generate_float_tests():
     values = [0, 1, -1, 1.5, "2.5", None, "bad", float("nan")]
     for idx, val in enumerate(values):
+
         def test(self, v=val):
             DataFetcher._to_float(v, default=0)
+
         test.__name__ = f"test_to_float_var_{idx}"
         setattr(TestDataFetcherUtils, test.__name__, test)
 
@@ -406,6 +410,7 @@ def _generate_company_tests():
             }
         )
     for idx, company in enumerate(scenarios):
+
         def test(self, comp=company):
             init_price_data.insert_companies([comp])
             conn = sqlite3.connect(self.db_path)
@@ -416,6 +421,7 @@ def _generate_company_tests():
             ).fetchone()
             self.assertIsNotNone(found)
             conn.close()
+
         test.__name__ = f"test_insert_company_variant_{idx}"
         setattr(TestInsertBasicData, test.__name__, test)
 
@@ -431,14 +437,20 @@ def _generate_price_volume_edge_tests():
         {"Value": 50, "AdjFinal": None},
     ]
     for idx, edge in enumerate(edges):
-        rec = _price_record(idx + 30, value=edge["Value"], adj_final=edge["AdjFinal"] or 1, ticker=f"EDGE{idx}")
+        rec = _price_record(
+            idx + 30, value=edge["Value"], adj_final=edge["AdjFinal"] or 1, ticker=f"EDGE{idx}"
+        )
+
         def test(self, record=rec):
             init_price_data.insert_price_data([record])
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
-            row = cur.execute("select adj_volume from price_data where ticker=?", (record["Ticker"],)).fetchone()
+            row = cur.execute(
+                "select adj_volume from price_data where ticker=?", (record["Ticker"],)
+            ).fetchone()
             self.assertIsNotNone(row)
             conn.close()
+
         test.__name__ = f"test_price_volume_edge_{idx}"
         setattr(TestInsertPriceData, test.__name__, test)
 
@@ -448,13 +460,17 @@ _generate_price_volume_edge_tests()
 
 def _generate_last_update_tests():
     for idx in range(5):
+
         def test(self, i=idx):
-            init_price_data.insert_last_updates({f"S{i}": f"2025-01-{i+1:02d}"})
+            init_price_data.insert_last_updates({f"S{i}": f"2025-01-{i + 1:02d}"})
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
-            val = cur.execute("select last_date from last_updates where symbol=?", (f"S{i}",)).fetchone()
+            val = cur.execute(
+                "select last_date from last_updates where symbol=?", (f"S{i}",)
+            ).fetchone()
             self.assertIsNotNone(val)
             conn.close()
+
         test.__name__ = f"test_last_update_insert_{idx}"
         setattr(TestInsertIndicesData, test.__name__, test)
 
@@ -464,10 +480,12 @@ _generate_last_update_tests()
 
 def _generate_dummy_cli_tests():
     for idx in range(5):
+
         def test(self, i=idx):
             args = types.SimpleNamespace(table="markets")
             cli.drop_table(args)
             init_price_data.create_tables()
+
         test.__name__ = f"test_cli_drop_table_cycle_{idx}"
         setattr(TestCLIFlows, test.__name__, test)
 
