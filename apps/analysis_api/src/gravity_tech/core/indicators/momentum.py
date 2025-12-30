@@ -12,14 +12,14 @@ These functions return a dict with keys:
 
 Lightweight, well-documented implementations intended for Day 2.
 """
+
 from typing import Any
 
 import numpy as np
 
 
 def _ema(values: np.ndarray, period: int) -> np.ndarray:
-    """Simple EMA implementation (vectorized).
-    """
+    """Simple EMA implementation (vectorized)."""
     alpha = 2.0 / (period + 1)
     out = np.empty_like(values, dtype=float)
     out[0] = values[0]
@@ -58,13 +58,15 @@ def tsi(prices: np.ndarray, r: int = 25, s: int = 13) -> dict[str, Any]:
     tsi_values = 100.0 * (ema2 / denom)
 
     last = tsi_values[-1]
-    signal = 'BUY' if last > 0 else 'SELL' if last < 0 else None
+    signal = "BUY" if last > 0 else "SELL" if last < 0 else None
     confidence = min(1.0, abs(last) / 100.0)
 
     return {"values": tsi_values, "signal": signal, "confidence": float(confidence)}
 
 
-def schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, cycle: int = 10) -> dict[str, Any]:
+def schaff_trend_cycle(
+    prices: np.ndarray, fast: int = 12, slow: int = 26, cycle: int = 10
+) -> dict[str, Any]:
     """Simplified Schaff Trend Cycle (STC) implementation.
 
     Uses MACD (fast, slow) then applies a bounded stochastic over `cycle` to produce 0-100 output.
@@ -82,7 +84,7 @@ def schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, cycle
     stc = np.empty_like(macd)
     for i in range(len(macd)):
         start = max(0, i - cycle + 1)
-        window = macd[start:i + 1]
+        window = macd[start : i + 1]
         if window.size == 0:
             stc[i] = 50.0
         else:
@@ -92,7 +94,7 @@ def schaff_trend_cycle(prices: np.ndarray, fast: int = 12, slow: int = 26, cycle
             stc[i] = 100.0 * (macd[i] - mn) / denom
 
     last = stc[-1]
-    signal = 'BUY' if last > 50 else 'SELL' if last < 50 else None
+    signal = "BUY" if last > 50 else "SELL" if last < 50 else None
     confidence = abs(last - 50.0) / 50.0
     confidence = float(min(1.0, confidence))
 
@@ -110,7 +112,9 @@ def _rsi_from_changes(changes: np.ndarray, period: int = 3) -> np.ndarray:
     return rsi
 
 
-def connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2, roc_period: int = 100) -> dict[str, Any]:
+def connors_rsi(
+    prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2, roc_period: int = 100
+) -> dict[str, Any]:
     """Connors RSI (CRSI) composed of three components: short RSI, streak percentile, ROC percentile.
 
     This simplified version computes:
@@ -142,7 +146,7 @@ def connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2,
     window = max(5, streak_period * 5)
     for i in range(n):
         start = max(0, i - window + 1)
-        win = streak[start:i + 1]
+        win = streak[start : i + 1]
         if win.size == 0:
             streak_rsi[i] = 50.0
         else:
@@ -165,7 +169,7 @@ def connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2,
     roc_window = max(10, roc_period // 10)
     for i in range(n):
         start = max(0, i - roc_window + 1)
-        win = roc[start:i + 1]
+        win = roc[start : i + 1]
         if win.size == 0:
             roc_rsi[i] = 50.0
         else:
@@ -176,10 +180,12 @@ def connors_rsi(prices: np.ndarray, rsi_period: int = 3, streak_period: int = 2,
 
     crsi_values = (rsi_short + streak_rsi + roc_rsi) / 3.0
     last = crsi_values[-1]
-    signal = 'BUY' if last > 50 else 'SELL' if last < 50 else None
+    signal = "BUY" if last > 50 else "SELL" if last < 50 else None
     confidence = float(min(1.0, abs(last - 50.0) / 50.0))
 
     return {"values": crsi_values, "signal": signal, "confidence": confidence}
+
+
 """
 ================================================================================
 FILE IDENTITY CARD (شناسنامه فایل)
@@ -222,6 +228,7 @@ This module implements 10 comprehensive momentum indicators:
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 
@@ -249,9 +256,14 @@ class MomentumIndicators:
         gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
 
-        rs = gain / loss
+        rs = gain / np.where(loss == 0, np.nan, loss)
         rsi = 100 - (100 / (1 + rs))
-        rsi_current = rsi.iloc[-1]
+        rsi_values = rsi.values
+        rsi_values = np.where((gain.values == 0) & (loss.values == 0), 50.0, rsi_values)
+        rsi_values = np.where((loss.values == 0) & (gain.values > 0), 100.0, rsi_values)
+        rsi_values = np.where((gain.values == 0) & (loss.values > 0), 0.0, rsi_values)
+        rsi = pd.Series(rsi_values, index=rsi.index)
+        rsi_current = float(rsi.iloc[-1])
 
         # Signal based on RSI levels
         if rsi_current > 80:
@@ -278,7 +290,7 @@ class MomentumIndicators:
             signal=signal,
             value=float(rsi_current),
             confidence=confidence,
-            description=f"RSI در سطح {rsi_current:.1f} - {'اشباع خرید' if rsi_current > 70 else 'اشباع فروش' if rsi_current < 30 else 'خنثی'}"
+            description=f"RSI در سطح {rsi_current:.1f} - {'اشباع خرید' if rsi_current > 70 else 'اشباع فروش' if rsi_current < 30 else 'خنثی'}",
         )
 
     @staticmethod
@@ -296,17 +308,13 @@ class MomentumIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close
-        } for c in candles])
+        df = pd.DataFrame([{"high": c.high, "low": c.low, "close": c.close} for c in candles])
 
         # Calculate %K
-        low_min = df['low'].rolling(window=k_period).min()
-        high_max = df['high'].rolling(window=k_period).max()
+        low_min = df["low"].rolling(window=k_period).min()
+        high_max = df["high"].rolling(window=k_period).max()
 
-        k = 100 * ((df['close'] - low_min) / (high_max - low_min))
+        k = 100 * ((df["close"] - low_min) / (high_max - low_min))
         d = k.rolling(window=d_period).mean()
 
         k_current = k.iloc[-1]
@@ -337,7 +345,7 @@ class MomentumIndicators:
             value=float(k_current),
             additional_values={"D": float(d_current)},
             confidence=confidence,
-            description=f"Stochastic: K={k_current:.1f}, D={d_current:.1f}"
+            description=f"Stochastic: K={k_current:.1f}, D={d_current:.1f}",
         )
 
     @staticmethod
@@ -356,9 +364,7 @@ class MomentumIndicators:
         """
         typical_prices = pd.Series([c.typical_price for c in candles])
         sma = typical_prices.rolling(window=period).mean()
-        mad = typical_prices.rolling(window=period).apply(
-            lambda x: np.abs(x - x.mean()).mean()
-        )
+        mad = typical_prices.rolling(window=period).apply(lambda x: np.abs(x - x.mean()).mean())
 
         cci = (typical_prices - sma) / (0.015 * mad)
         cci_current = cci.iloc[-1]
@@ -387,7 +393,7 @@ class MomentumIndicators:
             signal=signal,
             value=float(cci_current),
             confidence=confidence,
-            description=f"CCI در سطح {cci_current:.1f}"
+            description=f"CCI در سطح {cci_current:.1f}",
         )
 
     @staticmethod
@@ -432,7 +438,7 @@ class MomentumIndicators:
             signal=signal,
             value=float(roc_current),
             confidence=confidence,
-            description=f"نرخ تغییر: {roc_current:.2f}%"
+            description=f"نرخ تغییر: {roc_current:.2f}%",
         )
 
     @staticmethod
@@ -449,16 +455,12 @@ class MomentumIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close
-        } for c in candles])
+        df = pd.DataFrame([{"high": c.high, "low": c.low, "close": c.close} for c in candles])
 
-        high_max = df['high'].rolling(window=period).max()
-        low_min = df['low'].rolling(window=period).min()
+        high_max = df["high"].rolling(window=period).max()
+        low_min = df["low"].rolling(window=period).min()
 
-        williams_r = -100 * ((high_max - df['close']) / (high_max - low_min))
+        williams_r = -100 * ((high_max - df["close"]) / (high_max - low_min))
         wr_current = williams_r.iloc[-1]
 
         # Signal based on Williams %R levels (inverted like RSI)
@@ -485,7 +487,7 @@ class MomentumIndicators:
             signal=signal,
             value=float(wr_current),
             confidence=confidence,
-            description=f"Williams %R: {wr_current:.1f}"
+            description=f"Williams %R: {wr_current:.1f}",
         )
 
     @staticmethod
@@ -502,25 +504,34 @@ class MomentumIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close,
-            'volume': c.volume,
-            'typical': c.typical_price
-        } for c in candles])
+        df = pd.DataFrame(
+            [
+                {
+                    "high": c.high,
+                    "low": c.low,
+                    "close": c.close,
+                    "volume": c.volume,
+                    "typical": c.typical_price,
+                }
+                for c in candles
+            ]
+        )
 
-        money_flow = df['typical'] * df['volume']
+        money_flow = df["typical"] * df["volume"]
 
         # Positive and negative money flow
-        positive_flow = money_flow.where(df['typical'] > df['typical'].shift(1), 0)
-        negative_flow = money_flow.where(df['typical'] < df['typical'].shift(1), 0)
+        positive_flow = money_flow.where(df["typical"] > df["typical"].shift(1), 0)
+        negative_flow = money_flow.where(df["typical"] < df["typical"].shift(1), 0)
 
         positive_mf = positive_flow.rolling(window=period).sum()
         negative_mf = negative_flow.rolling(window=period).sum()
 
-        mfi = 100 - (100 / (1 + (positive_mf / negative_mf)))
-        mfi_current = mfi.iloc[-1]
+        mf_ratio = positive_mf / negative_mf.replace(0, np.nan)
+        mfi = 100 - (100 / (1 + mf_ratio))
+        mfi = mfi.where(~(positive_mf.eq(0) & negative_mf.eq(0)), 50.0)
+        mfi = mfi.where(~(negative_mf.eq(0) & positive_mf.gt(0)), 100.0)
+        mfi = mfi.where(~(positive_mf.eq(0) & negative_mf.gt(0)), 0.0)
+        mfi_current = float(mfi.iloc[-1])
 
         # Signal based on MFI levels
         if mfi_current > 80:
@@ -547,11 +558,13 @@ class MomentumIndicators:
             value=float(mfi_current),
             additional_values={"mfi": float(mfi_current)},
             confidence=confidence,
-            description=f"جریان پول: {mfi_current:.1f}"
+            description=f"جریان پول: {mfi_current:.1f}",
         )
 
     @staticmethod
-    def ultimate_oscillator(candles: list[Candle], period1: int = 7, period2: int = 14, period3: int = 28) -> IndicatorResult:
+    def ultimate_oscillator(
+        candles: list[Candle], period1: int = 7, period2: int = 14, period3: int = 28
+    ) -> IndicatorResult:
         if not candles or len(candles) < 28:
             raise ValueError("Not enough candles for Ultimate Oscillator")
         """
@@ -566,19 +579,15 @@ class MomentumIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close
-        } for c in candles])
+        df = pd.DataFrame([{"high": c.high, "low": c.low, "close": c.close} for c in candles])
 
         # Calculate buying pressure and true range
-        prior_close = df['close'].shift(1).fillna(df['close'].iloc[0])
+        prior_close = df["close"].shift(1).fillna(df["close"].iloc[0])
 
-        low_or_prior = pd.concat([df['low'], prior_close], axis=1).min(axis=1)
-        high_or_prior = pd.concat([df['high'], prior_close], axis=1).max(axis=1)
+        low_or_prior = pd.concat([df["low"], prior_close], axis=1).min(axis=1)
+        high_or_prior = pd.concat([df["high"], prior_close], axis=1).max(axis=1)
 
-        bp = df['close'] - low_or_prior
+        bp = df["close"] - low_or_prior
         tr = high_or_prior - low_or_prior
 
         avg1 = bp.rolling(period1).sum() / tr.rolling(period1).sum()
@@ -612,7 +621,7 @@ class MomentumIndicators:
             signal=signal,
             value=float(uo_current),
             confidence=confidence,
-            description=f"نوسانگر نهایی: {uo_current:.1f}"
+            description=f"نوسانگر نهایی: {uo_current:.1f}",
         )
 
     @staticmethod
