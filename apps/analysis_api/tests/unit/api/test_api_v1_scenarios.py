@@ -31,7 +31,7 @@ class TestScenariosAPI:
         assert "Scenario Analysis" in router.tags
         assert len(router.routes) == 4  # 4 endpoints total
 
-    @patch('gravity_tech.api.v1.scenarios.get_settings')
+    @patch("gravity_tech.api.v1.scenarios.get_settings")
     def test_get_data_client(self, mock_get_settings):
         """Test data client dependency injection."""
         mock_settings = MagicMock()
@@ -44,7 +44,7 @@ class TestScenariosAPI:
         assert client is not None
         mock_get_settings.assert_called_once()
 
-    @patch('gravity_tech.api.v1.scenarios.get_data_client')
+    @patch("gravity_tech.api.v1.scenarios.get_data_client")
     def test_get_scenario_analyzer(self, mock_get_data_client):
         """Test scenario analyzer dependency injection."""
         mock_client = MagicMock()
@@ -55,7 +55,7 @@ class TestScenariosAPI:
         assert analyzer is not None
         assert analyzer.data_client == mock_client
 
-    @patch('gravity_tech.api.v1.scenarios.get_scenario_analyzer')
+    @patch("gravity_tech.api.v1.scenarios.get_scenario_analyzer")
     @pytest.mark.asyncio
     async def test_analyze_scenarios_success(self, mock_get_analyzer):
         """Test successful scenario analysis."""
@@ -75,7 +75,7 @@ class TestScenariosAPI:
                 key_signals=["Strong uptrend", "High momentum"],
                 recommendation="BUY",
                 confidence="HIGH",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             neutral=ScenarioResult(
                 scenario_type="neutral",
@@ -87,7 +87,7 @@ class TestScenariosAPI:
                 key_signals=["Sideways movement", "Average volume"],
                 recommendation="HOLD",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             pessimistic=ScenarioResult(
                 scenario_type="pessimistic",
@@ -99,23 +99,20 @@ class TestScenariosAPI:
                 key_signals=["Weak support", "Declining volume"],
                 recommendation="SELL",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             expected_return=5.8,
             expected_risk=3.2,
             sharpe_ratio=1.81,
             recommended_scenario="optimistic",
-            overall_confidence="HIGH"
+            overall_confidence="HIGH",
         )
         mock_analyzer.analyze_from_service.return_value = mock_analysis
         mock_get_analyzer.return_value = mock_analyzer
 
         # Call function
         result = await analyze_scenarios(
-            symbol="AAPL",
-            timeframe="1d",
-            lookback_days=365,
-            analyzer=mock_analyzer
+            symbol="AAPL", timeframe="1d", lookback_days=365, analyzer=mock_analyzer
         )
 
         # Assertions
@@ -125,12 +122,10 @@ class TestScenariosAPI:
         assert result.expected_return == 5.8
         assert result.sharpe_ratio == 1.81
         mock_analyzer.analyze_from_service.assert_called_once_with(
-            symbol="AAPL",
-            timeframe="1d",
-            lookback_days=365
+            symbol="AAPL", timeframe="1d", lookback_days=365
         )
 
-    @patch('gravity_tech.api.v1.scenarios.get_scenario_analyzer')
+    @patch("gravity_tech.api.v1.scenarios.get_scenario_analyzer")
     @pytest.mark.asyncio
     async def test_analyze_scenarios_validation_error(self, mock_get_analyzer):
         """Test scenario analysis with validation error."""
@@ -140,16 +135,13 @@ class TestScenariosAPI:
 
         with pytest.raises(HTTPException) as exc_info:
             await analyze_scenarios(
-                symbol="INVALID",
-                timeframe="1d",
-                lookback_days=365,
-                analyzer=mock_analyzer
+                symbol="INVALID", timeframe="1d", lookback_days=365, analyzer=mock_analyzer
             )
 
         assert exc_info.value.status_code == 400
         assert "Invalid symbol" in exc_info.value.detail
 
-    @patch('gravity_tech.api.v1.scenarios.get_scenario_analyzer')
+    @patch("gravity_tech.api.v1.scenarios.get_scenario_analyzer")
     @pytest.mark.asyncio
     async def test_analyze_scenarios_service_error(self, mock_get_analyzer):
         """Test scenario analysis with service error."""
@@ -159,16 +151,13 @@ class TestScenariosAPI:
 
         with pytest.raises(HTTPException) as exc_info:
             await analyze_scenarios(
-                symbol="AAPL",
-                timeframe="1d",
-                lookback_days=365,
-                analyzer=mock_analyzer
+                symbol="AAPL", timeframe="1d", lookback_days=365, analyzer=mock_analyzer
             )
 
         assert exc_info.value.status_code == 503
         assert "Failed to analyze scenarios" in exc_info.value.detail
 
-    @patch('gravity_tech.api.v1.scenarios.analyze_scenarios')
+    @patch("gravity_tech.api.v1.scenarios.analyze_scenarios")
     @pytest.mark.asyncio
     async def test_get_optimistic_scenario(self, mock_analyze_scenarios):
         """Test getting optimistic scenario."""
@@ -186,7 +175,7 @@ class TestScenariosAPI:
                 key_signals=["Strong uptrend", "High momentum"],
                 recommendation="BUY",
                 confidence="HIGH",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             neutral=ScenarioResult(
                 scenario_type="neutral",
@@ -198,7 +187,7 @@ class TestScenariosAPI:
                 key_signals=["Sideways movement", "Average volume"],
                 recommendation="HOLD",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             pessimistic=ScenarioResult(
                 scenario_type="pessimistic",
@@ -210,21 +199,18 @@ class TestScenariosAPI:
                 key_signals=["Weak support", "Declining volume"],
                 recommendation="SELL",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             expected_return=5.8,
             expected_risk=3.2,
             sharpe_ratio=1.81,
             recommended_scenario="optimistic",
-            overall_confidence="HIGH"
+            overall_confidence="HIGH",
         )
         mock_analyze_scenarios.return_value = mock_analysis
 
         result = await get_optimistic_scenario(
-            symbol="AAPL",
-            timeframe="1d",
-            lookback_days=365,
-            analyzer=MagicMock()
+            symbol="AAPL", timeframe="1d", lookback_days=365, analyzer=MagicMock()
         )
 
         assert result == mock_analysis.optimistic
@@ -232,7 +218,7 @@ class TestScenariosAPI:
         assert result.recommendation == "BUY"
         mock_analyze_scenarios.assert_called_once()
 
-    @patch('gravity_tech.api.v1.scenarios.analyze_scenarios')
+    @patch("gravity_tech.api.v1.scenarios.analyze_scenarios")
     @pytest.mark.asyncio
     async def test_get_neutral_scenario(self, mock_analyze_scenarios):
         """Test getting neutral scenario."""
@@ -250,7 +236,7 @@ class TestScenariosAPI:
                 key_signals=["Strong uptrend", "High momentum"],
                 recommendation="BUY",
                 confidence="HIGH",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             neutral=ScenarioResult(
                 scenario_type="neutral",
@@ -262,7 +248,7 @@ class TestScenariosAPI:
                 key_signals=["Sideways movement", "Average volume"],
                 recommendation="HOLD",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             pessimistic=ScenarioResult(
                 scenario_type="pessimistic",
@@ -274,21 +260,18 @@ class TestScenariosAPI:
                 key_signals=["Weak support", "Declining volume"],
                 recommendation="SELL",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             expected_return=5.8,
             expected_risk=3.2,
             sharpe_ratio=1.81,
             recommended_scenario="optimistic",
-            overall_confidence="HIGH"
+            overall_confidence="HIGH",
         )
         mock_analyze_scenarios.return_value = mock_analysis
 
         result = await get_neutral_scenario(
-            symbol="AAPL",
-            timeframe="1d",
-            lookback_days=365,
-            analyzer=MagicMock()
+            symbol="AAPL", timeframe="1d", lookback_days=365, analyzer=MagicMock()
         )
 
         assert result == mock_analysis.neutral
@@ -296,7 +279,7 @@ class TestScenariosAPI:
         assert result.recommendation == "HOLD"
         mock_analyze_scenarios.assert_called_once()
 
-    @patch('gravity_tech.api.v1.scenarios.analyze_scenarios')
+    @patch("gravity_tech.api.v1.scenarios.analyze_scenarios")
     @pytest.mark.asyncio
     async def test_get_pessimistic_scenario(self, mock_analyze_scenarios):
         """Test getting pessimistic scenario."""
@@ -314,7 +297,7 @@ class TestScenariosAPI:
                 key_signals=["Strong uptrend", "High momentum"],
                 recommendation="BUY",
                 confidence="HIGH",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             neutral=ScenarioResult(
                 scenario_type="neutral",
@@ -326,7 +309,7 @@ class TestScenariosAPI:
                 key_signals=["Sideways movement", "Average volume"],
                 recommendation="HOLD",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             pessimistic=ScenarioResult(
                 scenario_type="pessimistic",
@@ -338,21 +321,18 @@ class TestScenariosAPI:
                 key_signals=["Weak support", "Declining volume"],
                 recommendation="SELL",
                 confidence="MEDIUM",
-                timeframe_days=30
+                timeframe_days=30,
             ),
             expected_return=5.8,
             expected_risk=3.2,
             sharpe_ratio=1.81,
             recommended_scenario="optimistic",
-            overall_confidence="HIGH"
+            overall_confidence="HIGH",
         )
         mock_analyze_scenarios.return_value = mock_analysis
 
         result = await get_pessimistic_scenario(
-            symbol="AAPL",
-            timeframe="1d",
-            lookback_days=365,
-            analyzer=MagicMock()
+            symbol="AAPL", timeframe="1d", lookback_days=365, analyzer=MagicMock()
         )
 
         assert result == mock_analysis.pessimistic
