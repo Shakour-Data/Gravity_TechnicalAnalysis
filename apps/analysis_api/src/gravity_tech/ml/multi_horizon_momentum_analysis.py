@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
@@ -20,6 +21,7 @@ from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 @dataclass
 class MomentumScore:
     """امتیاز مومنتوم یک افق"""
+
     horizon: str
     score: float  # [-1, 1]
     confidence: float  # [0, 1]
@@ -45,6 +47,7 @@ class MomentumScore:
 @dataclass
 class MultiHorizonMomentumAnalysis:
     """نتیجه تحلیل مومنتوم چند افقی"""
+
     timestamp: str
 
     # امتیازهای مومنتوم
@@ -63,53 +66,47 @@ class MultiHorizonMomentumAnalysis:
 
     def to_dict(self) -> dict:
         return {
-            'timestamp': self.timestamp,
-            'momentum_scores': {
-                '3d': {
-                    'score': self.momentum_3d.score,
-                    'confidence': self.momentum_3d.confidence,
-                    'signal': self.momentum_3d.signal.name,
-                    'strength': self.momentum_3d.get_strength()
+            "timestamp": self.timestamp,
+            "momentum_scores": {
+                "3d": {
+                    "score": self.momentum_3d.score,
+                    "confidence": self.momentum_3d.confidence,
+                    "signal": self.momentum_3d.signal.name,
+                    "strength": self.momentum_3d.get_strength(),
                 },
-                '7d': {
-                    'score': self.momentum_7d.score,
-                    'confidence': self.momentum_7d.confidence,
-                    'signal': self.momentum_7d.signal.name,
-                    'strength': self.momentum_7d.get_strength()
+                "7d": {
+                    "score": self.momentum_7d.score,
+                    "confidence": self.momentum_7d.confidence,
+                    "signal": self.momentum_7d.signal.name,
+                    "strength": self.momentum_7d.get_strength(),
                 },
-                '30d': {
-                    'score': self.momentum_30d.score,
-                    'confidence': self.momentum_30d.confidence,
-                    'signal': self.momentum_30d.signal.name,
-                    'strength': self.momentum_30d.get_strength()
-                }
+                "30d": {
+                    "score": self.momentum_30d.score,
+                    "confidence": self.momentum_30d.confidence,
+                    "signal": self.momentum_30d.signal.name,
+                    "strength": self.momentum_30d.get_strength(),
+                },
             },
-            'combined': {
-                'momentum': self.combined_momentum,
-                'confidence': self.combined_confidence
+            "combined": {
+                "momentum": self.combined_momentum,
+                "confidence": self.combined_confidence,
             },
-            'recommendations': {
-                '3d': self.recommendation_3d,
-                '7d': self.recommendation_7d,
-                '30d': self.recommendation_30d
-            }
+            "recommendations": {
+                "3d": self.recommendation_3d,
+                "7d": self.recommendation_7d,
+                "30d": self.recommendation_30d,
+            },
         }
 
 
 class MultiHorizonMomentumAnalyzer:
     """تحلیلگر مومنتوم چند افقی"""
 
-    def __init__(
-        self,
-        weight_learner: MultiHorizonWeightLearner
-    ):
+    def __init__(self, weight_learner: MultiHorizonWeightLearner):
         self.weight_learner = weight_learner
-        self.horizons = ['3d', '7d', '30d']
+        self.horizons = ["3d", "7d", "30d"]
 
-    def analyze(
-        self,
-        features: dict[str, float]
-    ) -> MultiHorizonMomentumAnalysis:
+    def analyze(self, features: dict[str, float]) -> MultiHorizonMomentumAnalysis:
         """
         تحلیل چند افقی مومنتوم
 
@@ -125,7 +122,7 @@ class MultiHorizonMomentumAnalyzer:
         # ایجاد MomentumScore برای هر افق
         momentum_scores = {}
         for horizon in self.horizons:
-            pred_col = f'pred_{horizon}'
+            pred_col = f"pred_{horizon}"
             raw_score = predictions[pred_col].iloc[0]
 
             # دریافت وزن‌ها و confidence
@@ -139,30 +136,27 @@ class MultiHorizonMomentumAnalyzer:
             signal = self._score_to_signal(normalized_score)
 
             momentum_scores[horizon] = MomentumScore(
-                horizon=horizon,
-                score=normalized_score,
-                confidence=confidence,
-                signal=signal
+                horizon=horizon, score=normalized_score, confidence=confidence, signal=signal
             )
 
         # محاسبه امتیاز ترکیبی
         combined_momentum, combined_confidence = self._smart_combination(momentum_scores)
 
         # ایجاد توصیه‌ها
-        rec_3d = self._generate_recommendation(momentum_scores['3d'])
-        rec_7d = self._generate_recommendation(momentum_scores['7d'])
-        rec_30d = self._generate_recommendation(momentum_scores['30d'])
+        rec_3d = self._generate_recommendation(momentum_scores["3d"])
+        rec_7d = self._generate_recommendation(momentum_scores["7d"])
+        rec_30d = self._generate_recommendation(momentum_scores["30d"])
 
         return MultiHorizonMomentumAnalysis(
             timestamp=pd.Timestamp.now().isoformat(),
-            momentum_3d=momentum_scores['3d'],
-            momentum_7d=momentum_scores['7d'],
-            momentum_30d=momentum_scores['30d'],
+            momentum_3d=momentum_scores["3d"],
+            momentum_7d=momentum_scores["7d"],
+            momentum_30d=momentum_scores["30d"],
             combined_momentum=combined_momentum,
             combined_confidence=combined_confidence,
             recommendation_3d=rec_3d,
             recommendation_7d=rec_7d,
-            recommendation_30d=rec_30d
+            recommendation_30d=rec_30d,
         )
 
     def _score_to_signal(self, score: float) -> SignalStrength:
@@ -177,10 +171,7 @@ class MultiHorizonMomentumAnalyzer:
         else:
             return SignalStrength.VERY_BEARISH
 
-    def _smart_combination(
-        self,
-        momentum_scores: dict[str, MomentumScore]
-    ) -> tuple[float, float]:
+    def _smart_combination(self, momentum_scores: dict[str, MomentumScore]) -> tuple[float, float]:
         """ترکیب هوشمند امتیازها"""
         scores = []
         confidences = []
@@ -193,9 +184,9 @@ class MultiHorizonMomentumAnalyzer:
         total_confidence = sum(confidences)
 
         if total_confidence > 0:
-            weighted_score = sum(
-                s * c for s, c in zip(scores, confidences, strict=True)
-            ) / total_confidence
+            weighted_score = (
+                sum(s * c for s, c in zip(scores, confidences, strict=True)) / total_confidence
+            )
             combined_confidence = total_confidence / len(confidences)
         else:
             weighted_score = 0.0
@@ -203,10 +194,7 @@ class MultiHorizonMomentumAnalyzer:
 
         return weighted_score, combined_confidence
 
-    def _generate_recommendation(
-        self,
-        momentum_score: MomentumScore
-    ) -> str:
+    def _generate_recommendation(self, momentum_score: MomentumScore) -> str:
         """ایجاد توصیه"""
         score = momentum_score.score
         confidence = momentum_score.confidence
@@ -230,26 +218,23 @@ class MultiHorizonMomentumAnalyzer:
         else:
             return f"⛔ STRONG MOMENTUM DOWN - {horizon} ({confidence:.0%})"
 
-    def print_analysis(
-        self,
-        analysis: MultiHorizonMomentumAnalysis
-    ):
+    def print_analysis(self, analysis: MultiHorizonMomentumAnalysis):
         """نمایش زیبای نتیجه"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🔮 MULTI-HORIZON MOMENTUM ANALYSIS")
-        print("="*70)
+        print("=" * 70)
 
         print(f"\n📅 Timestamp: {analysis.timestamp}")
 
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("📊 MOMENTUM SCORES")
-        print("-"*70)
+        print("-" * 70)
 
-        for horizon in ['3d', '7d', '30d']:
-            if horizon == '3d':
+        for horizon in ["3d", "7d", "30d"]:
+            if horizon == "3d":
                 ms = analysis.momentum_3d
                 rec = analysis.recommendation_3d
-            elif horizon == '7d':
+            elif horizon == "7d":
                 ms = analysis.momentum_7d
                 rec = analysis.recommendation_7d
             else:
@@ -262,10 +247,10 @@ class MultiHorizonMomentumAnalyzer:
             print(f"  Signal:     {ms.signal.name}")
             print(f"  💡 {rec}")
 
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("🧠 COMBINED MOMENTUM")
-        print("-"*70)
+        print("-" * 70)
         print(f"  Combined Score:      {analysis.combined_momentum:+.3f}")
         print(f"  Combined Confidence: {analysis.combined_confidence:.0%}")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
