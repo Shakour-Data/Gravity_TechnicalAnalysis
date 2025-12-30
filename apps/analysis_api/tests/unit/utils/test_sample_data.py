@@ -4,7 +4,7 @@ Unit tests for src/gravity_tech/utils/sample_data.py
 Tests sample data generation utilities.
 """
 
-from src.gravity_tech.utils.sample_data import generate_sample_candles
+from gravity_tech.utils.sample_data import generate_sample_candles
 
 
 class TestSampleData:
@@ -15,10 +15,10 @@ class TestSampleData:
         candles = generate_sample_candles()
 
         assert len(candles) == 100
-        assert all(hasattr(candle, 'timestamp') for candle in candles)
-        assert all(hasattr(candle, 'open') for candle in candles)
-        assert all(hasattr(candle, 'close') for candle in candles)
-        assert all(hasattr(candle, 'volume') for candle in candles)
+        assert all(hasattr(candle, "timestamp") for candle in candles)
+        assert all(hasattr(candle, "open") for candle in candles)
+        assert all(hasattr(candle, "close") for candle in candles)
+        assert all(hasattr(candle, "volume") for candle in candles)
 
     def test_generate_sample_candles_custom_count(self):
         """Test generating sample candles with custom count."""
