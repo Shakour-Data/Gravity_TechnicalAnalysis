@@ -16,9 +16,7 @@ from gravity_tech.models.schemas import Candle
 
 
 def generate_sample_candles(
-    num_candles: int = 100,
-    base_price: float = 40000,
-    trend: str = "sideways"
+    num_candles: int = 100, base_price: float = 40000, trend: str = "sideways"
 ) -> list[Candle]:
     """
     Generate sample candles for testing.
@@ -58,14 +56,16 @@ def generate_sample_candles(
         high_price = max(open_price, close_price) + 200
         low_price = min(open_price, close_price) - 200
 
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=float(open_price),
-            high=float(high_price),
-            low=float(low_price),
-            close=float(close_price),
-            volume=float(1000 + (i * 50))
-        ))
+        candles.append(
+            Candle(
+                timestamp=base_time + timedelta(hours=i),
+                open=float(open_price),
+                high=float(high_price),
+                low=float(low_price),
+                close=float(close_price),
+                volume=float(1000 + (i * 50)),
+            )
+        )
 
         # Update current price for next candle
         current_price = close_price
@@ -96,14 +96,16 @@ def generate_volatile_candles(num_candles: int = 100) -> list[Candle]:
         high_price = max(open_price, close_price) + random.uniform(0, volatility)
         low_price = min(open_price, close_price) - random.uniform(0, volatility)
 
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=float(open_price),
-            high=float(high_price),
-            low=float(low_price),
-            close=float(close_price),
-            volume=float(random.uniform(500, 5000))
-        ))
+        candles.append(
+            Candle(
+                timestamp=base_time + timedelta(hours=i),
+                open=float(open_price),
+                high=float(high_price),
+                low=float(low_price),
+                close=float(close_price),
+                volume=float(random.uniform(500, 5000)),
+            )
+        )
 
         base_price = close_price
 
@@ -140,14 +142,16 @@ def generate_uptrend_data(count: int = 50, start_price: float = 100.0) -> list[C
         high_price = max(high_price, open_price, close_price)
         low_price = min(low_price, open_price, close_price)
 
-        candles.append(Candle(
-            timestamp=datetime.now() + timedelta(minutes=i),
-            open=float(open_price),
-            high=float(high_price),
-            low=float(low_price),
-            close=float(close_price),
-            volume=float(random.uniform(1000, 10000))
-        ))
+        candles.append(
+            Candle(
+                timestamp=datetime.now() + timedelta(minutes=i),
+                open=float(open_price),
+                high=float(high_price),
+                low=float(low_price),
+                close=float(close_price),
+                volume=float(random.uniform(1000, 10000)),
+            )
+        )
 
         current_price = close_price
 
@@ -184,14 +188,16 @@ def generate_downtrend_data(count: int = 50, start_price: float = 100.0) -> list
         high_price = max(high_price, open_price, close_price)
         low_price = min(low_price, open_price, close_price)
 
-        candles.append(Candle(
-            timestamp=datetime.now() + timedelta(minutes=i),
-            open=float(open_price),
-            high=float(high_price),
-            low=float(low_price),
-            close=float(close_price),
-            volume=float(random.uniform(1000, 10000))
-        ))
+        candles.append(
+            Candle(
+                timestamp=datetime.now() + timedelta(minutes=i),
+                open=float(open_price),
+                high=float(high_price),
+                low=float(low_price),
+                close=float(close_price),
+                volume=float(random.uniform(1000, 10000)),
+            )
+        )
 
         current_price = close_price
 
