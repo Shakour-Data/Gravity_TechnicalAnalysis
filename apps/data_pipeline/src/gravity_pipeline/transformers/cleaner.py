@@ -5,7 +5,7 @@ Handles missing values, outliers, and data normalization.
 """
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -16,7 +16,7 @@ logger = structlog.get_logger()
 
 class DataCleaner(Transformer):
     """Clean and normalize OHLCV data"""
-    
+
     def __init__(
         self,
         remove_outliers: bool = True,
@@ -25,7 +25,7 @@ class DataCleaner(Transformer):
     ):
         """
         Initialize cleaner
-        
+
         Args:
             remove_outliers: Remove price outliers beyond N std devs
             fill_missing_with: How to handle missing values
@@ -35,11 +35,11 @@ class DataCleaner(Transformer):
         self.remove_outliers = remove_outliers
         self.fill_missing_with = fill_missing_with
         self.outlier_std_dev = outlier_std_dev
-    
-    async def transform(self, candles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+    async def transform(self, candles: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Clean candle data
-        
+
         Steps:
         1. Normalize field names
         2. Convert types
@@ -47,11 +47,11 @@ class DataCleaner(Transformer):
         4. Remove outliers
         5. Validate OHLC relationships
         """
-        
+
         logger.info("cleaner_starting", count=len(candles))
-        
+
         cleaned = []
-        
+
         for candle in candles:
             try:
                 # Step 1: Normalize field names and types
@@ -63,7 +63,7 @@ class DataCleaner(Transformer):
                     "close": self._to_float(candle.get("close"), "close"),
                     "volume": self._to_float(candle.get("volume"), "volume"),
                 }
-                
+
                 # Step 2: Handle missing values
                 if self._has_missing_values(normalized):
                     if self.fill_missing_with == "skip":
@@ -72,38 +72,38 @@ class DataCleaner(Transformer):
                     elif self.fill_missing_with == "zero":
                         normalized = self._fill_missing_zero(normalized)
                     # else: "previous" and "next" handled after all candles
-                
+
                 # Step 3: Validate OHLC relationships
                 if not self._validate_ohlc(normalized):
                     logger.warning("invalid_ohlc", candle=normalized)
                     continue
-                
+
                 # Step 4: Check for outliers (if removing)
                 if self.remove_outliers and self._is_outlier(normalized):
                     logger.warning("outlier_detected", candle=normalized)
                     if self.fill_missing_with == "skip":
                         continue
-                
+
                 cleaned.append(normalized)
                 self.processed_count += 1
-            
+
             except Exception as e:
                 self.error_count += 1
                 logger.warning("cleaning_error", error=str(e), candle=candle)
                 continue
-        
+
         # Handle "previous" and "next" filling after all candles
         if self.fill_missing_with in ["previous", "next"]:
             cleaned = self._fill_missing_forward_backward(cleaned)
-        
+
         logger.info("cleaner_complete", output=len(cleaned), errors=self.error_count)
         return cleaned
-    
-    def _to_float(self, value: Any, field_name: str) -> Optional[float]:
+
+    def _to_float(self, value: Any, field_name: str) -> float | None:
         """Convert value to float, return None if invalid"""
         if value is None:
             return None
-        
+
         try:
             f = float(value)
             if math.isnan(f) or math.isinf(f):
@@ -113,83 +113,83 @@ class DataCleaner(Transformer):
         except (ValueError, TypeError):
             logger.warning("conversion_error", field=field_name, value=value)
             return None
-    
-    def _has_missing_values(self, candle: Dict) -> bool:
+
+    def _has_missing_values(self, candle: dict) -> bool:
         """Check if candle has any None values"""
         required_fields = ["open", "high", "low", "close", "volume"]
         return any(candle.get(field) is None for field in required_fields)
-    
-    def _validate_ohlc(self, candle: Dict) -> bool:
+
+    def _validate_ohlc(self, candle: dict) -> bool:
         """Validate OHLC relationships"""
-        o, h, l, c, v = (
+        o, h, low, c, v = (
             candle.get("open"),
             candle.get("high"),
             candle.get("low"),
             candle.get("close"),
             candle.get("volume"),
         )
-        
+
         # Check if any are missing
-        if any(x is None for x in [o, h, l, c]):
+        if any(x is None for x in [o, h, low, c]):
             return False
-        
+
         # High >= Low
-        if h < l:
-            logger.debug("invalid_high_low", high=h, low=l)
+        if h < low:
+            logger.debug("invalid_high_low", high=h, low=low)
             return False
-        
+
         # Volume >= 0
         if v is not None and v < 0:
             logger.debug("negative_volume", volume=v)
             return False
-        
+
         # Open and Close should be between Low and High (relaxed)
-        if o is not None and (o < l * 0.95 or o > h * 1.05):
-            logger.debug("open_outside_range", open=o, high=h, low=l)
+        if o is not None and (o < low * 0.95 or o > h * 1.05):
+            logger.debug("open_outside_range", open=o, high=h, low=low)
             # Don't reject, just log
-        
-        if c is not None and (c < l * 0.95 or c > h * 1.05):
-            logger.debug("close_outside_range", close=c, high=h, low=l)
+
+        if c is not None and (c < low * 0.95 or c > h * 1.05):
+            logger.debug("close_outside_range", close=c, high=h, low=low)
             # Don't reject, just log
-        
+
         return True
-    
-    def _is_outlier(self, candle: Dict) -> bool:
+
+    def _is_outlier(self, candle: dict) -> bool:
         """Check if candle is statistical outlier (simplified)"""
         # For now, just check for extreme price changes
         o = candle.get("open")
         c = candle.get("close")
-        
+
         if o is None or c is None or o == 0:
             return False
-        
+
         # Check if price change > 50% in single candle
         pct_change = abs((c - o) / o) * 100
         if pct_change > 50:
             logger.debug("large_price_change", pct=pct_change)
             return True
-        
+
         return False
-    
-    def _fill_missing_zero(self, candle: Dict) -> Dict:
+
+    def _fill_missing_zero(self, candle: dict) -> dict:
         """Fill missing OHLCV with zeros"""
         for field in ["open", "high", "low", "close", "volume"]:
             if candle.get(field) is None:
                 candle[field] = 0.0
         return candle
-    
-    def _fill_missing_forward_backward(self, candles: List[Dict]) -> List[Dict]:
+
+    def _fill_missing_forward_backward(self, candles: list[dict]) -> list[dict]:
         """
         Fill missing values using forward/backward fill
-        
+
         For "previous": use previous candle's value
         For "next": use next candle's value
         """
         if not candles or self.fill_missing_with not in ["previous", "next"]:
             return candles
-        
+
         filled = candles.copy()
-        
+
         for i, candle in enumerate(filled):
             for field in ["open", "high", "low", "close", "volume"]:
                 if candle.get(field) is None:
@@ -199,5 +199,5 @@ class DataCleaner(Transformer):
                         candle[field] = filled[i + 1].get(field)
                     else:
                         candle[field] = 0.0  # Fallback to zero
-        
+
         return filled
