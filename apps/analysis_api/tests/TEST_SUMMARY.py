@@ -22,8 +22,14 @@ STATISTICS = {
 CATEGORIES = {
     "unit/domain": {
         "description": "Domain entity tests",
-        "files": ["test_candle.py", "test_wave_point.py", "test_pattern_type.py",
-                  "test_pattern_result.py", "test_indicator_category.py", "test_indicator_result.py"],
+        "files": [
+            "test_candle.py",
+            "test_wave_point.py",
+            "test_pattern_type.py",
+            "test_pattern_result.py",
+            "test_indicator_category.py",
+            "test_indicator_result.py",
+        ],
         "test_count": 50,
     },
     "unit/indicators": {
@@ -33,8 +39,12 @@ CATEGORIES = {
     },
     "unit/patterns": {
         "description": "Pattern recognition tests",
-        "files": ["test_classical_patterns.py", "test_candlestick_patterns.py",
-                  "test_elliott.py", "test_patterns_comprehensive.py"],
+        "files": [
+            "test_classical_patterns.py",
+            "test_candlestick_patterns.py",
+            "test_elliott.py",
+            "test_patterns_comprehensive.py",
+        ],
         "test_count": 35,
     },
     "unit/middleware": {
@@ -54,12 +64,24 @@ CATEGORIES = {
     },
     "unit/analysis": {
         "description": "Analysis & market phase tests",
-        "files": ["test_cycle.py", "test_cycle_complete.py", "test_cycle_score.py",
-                  "test_market_phase.py", "test_momentum.py", "test_momentum_comprehensive.py",
-                  "test_momentum_core.py", "test_support_resistance.py",
-                  "test_support_resistance_core.py", "test_trend.py", "test_trend_complete.py",
-                  "test_volatility_comprehensive.py", "test_volume.py",
-                  "test_volume_comprehensive.py", "test_volume_core.py", "test_volume_indicators.py"],
+        "files": [
+            "test_cycle.py",
+            "test_cycle_complete.py",
+            "test_cycle_score.py",
+            "test_market_phase.py",
+            "test_momentum.py",
+            "test_momentum_comprehensive.py",
+            "test_momentum_core.py",
+            "test_support_resistance.py",
+            "test_support_resistance_core.py",
+            "test_trend.py",
+            "test_trend_complete.py",
+            "test_volatility_comprehensive.py",
+            "test_volume.py",
+            "test_volume_comprehensive.py",
+            "test_volume_core.py",
+            "test_volume_indicators.py",
+        ],
         "test_count": 80,
     },
     "unit/utils": {
@@ -69,14 +91,21 @@ CATEGORIES = {
     },
     "integration": {
         "description": "Integration tests",
-        "files": ["test_combined_system.py", "test_complete_analysis.py", "test_multi_horizon.py",
-                  "api/test_analysis_api_real_data.py"],
+        "files": [
+            "test_combined_system.py",
+            "test_complete_analysis.py",
+            "test_multi_horizon.py",
+            "api/test_analysis_api_real_data.py",
+        ],
         "test_count": 30,
     },
     "accuracy": {
         "description": "Accuracy metric tests",
-        "files": ["test_accuracy_weighting.py", "test_comprehensive_accuracy.py",
-                  "test_confidence_metrics.py"],
+        "files": [
+            "test_accuracy_weighting.py",
+            "test_comprehensive_accuracy.py",
+            "test_confidence_metrics.py",
+        ],
         "test_count": 20,
     },
     "api": {
@@ -86,8 +115,12 @@ CATEGORIES = {
     },
     "tse_data": {
         "description": "Real TSE market data tests",
-        "files": ["test_all_with_tse_data.py", "test_phase4_advanced_patterns_tse.py",
-                  "test_phase5_edge_cases_stress_tse.py", "test_services_with_tse_data.py"],
+        "files": [
+            "test_all_with_tse_data.py",
+            "test_phase4_advanced_patterns_tse.py",
+            "test_phase5_edge_cases_stress_tse.py",
+            "test_services_with_tse_data.py",
+        ],
         "test_count": 28,
     },
 }
@@ -138,4 +171,3 @@ if __name__ == "__main__":
         print(f"\n{category}")
         print(f"  Tests: {info['test_count']}")
         print(f"  Files: {len(info['files'])}")
-
