@@ -330,7 +330,7 @@ pytest -m 'not slow'
 
 - **Test Templates:** `test_phase4_comprehensive.py`
 - **Security Tests:** `test_phase4_security.py`
-- **Strategy Guide:** `docs/PHASE_4_TESTING_STRATEGY.md`
+- **Docs Index:** `docs/INDEX.md`
 - **Conftest Fixtures:** `conftest.py` (Phase 4 enhanced)
 
 ---
@@ -358,4 +358,4 @@ pytest -m 'not slow'
 
 **Status:** 🔄 IN PROGRESS  
 **Target Date:** End of Week 11  
-**Questions?** See [PHASE_4_TESTING_STRATEGY.md](../PHASE_4_TESTING_STRATEGY.md)
+**Questions?** See `docs/INDEX.md`
