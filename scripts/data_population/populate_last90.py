@@ -22,7 +22,6 @@ import os
 import sqlite3
 import sys
 from collections import defaultdict
-from pathlib import Path
 
 import numpy as np
 
@@ -91,7 +90,9 @@ SIGNAL_SCORE = {
 
 def fetch_symbols_and_date_range(con: sqlite3.Connection) -> tuple[list[str], dt.date, dt.date]:
     cur = con.cursor()
-    cur.execute("select max(date(timestamp)) from market_data_cache where timeframe=?", (TIMEFRAME,))
+    cur.execute(
+        "select max(date(timestamp)) from market_data_cache where timeframe=?", (TIMEFRAME,)
+    )
     max_ts = cur.fetchone()[0]
     if not max_ts:
         raise RuntimeError("market_data_cache is empty for timeframe 1d")
@@ -184,7 +185,9 @@ def prepare_indicator_rows(
         try:
             results = collect_indicator_results(subset)
         except Exception as exc:
-            print(f"[WARN] calc error symbol={safe_str(symbol)} ts={candle.timestamp.isoformat()} err={exc}")
+            print(
+                f"[WARN] calc error symbol={safe_str(symbol)} ts={candle.timestamp.isoformat()} err={exc}"
+            )
             continue
         by_category_signal.clear()
         by_category_conf.clear()
@@ -205,7 +208,9 @@ def prepare_indicator_rows(
                     candle.timestamp.isoformat(),
                     TIMEFRAME,
                     res.indicator_name,
-                    res.category.value if isinstance(res.category, IndicatorCategory) else str(res.category),
+                    res.category.value
+                    if isinstance(res.category, IndicatorCategory)
+                    else str(res.category),
                     None,  # indicator_params
                     float(res.value),
                     res.signal.name if isinstance(res.signal, SignalStrength) else str(res.signal),
@@ -312,8 +317,12 @@ def main() -> None:
     symbols, start_date, end_date = fetch_symbols_and_date_range(con)
     if SYMBOL_OFFSET or SYMBOL_LIMIT:
         symbols = symbols[SYMBOL_OFFSET : (SYMBOL_OFFSET + SYMBOL_LIMIT) if SYMBOL_LIMIT else None]
-        print(f"Batching symbols offset={SYMBOL_OFFSET} limit={SYMBOL_LIMIT} -> {len(symbols)} symbols")
-    print(f"Processing timeframe={TIMEFRAME}, start={start_date}, end={end_date}, symbols={len(symbols)}")
+        print(
+            f"Batching symbols offset={SYMBOL_OFFSET} limit={SYMBOL_LIMIT} -> {len(symbols)} symbols"
+        )
+    print(
+        f"Processing timeframe={TIMEFRAME}, start={start_date}, end={end_date}, symbols={len(symbols)}"
+    )
 
     cur = con.cursor()
     if SKIP_DELETE:
@@ -354,7 +363,9 @@ def main() -> None:
             except Exception:
                 continue
             weight_lookup[(symbol, dt.date.fromisoformat(d))] = weights
-        print(f"Loaded weights for {len(weight_lookup)} symbol/day entries from ml_weights_history using model={WEIGHT_MODEL}")
+        print(
+            f"Loaded weights for {len(weight_lookup)} symbol/day entries from ml_weights_history using model={WEIGHT_MODEL}"
+        )
 
     indicator_buffer: list[tuple] = []
     summary_buffer: list[tuple] = []
