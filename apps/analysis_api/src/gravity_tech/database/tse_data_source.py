@@ -5,7 +5,6 @@ Provides access to TSE market data.
 """
 
 from config import TSE_DB_FILE
-
 from database import TSEDatabaseConnector
 
 # Create a singleton instance
