@@ -9,7 +9,7 @@ of the application no longer relies on the deprecated module.
 from __future__ import annotations
 
 import warnings
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from gravity_tech.core.domain.entities import (
     Candle,
@@ -21,7 +21,6 @@ from gravity_tech.core.domain.entities import (
     CoreSignalStrength as SignalStrength,
 )
 from pydantic import BaseModel, Field
-from datetime import timezone
 
 __all__ = [
     "AnalysisRequest",
@@ -37,7 +36,9 @@ class ChartAnalysisResult(BaseModel):
     chart_type: str = Field(..., description="RENKO, THREE_LINE_BREAK, or POINT_FIGURE")
     signal: SignalStrength = Field(..., description="Chart signal")
     current_trend: str = Field(..., description="UP, DOWN, or CONSOLIDATION")
-    consecutive_bars: int = Field(..., description="Number of consecutive bars in current direction")
+    consecutive_bars: int = Field(
+        ..., description="Number of consecutive bars in current direction"
+    )
     confidence: float = Field(ge=0.0, le=1.0, description="Analysis confidence")
     description: str = Field(..., description="Analysis description")
 
@@ -74,14 +75,24 @@ class MarketPhaseResult(BaseModel):
     phase_strength: str = Field(..., description="Strength of current phase")
     description: str = Field(..., description="Detailed phase description in Persian")
     overall_score: float = Field(..., ge=0.0, le=100.0, description="Overall phase score (0-100)")
-    trend_structure: str = Field(..., description="Trend structure: uptrend, downtrend, contraction, etc.")
-    volume_confirmation: bool = Field(..., description="Whether volume confirms the trend (Dow Theory)")
-    recommendations: list[str] = Field(default_factory=list, description="Trading recommendations based on phase")
+    trend_structure: str = Field(
+        ..., description="Trend structure: uptrend, downtrend, contraction, etc."
+    )
+    volume_confirmation: bool = Field(
+        ..., description="Whether volume confirms the trend (Dow Theory)"
+    )
+    recommendations: list[str] = Field(
+        default_factory=list, description="Trading recommendations based on phase"
+    )
     detailed_scores: dict[str, float] = Field(
         default_factory=dict, description="Detailed scores for different aspects"
     )
-    dow_theory_compliance: bool = Field(default=True, description="Confirms analysis follows Dow Theory principles")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Analysis timestamp")
+    dow_theory_compliance: bool = Field(
+        default=True, description="Confirms analysis follows Dow Theory principles"
+    )
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Analysis timestamp"
+    )
 
 
 class TechnicalAnalysisResult(BaseModel):
@@ -90,39 +101,75 @@ class TechnicalAnalysisResult(BaseModel):
     symbol: str = Field(..., description="Trading symbol")
     timeframe: str = Field(..., description="Timeframe (e.g., 1h, 4h, 1d)")
 
-    trend_indicators: list[IndicatorResult] = Field(default_factory=list, description="Trend indicators")
-    momentum_indicators: list[IndicatorResult] = Field(default_factory=list, description="Momentum indicators")
-    cycle_indicators: list[IndicatorResult] = Field(default_factory=list, description="Cycle indicators")
-    volume_indicators: list[IndicatorResult] = Field(default_factory=list, description="Volume indicators")
-    volatility_indicators: list[IndicatorResult] = Field(default_factory=list, description="Volatility indicators")
+    trend_indicators: list[IndicatorResult] = Field(
+        default_factory=list, description="Trend indicators"
+    )
+    momentum_indicators: list[IndicatorResult] = Field(
+        default_factory=list, description="Momentum indicators"
+    )
+    cycle_indicators: list[IndicatorResult] = Field(
+        default_factory=list, description="Cycle indicators"
+    )
+    volume_indicators: list[IndicatorResult] = Field(
+        default_factory=list, description="Volume indicators"
+    )
+    volatility_indicators: list[IndicatorResult] = Field(
+        default_factory=list, description="Volatility indicators"
+    )
     support_resistance_indicators: list[IndicatorResult] = Field(
         default_factory=list, description="Support/Resistance indicators"
     )
 
-    classical_patterns: list[PatternResult] = Field(default_factory=list, description="Classical chart patterns")
-    candlestick_patterns: list[PatternResult] = Field(default_factory=list, description="Candlestick patterns")
-    elliott_wave_analysis: ElliottWaveResult | None = Field(default=None, description="Elliott Wave analysis")
+    classical_patterns: list[PatternResult] = Field(
+        default_factory=list, description="Classical chart patterns"
+    )
+    candlestick_patterns: list[PatternResult] = Field(
+        default_factory=list, description="Candlestick patterns"
+    )
+    elliott_wave_analysis: ElliottWaveResult | None = Field(
+        default=None, description="Elliott Wave analysis"
+    )
 
-    renko_analysis: ChartAnalysisResult | None = Field(default=None, description="Renko chart analysis")
+    renko_analysis: ChartAnalysisResult | None = Field(
+        default=None, description="Renko chart analysis"
+    )
     three_line_break_analysis: ChartAnalysisResult | None = Field(
         default=None, description="Three Line Break analysis"
     )
-    point_figure_analysis: ChartAnalysisResult | None = Field(default=None, description="Point & Figure analysis")
+    point_figure_analysis: ChartAnalysisResult | None = Field(
+        default=None, description="Point & Figure analysis"
+    )
 
     market_phase_analysis: MarketPhaseResult | None = Field(
         default=None, description="Market phase analysis based on Dow Theory"
     )
 
-    overall_trend_signal: SignalStrength | None = Field(default=None, description="Overall trend signal")
-    overall_momentum_signal: SignalStrength | None = Field(default=None, description="Overall momentum signal")
-    overall_cycle_signal: SignalStrength | None = Field(default=None, description="Overall cycle signal")
-    overall_signal: SignalStrength | None = Field(default=None, description="Overall combined signal")
-    overall_confidence: float | None = Field(default=None, ge=0.0, le=1.0, description="Overall confidence")
+    overall_trend_signal: SignalStrength | None = Field(
+        default=None, description="Overall trend signal"
+    )
+    overall_momentum_signal: SignalStrength | None = Field(
+        default=None, description="Overall momentum signal"
+    )
+    overall_cycle_signal: SignalStrength | None = Field(
+        default=None, description="Overall cycle signal"
+    )
+    overall_signal: SignalStrength | None = Field(
+        default=None, description="Overall combined signal"
+    )
+    overall_confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Overall confidence"
+    )
 
-    ml_weights: dict[str, float] | None = Field(default=None, description="ML-predicted optimal weights")
-    weights_source: str | None = Field(default="default", description="Source of weights: 'default', 'ml', 'adaptive'")
+    ml_weights: dict[str, float] | None = Field(
+        default=None, description="ML-predicted optimal weights"
+    )
+    weights_source: str | None = Field(
+        default="default", description="Source of weights: 'default', 'ml', 'adaptive'"
+    )
 
-    analysis_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Analysis timestamp")
+    analysis_timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Analysis timestamp"
+    )
 
     def calculate_overall_signal(self):
         """
