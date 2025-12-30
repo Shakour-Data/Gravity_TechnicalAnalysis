@@ -8,25 +8,30 @@ import time
 from datetime import datetime
 from typing import Any
 
-import structlog
-from fastapi import APIRouter, HTTPException, status
 import numpy as np
 import pandas as pd
+import structlog
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
+
 from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.ml.backtesting import PatternBacktester
 from gravity_tech.patterns.harmonic import HarmonicPatternDetector
-from pydantic import BaseModel, Field
 
 try:
     from prometheus_client import Counter, Histogram
 except Exception:  # pragma: no cover
+
     class _Noop:
         def labels(self, *args, **kwargs):
             return self
+
         def inc(self, *args, **kwargs):
             return self
+
         def observe(self, *args, **kwargs):
             return self
+
     Counter = Histogram = lambda *args, **kwargs: _Noop()
 
 logger = structlog.get_logger()
@@ -36,9 +41,7 @@ router = APIRouter(tags=["Backtesting"], prefix="/backtest")
 BACKTEST_API_REQUESTS = Counter(
     "api_backtest_requests_total", "Total backtest API requests", ["status"]
 )
-BACKTEST_API_LATENCY = Histogram(
-    "api_backtest_latency_seconds", "Backtest API latency in seconds"
-)
+BACKTEST_API_LATENCY = Histogram("api_backtest_latency_seconds", "Backtest API latency in seconds")
 
 
 class BacktestRequest(BaseModel):
@@ -91,18 +94,28 @@ def _ensure_ohlcv_valid(
     length = len(highs)
     arrays = [lows, closes, volumes]
     if any(len(arr) != length for arr in arrays):
-        raise HTTPException(status_code=400, detail="highs/lows/closes/volumes must be the same length")
+        raise HTTPException(
+            status_code=400, detail="highs/lows/closes/volumes must be the same length"
+        )
 
     min_required = max(window_size + step_size, 300)
     if length < min_required:
-        raise HTTPException(status_code=400, detail=f"Provide at least {min_required} bars for backtest (got {length})")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Provide at least {min_required} bars for backtest (got {length})",
+        )
 
     highs_arr = np.asarray(highs, dtype=float)
     lows_arr = np.asarray(lows, dtype=float)
     closes_arr = np.asarray(closes, dtype=float)
     volumes_arr = np.asarray(volumes, dtype=float)
 
-    for name, arr in (("highs", highs_arr), ("lows", lows_arr), ("closes", closes_arr), ("volumes", volumes_arr)):
+    for name, arr in (
+        ("highs", highs_arr),
+        ("lows", lows_arr),
+        ("closes", closes_arr),
+        ("volumes", volumes_arr),
+    ):
         if not np.all(np.isfinite(arr)):
             raise HTTPException(status_code=400, detail=f"{name} contains NaN/Inf values")
 
@@ -127,7 +140,9 @@ def _ensure_ohlcv_valid(
     return highs_arr, lows_arr, closes_arr, volumes_arr, dt_list
 
 
-def _synthetic_ohlcv(n_bars: int) -> tuple[list[float], list[float], list[float], list[float], list[datetime]]:
+def _synthetic_ohlcv(
+    n_bars: int,
+) -> tuple[list[float], list[float], list[float], list[float], list[datetime]]:
     """Generate lightweight synthetic OHLCV for fallback paths (tests/sandbox)."""
     rng = np.random.default_rng(42)
     base = 100.0
@@ -142,7 +157,9 @@ def _synthetic_ohlcv(n_bars: int) -> tuple[list[float], list[float], list[float]
     lows = (prices - spread).tolist()
     closes = prices.tolist()
     volumes = (rng.normal(1_000_000, 50_000, size=n_bars)).tolist()
-    dates = pd.date_range(end=pd.Timestamp.utcnow(), periods=n_bars, freq="h").to_pydatetime().tolist()
+    dates = (
+        pd.date_range(end=pd.Timestamp.utcnow(), periods=n_bars, freq="h").to_pydatetime().tolist()
+    )
     return highs, lows, closes, volumes, dates
 
 
@@ -153,19 +170,31 @@ async def run_backtest(request: BacktestRequest) -> BacktestResponse:
         start_ts = time.perf_counter()
 
         detector = HarmonicPatternDetector(tolerance=0.15)
-        backtester = PatternBacktester(detector=detector, classifier=None, min_confidence=request.min_confidence)
+        backtester = PatternBacktester(
+            detector=detector, classifier=None, min_confidence=request.min_confidence
+        )
 
         warnings: list[str] = []
         data_source = "provided"
 
-        if all(v is not None for v in (request.highs, request.lows, request.closes, request.volumes)):
+        if all(
+            v is not None for v in (request.highs, request.lows, request.closes, request.volumes)
+        ):
             highs_arr, lows_arr, closes_arr, volumes_arr, dates = _ensure_ohlcv_valid(
-                request.highs, request.lows, request.closes, request.volumes, request.dates,
-                window_size=request.window_size, step_size=request.step_size
+                request.highs,
+                request.lows,
+                request.closes,
+                request.volumes,
+                request.dates,
+                window_size=request.window_size,
+                step_size=request.step_size,
             )
         else:
             if not request.symbol:
-                raise HTTPException(status_code=400, detail="Provide either OHLCV arrays or a symbol to load real data")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Provide either OHLCV arrays or a symbol to load real data",
+                )
             symbol = request.symbol
             min_bars = max(request.window_size + request.step_size, 400)
             try:
@@ -182,11 +211,18 @@ async def run_backtest(request: BacktestRequest) -> BacktestResponse:
                 dates = list(pd.to_datetime(dates_idx))
                 data_source = "tse_db"
             except Exception as exc:
-                warnings.append(f"Real data unavailable for symbol={symbol}: {exc}. Using synthetic data.")
+                warnings.append(
+                    f"Real data unavailable for symbol={symbol}: {exc}. Using synthetic data."
+                )
                 highs, lows, closes, volumes, dates = _synthetic_ohlcv(min_bars)
                 highs_arr, lows_arr, closes_arr, volumes_arr, dates = _ensure_ohlcv_valid(
-                    highs, lows, closes, volumes, [int(d.timestamp() * 1000) for d in dates],
-                    window_size=request.window_size, step_size=request.step_size
+                    highs,
+                    lows,
+                    closes,
+                    volumes,
+                    [int(d.timestamp() * 1000) for d in dates],
+                    window_size=request.window_size,
+                    step_size=request.step_size,
                 )
                 data_source = "synthetic"
 
@@ -215,8 +251,12 @@ async def run_backtest(request: BacktestRequest) -> BacktestResponse:
                 profit_factor=metrics.get("profit_factor", 0.0),
                 sharpe_ratio=metrics.get("sharpe_ratio", 0.0),
                 max_drawdown=metrics.get("max_drawdown", 0.0),
-                target1_hits=metrics.get("target_hit_counts", {}).get("target1") if metrics.get("target_hit_counts") else None,
-                target2_hits=metrics.get("target_hit_counts", {}).get("target2") if metrics.get("target_hit_counts") else None,
+                target1_hits=metrics.get("target_hit_counts", {}).get("target1")
+                if metrics.get("target_hit_counts")
+                else None,
+                target2_hits=metrics.get("target_hit_counts", {}).get("target2")
+                if metrics.get("target_hit_counts")
+                else None,
             ),
             trade_count=len(trades),
             backtest_period={
