@@ -28,6 +28,7 @@ class TestLSTMModel:
         """Test LSTM model can be initialized"""
         try:
             from gravity_tech.ml.models.lstm_model import LSTMModel
+
             model = LSTMModel(input_size=10, hidden_size=64, num_layers=2, output_size=5)
             assert model is not None
         except ImportError:
@@ -37,6 +38,7 @@ class TestLSTMModel:
         """Test LSTM forward pass computation"""
         try:
             from gravity_tech.ml.models.lstm_model import LSTMModel
+
             model = LSTMModel(input_size=10, hidden_size=64, num_layers=2, output_size=5)
 
             # Create dummy input
@@ -45,7 +47,7 @@ class TestLSTMModel:
             x = torch.randn(batch_size, seq_length, 10)
 
             # Forward pass should not raise
-            if hasattr(model, 'forward'):
+            if hasattr(model, "forward"):
                 output = model.forward(x)
                 assert output is not None
         except ImportError:
@@ -55,18 +57,19 @@ class TestLSTMModel:
         """Test LSTM output shape correctness"""
         try:
             from gravity_tech.ml.models.lstm_model import LSTMModel
+
             input_size, hidden_size, output_size = 10, 64, 5
             model = LSTMModel(
                 input_size=input_size,
                 hidden_size=hidden_size,
                 num_layers=2,
-                output_size=output_size
+                output_size=output_size,
             )
 
             batch_size = 32
             x = torch.randn(batch_size, 20, input_size)
 
-            if hasattr(model, 'forward'):
+            if hasattr(model, "forward"):
                 output = model.forward(x)
                 # Output should have batch dimension and output size
                 if output is not None:
@@ -78,6 +81,7 @@ class TestLSTMModel:
         """Test LSTM with variable sequence lengths"""
         try:
             from gravity_tech.ml.models.lstm_model import LSTMModel
+
             model = LSTMModel(input_size=10, hidden_size=64, num_layers=2, output_size=5)
 
             sequences = [
@@ -87,7 +91,7 @@ class TestLSTMModel:
             ]
 
             for seq in sequences:
-                if hasattr(model, 'forward'):
+                if hasattr(model, "forward"):
                     output = model.forward(seq)
                     assert output is not None
         except ImportError:
@@ -97,12 +101,13 @@ class TestLSTMModel:
         """Test LSTM processes batches correctly"""
         try:
             from gravity_tech.ml.models.lstm_model import LSTMModel
+
             model = LSTMModel(input_size=10, hidden_size=32, num_layers=1, output_size=5)
 
             batches = [16, 32, 64, 128]
             for batch_size in batches:
                 x = torch.randn(batch_size, 20, 10)
-                if hasattr(model, 'forward'):
+                if hasattr(model, "forward"):
                     output = model.forward(x)
                     if output is not None:
                         assert output.shape[0] == batch_size
@@ -117,13 +122,9 @@ class TestTransformerModel:
         """Test Transformer model initialization"""
         try:
             from gravity_tech.ml.models.transformer_model import TransformerModel
+
             model = TransformerModel(
-                input_size=10,
-                d_model=64,
-                nhead=4,
-                num_layers=2,
-                output_size=5,
-                dim_feedforward=256
+                input_size=10, d_model=64, nhead=4, num_layers=2, output_size=5, dim_feedforward=256
             )
             assert model is not None
         except ImportError:
@@ -133,20 +134,16 @@ class TestTransformerModel:
         """Test Transformer forward pass"""
         try:
             from gravity_tech.ml.models.transformer_model import TransformerModel
+
             model = TransformerModel(
-                input_size=10,
-                d_model=64,
-                nhead=4,
-                num_layers=2,
-                output_size=5,
-                dim_feedforward=256
+                input_size=10, d_model=64, nhead=4, num_layers=2, output_size=5, dim_feedforward=256
             )
 
             batch_size = 32
             seq_length = 20
             x = torch.randn(batch_size, seq_length, 10)
 
-            if hasattr(model, 'forward'):
+            if hasattr(model, "forward"):
                 output = model.forward(x)
                 assert output is not None
         except ImportError:
@@ -168,11 +165,11 @@ class TestTransformerModel:
                         nhead=nhead,
                         num_layers=2,
                         output_size=5,
-                        dim_feedforward=256
+                        dim_feedforward=256,
                     )
                     x = torch.randn(16, 20, 10)
 
-                    if hasattr(model, 'forward'):
+                    if hasattr(model, "forward"):
                         output = model.forward(x)
                         assert output is not None
         except ImportError:
@@ -190,12 +187,12 @@ class TestTransformerModel:
                 nhead=4,
                 num_layers=2,
                 output_size=output_size,
-                dim_feedforward=256
+                dim_feedforward=256,
             )
 
             x = torch.randn(32, 20, 10)
 
-            if hasattr(model, 'forward'):
+            if hasattr(model, "forward"):
                 output = model.forward(x)
                 if output is not None:
                     # Output should have correct dimensions
@@ -229,10 +226,7 @@ class TestModelTraining:
             "b2": np.random.randn(5),
         }
 
-        gradients = {
-            name: np.random.randn(*param.shape)
-            for name, param in params.items()
-        }
+        gradients = {name: np.random.randn(*param.shape) for name, param in params.items()}
 
         # Gradients should have same shape as parameters
         for name in params:
@@ -251,10 +245,7 @@ class TestModelTraining:
         }
 
         # Update parameters
-        updated_params = {
-            name: params[name] - learning_rate * gradients[name]
-            for name in params
-        }
+        updated_params = {name: params[name] - learning_rate * gradients[name] for name in params}
 
         # Parameters should be updated
         assert not np.allclose(params["W"], updated_params["W"])
@@ -293,7 +284,7 @@ class TestModelTraining:
         initial_lr = 0.01
         epochs = [0, 10, 20, 30]
         schedules = {
-            "exponential_decay": [initial_lr * (0.95 ** e) for e in epochs],
+            "exponential_decay": [initial_lr * (0.95**e) for e in epochs],
             "step_decay": [initial_lr if e < 15 else initial_lr * 0.1 for e in epochs],
         }
 
@@ -403,14 +394,15 @@ class TestModelInference:
 
     def test_confidence_scores(self):
         """Test confidence score interpretation"""
-        predictions = np.array([
-            [0.95, 0.05],  # High confidence
-            [0.51, 0.49],  # Low confidence
-            [0.99, 0.01],  # Very high confidence
-        ])
+        predictions = np.array(
+            [
+                [0.95, 0.05],  # High confidence
+                [0.51, 0.49],  # Low confidence
+                [0.99, 0.01],  # Very high confidence
+            ]
+        )
 
         confidence = np.max(predictions, axis=1)
         assert confidence[0] > 0.9
         assert confidence[1] < 0.6
         assert confidence[2] > 0.95
-
