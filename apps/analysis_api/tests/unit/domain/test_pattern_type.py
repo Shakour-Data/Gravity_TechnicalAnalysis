@@ -23,7 +23,7 @@ class TestPatternType:
 
     def test_pattern_type_enum_members(self):
         """Test that all expected enum members exist"""
-        expected_members = {'CLASSICAL', 'CANDLESTICK'}
+        expected_members = {"CLASSICAL", "CANDLESTICK"}
         actual_members = set(PatternType.__members__.keys())
         assert actual_members == expected_members
 
@@ -32,10 +32,13 @@ class TestPatternType:
         assert isinstance(PatternType.CLASSICAL, str)
         assert isinstance(PatternType.CLASSICAL.value, str)
 
-    @pytest.mark.parametrize("pattern_type,expected_value", [
-        (PatternType.CLASSICAL, "CLASSICAL"),
-        (PatternType.CANDLESTICK, "CANDLESTICK"),
-    ])
+    @pytest.mark.parametrize(
+        "pattern_type,expected_value",
+        [
+            (PatternType.CLASSICAL, "CLASSICAL"),
+            (PatternType.CANDLESTICK, "CANDLESTICK"),
+        ],
+    )
     def test_pattern_type_parametrized_values(self, pattern_type, expected_value):
         """Parametrized test for all PatternType values"""
         assert pattern_type == expected_value
@@ -65,4 +68,3 @@ class TestPatternType:
 
         type_dict = {PatternType.CLASSICAL: "classical_value"}
         assert type_dict[PatternType.CLASSICAL] == "classical_value"
-
