@@ -32,6 +32,7 @@ from enum import Enum
 
 class SignalStrength(str, Enum):
     """Signal strength enum with Persian names"""
+
     VERY_BULLISH = "بسیار صعودی"
     BULLISH = "صعودی"
     BULLISH_BROKEN = "صعودی شکسته شده"
@@ -41,7 +42,7 @@ class SignalStrength(str, Enum):
     VERY_BEARISH = "بسیار نزولی"
 
     @staticmethod
-    def from_value(value: float) -> 'SignalStrength':
+    def from_value(value: float) -> "SignalStrength":
         """
         Convert numeric value (-1 to 1) to SignalStrength
 
