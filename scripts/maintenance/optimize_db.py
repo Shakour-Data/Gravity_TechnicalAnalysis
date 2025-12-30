@@ -10,9 +10,8 @@ Version: 1.0.0
 License: MIT
 """
 
-import sqlite3
 import logging
-from datetime import datetime
+import sqlite3
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +49,9 @@ class DatabaseOptimizer:
                     ON historical_scores (symbol, timeframe, timestamp DESC)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_scores_symbol_timeframe_timestamp: {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_scores_symbol_timeframe_timestamp: {e}"
+                )
 
             # ایندکس برای فیلتر بر اساس امتیاز
             try:
@@ -59,7 +60,9 @@ class DatabaseOptimizer:
                     ON historical_scores (combined_score)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_scores_combined_score: {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_scores_combined_score: {e}"
+                )
 
             # ایندکس برای فیلتر تاریخ
             try:
@@ -86,7 +89,9 @@ class DatabaseOptimizer:
                     ON historical_scores (symbol, timeframe, combined_score)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_scores_symbol_timeframe_score: {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_scores_symbol_timeframe_score: {e}"
+                )
 
             # ایندکس برای horizon scores (only if table exists)
             try:
@@ -95,7 +100,9 @@ class DatabaseOptimizer:
                     ON historical_horizon_scores (score_id)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_horizon_scores_score_id (table may not exist): {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_horizon_scores_score_id (table may not exist): {e}"
+                )
 
             # ایندکس برای indicator scores (only if table exists)
             try:
@@ -104,7 +111,9 @@ class DatabaseOptimizer:
                     ON historical_indicator_scores (score_id)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_indicator_scores_score_id (table may not exist): {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_indicator_scores_score_id (table may not exist): {e}"
+                )
 
             # ایندکس برای patterns (only if table exists)
             try:
@@ -113,7 +122,9 @@ class DatabaseOptimizer:
                     ON historical_patterns (score_id)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_patterns_score_id (table may not exist): {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_patterns_score_id (table may not exist): {e}"
+                )
 
             # ایندکس برای volume analysis (only if table exists)
             try:
@@ -122,7 +133,9 @@ class DatabaseOptimizer:
                     ON historical_volume_analysis (score_id)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_volume_analysis_score_id (table may not exist): {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_volume_analysis_score_id (table may not exist): {e}"
+                )
 
             # ایندکس برای price targets (only if table exists)
             try:
@@ -131,7 +144,9 @@ class DatabaseOptimizer:
                     ON historical_price_targets (score_id)
                 """)
             except sqlite3.OperationalError as e:
-                logger.warning(f"⚠️ Could not create index idx_historical_price_targets_score_id (table may not exist): {e}")
+                logger.warning(
+                    f"⚠️ Could not create index idx_historical_price_targets_score_id (table may not exist): {e}"
+                )
 
             conn.commit()
             logger.info("✅ Database indexes created (with warnings for missing tables)")
