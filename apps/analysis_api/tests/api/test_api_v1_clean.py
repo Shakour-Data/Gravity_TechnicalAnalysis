@@ -10,61 +10,78 @@ Author: Gravity Tech Test Suite
 Date: December 4, 2025
 """
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any
-from unittest.mock import Mock
-
 from gravity_tech.api.v1.historical import HistoricalAnalysisRequest, HistoricalScoreSummary
-from gravity_tech.api.v1.patterns import PatternDetectionRequest, PatternDetectionResponse, PatternResult, CandleData
-from gravity_tech.api.v1.tools import ToolRecommendationRequest, ToolRecommendationResponse, ToolRecommendation, MarketContextInfo, DynamicStrategy, AnalysisGoal, TradingStyle, ToolPriority, ToolCategory
+from gravity_tech.api.v1.patterns import (
+    CandleData,
+    PatternDetectionRequest,
+    PatternDetectionResponse,
+    PatternResult,
+)
+from gravity_tech.api.v1.tools import (
+    AnalysisGoal,
+    DynamicStrategy,
+    MarketContextInfo,
+    ToolCategory,
+    ToolPriority,
+    ToolRecommendation,
+    ToolRecommendationRequest,
+    ToolRecommendationResponse,
+    TradingStyle,
+)
 from gravity_tech.models.schemas import Candle
-from datetime import timezone
-
 
 # ============================================================================
 # Fixtures
 # ============================================================================
 
+
 @pytest.fixture
-def sample_candles() -> List[Candle]:
+def sample_candles() -> list[Candle]:
     """Create sample candle data for testing"""
     candles = []
     base_time = datetime(2025, 1, 1)
     for i in range(60):  # Minimum 50 required by PatternDetectionRequest
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=100 + i * 0.5,
-            high=105 + i * 0.5,
-            low=95 + i * 0.5,
-            close=102 + i * 0.5,
-            volume=1000000 + i * 10000
-        ))
+        candles.append(
+            Candle(
+                timestamp=base_time + timedelta(hours=i),
+                open=100 + i * 0.5,
+                high=105 + i * 0.5,
+                low=95 + i * 0.5,
+                close=102 + i * 0.5,
+                volume=1000000 + i * 10000,
+            )
+        )
     return candles
 
 
 @pytest.fixture
-def sample_candle_data(tse_candles_short) -> List[CandleData]:
+def sample_candle_data(tse_candles_short) -> list[CandleData]:
     """Create sample CandleData for API requests from TSE data"""
     candles = []
-    
+
     # اگر داده‌های TSE موجود باشند از آنها استفاده کنید
     for candle in tse_candles_short:
-        candles.append(CandleData(
-            timestamp=int(candle.timestamp.timestamp()),
-            open=candle.open,
-            high=candle.high,
-            low=candle.low,
-            close=candle.close,
-            volume=candle.volume
-        ))
-    
+        candles.append(
+            CandleData(
+                timestamp=int(candle.timestamp.timestamp()),
+                open=candle.open,
+                high=candle.high,
+                low=candle.low,
+                close=candle.close,
+                volume=candle.volume,
+            )
+        )
+
     return candles
 
 
 # ============================================================================
 # Test: Historical Analysis Endpoints
 # ============================================================================
+
 
 class TestHistoricalAnalysisEndpoints:
     """Test suite for historical analysis API endpoints"""
@@ -76,7 +93,7 @@ class TestHistoricalAnalysisEndpoints:
             timeframe="1h",
             start_date=datetime(2025, 1, 1),
             end_date=datetime(2025, 1, 31),
-            limit=100
+            limit=100,
         )
         assert request.symbol == "BTCUSDT"
         assert request.timeframe == "1h"
@@ -88,11 +105,7 @@ class TestHistoricalAnalysisEndpoints:
         end = datetime(2025, 1, 31)
 
         request = HistoricalAnalysisRequest(
-            symbol="BTCUSDT",
-            timeframe="1h",
-            start_date=start,
-            end_date=end,
-            limit=500
+            symbol="BTCUSDT", timeframe="1h", start_date=start, end_date=end, limit=500
         )
         assert request.symbol == "BTCUSDT"
         assert request.start_date == start
@@ -109,7 +122,7 @@ class TestHistoricalAnalysisEndpoints:
             combined_confidence=0.85,
             combined_signal="bullish",
             trend_score=80.0,
-            momentum_score=70.0
+            momentum_score=70.0,
         )
         assert response.symbol == "BTCUSDT"
         assert response.combined_score == 75.5
@@ -124,7 +137,7 @@ class TestHistoricalAnalysisEndpoints:
                 timeframe="1h",
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
-                limit=100
+                limit=100,
             )
             assert request.symbol == symbol
 
@@ -133,15 +146,14 @@ class TestHistoricalAnalysisEndpoints:
 # Test: Pattern Detection Endpoints
 # ============================================================================
 
+
 class TestPatternDetectionEndpoints:
     """Test suite for pattern detection API endpoints"""
 
     def test_pattern_request_minimal(self, sample_candle_data):
         """Test pattern detection request with minimal parameters"""
         request = PatternDetectionRequest(
-            symbol="BTCUSDT",
-            timeframe="1d",
-            candles=sample_candle_data
+            symbol="BTCUSDT", timeframe="1d", candles=sample_candle_data
         )
         assert request.symbol == "BTCUSDT"
         assert request.timeframe == "1d"
@@ -152,7 +164,7 @@ class TestPatternDetectionEndpoints:
             symbol="ETHUSDT",
             timeframe="4h",
             candles=sample_candle_data,
-            pattern_types=["gartley", "butterfly"]
+            pattern_types=["gartley", "butterfly"],
         )
         assert request.symbol == "ETHUSDT"
         if request.pattern_types:
@@ -166,7 +178,7 @@ class TestPatternDetectionEndpoints:
             patterns_found=0,
             patterns=[],
             analysis_time_ms=45.2,
-            ml_enabled=True
+            ml_enabled=True,
         )
         assert response.symbol == "BTCUSDT"
         assert response.patterns_found == 0
@@ -182,7 +194,7 @@ class TestPatternDetectionEndpoints:
             confidence=0.87,
             targets={"target1": 105.0, "target2": 107.5},
             stop_loss=99.0,
-            detected_at=datetime.now(timezone.utc).isoformat()
+            detected_at=datetime.now(UTC).isoformat(),
         )
 
         response = PatternDetectionResponse(
@@ -191,7 +203,7 @@ class TestPatternDetectionEndpoints:
             patterns_found=1,
             patterns=[pattern_result],
             analysis_time_ms=52.3,
-            ml_enabled=True
+            ml_enabled=True,
         )
         assert len(response.patterns) == 1
         assert response.patterns[0].pattern_type == "gartley"
@@ -201,6 +213,7 @@ class TestPatternDetectionEndpoints:
 # ============================================================================
 # Test: Tool Recommendation Endpoints
 # ============================================================================
+
 
 class TestToolRecommendationEndpoints:
     """Test suite for tool recommendation API endpoints"""
@@ -212,7 +225,7 @@ class TestToolRecommendationEndpoints:
             timeframe="1d",
             analysis_goal=AnalysisGoal.ENTRY_SIGNAL,
             trading_style=TradingStyle.SWING,
-            top_n=15
+            top_n=15,
         )
         assert request.symbol == "BTCUSDT"
 
@@ -226,7 +239,7 @@ class TestToolRecommendationEndpoints:
                 timeframe="1d",
                 analysis_goal=goal,
                 trading_style=TradingStyle.SWING,
-                top_n=15
+                top_n=15,
             )
             assert request.analysis_goal == goal
 
@@ -242,7 +255,7 @@ class TestToolRecommendationEndpoints:
                     historical_accuracy="82.0%",
                     reason="در بازار روندی بسیار موثر است",
                     priority=ToolPriority.MUST_USE,
-                    best_for=["قدرت ترند", "تایید جهت حرکت"]
+                    best_for=["قدرت ترند", "تایید جهت حرکت"],
                 )
             ]
         }
@@ -253,7 +266,7 @@ class TestToolRecommendationEndpoints:
                 regime="trending_bullish",
                 volatility=45.5,
                 trend_strength=72.3,
-                volume_profile="high"
+                volume_profile="high",
             ),
             analysis_goal="entry_signal",
             recommendations=recommendations,
@@ -263,10 +276,10 @@ class TestToolRecommendationEndpoints:
                 confidence=0.84,
                 based_on="تحلیل 3 ابزار برتر",
                 regime="trending_bullish",
-                expected_accuracy="84.0%"
+                expected_accuracy="84.0%",
             ),
             ml_metadata={"model_type": "lightgbm"},
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(UTC),
         )
         assert response.symbol == "BTCUSDT"
         assert len(response.recommendations["must_use"]) == 1
@@ -275,6 +288,7 @@ class TestToolRecommendationEndpoints:
 # ============================================================================
 # Test: API Integration Tests
 # ============================================================================
+
 
 class TestAPIIntegration:
     """Integration tests for multiple API endpoints"""
@@ -287,14 +301,12 @@ class TestAPIIntegration:
             timeframe="1h",
             start_date=datetime(2025, 1, 1),
             end_date=datetime(2025, 1, 31),
-            limit=100
+            limit=100,
         )
 
         # Step 2: Request pattern detection on the same symbol
         pattern_request = PatternDetectionRequest(
-            symbol="BTCUSDT",
-            timeframe="1h",
-            candles=sample_candle_data
+            symbol="BTCUSDT", timeframe="1h", candles=sample_candle_data
         )
         assert pattern_request.symbol == hist_request.symbol
 
@@ -302,9 +314,7 @@ class TestAPIIntegration:
         """Test workflow: detect patterns then get tool recommendations"""
         # Step 1: Detect patterns
         pattern_request = PatternDetectionRequest(
-            symbol="ETHUSDT",
-            timeframe="4h",
-            candles=sample_candle_data
+            symbol="ETHUSDT", timeframe="4h", candles=sample_candle_data
         )
 
         # Step 2: Get tool recommendations
@@ -313,7 +323,7 @@ class TestAPIIntegration:
             timeframe="1d",
             analysis_goal=AnalysisGoal.ENTRY_SIGNAL,
             trading_style=TradingStyle.SWING,
-            top_n=15
+            top_n=15,
         )
 
         assert pattern_request.symbol == tool_request.symbol
@@ -322,6 +332,7 @@ class TestAPIIntegration:
 # ============================================================================
 # Test: Request Validation
 # ============================================================================
+
 
 class TestAPIRequestValidation:
     """Test request validation and error handling"""
@@ -333,7 +344,7 @@ class TestAPIRequestValidation:
             timeframe="1h",
             start_date=datetime(2025, 1, 1),
             end_date=datetime(2025, 1, 31),
-            limit=100
+            limit=100,
         )
         assert len(request.symbol) > 0
 
@@ -344,16 +355,14 @@ class TestAPIRequestValidation:
             timeframe="1h",
             start_date=datetime(2025, 1, 1),
             end_date=datetime(2025, 1, 31),
-            limit=500
+            limit=500,
         )
         assert request.limit == 500
 
     def test_pattern_request_validation(self, sample_candle_data):
         """Test pattern request validation"""
         request = PatternDetectionRequest(
-            symbol="BTCUSDT",
-            timeframe="1d",
-            candles=sample_candle_data
+            symbol="BTCUSDT", timeframe="1d", candles=sample_candle_data
         )
         assert request.symbol is not None
         assert request.timeframe is not None
@@ -364,11 +373,7 @@ class TestAPIRequestValidation:
         end = datetime(2025, 1, 31)
 
         request = HistoricalAnalysisRequest(
-            symbol="BTCUSDT",
-            timeframe="1h",
-            start_date=start,
-            end_date=end,
-            limit=100
+            symbol="BTCUSDT", timeframe="1h", start_date=start, end_date=end, limit=100
         )
 
         if request.start_date and request.end_date:
@@ -378,6 +383,7 @@ class TestAPIRequestValidation:
 # ============================================================================
 # Test: Response Data Validation
 # ============================================================================
+
 
 class TestAPIResponseValidation:
     """Test response data validation"""
@@ -392,12 +398,12 @@ class TestAPIResponseValidation:
             combined_confidence=0.85,
             combined_signal="bullish",
             trend_score=80.0,
-            momentum_score=70.0
+            momentum_score=70.0,
         )
 
-        assert hasattr(response, 'symbol')
-        assert hasattr(response, 'combined_score')
-        assert hasattr(response, 'combined_signal')
+        assert hasattr(response, "symbol")
+        assert hasattr(response, "combined_score")
+        assert hasattr(response, "combined_signal")
 
     def test_pattern_response_fields(self):
         """Test that pattern response has all required fields"""
@@ -407,12 +413,12 @@ class TestAPIResponseValidation:
             patterns_found=0,
             patterns=[],
             analysis_time_ms=45.2,
-            ml_enabled=True
+            ml_enabled=True,
         )
 
-        assert hasattr(response, 'symbol')
-        assert hasattr(response, 'patterns')
-        assert hasattr(response, 'analysis_time_ms')
+        assert hasattr(response, "symbol")
+        assert hasattr(response, "patterns")
+        assert hasattr(response, "analysis_time_ms")
 
     def test_pattern_result_fields(self):
         """Test that pattern result has all required fields"""
@@ -425,11 +431,11 @@ class TestAPIResponseValidation:
             confidence=0.87,
             targets={"target1": 105.0},
             stop_loss=99.0,
-            detected_at=datetime.now(timezone.utc).isoformat()
+            detected_at=datetime.now(UTC).isoformat(),
         )
 
-        assert hasattr(result, 'pattern_type')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "pattern_type")
+        assert hasattr(result, "confidence")
         if result.confidence is not None:
             assert 0 <= result.confidence <= 1
 
@@ -437,6 +443,7 @@ class TestAPIResponseValidation:
 # ============================================================================
 # Test: Error Handling
 # ============================================================================
+
 
 class TestAPIErrorHandling:
     """Test error handling and edge cases"""
@@ -449,7 +456,7 @@ class TestAPIErrorHandling:
             patterns_found=0,
             patterns=[],
             analysis_time_ms=30.1,
-            ml_enabled=True
+            ml_enabled=True,
         )
 
         assert len(response.patterns) == 0
@@ -466,7 +473,7 @@ class TestAPIErrorHandling:
             confidence=0.45,
             targets={"target1": 105.0},
             stop_loss=99.0,
-            detected_at=datetime.now(timezone.utc).isoformat()
+            detected_at=datetime.now(UTC).isoformat(),
         )
 
         if result.confidence is not None:
@@ -484,7 +491,7 @@ class TestAPIErrorHandling:
                 confidence=0.85,
                 targets={"target1": 105.0},
                 stop_loss=99.0,
-                detected_at=datetime.now(timezone.utc).isoformat()
+                detected_at=datetime.now(UTC).isoformat(),
             ),
             PatternResult(
                 pattern_type="butterfly",
@@ -495,8 +502,8 @@ class TestAPIErrorHandling:
                 confidence=0.78,
                 targets={"target1": 105.0},
                 stop_loss=99.0,
-                detected_at=datetime.now(timezone.utc).isoformat()
-            )
+                detected_at=datetime.now(UTC).isoformat(),
+            ),
         ]
 
         response = PatternDetectionResponse(
@@ -505,7 +512,7 @@ class TestAPIErrorHandling:
             patterns_found=2,
             patterns=patterns,
             analysis_time_ms=67.3,
-            ml_enabled=True
+            ml_enabled=True,
         )
 
         assert len(response.patterns) == 2
@@ -515,6 +522,7 @@ class TestAPIErrorHandling:
 # ============================================================================
 # Test: Performance and Limits
 # ============================================================================
+
 
 class TestAPIPerformance:
     """Test API performance characteristics"""
@@ -526,7 +534,7 @@ class TestAPIPerformance:
             timeframe="1h",
             start_date=datetime(2025, 1, 1),
             end_date=datetime(2025, 1, 31),
-            limit=1000
+            limit=1000,
         )
         assert request.limit == 1000
 
@@ -538,7 +546,7 @@ class TestAPIPerformance:
             symbol="BTCUSDT",
             timeframe="1d",
             candles=sample_candle_data,
-            pattern_types=pattern_types
+            pattern_types=pattern_types,
         )
 
         if request.pattern_types:
@@ -552,7 +560,7 @@ class TestAPIPerformance:
             patterns_found=0,
             patterns=[],
             analysis_time_ms=125.45,
-            ml_enabled=True
+            ml_enabled=True,
         )
 
         assert response.analysis_time_ms > 100
