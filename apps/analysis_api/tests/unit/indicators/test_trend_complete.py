@@ -22,15 +22,18 @@ def uptrend_candles():
     base = 100.0
     for i in range(100):
         price = base + i * 0.5
-        candles.append(Candle(
-            open=price - 0.2,
-            high=price + 0.5,
-            low=price - 0.4,
-            close=price,
-            volume=1000000 + i * 10000,
-            timestamp=1699920000 + i * 300
-        ))
+        candles.append(
+            Candle(
+                open=price - 0.2,
+                high=price + 0.5,
+                low=price - 0.4,
+                close=price,
+                volume=1000000 + i * 10000,
+                timestamp=1699920000 + i * 300,
+            )
+        )
     return candles
+
 
 @pytest.fixture
 def downtrend_candles():
@@ -39,15 +42,18 @@ def downtrend_candles():
     base = 200.0
     for i in range(100):
         price = base - i * 0.5
-        candles.append(Candle(
-            open=price + 0.2,
-            high=price + 0.4,
-            low=price - 0.5,
-            close=price,
-            volume=1000000 + i * 10000,
-            timestamp=1699920000 + i * 300
-        ))
+        candles.append(
+            Candle(
+                open=price + 0.2,
+                high=price + 0.4,
+                low=price - 0.5,
+                close=price,
+                volume=1000000 + i * 10000,
+                timestamp=1699920000 + i * 300,
+            )
+        )
     return candles
+
 
 @pytest.fixture
 def sideways_candles():
@@ -56,15 +62,18 @@ def sideways_candles():
     base = 100.0
     for i in range(100):
         price = base + np.sin(i * 0.2) * 2
-        candles.append(Candle(
-            open=price - 0.1,
-            high=price + 0.3,
-            low=price - 0.3,
-            close=price,
-            volume=1000000,
-            timestamp=1699920000 + i * 300
-        ))
+        candles.append(
+            Candle(
+                open=price - 0.1,
+                high=price + 0.3,
+                low=price - 0.3,
+                close=price,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+        )
     return candles
+
 
 @pytest.fixture
 def volatile_candles():
@@ -74,15 +83,18 @@ def volatile_candles():
     for i in range(100):
         volatility = np.random.randn() * 3
         price = base + volatility
-        candles.append(Candle(
-            open=price - abs(volatility) * 0.3,
-            high=price + abs(volatility) * 0.5,
-            low=price - abs(volatility) * 0.5,
-            close=price,
-            volume=1000000 + abs(int(volatility * 100000)),
-            timestamp=1699920000 + i * 300
-        ))
+        candles.append(
+            Candle(
+                open=price - abs(volatility) * 0.3,
+                high=price + abs(volatility) * 0.5,
+                low=price - abs(volatility) * 0.5,
+                close=price,
+                volume=1000000 + abs(int(volatility * 100000)),
+                timestamp=1699920000 + i * 300,
+            )
+        )
     return candles
+
 
 class TestSMA:
     """Test Simple Moving Average"""
@@ -105,7 +117,13 @@ class TestSMA:
         """Test SMA in sideways market"""
         result = TrendIndicators.sma(sideways_candles, period=20)
         # Sideways can sometimes appear bullish/bearish, accept any non-extreme signal
-        assert result.signal in [SignalStrength.NEUTRAL, SignalStrength.BULLISH_BROKEN, SignalStrength.BEARISH_BROKEN, SignalStrength.BULLISH, SignalStrength.BEARISH]
+        assert result.signal in [
+            SignalStrength.NEUTRAL,
+            SignalStrength.BULLISH_BROKEN,
+            SignalStrength.BEARISH_BROKEN,
+            SignalStrength.BULLISH,
+            SignalStrength.BEARISH,
+        ]
 
     def test_sma_different_periods(self, uptrend_candles):
         """Test SMA with different periods"""
@@ -114,6 +132,7 @@ class TestSMA:
         assert sma_10.indicator_name == "SMA(10)"
         assert sma_50.indicator_name == "SMA(50)"
         assert sma_10.value != sma_50.value
+
 
 class TestEMA:
     """Test Exponential Moving Average"""
@@ -133,7 +152,12 @@ class TestEMA:
     def test_ema_neutral_range(self, sideways_candles):
         """Test EMA in neutral range"""
         result = TrendIndicators.ema(sideways_candles, period=20)
-        assert result.signal in [SignalStrength.NEUTRAL, SignalStrength.BULLISH_BROKEN, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.NEUTRAL,
+            SignalStrength.BULLISH_BROKEN,
+            SignalStrength.BEARISH_BROKEN,
+        ]
+
 
 class TestWMA:
     """Test Weighted Moving Average"""
@@ -148,7 +172,12 @@ class TestWMA:
     def test_wma_signals(self, downtrend_candles):
         """Test WMA signals in downtrend"""
         result = TrendIndicators.wma(downtrend_candles, period=20)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.BEARISH_BROKEN,
+        ]
+
 
 class TestDEMA:
     """Test Double Exponential Moving Average"""
@@ -158,12 +187,23 @@ class TestDEMA:
         result = TrendIndicators.dema(uptrend_candles, period=20)
         assert result.indicator_name == "DEMA(20)"
         # DEMA may show neutral if price deviation is small
-        assert result.signal in [SignalStrength.BULLISH, SignalStrength.VERY_BULLISH, SignalStrength.NEUTRAL, SignalStrength.BULLISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BULLISH,
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BULLISH_BROKEN,
+        ]
 
     def test_dema_downtrend(self, downtrend_candles):
         """Test DEMA in downtrend"""
         result = TrendIndicators.dema(downtrend_candles, period=20)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.NEUTRAL, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BEARISH_BROKEN,
+        ]
+
 
 class TestTEMA:
     """Test Triple Exponential Moving Average"""
@@ -172,12 +212,23 @@ class TestTEMA:
         """Test TEMA in uptrend"""
         result = TrendIndicators.tema(uptrend_candles, period=20)
         assert result.indicator_name == "TEMA(20)"
-        assert result.signal in [SignalStrength.BULLISH, SignalStrength.VERY_BULLISH, SignalStrength.NEUTRAL, SignalStrength.BULLISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BULLISH,
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BULLISH_BROKEN,
+        ]
 
     def test_tema_downtrend(self, downtrend_candles):
         """Test TEMA in downtrend"""
         result = TrendIndicators.tema(downtrend_candles, period=20)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.NEUTRAL, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BEARISH_BROKEN,
+        ]
+
 
 class TestMACD:
     """Test MACD Indicator"""
@@ -193,7 +244,11 @@ class TestMACD:
     def test_macd_downtrend_negative_histogram(self, downtrend_candles):
         """Test MACD with negative histogram in downtrend"""
         result = TrendIndicators.macd(downtrend_candles)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.BEARISH_BROKEN,
+        ]
         assert result.additional_values["histogram"] < 0
 
     def test_macd_crossover_signals(self, uptrend_candles):
@@ -201,7 +256,12 @@ class TestMACD:
         result = TrendIndicators.macd(uptrend_candles)
         # Should have bullish signal when MACD > signal line
         if result.value > result.additional_values["signal"]:
-            assert result.signal in [SignalStrength.BULLISH, SignalStrength.VERY_BULLISH, SignalStrength.BULLISH_BROKEN]
+            assert result.signal in [
+                SignalStrength.BULLISH,
+                SignalStrength.VERY_BULLISH,
+                SignalStrength.BULLISH_BROKEN,
+            ]
+
 
 class TestADX:
     """Test Average Directional Index"""
@@ -225,12 +285,17 @@ class TestADX:
         result = TrendIndicators.adx(sideways_candles, period=14)
         # ADX below 20 indicates weak or no trend
         if result.value < 20:
-            assert result.signal in [SignalStrength.NEUTRAL, SignalStrength.BULLISH_BROKEN, SignalStrength.BEARISH_BROKEN]
+            assert result.signal in [
+                SignalStrength.NEUTRAL,
+                SignalStrength.BULLISH_BROKEN,
+                SignalStrength.BEARISH_BROKEN,
+            ]
 
     def test_adx_confidence_scaling(self, uptrend_candles):
         """Test ADX confidence scales with trend strength"""
         result = TrendIndicators.adx(uptrend_candles, period=14)
         assert 0.5 <= result.confidence <= 0.95
+
 
 class TestDonchianChannels:
     """Test Donchian Channels"""
@@ -247,7 +312,11 @@ class TestDonchianChannels:
     def test_donchian_downtrend_breakout(self, downtrend_candles):
         """Test Donchian breakout below lower band"""
         result = TrendIndicators.donchian_channels(downtrend_candles, period=20)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.BEARISH_BROKEN,
+        ]
 
     def test_donchian_price_position(self, uptrend_candles):
         """Test price position within channel"""
@@ -257,9 +326,20 @@ class TestDonchianChannels:
 
     def test_donchian_insufficient_data(self):
         """Test Donchian with insufficient data"""
-        candles = [Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000 + i*300) for i in range(10)]
+        candles = [
+            Candle(
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+            for i in range(10)
+        ]
         with pytest.raises(ValueError, match="Need at least 20 candles"):
             TrendIndicators.donchian_channels(candles, period=20)
+
 
 class TestAroon:
     """Test Aroon Indicator"""
@@ -289,9 +369,20 @@ class TestAroon:
 
     def test_aroon_insufficient_data(self):
         """Test Aroon with insufficient data"""
-        candles = [Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000 + i*300) for i in range(15)]
+        candles = [
+            Candle(
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+            for i in range(15)
+        ]
         with pytest.raises(ValueError, match="Need at least 25 candles"):
             TrendIndicators.aroon(candles, period=25)
+
 
 class TestVortexIndicator:
     """Test Vortex Indicator"""
@@ -307,7 +398,11 @@ class TestVortexIndicator:
     def test_vortex_downtrend(self, downtrend_candles):
         """Test Vortex in downtrend (VI- > VI+)"""
         result = TrendIndicators.vortex_indicator(downtrend_candles, period=14)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.BEARISH_BROKEN,
+        ]
 
     def test_vortex_values_positive(self, uptrend_candles):
         """Test VI+ and VI- are positive"""
@@ -322,9 +417,20 @@ class TestVortexIndicator:
 
     def test_vortex_insufficient_data(self):
         """Test Vortex with insufficient data"""
-        candles = [Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000 + i*300) for i in range(10)]
+        candles = [
+            Candle(
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+            for i in range(10)
+        ]
         with pytest.raises(ValueError, match="Need at least 15 candles"):
             TrendIndicators.vortex_indicator(candles, period=14)
+
 
 class TestMcGinleyDynamic:
     """Test McGinley Dynamic"""
@@ -341,7 +447,11 @@ class TestMcGinleyDynamic:
     def test_mcginley_downtrend(self, downtrend_candles):
         """Test McGinley Dynamic in downtrend"""
         result = TrendIndicators.mcginley_dynamic(downtrend_candles, period=20)
-        assert result.signal in [SignalStrength.BEARISH, SignalStrength.VERY_BEARISH, SignalStrength.BEARISH_BROKEN]
+        assert result.signal in [
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+            SignalStrength.BEARISH_BROKEN,
+        ]
 
     def test_mcginley_adaptive_nature(self, volatile_candles):
         """Test McGinley adapts to volatility"""
@@ -354,7 +464,11 @@ class TestMcGinleyDynamic:
         result = TrendIndicators.mcginley_dynamic(uptrend_candles, period=20)
         # In uptrend, slope should be positive
         if result.additional_values["slope_pct"] > 0:
-            assert result.signal in [SignalStrength.BULLISH, SignalStrength.VERY_BULLISH, SignalStrength.BULLISH_BROKEN]
+            assert result.signal in [
+                SignalStrength.BULLISH,
+                SignalStrength.VERY_BULLISH,
+                SignalStrength.BULLISH_BROKEN,
+            ]
 
     def test_mcginley_custom_k_factor(self, uptrend_candles):
         """Test McGinley with custom k factor"""
@@ -363,9 +477,20 @@ class TestMcGinleyDynamic:
 
     def test_mcginley_insufficient_data(self):
         """Test McGinley with insufficient data"""
-        candles = [Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000 + i*300) for i in range(10)]
+        candles = [
+            Candle(
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+            for i in range(10)
+        ]
         with pytest.raises(ValueError, match="Need at least 20 candles"):
             TrendIndicators.mcginley_dynamic(candles, period=20)
+
 
 class TestCalculateAll:
     """Test calculate_all method"""
@@ -374,9 +499,9 @@ class TestCalculateAll:
         """Test calculate_all returns all indicators"""
         results = TrendIndicators.calculate_all(uptrend_candles)
         assert len(results) > 0
-        assert all(hasattr(r, 'indicator_name') for r in results)
-        assert all(hasattr(r, 'signal') for r in results)
-        assert all(hasattr(r, 'confidence') for r in results)
+        assert all(hasattr(r, "indicator_name") for r in results)
+        assert all(hasattr(r, "signal") for r in results)
+        assert all(hasattr(r, "confidence") for r in results)
 
     def test_calculate_all_includes_new_indicators(self, uptrend_candles):
         """Test calculate_all includes v1.1.0 indicators"""
@@ -390,10 +515,21 @@ class TestCalculateAll:
 
     def test_calculate_all_with_limited_data(self):
         """Test calculate_all with limited candles"""
-        candles = [Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000 + i*300) for i in range(25)]
+        candles = [
+            Candle(
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+            for i in range(25)
+        ]
         results = TrendIndicators.calculate_all(candles)
         # Should return some results but not all
         assert len(results) >= 0
+
 
 class TestEdgeCases:
     """Test edge cases and error handling"""
@@ -414,7 +550,9 @@ class TestEdgeCases:
 
     def test_single_candle(self):
         """Test with single candle"""
-        candle = [Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000)]
+        candle = [
+            Candle(open=100, high=101, low=99, close=100.5, volume=1000000, timestamp=1699920000)
+        ]
         # SMA with single candle may work or fail depending on implementation
         # Test that it either succeeds or raises appropriate error
         result = TrendIndicators.sma(candle, period=1)
@@ -422,7 +560,17 @@ class TestEdgeCases:
 
     def test_extreme_values(self):
         """Test with extreme price values"""
-        candles = [Candle(open=1000000, high=1000001, low=999999, close=1000000.5, volume=1000000, timestamp=1699920000 + i*300) for i in range(50)]
+        candles = [
+            Candle(
+                open=1000000,
+                high=1000001,
+                low=999999,
+                close=1000000.5,
+                volume=1000000,
+                timestamp=1699920000 + i * 300,
+            )
+            for i in range(50)
+        ]
         result = TrendIndicators.sma(candles, period=20)
         assert result.value > 0
         assert not np.isnan(result.value)
@@ -438,10 +586,13 @@ class TestEdgeCases:
             TrendIndicators.donchian_channels(uptrend_candles, 20),
             TrendIndicators.aroon(uptrend_candles, 25),
             TrendIndicators.vortex_indicator(uptrend_candles, 14),
-            TrendIndicators.mcginley_dynamic(uptrend_candles, 20)
+            TrendIndicators.mcginley_dynamic(uptrend_candles, 20),
         ]
         for indicator in indicators:
-            assert 0.0 <= indicator.confidence <= 1.0, f"{indicator.indicator_name} confidence out of bounds"
+            assert 0.0 <= indicator.confidence <= 1.0, (
+                f"{indicator.indicator_name} confidence out of bounds"
+            )
+
 
 class TestExtremeSignals:
     """Test extreme signal conditions to cover missing branches"""
@@ -451,7 +602,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 2  # Strong uptrend
-            candles.append(Candle(open=price-1, high=price+1, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 1,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.sma(candles, period=20)
         assert result.signal in [SignalStrength.VERY_BULLISH, SignalStrength.BULLISH]
 
@@ -460,7 +620,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 200 - i * 2  # Strong downtrend
-            candles.append(Candle(open=price+1, high=price+2, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price + 1,
+                    high=price + 2,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.sma(candles, period=20)
         assert result.signal in [SignalStrength.VERY_BEARISH, SignalStrength.BEARISH]
 
@@ -469,7 +638,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 2.5  # Stronger uptrend
-            candles.append(Candle(open=price-1, high=price+1, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 1,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.ema(candles, period=20)
         assert result.signal in [SignalStrength.VERY_BULLISH, SignalStrength.BULLISH]
 
@@ -478,7 +656,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 200 - i * 2.5  # Stronger downtrend
-            candles.append(Candle(open=price+1, high=price+2, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price + 1,
+                    high=price + 2,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.ema(candles, period=20)
         assert result.signal in [SignalStrength.VERY_BEARISH, SignalStrength.BEARISH]
 
@@ -488,7 +675,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 2
-            candles.append(Candle(open=price-1, high=price+1, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 1,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.wma(candles, period=20)
         assert result.signal in [SignalStrength.VERY_BULLISH, SignalStrength.BULLISH]
 
@@ -496,7 +692,16 @@ class TestExtremeSignals:
         candles2 = []
         for i in range(50):
             price = 200 - i * 2
-            candles2.append(Candle(open=price+1, high=price+2, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles2.append(
+                Candle(
+                    open=price + 1,
+                    high=price + 2,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result2 = TrendIndicators.wma(candles2, period=20)
         assert result2.signal in [SignalStrength.VERY_BEARISH, SignalStrength.BEARISH]
 
@@ -505,7 +710,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 3  # Very strong trend
-            candles.append(Candle(open=price-1, high=price+1, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 1,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.dema(candles, period=20)
         # DEMA should detect the strong trend
         assert result.value > 0
@@ -516,7 +730,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(70):  # Need at least 60 candles for TEMA(20)
             price = 100 + i * 3  # Very strong trend
-            candles.append(Candle(open=price-1, high=price+1, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 1,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.tema(candles, period=20)
         # TEMA should detect the strong trend
         assert result.value > 0
@@ -528,13 +751,26 @@ class TestExtremeSignals:
         candles = []
         for i in range(60):
             price = 100 + i * 1.5
-            candles.append(Candle(open=price-0.5, high=price+0.5, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.5,
+                    high=price + 0.5,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.macd(candles)
         assert "histogram" in result.additional_values
 
         # Should test positive and negative histograms
         if result.additional_values["histogram"] > 0:
-            assert result.signal in [SignalStrength.BULLISH, SignalStrength.VERY_BULLISH, SignalStrength.BULLISH_BROKEN]
+            assert result.signal in [
+                SignalStrength.BULLISH,
+                SignalStrength.VERY_BULLISH,
+                SignalStrength.BULLISH_BROKEN,
+            ]
 
     def test_adx_strength_levels(self):
         """Test ADX at different strength levels"""
@@ -542,7 +778,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 2  # Very strong trend
-            candles.append(Candle(open=price-1, high=price+2, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 2,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.adx(candles, period=14)
 
         # ADX should show trend strength
@@ -559,7 +804,16 @@ class TestExtremeSignals:
                 price = 100 + np.sin(i * 0.3) * 2  # Sideways
             else:
                 price = 105 + (i - 40) * 2  # Breakout
-            candles.append(Candle(open=price-0.5, high=price+0.5, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.5,
+                    high=price + 0.5,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.donchian_channels(candles, period=20)
         assert "price_position_pct" in result.additional_values
@@ -570,7 +824,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 1.5  # Strong uptrend
-            candles.append(Candle(open=price-0.5, high=price+0.5, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.5,
+                    high=price + 0.5,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.aroon(candles, period=25)
         assert result.additional_values["aroon_up"] >= 0
@@ -581,7 +844,16 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 2  # Strong trend
-            candles.append(Candle(open=price-1, high=price+2, low=price-2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 1,
+                    high=price + 2,
+                    low=price - 2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.vortex_indicator(candles, period=14)
         assert result.additional_values["vi_plus"] > 0
@@ -593,11 +865,21 @@ class TestExtremeSignals:
         candles = []
         for i in range(50):
             price = 100 + i * 2  # Strong uptrend
-            candles.append(Candle(open=price-0.5, high=price+1, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.5,
+                    high=price + 1,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.mcginley_dynamic(candles, period=20)
         assert "deviation_pct" in result.additional_values
         assert "slope_pct" in result.additional_values
+
 
 class TestMissingBranches:
     """Tests specifically targeting missing line coverage"""
@@ -610,7 +892,16 @@ class TestMissingBranches:
                 price = 100
             else:
                 price = 100 + (i - 40) * 0.35  # Small uptrend ~1.4%
-            candles.append(Candle(open=price-0.1, high=price+0.1, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.1,
+                    high=price + 0.1,
+                    low=price - 0.2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.sma(candles, period=20)
         # Should be BULLISH or BULLISH_BROKEN
         assert result.signal is not None
@@ -623,7 +914,16 @@ class TestMissingBranches:
                 price = 100
             else:
                 price = 100 - (i - 40) * 0.35  # Small downtrend ~-1.4%
-            candles.append(Candle(open=price+0.1, high=price+0.2, low=price-0.1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price + 0.1,
+                    high=price + 0.2,
+                    low=price - 0.1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.sma(candles, period=20)
         assert result.signal is not None
 
@@ -633,7 +933,16 @@ class TestMissingBranches:
         candles = []
         for i in range(50):
             price = 100 + i * 0.25  # Slow uptrend
-            candles.append(Candle(open=price-0.1, high=price+0.1, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.1,
+                    high=price + 0.1,
+                    low=price - 0.2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.ema(candles, period=20)
         assert result.signal is not None
 
@@ -641,7 +950,16 @@ class TestMissingBranches:
         candles2 = []
         for i in range(50):
             price = 100 - i * 0.25  # Slow downtrend
-            candles2.append(Candle(open=price+0.1, high=price+0.2, low=price-0.1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles2.append(
+                Candle(
+                    open=price + 0.1,
+                    high=price + 0.2,
+                    low=price - 0.1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result2 = TrendIndicators.ema(candles2, period=20)
         assert result2.signal is not None
 
@@ -651,7 +969,16 @@ class TestMissingBranches:
         candles = []
         for i in range(50):
             price = 100 + i * 0.2
-            candles.append(Candle(open=price-0.1, high=price+0.1, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.1,
+                    high=price + 0.1,
+                    low=price - 0.2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
         result = TrendIndicators.wma(candles, period=20)
         assert result.signal is not None
 
@@ -660,12 +987,12 @@ class TestMissingBranches:
         # Create scenarios for each signal type
         scenarios = [
             (6, SignalStrength.VERY_BULLISH),  # >5%
-            (3, SignalStrength.BULLISH),       # 2-5%
+            (3, SignalStrength.BULLISH),  # 2-5%
             (1, SignalStrength.BULLISH_BROKEN),  # 0.5-2%
-            (-6, SignalStrength.VERY_BEARISH), # <-5%
-            (-3, SignalStrength.BEARISH),      # -5 to -2%
-            (-1, SignalStrength.BEARISH_BROKEN), # -2 to -0.5%
-            (0, SignalStrength.NEUTRAL)        # neutral
+            (-6, SignalStrength.VERY_BEARISH),  # <-5%
+            (-3, SignalStrength.BEARISH),  # -5 to -2%
+            (-1, SignalStrength.BEARISH_BROKEN),  # -2 to -0.5%
+            (0, SignalStrength.NEUTRAL),  # neutral
         ]
 
         for deviation_pct, _expected in scenarios:
@@ -677,7 +1004,16 @@ class TestMissingBranches:
                     price = base
                 else:
                     price = base * (1 + deviation_pct / 100)
-                candles.append(Candle(open=price-0.1, high=price+0.1, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+                candles.append(
+                    Candle(
+                        open=price - 0.1,
+                        high=price + 0.1,
+                        low=price - 0.2,
+                        close=price,
+                        volume=1000000,
+                        timestamp=1699920000 + i * 300,
+                    )
+                )
 
             result = TrendIndicators.dema(candles, period=20)
             # Verify signal exists (exact match may vary due to calculation)
@@ -692,7 +1028,7 @@ class TestMissingBranches:
             (-6, SignalStrength.VERY_BEARISH),
             (-3, SignalStrength.BEARISH),
             (-1, SignalStrength.BEARISH_BROKEN),
-            (0, SignalStrength.NEUTRAL)
+            (0, SignalStrength.NEUTRAL),
         ]
 
         for deviation_pct, _expected in scenarios:
@@ -703,7 +1039,16 @@ class TestMissingBranches:
                     price = base
                 else:
                     price = base * (1 + deviation_pct / 100)
-                candles.append(Candle(open=price-0.1, high=price+0.1, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+                candles.append(
+                    Candle(
+                        open=price - 0.1,
+                        high=price + 0.1,
+                        low=price - 0.2,
+                        close=price,
+                        volume=1000000,
+                        timestamp=1699920000 + i * 300,
+                    )
+                )
 
             result = TrendIndicators.tema(candles, period=20)
             assert result.signal is not None
@@ -717,7 +1062,16 @@ class TestMissingBranches:
                 price = 100 + i * 1.5  # Strong uptrend
             else:
                 price = 160 + (i - 40) * 0.2  # Slowing down
-            candles.append(Candle(open=price-0.5, high=price+0.5, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.5,
+                    high=price + 0.5,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.macd(candles)
         assert result.signal is not None
@@ -728,7 +1082,16 @@ class TestMissingBranches:
         candles = []
         for i in range(50):
             price = 100 + i * 0.8  # Moderate uptrend
-            candles.append(Candle(open=price-0.5, high=price+1, low=price-1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.5,
+                    high=price + 1,
+                    low=price - 1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.adx(candles, period=14)
         # Test that signal is appropriate for trend strength
@@ -744,10 +1107,24 @@ class TestMissingBranches:
                 price = 100 + np.sin(i * 0.3) * 2
             else:
                 price = 103.5  # Near but not at upper band
-            candles.append(Candle(open=price-0.3, high=price+0.3, low=price-0.5, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.3,
+                    high=price + 0.3,
+                    low=price - 0.5,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.donchian_channels(candles, period=20)
-        assert result.signal in [SignalStrength.BULLISH, SignalStrength.VERY_BULLISH, SignalStrength.BULLISH_BROKEN, SignalStrength.NEUTRAL]
+        assert result.signal in [
+            SignalStrength.BULLISH,
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.BULLISH_BROKEN,
+            SignalStrength.NEUTRAL,
+        ]
 
     def test_aroon_moderate_levels(self):
         """Test Aroon at moderate levels (50-70 range)"""
@@ -756,7 +1133,16 @@ class TestMissingBranches:
         for i in range(50):
             price = 100 + i * 0.5  # Moderate trend
             noise = np.random.randn() * 1
-            candles.append(Candle(open=price+noise-0.5, high=price+noise+1, low=price+noise-1, close=price+noise, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price + noise - 0.5,
+                    high=price + noise + 1,
+                    low=price + noise - 1,
+                    close=price + noise,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.aroon(candles, period=25)
         assert result.additional_values["aroon_up"] >= 0
@@ -767,7 +1153,16 @@ class TestMissingBranches:
         candles = []
         for i in range(50):
             price = 100 + np.sin(i * 0.5) * 0.5  # Very small oscillations
-            candles.append(Candle(open=price-0.1, high=price+0.2, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.1,
+                    high=price + 0.2,
+                    low=price - 0.2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.vortex_indicator(candles, period=14)
         assert result.signal is not None
@@ -777,7 +1172,16 @@ class TestMissingBranches:
         candles = []
         for i in range(50):
             price = 100 + i * 0.15  # Very slow trend
-            candles.append(Candle(open=price-0.05, high=price+0.1, low=price-0.1, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.05,
+                    high=price + 0.1,
+                    low=price - 0.1,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         result = TrendIndicators.mcginley_dynamic(candles, period=20)
         assert result.signal is not None
@@ -788,7 +1192,16 @@ class TestMissingBranches:
         candles = []
         for i in range(50):
             price = 100 + i * 0.5
-            candles.append(Candle(open=price-0.1, high=price+0.2, low=price-0.2, close=price, volume=1000000, timestamp=1699920000 + i*300))
+            candles.append(
+                Candle(
+                    open=price - 0.1,
+                    high=price + 0.2,
+                    low=price - 0.2,
+                    close=price,
+                    volume=1000000,
+                    timestamp=1699920000 + i * 300,
+                )
+            )
 
         results = TrendIndicators.calculate_all(candles)
         assert len(results) >= 10  # Should have many indicators
