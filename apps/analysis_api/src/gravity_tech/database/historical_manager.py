@@ -31,6 +31,7 @@ class HistoricalScoreEntry:
     """
     ورودی کامل یک تحلیل برای ذخیره در دیتابیس
     """
+
     # شناسایی
     symbol: str
     timestamp: datetime
@@ -77,9 +78,10 @@ class HistoricalScoreEntry:
 @dataclass
 class DailyWeightEntry:
     """وزن‌های روزانه برای هر افق و نوع تحلیل."""
+
     as_of_date: date
-    analysis_type: str   # trend | momentum | volatility
-    horizon: str         # '3d' | '7d' | '30d'
+    analysis_type: str  # trend | momentum | volatility
+    horizon: str  # '3d' | '7d' | '30d'
     feature_names: list[str]
     feature_weights: dict[str, float]
     metrics: dict[str, Any] | None
@@ -174,7 +176,7 @@ class HistoricalScoreManager:
         indicator_scores: list[dict] | None = None,
         patterns: list[dict] | None = None,
         volume_analysis: dict | None = None,
-        price_targets: list[dict] | None = None
+        price_targets: list[dict] | None = None,
     ) -> int:
         """
         ذخیره کامل یک تحلیل
@@ -197,7 +199,8 @@ class HistoricalScoreManager:
 
         try:
             # 1. ذخیره امتیاز اصلی
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO historical_scores (
                     symbol, ts, timeframe,
                     trend_score, trend_confidence,
@@ -235,12 +238,14 @@ class HistoricalScoreManager:
                     support_resistance_score = EXCLUDED.support_resistance_score,
                     raw_data = EXCLUDED.raw_data
                 RETURNING id
-            """, normalized_entry)
+            """,
+                normalized_entry,
+            )
 
             score_id_row = cursor.fetchone()
             if score_id_row is None:
                 raise Exception("Failed to insert score entry")
-            score_id = score_id_row['id']
+            score_id = score_id_row["id"]
 
             # 2. ذخیره horizon scores
             if horizon_scores:
@@ -286,11 +291,11 @@ class HistoricalScoreManager:
         data = [
             (
                 score_id,
-                h['horizon'],
-                h['analysis_type'],
-                self._clip_score(h.get('score')),
-                h['confidence'],
-                h['signal']
+                h["horizon"],
+                h["analysis_type"],
+                self._clip_score(h.get("score")),
+                h["confidence"],
+                h["signal"],
             )
             for h in horizon_scores
         ]
@@ -304,7 +309,7 @@ class HistoricalScoreManager:
             ON CONFLICT (score_id, horizon, analysis_type)
             DO UPDATE SET score = EXCLUDED.score, confidence = EXCLUDED.confidence
             """,
-            data
+            data,
         )
 
     def _save_indicator_scores(
@@ -320,10 +325,10 @@ class HistoricalScoreManager:
         """ذخیره امتیازهای تک تک اندیکاتورها"""
         data = []
         for ind in indicator_scores:
-            name = ind.get('name')
+            name = ind.get("name")
             if not name:
                 continue
-            confidence = ind.get('confidence')
+            confidence = ind.get("confidence")
             if isinstance(confidence, np.generic):
                 confidence = confidence.item()
             data.append(
@@ -333,10 +338,10 @@ class HistoricalScoreManager:
                     ts,
                     timeframe,
                     name,
-                    ind.get('category'),
-                    json.dumps(ind.get('params', {})),
-                    self._clip_score(ind.get('score')),
-                    ind.get('signal'),
+                    ind.get("category"),
+                    json.dumps(ind.get("params", {})),
+                    self._clip_score(ind.get("score")),
+                    ind.get("signal"),
                     confidence,
                 )
             )
@@ -353,7 +358,7 @@ class HistoricalScoreManager:
                  value, signal, confidence)
             VALUES %s
             """,
-            data
+            data,
         )
 
     def _save_patterns(self, cursor, score_id: int, patterns: list[dict]):
@@ -361,15 +366,15 @@ class HistoricalScoreManager:
         data = [
             (
                 score_id,
-                p['type'],
-                p['name'],
-                self._clip_score(p.get('score')),
-                p['confidence'],
-                p['signal'],
-                p.get('description'),
-                json.dumps(p.get('candle_indices', [])),
-                json.dumps(p.get('price_levels', {})),
-                p.get('projected_target')
+                p["type"],
+                p["name"],
+                self._clip_score(p.get("score")),
+                p["confidence"],
+                p["signal"],
+                p.get("description"),
+                json.dumps(p.get("candle_indices", [])),
+                json.dumps(p.get("price_levels", {})),
+                p.get("projected_target"),
             )
             for p in patterns
         ]
@@ -382,12 +387,13 @@ class HistoricalScoreManager:
                  description, candle_indices, price_levels, projected_target)
             VALUES %s
             """,
-            data
+            data,
         )
 
     def _save_volume_analysis(self, cursor, score_id: int, volume: dict):
         """ذخیره تحلیل حجم"""
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO historical_volume_analysis
                 (score_id, volume_score, volume_confidence, avg_volume,
                  current_volume, volume_ratio, confirms_trend)
@@ -398,22 +404,24 @@ class HistoricalScoreManager:
             DO UPDATE SET
                 volume_score = EXCLUDED.volume_score,
                 volume_confidence = EXCLUDED.volume_confidence
-        """, {
-            'score_id': score_id,
-            **volume,
-            'volume_score': self._clip_score(volume.get('volume_score')),
-        })
+        """,
+            {
+                "score_id": score_id,
+                **volume,
+                "volume_score": self._clip_score(volume.get("volume_score")),
+            },
+        )
 
     def _save_price_targets(self, cursor, score_id: int, targets: list[dict]):
         """ذخیره اهداف قیمتی"""
         data = [
             (
                 score_id,
-                t['target_type'],
-                t['target_price'],
-                t.get('stop_loss'),
-                t.get('expected_timeframe'),
-                t.get('confidence')
+                t["target_type"],
+                t["target_price"],
+                t.get("stop_loss"),
+                t.get("expected_timeframe"),
+                t.get("confidence"),
             )
             for t in targets
         ]
@@ -425,7 +433,7 @@ class HistoricalScoreManager:
                 (score_id, target_type, target_price, stop_loss, expected_timeframe, confidence)
             VALUES %s
             """,
-            data
+            data,
         )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -456,12 +464,16 @@ class HistoricalScoreManager:
         cursor = conn.cursor()
         try:
             self._ensure_daily_weights_table(cursor)
+
             # sanitize numpy types
             def _to_float_dict(d: dict[str, Any]) -> dict[str, float]:
                 return {k: float(v) for k, v in d.items()}
 
             feature_weights = _to_float_dict(entry.feature_weights)
-            metrics = {k: float(v) if isinstance(v, (int, float, np.generic)) else v for k, v in (entry.metrics or {}).items()}
+            metrics = {
+                k: float(v) if isinstance(v, (int, float, np.generic)) else v
+                for k, v in (entry.metrics or {}).items()
+            }
             confidence = float(entry.confidence) if entry.confidence is not None else None
 
             cursor.execute(
@@ -546,7 +558,8 @@ class HistoricalScoreManager:
     def _update_metadata(self, cursor, symbol: str, timeframe: str, score_id: int):
         """به‌روزرسانی metadata"""
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO analysis_metadata (symbol, timeframe, last_analysis_at, last_score_id, total_analyses)
                 VALUES (%(symbol)s, %(timeframe)s, NOW(), %(score_id)s, 1)
                 ON CONFLICT (symbol, timeframe)
@@ -555,7 +568,9 @@ class HistoricalScoreManager:
                     last_score_id = %(score_id)s,
                     total_analyses = analysis_metadata.total_analyses + 1,
                     updated_at = NOW()
-            """, {'symbol': symbol, 'timeframe': timeframe, 'score_id': score_id})
+            """,
+                {"symbol": symbol, "timeframe": timeframe, "score_id": score_id},
+            )
         except psycopg2.errors.UndefinedTable:
             # Metadata table not present in this database; safely skip.
             return
@@ -564,7 +579,7 @@ class HistoricalScoreManager:
     # بازیابی امتیازها (Retrieve)
     # ═══════════════════════════════════════════════════════════════════
 
-    def get_latest_score(self, symbol: str, timeframe: str = '1h') -> dict | None:
+    def get_latest_score(self, symbol: str, timeframe: str = "1h") -> dict | None:
         """
         دریافت آخرین امتیاز یک symbol
 
@@ -575,22 +590,20 @@ class HistoricalScoreManager:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM v_latest_scores
                 WHERE symbol = %s AND timeframe = %s
-            """, (symbol, timeframe))
+            """,
+                (symbol, timeframe),
+            )
 
             row = cursor.fetchone()
             return row if row else None
         finally:
             cursor.close()
 
-    def get_score_at_date(
-        self,
-        symbol: str,
-        date: datetime,
-        timeframe: str = '1h'
-    ) -> dict | None:
+    def get_score_at_date(self, symbol: str, date: datetime, timeframe: str = "1h") -> dict | None:
         """
         دریافت امتیاز در یک تاریخ خاص (آخرین تحلیل قبل از آن تاریخ)
         """
@@ -598,21 +611,20 @@ class HistoricalScoreManager:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT score_data FROM get_score_at_date(%s, %s, %s)
-            """, (symbol, timeframe, date))
+            """,
+                (symbol, timeframe, date),
+            )
 
             result = cursor.fetchone()
-            return result['score_data'] if result else None
+            return result["score_data"] if result else None
         finally:
             cursor.close()
 
     def get_score_timeseries(
-        self,
-        symbol: str,
-        from_date: datetime,
-        to_date: datetime,
-        timeframe: str = '1h'
+        self, symbol: str, from_date: datetime, to_date: datetime, timeframe: str = "1h"
     ) -> Sequence[dict[str, Any]]:
         """
         دریافت سری زمانی امتیازها (برای نمودار)
@@ -624,9 +636,12 @@ class HistoricalScoreManager:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM get_score_timeseries(%s, %s, %s, %s)
-            """, (symbol, timeframe, from_date, to_date))
+            """,
+                (symbol, timeframe, from_date, to_date),
+            )
 
             return cursor.fetchall()
         finally:
@@ -649,34 +664,49 @@ class HistoricalScoreManager:
                 return None
 
             # Horizons
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM historical_horizon_scores WHERE score_id = %s
-            """, (score_id,))
-            score['horizons'] = cursor.fetchall()
+            """,
+                (score_id,),
+            )
+            score["horizons"] = cursor.fetchall()
 
             # Indicators
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM historical_indicator_scores WHERE score_id = %s
-            """, (score_id,))
-            score['indicators'] = cursor.fetchall()
+            """,
+                (score_id,),
+            )
+            score["indicators"] = cursor.fetchall()
 
             # Patterns
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM historical_patterns WHERE score_id = %s
-            """, (score_id,))
-            score['patterns'] = cursor.fetchall()
+            """,
+                (score_id,),
+            )
+            score["patterns"] = cursor.fetchall()
 
             # Volume
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM historical_volume_analysis WHERE score_id = %s
-            """, (score_id,))
-            score['volume'] = cursor.fetchone()
+            """,
+                (score_id,),
+            )
+            score["volume"] = cursor.fetchone()
 
             # Targets
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM historical_price_targets WHERE score_id = %s
-            """, (score_id,))
-            score['targets'] = cursor.fetchall()
+            """,
+                (score_id,),
+            )
+            score["targets"] = cursor.fetchall()
 
             return score
 
@@ -687,11 +717,7 @@ class HistoricalScoreManager:
     # آمار و تحلیل (Statistics)
     # ═══════════════════════════════════════════════════════════════════
 
-    def get_indicator_performance(
-        self,
-        symbol: str,
-        days: int = 30
-    ) -> Sequence[dict[str, Any]]:
+    def get_indicator_performance(self, symbol: str, days: int = 30) -> Sequence[dict[str, Any]]:
         """
         عملکرد اندیکاتورها در X روز گذشته
         """
@@ -699,7 +725,8 @@ class HistoricalScoreManager:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT
                     indicator_name,
                     indicator_category,
@@ -715,16 +742,16 @@ class HistoricalScoreManager:
                 )
                 GROUP BY indicator_name, indicator_category
                 ORDER BY avg_confidence DESC
-            """, (symbol, days))
+            """,
+                (symbol, days),
+            )
 
             return cursor.fetchall()
         finally:
             cursor.close()
 
     def get_pattern_success_rate(
-        self,
-        pattern_name: str | None = None,
-        days: int = 90
+        self, pattern_name: str | None = None, days: int = 90
     ) -> list[dict]:
         """
         نرخ موفقیت الگوها
@@ -740,7 +767,8 @@ class HistoricalScoreManager:
                 where_clause += " AND hp.pattern_name = %s"
                 params.append(pattern_name)
 
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 SELECT
                     hp.pattern_name,
                     hp.pattern_type,
@@ -753,7 +781,9 @@ class HistoricalScoreManager:
                 {where_clause}
                 GROUP BY hp.pattern_name, hp.pattern_type
                 ORDER BY success_rate DESC NULLS LAST
-            """, params)
+            """,
+                params,
+            )
 
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
@@ -777,7 +807,7 @@ class HistoricalScoreManager:
         try:
             cursor.execute("SELECT cleanup_old_scores(%s)", (days_to_keep,))
             row = cursor.fetchone()
-            deleted_count = row['cleanup_old_scores'] if row else 0
+            deleted_count = row["cleanup_old_scores"] if row else 0
             conn.commit()
             return deleted_count
         finally:
@@ -789,7 +819,7 @@ class HistoricalScoreManager:
         timeframe: str,
         start_date: datetime,
         end_date: datetime,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[HistoricalScoreEntry]:
         """
         دریافت امتیازهای یک نماد و تایم‌فریم در بازه زمانی مشخص
@@ -798,43 +828,46 @@ class HistoricalScoreManager:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM historical_scores
                 WHERE symbol = %s AND timeframe = %s
                 AND timestamp BETWEEN %s AND %s
                 ORDER BY timestamp DESC
                 LIMIT %s
-            """, (symbol, timeframe, start_date, end_date, limit))
+            """,
+                (symbol, timeframe, start_date, end_date, limit),
+            )
 
             rows = cursor.fetchall()
             results: list[HistoricalScoreEntry] = []
 
             for row in rows:
                 entry = HistoricalScoreEntry(
-                    symbol=row['symbol'],
-                    timestamp=row['timestamp'],
-                    timeframe=row['timeframe'],
-                    trend_score=row['trend_score'],
-                    trend_confidence=row['trend_confidence'],
-                    momentum_score=row['momentum_score'],
-                    momentum_confidence=row['momentum_confidence'],
-                    combined_score=row['combined_score'],
-                    combined_confidence=row['combined_confidence'],
-                    trend_weight=row['trend_weight'],
-                    momentum_weight=row['momentum_weight'],
-                    trend_signal=row['trend_signal'],
-                    momentum_signal=row['momentum_signal'],
-                    combined_signal=row['combined_signal'],
-                    volume_score=row.get('volume_score', 0.0) or 0.0,
-                    volatility_score=row.get('volatility_score', 0.0) or 0.0,
-                    cycle_score=row.get('cycle_score', 0.0) or 0.0,
-                    support_resistance_score=row.get('support_resistance_score', 0.0) or 0.0,
-                    raw_data=row.get('raw_data'),
-                    recommendation=row['recommendation'],
-                    action=row['action'],
-                    price_at_analysis=row['price_at_analysis'],
-                    id=int(row['id']) if row['id'] is not None else None,
-                    created_at=row['created_at']
+                    symbol=row["symbol"],
+                    timestamp=row["timestamp"],
+                    timeframe=row["timeframe"],
+                    trend_score=row["trend_score"],
+                    trend_confidence=row["trend_confidence"],
+                    momentum_score=row["momentum_score"],
+                    momentum_confidence=row["momentum_confidence"],
+                    combined_score=row["combined_score"],
+                    combined_confidence=row["combined_confidence"],
+                    trend_weight=row["trend_weight"],
+                    momentum_weight=row["momentum_weight"],
+                    trend_signal=row["trend_signal"],
+                    momentum_signal=row["momentum_signal"],
+                    combined_signal=row["combined_signal"],
+                    volume_score=row.get("volume_score", 0.0) or 0.0,
+                    volatility_score=row.get("volatility_score", 0.0) or 0.0,
+                    cycle_score=row.get("cycle_score", 0.0) or 0.0,
+                    support_resistance_score=row.get("support_resistance_score", 0.0) or 0.0,
+                    raw_data=row.get("raw_data"),
+                    recommendation=row["recommendation"],
+                    action=row["action"],
+                    price_at_analysis=row["price_at_analysis"],
+                    id=int(row["id"]) if row["id"] is not None else None,
+                    created_at=row["created_at"],
                 )
                 results.append(entry)
 
@@ -856,7 +889,7 @@ class HistoricalScoreManager:
             """)
 
             rows = cursor.fetchall()
-            return [row['symbol'] for row in rows]
+            return [row["symbol"] for row in rows]
         finally:
             cursor.close()
 
@@ -869,11 +902,14 @@ class HistoricalScoreManager:
 
         try:
             if symbol:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT DISTINCT timeframe FROM historical_scores
                     WHERE symbol = %s
                     ORDER BY timeframe
-                """, (symbol,))
+                """,
+                    (symbol,),
+                )
             else:
                 cursor.execute("""
                     SELECT DISTINCT timeframe FROM historical_scores
@@ -881,7 +917,7 @@ class HistoricalScoreManager:
                 """)
 
             rows = cursor.fetchall()
-            return [row['timeframe'] for row in rows]
+            return [row["timeframe"] for row in rows]
         finally:
             cursor.close()
 
@@ -894,7 +930,8 @@ class HistoricalScoreManager:
 
         try:
             if timeframe:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT
                         COUNT(*) as total_analyses,
                         AVG(combined_score) as avg_combined_score,
@@ -904,9 +941,12 @@ class HistoricalScoreManager:
                         COUNT(DISTINCT timeframe) as timeframe_count
                     FROM historical_scores
                     WHERE symbol = %s AND timeframe = %s
-                """, (symbol, timeframe))
+                """,
+                    (symbol, timeframe),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT
                         COUNT(*) as total_analyses,
                         AVG(combined_score) as avg_combined_score,
@@ -916,7 +956,9 @@ class HistoricalScoreManager:
                         COUNT(DISTINCT timeframe) as timeframe_count
                     FROM historical_scores
                     WHERE symbol = %s
-                """, (symbol,))
+                """,
+                    (symbol,),
+                )
 
             row = cursor.fetchone()
             if row is not None:
@@ -933,9 +975,7 @@ class HistoricalScoreManager:
 
 if __name__ == "__main__":
     # اتصال به دیتابیس
-    manager = HistoricalScoreManager(
-        "postgresql://user:pass@localhost:5432/trading_db"
-    )
+    manager = HistoricalScoreManager("postgresql://user:pass@localhost:5432/trading_db")
 
     # مثال ذخیره
     score_entry = HistoricalScoreEntry(
@@ -955,13 +995,31 @@ if __name__ == "__main__":
         combined_signal="BULLISH",
         recommendation="BUY",
         action="ACCUMULATE",
-        price_at_analysis=50000.00
+        price_at_analysis=50000.00,
     )
 
     horizon_scores = [
-        {'horizon': '3d', 'analysis_type': 'TREND', 'score': 0.85, 'confidence': 0.82, 'signal': 'VERY_BULLISH'},
-        {'horizon': '7d', 'analysis_type': 'TREND', 'score': 0.75, 'confidence': 0.78, 'signal': 'BULLISH'},
-        {'horizon': '30d', 'analysis_type': 'TREND', 'score': 0.60, 'confidence': 0.75, 'signal': 'BULLISH'}
+        {
+            "horizon": "3d",
+            "analysis_type": "TREND",
+            "score": 0.85,
+            "confidence": 0.82,
+            "signal": "VERY_BULLISH",
+        },
+        {
+            "horizon": "7d",
+            "analysis_type": "TREND",
+            "score": 0.75,
+            "confidence": 0.78,
+            "signal": "BULLISH",
+        },
+        {
+            "horizon": "30d",
+            "analysis_type": "TREND",
+            "score": 0.60,
+            "confidence": 0.75,
+            "signal": "BULLISH",
+        },
     ]
 
     with manager:
