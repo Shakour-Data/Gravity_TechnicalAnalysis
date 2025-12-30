@@ -4,7 +4,6 @@ Tests for data loaders
 
 import os
 import sqlite3
-from pathlib import Path
 
 import pytest
 from gravity_pipeline.loaders import SQLiteLoader
@@ -54,11 +53,11 @@ async def test_load_valid_candles(sqlite_loader):
             "low": 95.0,
             "close": 110.0,
             "volume": 1200.0,
-        }
+        },
     ]
-    
+
     loaded = await sqlite_loader.load(candles)
-    
+
     assert loaded == 2
     assert sqlite_loader.loaded_count == 2
 
@@ -67,7 +66,7 @@ async def test_load_valid_candles(sqlite_loader):
 async def test_table_creation(sqlite_loader, temp_db):
     """Test automatic table creation"""
     assert sqlite_loader.auto_create_table is True
-    
+
     candles = [
         {
             "symbol": "TEST",
@@ -79,9 +78,9 @@ async def test_table_creation(sqlite_loader, temp_db):
             "volume": 1000.0,
         }
     ]
-    
+
     await sqlite_loader.load(candles)
-    
+
     # Verify table was created
     conn = sqlite3.connect(temp_db)
     cursor = conn.cursor()
@@ -90,7 +89,7 @@ async def test_table_creation(sqlite_loader, temp_db):
     )
     result = cursor.fetchone()
     conn.close()
-    
+
     assert result is not None
 
 
@@ -98,7 +97,7 @@ async def test_table_creation(sqlite_loader, temp_db):
 async def test_batch_loading(sqlite_loader):
     """Test batch loading"""
     sqlite_loader.batch_size = 10
-    
+
     # Create 25 candles (should load in 3 batches)
     candles = [
         {
@@ -112,16 +111,16 @@ async def test_batch_loading(sqlite_loader):
         }
         for i in range(1, 26)
     ]
-    
+
     loaded = await sqlite_loader.load(candles)
-    
+
     assert loaded == 25
 
 
 @pytest.mark.asyncio
 async def test_duplicate_handling(sqlite_loader):
     """Test handling of duplicate candles"""
-    
+
     # Load first set
     candles1 = [
         {
@@ -134,10 +133,10 @@ async def test_duplicate_handling(sqlite_loader):
             "volume": 1000.0,
         }
     ]
-    
+
     loaded1 = await sqlite_loader.load(candles1)
     assert loaded1 == 1
-    
+
     # Load again with same symbol/timestamp but different price
     candles2 = [
         {
@@ -150,7 +149,7 @@ async def test_duplicate_handling(sqlite_loader):
             "volume": 1100.0,
         }
     ]
-    
+
     loaded2 = await sqlite_loader.load(candles2)
     assert loaded2 == 1  # Should replace, not insert duplicate
 
@@ -169,9 +168,9 @@ async def test_stats(sqlite_loader):
             "volume": 1000.0,
         }
     ]
-    
+
     await sqlite_loader.load(candles)
-    
+
     stats = sqlite_loader.get_stats()
     assert stats["loaded"] == 1
     assert stats["errors"] == 0
