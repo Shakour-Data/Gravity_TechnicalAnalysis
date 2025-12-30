@@ -14,6 +14,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 import numpy as np
+
 from gravity_tech.analysis.market_phase import analyze_market_phase
 from gravity_tech.ml.weight_optimizer import MLWeightOptimizer
 from gravity_tech.models.schemas import AnalysisRequest, Candle
@@ -57,24 +58,26 @@ def generate_historical_data(days: int = 365, trend_type: str = "mixed") -> list
 
         open_price = price + np.random.normal(0, volatility)
         close_price = price + np.random.normal(0, volatility)
-        high_price = max(open_price, close_price) + abs(np.random.normal(0, volatility/2))
-        low_price = min(open_price, close_price) - abs(np.random.normal(0, volatility/2))
+        high_price = max(open_price, close_price) + abs(np.random.normal(0, volatility / 2))
+        low_price = min(open_price, close_price) - abs(np.random.normal(0, volatility / 2))
 
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=float(open_price),
-            high=float(high_price),
-            low=float(low_price),
-            close=float(close_price),
-            volume=float(1000 + np.random.normal(0, 200))
-        ))
+        candles.append(
+            Candle(
+                timestamp=base_time + timedelta(hours=i),
+                open=float(open_price),
+                high=float(high_price),
+                low=float(low_price),
+                close=float(close_price),
+                volume=float(1000 + np.random.normal(0, 200)),
+            )
+        )
 
     return candles
 
 
-async def prepare_training_dataset(num_samples: int = 1000,
-                                   window_size: int = 100,
-                                   prediction_horizon: int = 10) -> list[dict]:
+async def prepare_training_dataset(
+    num_samples: int = 1000, window_size: int = 100, prediction_horizon: int = 10
+) -> list[dict]:
     """
     Prepare training dataset from historical data
 
@@ -102,27 +105,22 @@ async def prepare_training_dataset(num_samples: int = 1000,
 
         # Generate data with extra candles for prediction
         candles = generate_historical_data(
-            days=int((window_size + prediction_horizon + 50) / 24),
-            trend_type=market_type
+            days=int((window_size + prediction_horizon + 50) / 24), trend_type=market_type
         )
 
         # Random starting point
         start_idx = np.random.randint(50, len(candles) - window_size - prediction_horizon)
-        window_candles = candles[start_idx:start_idx + window_size]
+        window_candles = candles[start_idx : start_idx + window_size]
 
         # Perform analysis
-        request = AnalysisRequest(
-            symbol="TRAINING",
-            timeframe="1h",
-            candles=window_candles
-        )
+        request = AnalysisRequest(symbol="TRAINING", timeframe="1h", candles=window_candles)
 
         try:
             result = await TechnicalAnalysisService.analyze(request)
 
             # Get market phase
             phase_result = analyze_market_phase(window_candles)
-            market_phase = phase_result.get('market_phase', 'انتقال')
+            market_phase = phase_result.get("market_phase", "انتقال")
 
             # Prepare features
             optimizer = MLWeightOptimizer()
@@ -131,7 +129,7 @@ async def prepare_training_dataset(num_samples: int = 1000,
                 result.momentum_indicators,
                 result.cycle_indicators,
                 result.volume_indicators,
-                market_phase
+                market_phase,
             )
 
             # Calculate target (future return)
@@ -139,12 +137,14 @@ async def prepare_training_dataset(num_samples: int = 1000,
             future_price = candles[start_idx + window_size + prediction_horizon].close
             target = ((future_price - current_price) / current_price) * 100
 
-            training_data.append({
-                'features': features,
-                'target': target,
-                'market_phase': market_phase,
-                'sample_idx': sample_idx
-            })
+            training_data.append(
+                {
+                    "features": features,
+                    "target": target,
+                    "market_phase": market_phase,
+                    "sample_idx": sample_idx,
+                }
+            )
 
         except Exception as e:
             print(f"  ⚠️ Error in sample {sample_idx}: {e}")
@@ -154,9 +154,9 @@ async def prepare_training_dataset(num_samples: int = 1000,
     return training_data
 
 
-async def train_ml_model(num_samples: int = 1000,
-                        model_type: str = "gradient_boosting",
-                        save_model: bool = True):
+async def train_ml_model(
+    num_samples: int = 1000, model_type: str = "gradient_boosting", save_model: bool = True
+):
     """
     Train ML model for weight optimization
 
@@ -165,9 +165,9 @@ async def train_ml_model(num_samples: int = 1000,
         model_type: Type of ML model
         save_model: Whether to save trained model
     """
-    print("="*70)
+    print("=" * 70)
     print("ML Weight Optimization Training")
-    print("="*70)
+    print("=" * 70)
     print(f"\nModel Type: {model_type}")
     print(f"Training Samples: {num_samples}")
     print("Prediction Horizon: 10 candles ahead\n")
@@ -187,9 +187,9 @@ async def train_ml_model(num_samples: int = 1000,
     metrics = optimizer.train(training_data, validation_split=0.2)
 
     # Display results
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Training Results")
-    print("="*70)
+    print("=" * 70)
     print("\nModel Performance:")
     print(f"  • Training R²: {metrics['train_r2']:.4f}")
     print(f"  • Validation R²: {metrics['val_r2']:.4f}")
@@ -200,9 +200,9 @@ async def train_ml_model(num_samples: int = 1000,
     print(f"  • Total samples: {metrics['n_samples']}")
     print(f"  • Number of features: {metrics['n_features']}")
 
-    if metrics.get('optimal_weights'):
+    if metrics.get("optimal_weights"):
         print("\n🎯 Learned Optimal Weights:")
-        weights = metrics['optimal_weights']
+        weights = metrics["optimal_weights"]
         print(f"  • Trend: {weights['trend']:.1%}")
         print(f"  • Momentum: {weights['momentum']:.1%}")
         print(f"  • Cycle: {weights['cycle']:.1%}")
@@ -210,11 +210,13 @@ async def train_ml_model(num_samples: int = 1000,
 
         # Compare with default weights
         print("\n📊 Comparison with Default Weights:")
-        default = {'trend': 0.30, 'momentum': 0.25, 'cycle': 0.25, 'volume': 0.20}
+        default = {"trend": 0.30, "momentum": 0.25, "cycle": 0.25, "volume": 0.20}
         for key in weights:
             diff = weights[key] - default[key]
             sign = "+" if diff > 0 else ""
-            print(f"  • {key.capitalize()}: {sign}{diff:.1%} ({weights[key]:.1%} vs {default[key]:.1%})")
+            print(
+                f"  • {key.capitalize()}: {sign}{diff:.1%} ({weights[key]:.1%} vs {default[key]:.1%})"
+            )
 
     # Save model
     if save_model:
@@ -222,16 +224,16 @@ async def train_ml_model(num_samples: int = 1000,
         optimizer.save_model(name=f"ml_weights_{model_type}")
         print("✅ Model saved successfully!")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
 
     return optimizer, metrics
 
 
 async def test_ml_model():
     """Test the trained ML model"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Testing Trained ML Model")
-    print("="*70)
+    print("=" * 70)
 
     # Generate test data
     print("\nGenerating test market data...")
@@ -241,7 +243,7 @@ async def test_ml_model():
     request = AnalysisRequest(
         symbol="TEST",
         timeframe="1h",
-        candles=candles[-100:]  # Last 100 candles
+        candles=candles[-100:],  # Last 100 candles
     )
 
     result = await TechnicalAnalysisService.analyze(request)
@@ -262,7 +264,7 @@ async def test_ml_model():
         result.momentum_indicators,
         result.cycle_indicators,
         result.volume_indicators,
-        phase_result.get('market_phase')
+        phase_result.get("market_phase"),
     )
 
     # Predict optimal weights
@@ -277,9 +279,11 @@ async def test_ml_model():
     print("\n📊 Market Context:")
     print(f"  • Phase: {phase_result.get('market_phase')}")
     print(f"  • Phase Strength: {phase_result.get('phase_strength')}")
-    print(f"  • Overall Score: {phase_result.get('detailed_analysis', {}).get('overall_score', 0):.1f}")
+    print(
+        f"  • Overall Score: {phase_result.get('detailed_analysis', {}).get('overall_score', 0):.1f}"
+    )
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
 
 
 if __name__ == "__main__":
