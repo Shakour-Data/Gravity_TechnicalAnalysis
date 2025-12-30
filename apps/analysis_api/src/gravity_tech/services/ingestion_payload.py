@@ -92,7 +92,9 @@ def build_ingestion_payload(
     cycle_score, cycle_conf, cycle_signal = _aggregate_category(result.cycle_indicators)
     volume_score, volume_conf, volume_signal = _aggregate_category(result.volume_indicators)
     volatility_score, vol_conf, vol_signal = _aggregate_category(result.volatility_indicators)
-    support_res_score, support_conf, support_signal = _aggregate_category(result.support_resistance_indicators)
+    support_res_score, support_conf, support_signal = _aggregate_category(
+        result.support_resistance_indicators
+    )
 
     combined_score = (
         (trend_score * 0.30)
@@ -117,19 +119,53 @@ def build_ingestion_payload(
     )
 
     # Limit indicator lists to top 50 for size
-    limited_trend = result.trend_indicators[:50] if len(result.trend_indicators) > 50 else result.trend_indicators
-    limited_momentum = result.momentum_indicators[:50] if len(result.momentum_indicators) > 50 else result.momentum_indicators
-    limited_cycle = result.cycle_indicators[:50] if len(result.cycle_indicators) > 50 else result.cycle_indicators
-    limited_volume = result.volume_indicators[:50] if len(result.volume_indicators) > 50 else result.volume_indicators
-    limited_volatility = result.volatility_indicators[:50] if len(result.volatility_indicators) > 50 else result.volatility_indicators
-    limited_support = result.support_resistance_indicators[:50] if len(result.support_resistance_indicators) > 50 else result.support_resistance_indicators
+    limited_trend = (
+        result.trend_indicators[:50]
+        if len(result.trend_indicators) > 50
+        else result.trend_indicators
+    )
+    limited_momentum = (
+        result.momentum_indicators[:50]
+        if len(result.momentum_indicators) > 50
+        else result.momentum_indicators
+    )
+    limited_cycle = (
+        result.cycle_indicators[:50]
+        if len(result.cycle_indicators) > 50
+        else result.cycle_indicators
+    )
+    limited_volume = (
+        result.volume_indicators[:50]
+        if len(result.volume_indicators) > 50
+        else result.volume_indicators
+    )
+    limited_volatility = (
+        result.volatility_indicators[:50]
+        if len(result.volatility_indicators) > 50
+        else result.volatility_indicators
+    )
+    limited_support = (
+        result.support_resistance_indicators[:50]
+        if len(result.support_resistance_indicators) > 50
+        else result.support_resistance_indicators
+    )
 
     return {
         "symbol": result.symbol,
         "timeframe": result.timeframe,
         "analysis_timestamp": getattr(result, "analysis_timestamp", datetime.now(UTC)),
         "price_at_analysis": price_at_analysis,
-        "candles": [{"timestamp": c.timestamp, "open": c.open, "high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in limited_candles],
+        "candles": [
+            {
+                "timestamp": c.timestamp,
+                "open": c.open,
+                "high": c.high,
+                "low": c.low,
+                "close": c.close,
+                "volume": c.volume,
+            }
+            for c in limited_candles
+        ],
         "trend_score": trend_score,
         "trend_confidence": trend_conf,
         "momentum_score": momentum_score,
@@ -158,6 +194,14 @@ def build_ingestion_payload(
             + limited_volatility
             + limited_support
         ),
-        "classical_patterns": _normalize_patterns(result.classical_patterns[:20] if len(result.classical_patterns) > 20 else result.classical_patterns),
-        "candlestick_patterns": _normalize_patterns(result.candlestick_patterns[:20] if len(result.candlestick_patterns) > 20 else result.candlestick_patterns),
+        "classical_patterns": _normalize_patterns(
+            result.classical_patterns[:20]
+            if len(result.classical_patterns) > 20
+            else result.classical_patterns
+        ),
+        "candlestick_patterns": _normalize_patterns(
+            result.candlestick_patterns[:20]
+            if len(result.candlestick_patterns) > 20
+            else result.candlestick_patterns
+        ),
     }
