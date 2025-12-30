@@ -37,9 +37,7 @@ def setup_tracing(app, service_name: str = "technical-analysis-service"):
     """
 
     # تعریف resource
-    resource = Resource(attributes={
-        SERVICE_NAME: service_name
-    })
+    resource = Resource(attributes={SERVICE_NAME: service_name})
 
     # ایجاد tracer provider
     provider = TracerProvider(resource=resource)
