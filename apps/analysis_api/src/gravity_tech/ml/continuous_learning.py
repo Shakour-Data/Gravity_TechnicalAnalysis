@@ -34,9 +34,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-
 import numpy as np
 import structlog
+
 from gravity_tech.ml.weight_optimizer import MLWeightOptimizer
 
 logger = structlog.get_logger()
@@ -45,6 +45,7 @@ logger = structlog.get_logger()
 @dataclass
 class PredictionRecord:
     """Record of a single prediction"""
+
     timestamp: datetime
     symbol: str
     timeframe: str
@@ -60,6 +61,7 @@ class PredictionRecord:
 @dataclass
 class SymbolPerformance:
     """Performance metrics for a symbol"""
+
     symbol: str
     total_predictions: int
     correct_predictions: int  # Correct direction
@@ -107,7 +109,7 @@ class ContinuousLearner:
         self,
         db_path: Path = Path("data/learning_history.db"),
         retrain_interval: int = 100,  # Retrain model every 100 predictions
-        max_history: int = 10000
+        max_history: int = 10000,
     ):
         """
         Initialize continuous learner
@@ -142,7 +144,7 @@ class ContinuousLearner:
             "continuous_learner_initialized",
             db_path=str(db_path),
             history_size=len(self.prediction_history),
-            symbols=list(self.symbol_performance.keys())
+            symbols=list(self.symbol_performance.keys()),
         )
 
     def record_prediction(
@@ -153,7 +155,7 @@ class ContinuousLearner:
         market_phase: str,
         weights_used: dict[str, float],
         indicators_used: dict[str, float],
-        confidence: float = 0.5
+        confidence: float = 0.5,
     ) -> str:
         """
         Record a new prediction
@@ -180,7 +182,7 @@ class ContinuousLearner:
             market_phase=market_phase,
             weights_used=weights_used,
             indicators_used=indicators_used,
-            confidence=confidence
+            confidence=confidence,
         )
 
         self.prediction_history.append(record)
@@ -192,7 +194,7 @@ class ContinuousLearner:
             symbol=symbol,
             predicted_signal=predicted_signal,
             confidence=confidence,
-            prediction_id=prediction_id
+            prediction_id=prediction_id,
         )
 
         return prediction_id
@@ -202,7 +204,7 @@ class ContinuousLearner:
         symbol: str,
         actual_return: float,
         timestamp: datetime | None = None,
-        max_age_hours: int = 24
+        max_age_hours: int = 24,
     ) -> bool:
         """
         Update actual result of a prediction
@@ -222,8 +224,10 @@ class ContinuousLearner:
         if timestamp:
             # Search by timestamp
             for record in reversed(self.prediction_history):
-                if (record.symbol == symbol and
-                    abs((record.timestamp - timestamp).total_seconds()) < 60):
+                if (
+                    record.symbol == symbol
+                    and abs((record.timestamp - timestamp).total_seconds()) < 60
+                ):
                     target_record = record
                     break
         else:
@@ -236,11 +240,7 @@ class ContinuousLearner:
                         break
 
         if not target_record:
-            logger.warning(
-                "prediction_not_found_for_update",
-                symbol=symbol,
-                timestamp=timestamp
-            )
+            logger.warning("prediction_not_found_for_update", symbol=symbol, timestamp=timestamp)
             return False
 
         # Calculate error
@@ -266,7 +266,7 @@ class ContinuousLearner:
             predicted=target_record.predicted_signal,
             actual=actual_return,
             error=error,
-            direction_correct=(predicted_direction == actual_direction)
+            direction_correct=(predicted_direction == actual_direction),
         )
 
         # Retrain if necessary
@@ -276,11 +276,7 @@ class ContinuousLearner:
         return True
 
     def _update_symbol_performance(
-        self,
-        symbol: str,
-        predicted_direction: int,
-        actual_direction: int,
-        error: float
+        self, symbol: str, predicted_direction: int, actual_direction: int, error: float
     ):
         """Update symbol performance metrics"""
         if symbol not in self.symbol_performance:
@@ -291,7 +287,7 @@ class ContinuousLearner:
                 accuracy=0.0,
                 mae=0.0,
                 rmse=0.0,
-                last_update=datetime.now()
+                last_update=datetime.now(),
             )
 
         perf = self.symbol_performance[symbol]
@@ -305,7 +301,7 @@ class ContinuousLearner:
         # Calculate new MAE and RMSE (moving average)
         alpha = 0.1  # Weight coefficient
         perf.mae = (1 - alpha) * perf.mae + alpha * error
-        perf.rmse = np.sqrt((1 - alpha) * (perf.rmse ** 2) + alpha * (error ** 2))
+        perf.rmse = np.sqrt((1 - alpha) * (perf.rmse**2) + alpha * (error**2))
 
         perf.last_update = datetime.now()
 
@@ -322,15 +318,13 @@ class ContinuousLearner:
                 features = {
                     **record.weights_used,
                     **record.indicators_used,
-                    'confidence': record.confidence,
-                    'market_phase_encoded': self._encode_market_phase(record.market_phase)
+                    "confidence": record.confidence,
+                    "market_phase_encoded": self._encode_market_phase(record.market_phase),
                 }
 
-                training_data.append({
-                    'features': features,
-                    'target': record.actual_return,
-                    'symbol': record.symbol
-                })
+                training_data.append(
+                    {"features": features, "target": record.actual_return, "symbol": record.symbol}
+                )
 
         if len(training_data) < 50:
             logger.warning("insufficient_data_for_retrain", count=len(training_data))
@@ -341,15 +335,17 @@ class ContinuousLearner:
             metrics = self.ml_optimizer.train(training_data, validation_split=0.2)
 
             # Save model
-            self.ml_optimizer.save_model(name=f"continuous_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+            self.ml_optimizer.save_model(
+                name=f"continuous_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
 
             self.predictions_since_retrain = 0
 
             logger.info(
                 "retrain_model_completed",
                 training_samples=len(training_data),
-                validation_r2=metrics.get('val_r2'),
-                symbols=len(set(d['symbol'] for d in training_data))
+                validation_r2=metrics.get("val_r2"),
+                symbols=len({d["symbol"] for d in training_data}),
             )
 
         except Exception as e:
@@ -368,7 +364,9 @@ class ContinuousLearner:
         perf = self.symbol_performance[symbol]
 
         # Analyze history for this symbol
-        symbol_records = [r for r in self.prediction_history if r.symbol == symbol and r.actual_return is not None]
+        symbol_records = [
+            r for r in self.prediction_history if r.symbol == symbol and r.actual_return is not None
+        ]
 
         if not symbol_records:
             return None
@@ -378,58 +376,56 @@ class ContinuousLearner:
         for record in symbol_records:
             tf = record.timeframe
             if tf not in timeframe_performance:
-                timeframe_performance[tf] = {'correct': 0, 'total': 0}
+                timeframe_performance[tf] = {"correct": 0, "total": 0}
 
-            timeframe_performance[tf]['total'] += 1
-            if (record.predicted_signal > 0 and record.actual_return > 0) or \
-               (record.predicted_signal < 0 and record.actual_return < 0):
-                timeframe_performance[tf]['correct'] += 1
+            timeframe_performance[tf]["total"] += 1
+            if (record.predicted_signal > 0 and record.actual_return > 0) or (
+                record.predicted_signal < 0 and record.actual_return < 0
+            ):
+                timeframe_performance[tf]["correct"] += 1
 
-        best_timeframe = max(
-            timeframe_performance.items(),
-            key=lambda x: x[1]['correct'] / x[1]['total']
-        )[0] if timeframe_performance else None
+        best_timeframe = (
+            max(timeframe_performance.items(), key=lambda x: x[1]["correct"] / x[1]["total"])[0]
+            if timeframe_performance
+            else None
+        )
 
         # Best market phase
         phase_performance = {}
         for record in symbol_records:
             phase = record.market_phase
             if phase not in phase_performance:
-                phase_performance[phase] = {'correct': 0, 'total': 0}
+                phase_performance[phase] = {"correct": 0, "total": 0}
 
-            phase_performance[phase]['total'] += 1
-            if (record.predicted_signal > 0 and record.actual_return > 0) or \
-               (record.predicted_signal < 0 and record.actual_return < 0):
-                phase_performance[phase]['correct'] += 1
+            phase_performance[phase]["total"] += 1
+            if (record.predicted_signal > 0 and record.actual_return > 0) or (
+                record.predicted_signal < 0 and record.actual_return < 0
+            ):
+                phase_performance[phase]["correct"] += 1
 
-        best_phase = max(
-            phase_performance.items(),
-            key=lambda x: x[1]['correct'] / x[1]['total']
-        )[0] if phase_performance else None
+        best_phase = (
+            max(phase_performance.items(), key=lambda x: x[1]["correct"] / x[1]["total"])[0]
+            if phase_performance
+            else None
+        )
 
         return {
-            'symbol': symbol,
-            'overall_accuracy': perf.accuracy,
-            'total_predictions': perf.total_predictions,
-            'mae': perf.mae,
-            'rmse': perf.rmse,
-            'best_timeframe': best_timeframe,
-            'best_market_phase': best_phase,
-            'last_update': perf.last_update.isoformat(),
-            'timeframe_performance': {
-                tf: {
-                    'accuracy': data['correct'] / data['total'],
-                    'total': data['total']
-                }
+            "symbol": symbol,
+            "overall_accuracy": perf.accuracy,
+            "total_predictions": perf.total_predictions,
+            "mae": perf.mae,
+            "rmse": perf.rmse,
+            "best_timeframe": best_timeframe,
+            "best_market_phase": best_phase,
+            "last_update": perf.last_update.isoformat(),
+            "timeframe_performance": {
+                tf: {"accuracy": data["correct"] / data["total"], "total": data["total"]}
                 for tf, data in timeframe_performance.items()
             },
-            'phase_performance': {
-                phase: {
-                    'accuracy': data['correct'] / data['total'],
-                    'total': data['total']
-                }
+            "phase_performance": {
+                phase: {"accuracy": data["correct"] / data["total"], "total": data["total"]}
                 for phase, data in phase_performance.items()
-            }
+            },
         }
 
     def get_cross_symbol_patterns(self) -> dict[str, any]:
@@ -448,41 +444,40 @@ class ContinuousLearner:
 
             phase = record.market_phase
             if phase not in global_phase_performance:
-                global_phase_performance[phase] = {'correct': 0, 'total': 0, 'avg_error': []}
+                global_phase_performance[phase] = {"correct": 0, "total": 0, "avg_error": []}
 
-            global_phase_performance[phase]['total'] += 1
+            global_phase_performance[phase]["total"] += 1
 
-            if (record.predicted_signal > 0 and record.actual_return > 0) or \
-               (record.predicted_signal < 0 and record.actual_return < 0):
-                global_phase_performance[phase]['correct'] += 1
+            if (record.predicted_signal > 0 and record.actual_return > 0) or (
+                record.predicted_signal < 0 and record.actual_return < 0
+            ):
+                global_phase_performance[phase]["correct"] += 1
 
-            global_phase_performance[phase]['avg_error'].append(record.prediction_error)
+            global_phase_performance[phase]["avg_error"].append(record.prediction_error)
 
         # Calculate final statistics
         for phase, data in global_phase_performance.items():
-            data['accuracy'] = data['correct'] / data['total'] if data['total'] > 0 else 0
-            data['avg_error'] = np.mean(data['avg_error']) if data['avg_error'] else 0
-            del data['avg_error']  # Remove raw list
+            data["accuracy"] = data["correct"] / data["total"] if data["total"] > 0 else 0
+            data["avg_error"] = np.mean(data["avg_error"]) if data["avg_error"] else 0
+            del data["avg_error"]  # Remove raw list
 
         return {
-            'phase_performance': global_phase_performance,
-            'total_symbols': len(self.symbol_performance),
-            'total_predictions': len(self.prediction_history),
-            'best_performing_symbols': sorted(
-                self.symbol_performance.values(),
-                key=lambda x: x.accuracy,
-                reverse=True
-            )[:5]
+            "phase_performance": global_phase_performance,
+            "total_symbols": len(self.symbol_performance),
+            "total_predictions": len(self.prediction_history),
+            "best_performing_symbols": sorted(
+                self.symbol_performance.values(), key=lambda x: x.accuracy, reverse=True
+            )[:5],
         }
 
     def _encode_market_phase(self, phase: str) -> float:
         """Encode market phase to numerical value"""
         encoding = {
-            'accumulation': 0.0,
-            'uptrend': 0.25,
-            'distribution': 0.5,
-            'downtrend': 0.75,
-            'transition': 0.5
+            "accumulation": 0.0,
+            "uptrend": 0.25,
+            "distribution": 0.5,
+            "downtrend": 0.75,
+            "transition": 0.5,
         }
         return encoding.get(phase, 0.5)
 
@@ -494,41 +489,41 @@ class ContinuousLearner:
             return
 
         try:
-            with open(history_file, encoding='utf-8') as f:
+            with open(history_file, encoding="utf-8") as f:
                 data = json.load(f)
 
             # Reconstruct records
-            for record_dict in data.get('predictions', []):
+            for record_dict in data.get("predictions", []):
                 record = PredictionRecord(
-                    timestamp=datetime.fromisoformat(record_dict['timestamp']),
-                    symbol=record_dict['symbol'],
-                    timeframe=record_dict['timeframe'],
-                    predicted_signal=record_dict['predicted_signal'],
-                    actual_return=record_dict.get('actual_return'),
-                    prediction_error=record_dict.get('prediction_error'),
-                    market_phase=record_dict['market_phase'],
-                    weights_used=record_dict['weights_used'],
-                    indicators_used=record_dict['indicators_used'],
-                    confidence=record_dict['confidence']
+                    timestamp=datetime.fromisoformat(record_dict["timestamp"]),
+                    symbol=record_dict["symbol"],
+                    timeframe=record_dict["timeframe"],
+                    predicted_signal=record_dict["predicted_signal"],
+                    actual_return=record_dict.get("actual_return"),
+                    prediction_error=record_dict.get("prediction_error"),
+                    market_phase=record_dict["market_phase"],
+                    weights_used=record_dict["weights_used"],
+                    indicators_used=record_dict["indicators_used"],
+                    confidence=record_dict["confidence"],
                 )
                 self.prediction_history.append(record)
 
             # Reconstruct symbol performance
-            for symbol, perf_dict in data.get('symbol_performance', {}).items():
+            for symbol, perf_dict in data.get("symbol_performance", {}).items():
                 self.symbol_performance[symbol] = SymbolPerformance(
                     symbol=symbol,
-                    total_predictions=perf_dict['total_predictions'],
-                    correct_predictions=perf_dict['correct_predictions'],
-                    accuracy=perf_dict['accuracy'],
-                    mae=perf_dict['mae'],
-                    rmse=perf_dict['rmse'],
-                    last_update=datetime.fromisoformat(perf_dict['last_update'])
+                    total_predictions=perf_dict["total_predictions"],
+                    correct_predictions=perf_dict["correct_predictions"],
+                    accuracy=perf_dict["accuracy"],
+                    mae=perf_dict["mae"],
+                    rmse=perf_dict["rmse"],
+                    last_update=datetime.fromisoformat(perf_dict["last_update"]),
                 )
 
             logger.info(
                 "history_loaded",
                 predictions=len(self.prediction_history),
-                symbols=len(self.symbol_performance)
+                symbols=len(self.symbol_performance),
             )
 
         except Exception as e:
@@ -540,35 +535,35 @@ class ContinuousLearner:
 
         try:
             data = {
-                'predictions': [
+                "predictions": [
                     {
-                        'timestamp': record.timestamp.isoformat(),
-                        'symbol': record.symbol,
-                        'timeframe': record.timeframe,
-                        'predicted_signal': record.predicted_signal,
-                        'actual_return': record.actual_return,
-                        'prediction_error': record.prediction_error,
-                        'market_phase': record.market_phase,
-                        'weights_used': record.weights_used,
-                        'indicators_used': record.indicators_used,
-                        'confidence': record.confidence
+                        "timestamp": record.timestamp.isoformat(),
+                        "symbol": record.symbol,
+                        "timeframe": record.timeframe,
+                        "predicted_signal": record.predicted_signal,
+                        "actual_return": record.actual_return,
+                        "prediction_error": record.prediction_error,
+                        "market_phase": record.market_phase,
+                        "weights_used": record.weights_used,
+                        "indicators_used": record.indicators_used,
+                        "confidence": record.confidence,
                     }
                     for record in self.prediction_history
                 ],
-                'symbol_performance': {
+                "symbol_performance": {
                     symbol: {
-                        'total_predictions': perf.total_predictions,
-                        'correct_predictions': perf.correct_predictions,
-                        'accuracy': perf.accuracy,
-                        'mae': perf.mae,
-                        'rmse': perf.rmse,
-                        'last_update': perf.last_update.isoformat()
+                        "total_predictions": perf.total_predictions,
+                        "correct_predictions": perf.correct_predictions,
+                        "accuracy": perf.accuracy,
+                        "mae": perf.mae,
+                        "rmse": perf.rmse,
+                        "last_update": perf.last_update.isoformat(),
                     }
                     for symbol, perf in self.symbol_performance.items()
-                }
+                },
             }
 
-            with open(history_file, 'w', encoding='utf-8') as f:
+            with open(history_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
 
             logger.info("history_saved", file=str(history_file))
