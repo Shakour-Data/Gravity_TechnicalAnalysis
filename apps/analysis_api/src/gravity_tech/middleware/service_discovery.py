@@ -11,12 +11,12 @@ License: MIT
 
 import asyncio
 
-
 import structlog
 
 # Make py_eureka_client optional
 try:
     from py_eureka_client import eureka_client
+
     EUREKA_AVAILABLE = True
 except ImportError:
     EUREKA_AVAILABLE = False
@@ -25,6 +25,7 @@ except ImportError:
 # Make consul optional
 try:
     import consul.aio
+
     CONSUL_AVAILABLE = True
 except ImportError:
     CONSUL_AVAILABLE = False
@@ -59,8 +60,10 @@ class ServiceDiscovery:
             return
 
         if not EUREKA_AVAILABLE:
-            logger.warning("eureka_client_not_installed",
-                          message="py_eureka_client is not installed. Service discovery disabled.")
+            logger.warning(
+                "eureka_client_not_installed",
+                message="py_eureka_client is not installed. Service discovery disabled.",
+            )
             return
 
         # تشخیص نوع registry
@@ -98,7 +101,7 @@ class ServiceDiscovery:
                 "eureka_client_initialized",
                 server=settings.eureka_server_url,
                 app=settings.app_name,
-                port=settings.port
+                port=settings.port,
             )
 
         except Exception as e:
@@ -120,18 +123,18 @@ class ServiceDiscovery:
                     settings.environment,
                     settings.app_version,
                     "technical-analysis",
-                    "microservice"
+                    "microservice",
                 ],
                 check={
                     "http": f"http://{settings.host}:{settings.port}/health",
                     "interval": "30s",
                     "timeout": "5s",
-                    "deregister_critical_service_after": "90s"
+                    "deregister_critical_service_after": "90s",
                 },
                 meta={
                     "version": settings.app_version,
                     "environment": settings.environment,
-                }
+                },
             )
 
             self.registry_type = "consul"
@@ -139,7 +142,7 @@ class ServiceDiscovery:
                 "consul_client_initialized",
                 host=consul_host,
                 port=consul_port,
-                service=settings.app_name
+                service=settings.app_name,
             )
 
         except Exception as e:
@@ -165,7 +168,7 @@ class ServiceDiscovery:
                     name=f"{settings.app_name}-health",
                     check_id=f"{settings.app_name}-{settings.port}-health",
                     http=f"http://{settings.host}:{settings.port}/health",
-                    interval="30s"
+                    interval="30s",
                 )
                 logger.debug("consul_health_check_registered")
 
@@ -208,14 +211,14 @@ class ServiceDiscovery:
                         "host": instance.ipAddr,
                         "port": instance.port,
                         "metadata": instance.metadata,
-                        "status": instance.status
+                        "status": instance.status,
                     }
 
             elif self.registry_type == "consul" and self.consul_client:
                 # دریافت اطلاعات از Consul
                 index, services = await self.consul_client.health.service(
                     service_name,
-                    passing=True  # فقط سرویس‌های سالم
+                    passing=True,  # فقط سرویس‌های سالم
                 )
 
                 if services and len(services) > 0:
@@ -224,18 +227,14 @@ class ServiceDiscovery:
                         "host": service["Service"]["Address"],
                         "port": service["Service"]["Port"],
                         "metadata": service["Service"]["Meta"],
-                        "tags": service["Service"]["Tags"]
+                        "tags": service["Service"]["Tags"],
                     }
 
             logger.warning("service_not_found", service=service_name)
             return None
 
         except Exception as e:
-            logger.error(
-                "service_discovery_failed",
-                service=service_name,
-                error=str(e)
-            )
+            logger.error("service_discovery_failed", service=service_name, error=str(e))
             return None
 
 
