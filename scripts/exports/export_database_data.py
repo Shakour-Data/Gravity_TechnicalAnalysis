@@ -4,11 +4,12 @@ import sqlite3
 from pathlib import Path
 
 # مسیر دیتابیس اصلی
-DB_PATH = 'data/TechAnalysis.db.bak'
+DB_PATH = "data/TechAnalysis.db.bak"
 
 # پوشه خروجی برای فایل‌های CSV
-OUTPUT_DIR = 'data/exports'
+OUTPUT_DIR = "data/exports"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 
 def export_table_to_csv(conn, table_name, output_dir):
     """Export a table to CSV file"""
@@ -24,7 +25,7 @@ def export_table_to_csv(conn, table_name, output_dir):
 
     # Write to CSV
     csv_path = Path(output_dir) / f"{table_name}.csv"
-    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+    with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         # Write header
         writer.writerow(columns)
@@ -32,6 +33,7 @@ def export_table_to_csv(conn, table_name, output_dir):
         writer.writerows(rows)
 
     print(f"Exported {len(rows)} rows from {table_name} to {csv_path}")
+
 
 def main():
     if not Path(DB_PATH).exists():
@@ -61,6 +63,6 @@ def main():
     conn.close()
     print(f"\nAll data exported to {OUTPUT_DIR}")
 
+
 if __name__ == "__main__":
     main()
-
