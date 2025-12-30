@@ -139,13 +139,13 @@ class TestSSEConnectionManager:
     @pytest.mark.asyncio
     async def test_get_active_connections_count(self, sse_manager):
         """Test getting active connections count."""
-        initial_count = sse_manager.get_connection_stats()['total_connections']
+        initial_count = sse_manager.get_connection_stats()["total_connections"]
         assert initial_count == 0
 
         await sse_manager.connect("client_1")
         await sse_manager.connect("client_2")
 
-        count = sse_manager.get_connection_stats()['total_connections']
+        count = sse_manager.get_connection_stats()["total_connections"]
         assert count == 2
 
     @pytest.mark.asyncio
@@ -153,7 +153,7 @@ class TestSSEConnectionManager:
         """Test getting subscribers count for a type."""
         sub_type = SubscriptionType.MARKET_DATA
 
-        initial_count = sse_manager.get_connection_stats()['subscription_breakdown'][sub_type.value]
+        initial_count = sse_manager.get_connection_stats()["subscription_breakdown"][sub_type.value]
         assert initial_count == 0
 
         await sse_manager.connect("client_1")
@@ -161,7 +161,7 @@ class TestSSEConnectionManager:
         await sse_manager.subscribe("client_1", sub_type)
         await sse_manager.subscribe("client_2", sub_type)
 
-        count = sse_manager.get_connection_stats()['subscription_breakdown'][sub_type.value]
+        count = sse_manager.get_connection_stats()["subscription_breakdown"][sub_type.value]
         assert count == 2
 
     @pytest.mark.asyncio
@@ -226,11 +226,11 @@ class TestSSEConnectionManager:
         # Simulate some activity
         await sse_manager.subscribe(client_id, SubscriptionType.MARKET_DATA)
 
-        initial_count = sse_manager.get_connection_stats()['total_connections']
+        initial_count = sse_manager.get_connection_stats()["total_connections"]
         assert initial_count == 1
 
         # Cleanup should not remove active connections (method doesn't exist, so skip)
-        count_after = sse_manager.get_connection_stats()['total_connections']
+        count_after = sse_manager.get_connection_stats()["total_connections"]
         assert count_after == 1
 
     @pytest.mark.asyncio
@@ -280,7 +280,7 @@ class TestSSEConnectionManager:
         messages = {
             SubscriptionType.MARKET_DATA: {"price": 15000.0},
             SubscriptionType.TREND_INDICATORS: {"rsi": 65.5},
-            SubscriptionType.PATTERN_RECOGNITION: {"pattern": "bullish_engulfing"}
+            SubscriptionType.PATTERN_RECOGNITION: {"pattern": "bullish_engulfing"},
         }
 
         await sse_manager.connect(client_id)
@@ -302,14 +302,14 @@ class TestSSEConnectionManager:
         for i in range(10):
             await sse_manager.connect(f"client_{i}")
 
-        count = sse_manager.get_connection_stats()['total_connections']
+        count = sse_manager.get_connection_stats()["total_connections"]
         assert count == 10
 
         # Disconnect some
         for i in range(5):
             sse_manager.disconnect(f"client_{i}")
 
-        count_after = sse_manager.get_connection_stats()['total_connections']
+        count_after = sse_manager.get_connection_stats()["total_connections"]
         assert count_after == 5
 
     @pytest.mark.asyncio
