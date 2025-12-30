@@ -14,7 +14,9 @@ import psycopg2
 
 def main():
     parser = argparse.ArgumentParser(description="Sync core.dim_symbols from tse_input tables.")
-    parser.add_argument("--pg-dsn", required=True, help="Postgres DSN, e.g. postgresql://user:pass@host:port/db")
+    parser.add_argument(
+        "--pg-dsn", required=True, help="Postgres DSN, e.g. postgresql://user:pass@host:port/db"
+    )
     args = parser.parse_args()
 
     conn = psycopg2.connect(args.pg_dsn)
