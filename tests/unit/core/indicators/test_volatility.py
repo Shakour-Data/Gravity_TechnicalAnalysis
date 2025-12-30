@@ -20,7 +20,7 @@ class TestVolatilityIndicators:
                 high=105.0,
                 low=95.0,
                 close=102.0,
-                volume=1000
+                volume=1000,
             ),
             Candle(
                 timestamp="2023-01-02T00:00:00Z",
@@ -28,7 +28,7 @@ class TestVolatilityIndicators:
                 high=108.0,
                 low=98.0,
                 close=105.0,
-                volume=1100
+                volume=1100,
             ),
             Candle(
                 timestamp="2023-01-03T00:00:00Z",
@@ -36,7 +36,7 @@ class TestVolatilityIndicators:
                 high=110.0,
                 low=100.0,
                 close=108.0,
-                volume=1200
+                volume=1200,
             ),
             Candle(
                 timestamp="2023-01-04T00:00:00Z",
@@ -44,7 +44,7 @@ class TestVolatilityIndicators:
                 high=112.0,
                 low=105.0,
                 close=110.0,
-                volume=1300
+                volume=1300,
             ),
             Candle(
                 timestamp="2023-01-05T00:00:00Z",
@@ -52,7 +52,7 @@ class TestVolatilityIndicators:
                 high=115.0,
                 low=108.0,
                 close=112.0,
-                volume=1400
+                volume=1400,
             ),
         ] * 5  # Repeat to have enough data
 
@@ -87,7 +87,7 @@ class TestVolatilityIndicators:
                 high=105.0,
                 low=95.0,
                 close=102.0,
-                volume=1000
+                volume=1000,
             )
         ]
         # ATR should handle single candle gracefully or raise appropriate error
@@ -120,7 +120,7 @@ class TestVolatilityIndicators:
                 high=105.0,
                 low=95.0,
                 close=102.0,
-                volume=1000
+                volume=1000,
             )
         ]
         # BB should handle insufficient data gracefully
@@ -216,12 +216,12 @@ class TestVolatilityIndicators:
 
         assert isinstance(results, dict)
         assert len(results) > 0
-        for key, result in results.items():
+        for _key, result in results.items():
             assert isinstance(result, (IndicatorResult, VolatilityResult))
             if isinstance(result, IndicatorResult):
                 assert result.category.name == "VOLATILITY"
                 assert 0 <= result.confidence <= 1
             elif isinstance(result, VolatilityResult):
-                assert hasattr(result, 'value')
-                assert hasattr(result, 'normalized')
-                assert hasattr(result, 'percentile')
+                assert hasattr(result, "value")
+                assert hasattr(result, "normalized")
+                assert hasattr(result, "percentile")
