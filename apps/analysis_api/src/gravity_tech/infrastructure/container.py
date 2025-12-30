@@ -15,6 +15,7 @@ For testing:
     test_container.register("cache", mock_cache)
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
