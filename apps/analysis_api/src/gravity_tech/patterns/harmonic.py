@@ -23,6 +23,7 @@ import numpy as np
 
 class PatternType(Enum):
     """Harmonic pattern types."""
+
     GARTLEY = "gartley"
     BUTTERFLY = "butterfly"
     BAT = "bat"
@@ -32,6 +33,7 @@ class PatternType(Enum):
 
 class PatternDirection(Enum):
     """Pattern direction (bullish/bearish)."""
+
     BULLISH = "bullish"
     BEARISH = "bearish"
 
@@ -39,6 +41,7 @@ class PatternDirection(Enum):
 @dataclass
 class FibonacciRatio:
     """Fibonacci ratio with tolerance."""
+
     target: float
     tolerance: float = 0.05
 
@@ -54,6 +57,7 @@ class FibonacciRatio:
 @dataclass
 class PatternPoint:
     """A point in the harmonic pattern."""
+
     index: int
     price: float
     label: str  # X, A, B, C, D
@@ -62,6 +66,7 @@ class PatternPoint:
 @dataclass
 class HarmonicPattern:
     """Detected harmonic pattern."""
+
     pattern_type: PatternType
     direction: PatternDirection
     points: dict[str, PatternPoint]  # X, A, B, C, D
@@ -76,6 +81,7 @@ class HarmonicPattern:
 
 class FibonacciLevels:
     """Standard Fibonacci retracement and extension levels."""
+
     # Retracement levels
     R_382 = 0.382
     R_500 = 0.500
@@ -115,32 +121,33 @@ class HarmonicPatternDetector:
         # Pattern definitions with Fibonacci ratios
         self.pattern_definitions = {
             PatternType.GARTLEY: {
-                'XA_BC': FibonacciRatio(0.618, tolerance),  # B retraces 61.8% of XA
-                'AB_CD': FibonacciRatio(0.786, tolerance),  # D retraces 78.6% of AB
-                'XA_AD': FibonacciRatio(0.786, tolerance),  # D is 78.6% extension of XA
+                "XA_BC": FibonacciRatio(0.618, tolerance),  # B retraces 61.8% of XA
+                "AB_CD": FibonacciRatio(0.786, tolerance),  # D retraces 78.6% of AB
+                "XA_AD": FibonacciRatio(0.786, tolerance),  # D is 78.6% extension of XA
             },
             PatternType.BUTTERFLY: {
-                'XA_BC': FibonacciRatio(0.786, tolerance),  # B retraces 78.6% of XA
-                'AB_CD': FibonacciRatio(1.618, tolerance),  # D extends 161.8% of AB (CD = 1.618 * AB)
-                'XA_AD': FibonacciRatio(1.272, tolerance),  # D is 127.2% extension of XA
+                "XA_BC": FibonacciRatio(0.786, tolerance),  # B retraces 78.6% of XA
+                "AB_CD": FibonacciRatio(
+                    1.618, tolerance
+                ),  # D extends 161.8% of AB (CD = 1.618 * AB)
+                "XA_AD": FibonacciRatio(1.272, tolerance),  # D is 127.2% extension of XA
             },
             PatternType.BAT: {
-                'XA_BC': FibonacciRatio(0.500, tolerance),  # B retraces 50% of XA
-                'AB_CD': FibonacciRatio(0.886, tolerance),  # D retraces 88.6% of AB
-                'XA_AD': FibonacciRatio(0.886, tolerance),  # D is 88.6% extension of XA
+                "XA_BC": FibonacciRatio(0.500, tolerance),  # B retraces 50% of XA
+                "AB_CD": FibonacciRatio(0.886, tolerance),  # D retraces 88.6% of AB
+                "XA_AD": FibonacciRatio(0.886, tolerance),  # D is 88.6% extension of XA
             },
             PatternType.CRAB: {
-                'XA_BC': FibonacciRatio(0.618, tolerance),  # B retraces 61.8% of XA
-                'AB_CD': FibonacciRatio(2.618, tolerance),  # D extends 261.8% of AB (CD = 2.618 * AB)
-                'XA_AD': FibonacciRatio(1.618, tolerance),  # D is 161.8% extension of XA
-            }
+                "XA_BC": FibonacciRatio(0.618, tolerance),  # B retraces 61.8% of XA
+                "AB_CD": FibonacciRatio(
+                    2.618, tolerance
+                ),  # D extends 261.8% of AB (CD = 2.618 * AB)
+                "XA_AD": FibonacciRatio(1.618, tolerance),  # D is 161.8% extension of XA
+            },
         }
 
     def detect_patterns(
-        self,
-        highs: np.ndarray,
-        lows: np.ndarray,
-        closes: np.ndarray
+        self, highs: np.ndarray, lows: np.ndarray, closes: np.ndarray
     ) -> list[HarmonicPattern]:
         """
         Detect all harmonic patterns in price data.
@@ -172,7 +179,9 @@ class HarmonicPatternDetector:
         """Find local high pivot points."""
         pivots = []
         for i in range(window, len(highs) - window):
-            if all(highs[i] >= highs[i-window:i]) and all(highs[i] >= highs[i+1:i+window+1]):
+            if all(highs[i] >= highs[i - window : i]) and all(
+                highs[i] >= highs[i + 1 : i + window + 1]
+            ):
                 pivots.append((i, highs[i]))
         return pivots
 
@@ -180,7 +189,9 @@ class HarmonicPatternDetector:
         """Find local low pivot points."""
         pivots = []
         for i in range(window, len(lows) - window):
-            if all(lows[i] <= lows[i-window:i]) and all(lows[i] <= lows[i+1:i+window+1]):
+            if all(lows[i] <= lows[i - window : i]) and all(
+                lows[i] <= lows[i + 1 : i + window + 1]
+            ):
                 pivots.append((i, lows[i]))
         return pivots
 
@@ -188,7 +199,7 @@ class HarmonicPatternDetector:
         self,
         pivot_lows: list[tuple[int, float]],
         pivot_highs: list[tuple[int, float]],
-        closes: np.ndarray
+        closes: np.ndarray,
     ) -> list[HarmonicPattern]:
         """Detect bullish harmonic patterns (reversal upward)."""
         patterns = []
@@ -228,11 +239,11 @@ class HarmonicPatternDetector:
 
             # Create pattern points
             points = {
-                'X': PatternPoint(x_idx, x_price, 'X'),
-                'A': PatternPoint(a_idx, a_price, 'A'),
-                'B': PatternPoint(b_idx, b_price, 'B'),
-                'C': PatternPoint(c_idx, c_price, 'C'),
-                'D': PatternPoint(d_idx, d_price, 'D')
+                "X": PatternPoint(x_idx, x_price, "X"),
+                "A": PatternPoint(a_idx, a_price, "A"),
+                "B": PatternPoint(b_idx, b_price, "B"),
+                "C": PatternPoint(c_idx, c_price, "C"),
+                "D": PatternPoint(d_idx, d_price, "D"),
             }
 
             # Calculate ratios
@@ -245,9 +256,9 @@ class HarmonicPatternDetector:
                 continue
 
             ratios = {
-                'XA_BC': ab_move / xa_move if xa_move != 0 else 0,
-                'AB_CD': cd_move / ab_move if ab_move != 0 else 0,
-                'XA_AD': ad_move / xa_move if xa_move != 0 else 0
+                "XA_BC": ab_move / xa_move if xa_move != 0 else 0,
+                "AB_CD": cd_move / ab_move if ab_move != 0 else 0,
+                "XA_AD": ad_move / xa_move if xa_move != 0 else 0,
             }
 
             # Identify pattern type
@@ -269,7 +280,7 @@ class HarmonicPatternDetector:
                     completion_point=d_price,
                     stop_loss=stop_loss,
                     target_1=target_1,
-                    target_2=target_2
+                    target_2=target_2,
                 )
                 patterns.append(pattern)
 
@@ -279,7 +290,7 @@ class HarmonicPatternDetector:
         self,
         pivot_highs: list[tuple[int, float]],
         pivot_lows: list[tuple[int, float]],
-        closes: np.ndarray
+        closes: np.ndarray,
     ) -> list[HarmonicPattern]:
         """Detect bearish harmonic patterns (reversal downward)."""
         patterns = []
@@ -319,11 +330,11 @@ class HarmonicPatternDetector:
 
             # Create pattern points
             points = {
-                'X': PatternPoint(x_idx, x_price, 'X'),
-                'A': PatternPoint(a_idx, a_price, 'A'),
-                'B': PatternPoint(b_idx, b_price, 'B'),
-                'C': PatternPoint(c_idx, c_price, 'C'),
-                'D': PatternPoint(d_idx, d_price, 'D')
+                "X": PatternPoint(x_idx, x_price, "X"),
+                "A": PatternPoint(a_idx, a_price, "A"),
+                "B": PatternPoint(b_idx, b_price, "B"),
+                "C": PatternPoint(c_idx, c_price, "C"),
+                "D": PatternPoint(d_idx, d_price, "D"),
             }
 
             # Calculate ratios (inverted for bearish)
@@ -336,9 +347,9 @@ class HarmonicPatternDetector:
                 continue
 
             ratios = {
-                'XA_BC': ab_move / xa_move if xa_move != 0 else 0,
-                'AB_CD': cd_move / ab_move if ab_move != 0 else 0,
-                'XA_AD': ad_move / xa_move if xa_move != 0 else 0
+                "XA_BC": ab_move / xa_move if xa_move != 0 else 0,
+                "AB_CD": cd_move / ab_move if ab_move != 0 else 0,
+                "XA_AD": ad_move / xa_move if xa_move != 0 else 0,
             }
 
             # Identify pattern type
@@ -360,7 +371,7 @@ class HarmonicPatternDetector:
                     completion_point=d_price,
                     stop_loss=stop_loss,
                     target_1=target_1,
-                    target_2=target_2
+                    target_2=target_2,
                 )
                 patterns.append(pattern)
 
@@ -399,10 +410,7 @@ class HarmonicPatternDetector:
 
 
 def detect_gartley(
-    highs: np.ndarray,
-    lows: np.ndarray,
-    closes: np.ndarray,
-    tolerance: float = 0.05
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, tolerance: float = 0.05
 ) -> dict:
     """
     Detect Gartley 222 pattern (most common harmonic pattern).
@@ -430,33 +438,30 @@ def detect_gartley(
     if gartley_patterns:
         best_pattern = max(gartley_patterns, key=lambda p: p.confidence)
         return {
-            'detected': True,
-            'direction': best_pattern.direction.value,
-            'confidence': best_pattern.confidence,
-            'completion_point': best_pattern.completion_point,
-            'stop_loss': best_pattern.stop_loss,
-            'target_1': best_pattern.target_1,
-            'target_2': best_pattern.target_2,
-            'ratios': best_pattern.ratios
+            "detected": True,
+            "direction": best_pattern.direction.value,
+            "confidence": best_pattern.confidence,
+            "completion_point": best_pattern.completion_point,
+            "stop_loss": best_pattern.stop_loss,
+            "target_1": best_pattern.target_1,
+            "target_2": best_pattern.target_2,
+            "ratios": best_pattern.ratios,
         }
 
     return {
-        'detected': False,
-        'direction': None,
-        'confidence': 0.0,
-        'completion_point': None,
-        'stop_loss': None,
-        'target_1': None,
-        'target_2': None,
-        'ratios': {}
+        "detected": False,
+        "direction": None,
+        "confidence": 0.0,
+        "completion_point": None,
+        "stop_loss": None,
+        "target_1": None,
+        "target_2": None,
+        "ratios": {},
     }
 
 
 def detect_butterfly(
-    highs: np.ndarray,
-    lows: np.ndarray,
-    closes: np.ndarray,
-    tolerance: float = 0.05
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, tolerance: float = 0.05
 ) -> dict:
     """
     Detect Butterfly pattern.
@@ -483,33 +488,30 @@ def detect_butterfly(
     if butterfly_patterns:
         best_pattern = max(butterfly_patterns, key=lambda p: p.confidence)
         return {
-            'detected': True,
-            'direction': best_pattern.direction.value,
-            'confidence': best_pattern.confidence,
-            'completion_point': best_pattern.completion_point,
-            'stop_loss': best_pattern.stop_loss,
-            'target_1': best_pattern.target_1,
-            'target_2': best_pattern.target_2,
-            'ratios': best_pattern.ratios
+            "detected": True,
+            "direction": best_pattern.direction.value,
+            "confidence": best_pattern.confidence,
+            "completion_point": best_pattern.completion_point,
+            "stop_loss": best_pattern.stop_loss,
+            "target_1": best_pattern.target_1,
+            "target_2": best_pattern.target_2,
+            "ratios": best_pattern.ratios,
         }
 
     return {
-        'detected': False,
-        'direction': None,
-        'confidence': 0.0,
-        'completion_point': None,
-        'stop_loss': None,
-        'target_1': None,
-        'target_2': None,
-        'ratios': {}
+        "detected": False,
+        "direction": None,
+        "confidence": 0.0,
+        "completion_point": None,
+        "stop_loss": None,
+        "target_1": None,
+        "target_2": None,
+        "ratios": {},
     }
 
 
 def detect_bat(
-    highs: np.ndarray,
-    lows: np.ndarray,
-    closes: np.ndarray,
-    tolerance: float = 0.05
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, tolerance: float = 0.05
 ) -> dict:
     """
     Detect Bat pattern.
@@ -536,33 +538,30 @@ def detect_bat(
     if bat_patterns:
         best_pattern = max(bat_patterns, key=lambda p: p.confidence)
         return {
-            'detected': True,
-            'direction': best_pattern.direction.value,
-            'confidence': best_pattern.confidence,
-            'completion_point': best_pattern.completion_point,
-            'stop_loss': best_pattern.stop_loss,
-            'target_1': best_pattern.target_1,
-            'target_2': best_pattern.target_2,
-            'ratios': best_pattern.ratios
+            "detected": True,
+            "direction": best_pattern.direction.value,
+            "confidence": best_pattern.confidence,
+            "completion_point": best_pattern.completion_point,
+            "stop_loss": best_pattern.stop_loss,
+            "target_1": best_pattern.target_1,
+            "target_2": best_pattern.target_2,
+            "ratios": best_pattern.ratios,
         }
 
     return {
-        'detected': False,
-        'direction': None,
-        'confidence': 0.0,
-        'completion_point': None,
-        'stop_loss': None,
-        'target_1': None,
-        'target_2': None,
-        'ratios': {}
+        "detected": False,
+        "direction": None,
+        "confidence": 0.0,
+        "completion_point": None,
+        "stop_loss": None,
+        "target_1": None,
+        "target_2": None,
+        "ratios": {},
     }
 
 
 def detect_crab(
-    highs: np.ndarray,
-    lows: np.ndarray,
-    closes: np.ndarray,
-    tolerance: float = 0.05
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, tolerance: float = 0.05
 ) -> dict:
     """
     Detect Crab pattern.
@@ -589,33 +588,30 @@ def detect_crab(
     if crab_patterns:
         best_pattern = max(crab_patterns, key=lambda p: p.confidence)
         return {
-            'detected': True,
-            'direction': best_pattern.direction.value,
-            'confidence': best_pattern.confidence,
-            'completion_point': best_pattern.completion_point,
-            'stop_loss': best_pattern.stop_loss,
-            'target_1': best_pattern.target_1,
-            'target_2': best_pattern.target_2,
-            'ratios': best_pattern.ratios
+            "detected": True,
+            "direction": best_pattern.direction.value,
+            "confidence": best_pattern.confidence,
+            "completion_point": best_pattern.completion_point,
+            "stop_loss": best_pattern.stop_loss,
+            "target_1": best_pattern.target_1,
+            "target_2": best_pattern.target_2,
+            "ratios": best_pattern.ratios,
         }
 
     return {
-        'detected': False,
-        'direction': None,
-        'confidence': 0.0,
-        'completion_point': None,
-        'stop_loss': None,
-        'target_1': None,
-        'target_2': None,
-        'ratios': {}
+        "detected": False,
+        "direction": None,
+        "confidence": 0.0,
+        "completion_point": None,
+        "stop_loss": None,
+        "target_1": None,
+        "target_2": None,
+        "ratios": {},
     }
 
 
 def detect_all_harmonic_patterns(
-    highs: np.ndarray,
-    lows: np.ndarray,
-    closes: np.ndarray,
-    tolerance: float = 0.05
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, tolerance: float = 0.05
 ) -> dict:
     """
     Detect all harmonic patterns in one call.
@@ -633,31 +629,31 @@ def detect_all_harmonic_patterns(
     all_patterns = detector.detect_patterns(highs, lows, closes)
 
     result = {
-        'total_patterns': len(all_patterns),
-        'gartley': [],
-        'butterfly': [],
-        'bat': [],
-        'crab': []
+        "total_patterns": len(all_patterns),
+        "gartley": [],
+        "butterfly": [],
+        "bat": [],
+        "crab": [],
     }
 
     for pattern in all_patterns:
         pattern_data = {
-            'direction': pattern.direction.value,
-            'confidence': pattern.confidence,
-            'completion_point': pattern.completion_point,
-            'stop_loss': pattern.stop_loss,
-            'target_1': pattern.target_1,
-            'target_2': pattern.target_2,
-            'ratios': pattern.ratios
+            "direction": pattern.direction.value,
+            "confidence": pattern.confidence,
+            "completion_point": pattern.completion_point,
+            "stop_loss": pattern.stop_loss,
+            "target_1": pattern.target_1,
+            "target_2": pattern.target_2,
+            "ratios": pattern.ratios,
         }
 
         if pattern.pattern_type == PatternType.GARTLEY:
-            result['gartley'].append(pattern_data)
+            result["gartley"].append(pattern_data)
         elif pattern.pattern_type == PatternType.BUTTERFLY:
-            result['butterfly'].append(pattern_data)
+            result["butterfly"].append(pattern_data)
         elif pattern.pattern_type == PatternType.BAT:
-            result['bat'].append(pattern_data)
+            result["bat"].append(pattern_data)
         elif pattern.pattern_type == PatternType.CRAB:
-            result['crab'].append(pattern_data)
+            result["crab"].append(pattern_data)
 
     return result
