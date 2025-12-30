@@ -1,6 +1,7 @@
 """
 Simple test for complete analysis with Market Phase
 """
+
 import asyncio
 from datetime import datetime, timedelta
 
