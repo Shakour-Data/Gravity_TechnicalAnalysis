@@ -35,22 +35,24 @@ from typing import Any
 
 class DecisionType(Enum):
     """Type of trading decision"""
-    STRONG_BUY = "STRONG_BUY"        # High confidence buy
-    BUY = "BUY"                      # Moderate confidence buy
-    WEAK_BUY = "WEAK_BUY"            # Low confidence buy
-    HOLD = "HOLD"                    # No action
-    WEAK_SELL = "WEAK_SELL"          # Low confidence sell
-    SELL = "SELL"                    # Moderate confidence sell
-    STRONG_SELL = "STRONG_SELL"      # High confidence sell
+
+    STRONG_BUY = "STRONG_BUY"  # High confidence buy
+    BUY = "BUY"  # Moderate confidence buy
+    WEAK_BUY = "WEAK_BUY"  # Low confidence buy
+    HOLD = "HOLD"  # No action
+    WEAK_SELL = "WEAK_SELL"  # Low confidence sell
+    SELL = "SELL"  # Moderate confidence sell
+    STRONG_SELL = "STRONG_SELL"  # High confidence sell
 
 
 class ConfidenceLevel(Enum):
     """Confidence level of the decision"""
-    VERY_HIGH = "VERY_HIGH"    # 90-100%
-    HIGH = "HIGH"              # 75-90%
-    MEDIUM = "MEDIUM"          # 60-75%
-    LOW = "LOW"                # 40-60%
-    VERY_LOW = "VERY_LOW"      # 0-40%
+
+    VERY_HIGH = "VERY_HIGH"  # 90-100%
+    HIGH = "HIGH"  # 75-90%
+    MEDIUM = "MEDIUM"  # 60-75%
+    LOW = "LOW"  # 40-60%
+    VERY_LOW = "VERY_LOW"  # 0-40%
 
     @classmethod
     def from_score(cls, score: float) -> "ConfidenceLevel":
@@ -87,6 +89,7 @@ class Decision:
         reasoning: Human-readable explanation
         metadata: Additional decision information
     """
+
     decision_type: DecisionType
     confidence: ConfidenceLevel
     confidence_score: float
@@ -114,7 +117,7 @@ class Decision:
         return self.decision_type in [
             DecisionType.STRONG_BUY,
             DecisionType.BUY,
-            DecisionType.WEAK_BUY
+            DecisionType.WEAK_BUY,
         ]
 
     @property
@@ -123,16 +126,13 @@ class Decision:
         return self.decision_type in [
             DecisionType.STRONG_SELL,
             DecisionType.SELL,
-            DecisionType.WEAK_SELL
+            DecisionType.WEAK_SELL,
         ]
 
     @property
     def is_high_confidence(self) -> bool:
         """Check if decision has high confidence"""
-        return self.confidence in [
-            ConfidenceLevel.VERY_HIGH,
-            ConfidenceLevel.HIGH
-        ]
+        return self.confidence in [ConfidenceLevel.VERY_HIGH, ConfidenceLevel.HIGH]
 
     @property
     def aggregate_dimension_score(self) -> float:
