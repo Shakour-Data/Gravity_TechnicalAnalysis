@@ -6,16 +6,17 @@ import psycopg2
 
 # Database connection settings
 DB_CONFIG = {
-    'host': 'localhost',
-    'port': 5432,
-    'user': 'gravity',
-    'password': 'gravity',
-    'database': 'gravity'
+    "host": "localhost",
+    "port": 5432,
+    "user": "gravity",
+    "password": "gravity",
+    "database": "gravity",
 }
 
 # Output directory for CSV files
-OUTPUT_DIR = 'data/postgres_exports'
+OUTPUT_DIR = "data/postgres_exports"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 
 def get_all_tables(conn):
     """Get list of all tables in database"""
@@ -29,6 +30,7 @@ def get_all_tables(conn):
     tables = [row[0] for row in cursor.fetchall()]
     cursor.close()
     return tables
+
 
 def export_table_to_csv(conn, table_name, output_dir):
     """Export a table to CSV file"""
@@ -49,7 +51,7 @@ def export_table_to_csv(conn, table_name, output_dir):
 
     # Write to CSV
     csv_path = Path(output_dir) / f"{table_name}.csv"
-    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+    with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         # Write header
         writer.writerow(columns)
@@ -58,6 +60,7 @@ def export_table_to_csv(conn, table_name, output_dir):
 
     print(f"Exported {len(rows)} rows from {table_name} to {csv_path}")
     cursor.close()
+
 
 def main():
     try:
@@ -87,6 +90,7 @@ def main():
         print(f"Database connection error: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 if __name__ == "__main__":
     main()
