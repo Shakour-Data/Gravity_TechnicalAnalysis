@@ -21,6 +21,7 @@ License: MIT
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.models.schemas import Candle, IndicatorCategory, IndicatorResult, SignalStrength
 
 
@@ -74,7 +75,7 @@ class TrendIndicators:
             signal=signal,
             value=float(sma_current),
             confidence=confidence,
-            description=f"قیمت {diff_pct:.2f}% {'بالای' if diff_pct > 0 else 'زیر'} SMA"
+            description=f"قیمت {diff_pct:.2f}% {'بالای' if diff_pct > 0 else 'زیر'} SMA",
         )
 
     @staticmethod
@@ -121,7 +122,7 @@ class TrendIndicators:
             signal=signal,
             value=float(ema_current),
             confidence=confidence,
-            description=f"قیمت {diff_pct:.2f}% {'بالای' if diff_pct > 0 else 'زیر'} EMA"
+            description=f"قیمت {diff_pct:.2f}% {'بالای' if diff_pct > 0 else 'زیر'} EMA",
         )
 
     @staticmethod
@@ -144,7 +145,7 @@ class TrendIndicators:
             if i < period - 1:
                 wma_values.append(np.nan)
             else:
-                window = closes[i - period + 1:i + 1]
+                window = closes[i - period + 1 : i + 1]
                 wma = np.dot(window, weights) / weights.sum()
                 wma_values.append(wma)
 
@@ -176,7 +177,7 @@ class TrendIndicators:
             signal=signal,
             value=float(wma_current),
             confidence=confidence,
-            description=f"قیمت {diff_pct:.2f}% {'بالای' if diff_pct > 0 else 'زیر'} WMA"
+            description=f"قیمت {diff_pct:.2f}% {'بالای' if diff_pct > 0 else 'زیر'} WMA",
         )
 
     @staticmethod
@@ -226,7 +227,7 @@ class TrendIndicators:
             signal=signal,
             value=float(dema_current),
             confidence=confidence,
-            description=f"DEMA نشان‌دهنده روند {'صعودی' if diff_pct > 0 else 'نزولی'} است"
+            description=f"DEMA نشان‌دهنده روند {'صعودی' if diff_pct > 0 else 'نزولی'} است",
         )
 
     @staticmethod
@@ -277,11 +278,13 @@ class TrendIndicators:
             signal=signal,
             value=float(tema_current),
             confidence=confidence,
-            description=f"TEMA با واکنش سریع‌تر نشان‌دهنده روند {'صعودی' if diff_pct > 0 else 'نزولی'}"
+            description=f"TEMA با واکنش سریع‌تر نشان‌دهنده روند {'صعودی' if diff_pct > 0 else 'نزولی'}",
         )
 
     @staticmethod
-    def macd(candles: list[Candle], fast: int = 12, slow: int = 26, signal_period: int = 9) -> IndicatorResult:
+    def macd(
+        candles: list[Candle], fast: int = 12, slow: int = 26, signal_period: int = 9
+    ) -> IndicatorResult:
         """
         Moving Average Convergence Divergence
 
@@ -326,19 +329,18 @@ class TrendIndicators:
         else:
             signal = SignalStrength.NEUTRAL
 
-        confidence = min(0.9, 0.7 + abs(hist_current / macd_current) * 10 if macd_current != 0 else 0.7)
+        confidence = min(
+            0.9, 0.7 + abs(hist_current / macd_current) * 10 if macd_current != 0 else 0.7
+        )
 
         return IndicatorResult(
             indicator_name="MACD",
             category=IndicatorCategory.TREND,
             signal=signal,
             value=float(macd_current),
-            additional_values={
-                "signal": float(signal_current),
-                "histogram": float(hist_current)
-            },
+            additional_values={"signal": float(signal_current), "histogram": float(hist_current)},
             confidence=confidence,
-            description=f"MACD {'بالای' if macd_current > signal_current else 'زیر'} خط سیگنال"
+            description=f"MACD {'بالای' if macd_current > signal_current else 'زیر'} خط سیگنال",
         )
 
     @staticmethod
@@ -354,41 +356,33 @@ class TrendIndicators:
         Returns:
             IndicatorResult with signal
         """
-        df = pd.DataFrame([{
-            'high': c.high,
-            'low': c.low,
-            'close': c.close
-        } for c in candles])
+        df = pd.DataFrame([{"high": c.high, "low": c.low, "close": c.close} for c in candles])
 
         # Calculate +DM and -DM
-        df['high_diff'] = df['high'].diff()
-        df['low_diff'] = -df['low'].diff()
+        df["high_diff"] = df["high"].diff()
+        df["low_diff"] = -df["low"].diff()
 
-        df['+DM'] = np.where(
-            (df['high_diff'] > df['low_diff']) & (df['high_diff'] > 0),
-            df['high_diff'],
-            0
+        df["+DM"] = np.where(
+            (df["high_diff"] > df["low_diff"]) & (df["high_diff"] > 0), df["high_diff"], 0
         )
-        df['-DM'] = np.where(
-            (df['low_diff'] > df['high_diff']) & (df['low_diff'] > 0),
-            df['low_diff'],
-            0
+        df["-DM"] = np.where(
+            (df["low_diff"] > df["high_diff"]) & (df["low_diff"] > 0), df["low_diff"], 0
         )
 
         # Calculate True Range
-        df['TR'] = df.apply(
+        df["TR"] = df.apply(
             lambda row: max(
-                row['high'] - row['low'],
-                abs(row['high'] - df['close'].shift(1).loc[row.name]) if row.name > 0 else 0,
-                abs(row['low'] - df['close'].shift(1).loc[row.name]) if row.name > 0 else 0
+                row["high"] - row["low"],
+                abs(row["high"] - df["close"].shift(1).loc[row.name]) if row.name > 0 else 0,
+                abs(row["low"] - df["close"].shift(1).loc[row.name]) if row.name > 0 else 0,
             ),
-            axis=1
+            axis=1,
         )
 
         # Smooth the values
-        atr = df['TR'].rolling(window=period).mean()
-        plus_di = 100 * (df['+DM'].rolling(window=period).mean() / atr)
-        minus_di = 100 * (df['-DM'].rolling(window=period).mean() / atr)
+        atr = df["TR"].rolling(window=period).mean()
+        plus_di = 100 * (df["+DM"].rolling(window=period).mean() / atr)
+        minus_di = 100 * (df["-DM"].rolling(window=period).mean() / atr)
 
         # Calculate DX and ADX
         dx = 100 * np.abs(plus_di - minus_di) / (plus_di + minus_di)
@@ -424,12 +418,9 @@ class TrendIndicators:
             category=IndicatorCategory.TREND,
             signal=signal,
             value=float(adx_current),
-            additional_values={
-                "+DI": float(plus_di_current),
-                "-DI": float(minus_di_current)
-            },
+            additional_values={"+DI": float(plus_di_current), "-DI": float(minus_di_current)},
             confidence=confidence,
-            description=f"قدرت روند: {adx_current:.1f} - {'قوی' if adx_current > 25 else 'ضعیف'}"
+            description=f"قدرت روند: {adx_current:.1f} - {'قوی' if adx_current > 25 else 'ضعیف'}",
         )
 
     @staticmethod
