@@ -39,13 +39,17 @@ class TestElliottWavePatterns:
 
     def test_elliott_wave_detector_initialization(self):
         """Test Elliott Wave detector can be created"""
-        detector_class = _get_pattern_attribute("gravity_tech.patterns.elliott_wave", "ElliottWaveDetector")
+        detector_class = _get_pattern_attribute(
+            "gravity_tech.patterns.elliott_wave", "ElliottWaveDetector"
+        )
         detector = detector_class()
         assert detector is not None
 
     def test_detect_five_wave_pattern(self, uptrend_candles):
         """Test detection of 5-wave pattern"""
-        detector_class = _get_pattern_attribute("gravity_tech.patterns.elliott_wave", "ElliottWaveDetector")
+        detector_class = _get_pattern_attribute(
+            "gravity_tech.patterns.elliott_wave", "ElliottWaveDetector"
+        )
         detector = detector_class()
 
         if not hasattr(detector, "detect"):
@@ -56,7 +60,9 @@ class TestElliottWavePatterns:
 
     def test_wave_degree_classification(self):
         """Test wave degree classification"""
-        classify_wave_degree = _get_pattern_attribute("gravity_tech.patterns.elliott_wave", "classify_wave_degree")
+        classify_wave_degree = _get_pattern_attribute(
+            "gravity_tech.patterns.elliott_wave", "classify_wave_degree"
+        )
         degree = classify_wave_degree(small_timeframe="1m", large_timeframe="1h")
         assert degree is None or isinstance(degree, int | str)
 
@@ -64,6 +70,7 @@ class TestElliottWavePatterns:
         """Test Gartley pattern detection"""
         try:
             from gravity_tech.patterns.harmonic import detect_gartley
+
             highs = np.array([c.high for c in sample_candles])
             lows = np.array([c.low for c in sample_candles])
             closes = np.array([c.close for c in sample_candles])
@@ -76,6 +83,7 @@ class TestElliottWavePatterns:
         """Test Butterfly pattern detection"""
         try:
             from gravity_tech.patterns.harmonic import detect_butterfly
+
             highs = np.array([c.high for c in sample_candles])
             lows = np.array([c.low for c in sample_candles])
             closes = np.array([c.close for c in sample_candles])
@@ -88,6 +96,7 @@ class TestElliottWavePatterns:
         """Test Bat pattern detection"""
         try:
             from gravity_tech.patterns.harmonic import detect_bat
+
             highs = np.array([c.high for c in sample_candles])
             lows = np.array([c.low for c in sample_candles])
             closes = np.array([c.close for c in sample_candles])
@@ -100,6 +109,7 @@ class TestElliottWavePatterns:
         """Test Crab pattern detection"""
         try:
             from gravity_tech.patterns.harmonic import detect_crab
+
             highs = np.array([c.high for c in sample_candles])
             lows = np.array([c.low for c in sample_candles])
             closes = np.array([c.close for c in sample_candles])
@@ -112,6 +122,7 @@ class TestElliottWavePatterns:
         """Test harmonic ratio calculations"""
         try:
             from gravity_tech.patterns.harmonic import validate_harmonic_ratios
+
             # Test with valid ratios
             ratios = [0.786, 0.886, 1.13]
             valid = validate_harmonic_ratios(ratios)
@@ -127,8 +138,9 @@ class TestClassicalPatterns:
         """Test Head and Shoulders pattern detection"""
         try:
             from gravity_tech.patterns.classical import ClassicalPatterns
+
             pattern = ClassicalPatterns.detect_head_and_shoulders(sample_candles)
-            assert pattern is None or hasattr(pattern, 'pattern_name')
+            assert pattern is None or hasattr(pattern, "pattern_name")
         except ImportError:
             pytest.skip("Classical patterns not available")
 
@@ -136,9 +148,10 @@ class TestClassicalPatterns:
         """Test Double Top pattern detection"""
         try:
             from gravity_tech.patterns.classical import ClassicalPatterns
+
             # Create mock candles with double top
             pattern = ClassicalPatterns.detect_double_top([])
-            assert pattern is None or hasattr(pattern, 'pattern_name')
+            assert pattern is None or hasattr(pattern, "pattern_name")
         except ImportError:
             pytest.skip("Classical patterns not available")
 
@@ -146,8 +159,9 @@ class TestClassicalPatterns:
         """Test Double Bottom pattern detection"""
         try:
             from gravity_tech.patterns.classical import ClassicalPatterns
+
             pattern = ClassicalPatterns.detect_double_bottom([])
-            assert pattern is None or hasattr(pattern, 'pattern_name')
+            assert pattern is None or hasattr(pattern, "pattern_name")
         except ImportError:
             pytest.skip("Classical patterns not available")
 
@@ -155,8 +169,9 @@ class TestClassicalPatterns:
         """Test Triangle pattern detection"""
         try:
             from gravity_tech.patterns.classical import ClassicalPatterns
+
             pattern = ClassicalPatterns.detect_symmetrical_triangle(sample_candles)
-            assert pattern is None or hasattr(pattern, 'pattern_name')
+            assert pattern is None or hasattr(pattern, "pattern_name")
         except ImportError:
             pytest.skip("Classical patterns not available")
 
@@ -178,14 +193,10 @@ class TestCandlestickPatterns:
         """Test Doji candle detection"""
         try:
             from gravity_tech.patterns.candlestick import CandlestickPatterns
+
             # Create doji candle (open == close)
             doji = Candle(
-                timestamp=datetime.now(),
-                open=100,
-                high=110,
-                low=90,
-                close=100,
-                volume=1000
+                timestamp=datetime.now(), open=100, high=110, low=90, close=100, volume=1000
             )
             pattern = CandlestickPatterns.is_doji(doji)
             assert isinstance(pattern, bool)
@@ -196,13 +207,14 @@ class TestCandlestickPatterns:
         """Test Hammer candle detection"""
         try:
             from gravity_tech.patterns.candlestick import CandlestickPatterns
+
             hammer = Candle(
                 timestamp=datetime.now(),
                 open=100,
                 high=105,
                 low=80,  # Long lower wick
                 close=102,
-                volume=1000
+                volume=1000,
             )
             pattern = CandlestickPatterns.is_hammer(hammer)
             assert isinstance(pattern, bool)
@@ -218,6 +230,7 @@ class TestCandlestickPatterns:
         """Test Engulfing pattern detection"""
         try:
             from gravity_tech.patterns.candlestick import CandlestickPatterns
+
             if len(sample_candles) >= 2:
                 pattern = CandlestickPatterns.is_engulfing(sample_candles[-2], sample_candles[-1])
                 # Returns 'bullish', 'bearish', or None
@@ -229,6 +242,7 @@ class TestCandlestickPatterns:
         """Test Harami pattern detection"""
         try:
             from gravity_tech.patterns.candlestick import CandlestickPatterns
+
             if len(sample_candles) >= 2:
                 pattern = CandlestickPatterns.is_harami(sample_candles[-2], sample_candles[-1])
                 # Returns 'bullish', 'bearish', or None
@@ -240,6 +254,7 @@ class TestCandlestickPatterns:
         """Test Morning Star pattern detection"""
         try:
             from gravity_tech.patterns.candlestick import CandlestickPatterns
+
             if len(sample_candles) >= 3:
                 pattern = CandlestickPatterns.is_morning_evening_star(sample_candles[-3:])
                 # Returns 'morning', 'evening', or None
@@ -251,6 +266,7 @@ class TestCandlestickPatterns:
         """Test Evening Star pattern detection"""
         try:
             from gravity_tech.patterns.candlestick import CandlestickPatterns
+
             if len(downtrend_candles) >= 3:
                 pattern = CandlestickPatterns.is_morning_evening_star(downtrend_candles[-3:])
                 # Returns 'morning', 'evening', or None
@@ -266,11 +282,12 @@ class TestDivergencePatterns:
         """Test bullish divergence detection"""
         try:
             from gravity_tech.patterns.divergence import DivergenceDetector
+
             detector = DivergenceDetector()
             # Divergence needs both candles and indicator values
             indicator_values = [c.close for c in uptrend_candles]
             pattern = detector.detect(uptrend_candles, indicator_values)
-            assert pattern is None or hasattr(pattern, 'divergence_type')
+            assert pattern is None or hasattr(pattern, "divergence_type")
         except (ImportError, TypeError):
             pytest.skip("Divergence patterns not available")
 
@@ -278,11 +295,12 @@ class TestDivergencePatterns:
         """Test bearish divergence detection"""
         try:
             from gravity_tech.patterns.divergence import DivergenceDetector
+
             detector = DivergenceDetector()
             # Divergence needs both candles and indicator values
             indicator_values = [c.close for c in downtrend_candles]
             pattern = detector.detect(downtrend_candles, indicator_values)
-            assert pattern is None or hasattr(pattern, 'divergence_type')
+            assert pattern is None or hasattr(pattern, "divergence_type")
         except (ImportError, TypeError):
             pytest.skip("Divergence patterns not available")
 
@@ -290,11 +308,12 @@ class TestDivergencePatterns:
         """Test hidden bullish divergence detection"""
         try:
             from gravity_tech.patterns.divergence import DivergenceDetector
+
             detector = DivergenceDetector()
             # Divergence needs both candles and indicator values
             indicator_values = [c.close for c in sample_candles]
             pattern = detector.detect(sample_candles, indicator_values)
-            assert pattern is None or hasattr(pattern, 'divergence_type')
+            assert pattern is None or hasattr(pattern, "divergence_type")
         except (ImportError, TypeError):
             pytest.skip("Divergence patterns not available")
 
@@ -302,11 +321,12 @@ class TestDivergencePatterns:
         """Test hidden bearish divergence detection"""
         try:
             from gravity_tech.patterns.divergence import DivergenceDetector
+
             detector = DivergenceDetector()
             # Divergence needs both candles and indicator values
             indicator_values = [c.close for c in sample_candles]
             pattern = detector.detect(sample_candles, indicator_values)
-            assert pattern is None or hasattr(pattern, 'divergence_type')
+            assert pattern is None or hasattr(pattern, "divergence_type")
         except (ImportError, TypeError):
             pytest.skip("Divergence patterns not available")
 
@@ -318,11 +338,10 @@ class TestPatternConfidence:
         """Test pattern strength/confidence calculation"""
         try:
             from gravity_tech.patterns.utils import calculate_pattern_strength
+
             # Example pattern parameters
             strength = calculate_pattern_strength(
-                ratio=0.786,
-                completion_percentage=85,
-                volume_confirmation=True
+                ratio=0.786, completion_percentage=85, volume_confirmation=True
             )
             assert 0 <= strength <= 1 or strength is None
         except ImportError:
@@ -332,6 +351,7 @@ class TestPatternConfidence:
         """Test pattern reliability scoring"""
         try:
             from gravity_tech.patterns.utils import get_reliability_score
+
             # Score should be between 0 and 1
             score = get_reliability_score("GARTLEY")
             assert score is None or (0 <= score <= 1)
@@ -346,6 +366,7 @@ class TestPatternMultipleTimeframes:
         """Test confirming patterns on multiple timeframes"""
         try:
             from gravity_tech.patterns.utils import detect_pattern_multiframe
+
             timeframes = ["1m", "5m", "1h"]
 
             for tf in timeframes:
@@ -361,6 +382,7 @@ class TestPatternMultipleTimeframes:
         """Test pattern hierarchy and degree"""
         try:
             from gravity_tech.patterns.utils import get_pattern_hierarchy
+
             patterns = ["GARTLEY", "BUTTERFLY", "BAT", "CRAB"]
 
             for pattern_name in patterns:
@@ -377,6 +399,7 @@ class TestPatternEdgeCases:
         """Test detection of incomplete patterns"""
         try:
             from gravity_tech.patterns.classical import ClassicalPatterns
+
             # Try to detect any pattern
             patterns = ClassicalPatterns.detect_all(sample_candles)
             # Should return empty list for incomplete patterns
@@ -388,6 +411,7 @@ class TestPatternEdgeCases:
         """Test handling of overlapping patterns"""
         try:
             from gravity_tech.patterns.utils import detect_all_patterns
+
             patterns = detect_all_patterns(sample_candles)
             # Multiple patterns may be detected
             if patterns:
@@ -399,6 +423,7 @@ class TestPatternEdgeCases:
         """Test detection of rare pattern variations"""
         try:
             from gravity_tech.patterns.utils import detect_rare_patterns
+
             # Rare patterns like Shark, etc.
             pattern = detect_rare_patterns([])
             assert pattern is None or isinstance(pattern, list)
