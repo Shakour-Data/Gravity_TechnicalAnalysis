@@ -29,22 +29,22 @@ from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
 # Add project path
 project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root / 'src'))
+sys.path.insert(0, str(project_root / "src"))
 
 
-def create_realistic_market_data(num_samples: int = 100, trend: str = 'mixed') -> pd.DataFrame:
+def create_realistic_market_data(num_samples: int = 100, trend: str = "mixed") -> pd.DataFrame:
     """Create minimal realistic market data for fast testing."""
     np.random.seed(42)
 
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1h')
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq="1h")
     base_price = 30000.0
     prices = [base_price]
     volumes = []
 
     for _ in range(1, num_samples):
-        if trend == 'uptrend':
+        if trend == "uptrend":
             drift = 0.001  # Smaller drift for stability
-        elif trend == 'downtrend':
+        elif trend == "downtrend":
             drift = -0.001
         else:
             drift = 0.0005 * np.random.choice([-1, 1])
@@ -63,19 +63,21 @@ def create_realistic_market_data(num_samples: int = 100, trend: str = 'mixed') -
         if i == 0:
             open_price = close
         else:
-            open_price = prices[i-1]
+            open_price = prices[i - 1]
 
         high = max(open_price, close) * (1 + abs(np.random.normal(0, 0.002)))
         low = min(open_price, close) * (1 - abs(np.random.normal(0, 0.002)))
 
-        df_data.append({
-            'timestamp': timestamp,
-            'open': open_price,
-            'high': high,
-            'low': low,
-            'close': close,
-            'volume': volumes[i] if i < len(volumes) else 100
-        })
+        df_data.append(
+            {
+                "timestamp": timestamp,
+                "open": open_price,
+                "high": high,
+                "low": low,
+                "close": close,
+                "volume": volumes[i] if i < len(volumes) else 100,
+            }
+        )
 
     return pd.DataFrame(df_data)
 
@@ -83,17 +85,19 @@ def create_realistic_market_data(num_samples: int = 100, trend: str = 'mixed') -
 @pytest.fixture(scope="session")
 def fast_candles():
     """Fast fixture with minimal realistic data."""
-    df = create_realistic_market_data(num_samples=500, trend='uptrend')  # Increased to 500 samples for all horizons
+    df = create_realistic_market_data(
+        num_samples=500, trend="uptrend"
+    )  # Increased to 500 samples for all horizons
 
     candle_objects = []
     for _, row in df.iterrows():
         candle = Candle(
-            timestamp=row['timestamp'],
-            open=row['open'],
-            high=row['high'],
-            low=row['low'],
-            close=row['close'],
-            volume=row['volume']
+            timestamp=row["timestamp"],
+            open=row["open"],
+            high=row["high"],
+            low=row["low"],
+            close=row["close"],
+            volume=row["volume"],
         )
         candle_objects.append(candle)
 
@@ -104,7 +108,7 @@ def fast_candles():
 def fast_trained_models(fast_candles):
     """Pre-trained models for fast testing."""
     # Use all horizons but with smaller data for speed
-    horizons = ['3d', '7d', '30d']
+    horizons = ["3d", "7d", "30d"]
 
     # Extract features
     trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)  # type: ignore
@@ -117,15 +121,11 @@ def fast_trained_models(fast_candles):
     trend_learner = MultiHorizonWeightLearner(
         horizons=horizons,
         test_size=0.3,  # Smaller training set
-        random_state=42
+        random_state=42,
     )
     trend_learner.train(X_trend, Y_trend, verbose=False)
 
-    momentum_learner = MultiHorizonWeightLearner(
-        horizons=horizons,
-        test_size=0.3,
-        random_state=42
-    )
+    momentum_learner = MultiHorizonWeightLearner(horizons=horizons, test_size=0.3, random_state=42)
     momentum_learner.train(X_momentum, Y_momentum, verbose=False)
 
     return trend_learner, momentum_learner
@@ -139,7 +139,7 @@ def test_trend_analysis_fast(fast_candles, fast_trained_models):
     trend_analyzer = MultiHorizonTrendAnalyzer(trend_learner)
 
     # Get latest features
-    trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d'])
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=["3d"])
     X_trend, _ = trend_extractor.extract_training_dataset(fast_candles)
     latest_features = X_trend.iloc[-1].to_dict()
 
@@ -147,11 +147,11 @@ def test_trend_analysis_fast(fast_candles, fast_trained_models):
     analysis = trend_analyzer.analyze(latest_features)
 
     # Basic assertions - check that we have the expected structure
-    assert hasattr(analysis, 'score_3d')
-    assert hasattr(analysis, 'score_7d')
-    assert hasattr(analysis, 'score_30d')
-    assert hasattr(analysis, 'pattern')
-    assert hasattr(analysis, 'combined_score')
+    assert hasattr(analysis, "score_3d")
+    assert hasattr(analysis, "score_7d")
+    assert hasattr(analysis, "score_30d")
+    assert hasattr(analysis, "pattern")
+    assert hasattr(analysis, "combined_score")
 
     # Check 3d score specifically
     assert analysis.score_3d.score is not None
@@ -167,7 +167,7 @@ def test_momentum_analysis_fast(fast_candles, fast_trained_models):
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
 
     # Get latest features
-    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d'])
+    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=["3d"])
     X_momentum, _ = momentum_extractor.extract_training_dataset(fast_candles)
     latest_features = X_momentum.iloc[-1].to_dict()
 
@@ -175,9 +175,9 @@ def test_momentum_analysis_fast(fast_candles, fast_trained_models):
     analysis = momentum_analyzer.analyze(latest_features)
 
     # Basic assertions - check that we have the expected structure
-    assert hasattr(analysis, 'momentum_3d')
-    assert hasattr(analysis, 'momentum_7d')
-    assert hasattr(analysis, 'momentum_30d')
+    assert hasattr(analysis, "momentum_3d")
+    assert hasattr(analysis, "momentum_7d")
+    assert hasattr(analysis, "momentum_30d")
 
     # Check 3d momentum specifically
     assert analysis.momentum_3d.score is not None
@@ -192,13 +192,11 @@ def test_combined_analysis_fast(fast_candles, fast_trained_models):
     # Create analyzers
     trend_analyzer = MultiHorizonTrendAnalyzer(trend_learner)
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
-    combined_analyzer = CombinedTrendMomentumAnalyzer(
-        trend_analyzer, momentum_analyzer, 0.6, 0.4
-    )
+    combined_analyzer = CombinedTrendMomentumAnalyzer(trend_analyzer, momentum_analyzer, 0.6, 0.4)
 
     # Get latest features
-    trend_extractor = MultiHorizonFeatureExtractor(horizons=['3d'])
-    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=['3d'])
+    trend_extractor = MultiHorizonFeatureExtractor(horizons=["3d"])
+    momentum_extractor = MultiHorizonMomentumFeatureExtractor(horizons=["3d"])
 
     X_trend, _ = trend_extractor.extract_training_dataset(fast_candles)
     X_momentum, _ = momentum_extractor.extract_training_dataset(fast_candles)
@@ -210,15 +208,15 @@ def test_combined_analysis_fast(fast_candles, fast_trained_models):
     analysis = combined_analyzer.analyze(trend_features, momentum_features)
 
     # Basic assertions
-    assert hasattr(analysis, 'final_action')
-    assert hasattr(analysis, 'final_confidence')
-    assert analysis.final_action.value in ['BUY', 'SELL', 'HOLD', 'ACCUMULATE']
+    assert hasattr(analysis, "final_action")
+    assert hasattr(analysis, "final_confidence")
+    assert analysis.final_action.value in ["BUY", "SELL", "HOLD", "ACCUMULATE"]
     assert 0.0 <= analysis.final_confidence <= 1.0
 
 
 def test_feature_extraction_shapes(fast_candles):
     """Test that feature extraction produces correct shapes."""
-    horizons = ['3d']
+    horizons = ["3d"]
 
     trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)  # type: ignore
     X_trend, Y_trend = trend_extractor.extract_training_dataset(fast_candles)
@@ -242,8 +240,8 @@ def test_model_training_convergence(fast_trained_models):
     trend_learner, momentum_learner = fast_trained_models
 
     # Check that models have been trained
-    assert hasattr(trend_learner, 'model')
-    assert hasattr(momentum_learner, 'model')
+    assert hasattr(trend_learner, "model")
+    assert hasattr(momentum_learner, "model")
     assert trend_learner.model is not None
     assert momentum_learner.model is not None
 
@@ -257,17 +255,17 @@ def test_different_market_conditions(trend_type):
     candles = []
     for _, row in df.iterrows():
         candle = Candle(
-            timestamp=row['timestamp'],
-            open=row['open'],
-            high=row['high'],
-            low=row['low'],
-            close=row['close'],
-            volume=row['volume']
+            timestamp=row["timestamp"],
+            open=row["open"],
+            high=row["high"],
+            low=row["low"],
+            close=row["close"],
+            volume=row["volume"],
         )
         candles.append(candle)
 
     # Quick training
-    horizons = ['3d', '7d', '30d']
+    horizons = ["3d", "7d", "30d"]
     trend_extractor = MultiHorizonFeatureExtractor(horizons=horizons)  # type: ignore
     X_trend, Y_trend = trend_extractor.extract_training_dataset(candles)
 
