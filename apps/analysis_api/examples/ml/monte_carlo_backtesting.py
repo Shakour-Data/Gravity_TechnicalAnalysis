@@ -31,11 +31,23 @@ logger = logging.getLogger(__name__)
 class MonteCarloResult:
     """Result of Monte Carlo simulation."""
 
-    def __init__(self, num_simulations: int, success_rate: float, average_return: float,
-                 median_return: float, std_return: float, max_return: float, min_return: float,
-                 confidence_interval_95: tuple[float, float], sharpe_ratio: float,
-                 max_drawdown_avg: float, win_rate: float, profit_factor: float,
-                 simulation_results: list[dict[str, Any]], description: str):
+    def __init__(
+        self,
+        num_simulations: int,
+        success_rate: float,
+        average_return: float,
+        median_return: float,
+        std_return: float,
+        max_return: float,
+        min_return: float,
+        confidence_interval_95: tuple[float, float],
+        sharpe_ratio: float,
+        max_drawdown_avg: float,
+        win_rate: float,
+        profit_factor: float,
+        simulation_results: list[dict[str, Any]],
+        description: str,
+    ):
         self.num_simulations = num_simulations
         self.success_rate = success_rate
         self.average_return = average_return
@@ -61,10 +73,13 @@ class MonteCarloBacktester:
         self.random_seed = 42
         np.random.seed(self.random_seed)
 
-    def run_monte_carlo_analysis(self, historical_data: list[Candle],
-                                strategy_function: Callable[[list[Candle], float, float], Any],
-                                initial_capital: float = 10000.0,
-                                commission: float = 0.001) -> MonteCarloResult:
+    def run_monte_carlo_analysis(
+        self,
+        historical_data: list[Candle],
+        strategy_function: Callable[[list[Candle], float, float], Any],
+        initial_capital: float = 10000.0,
+        commission: float = 0.001,
+    ) -> MonteCarloResult:
         """
         Run Monte Carlo simulation analysis
 
@@ -94,7 +109,7 @@ class MonteCarloBacktester:
                     strategy_function,
                     initial_capital,
                     commission,
-                    i
+                    i,
                 )
                 futures.append(future)
 
@@ -118,23 +133,29 @@ class MonteCarloBacktester:
 
         return MonteCarloResult(
             num_simulations=len(simulation_results),
-            success_rate=analysis['success_rate'],
-            average_return=analysis['average_return'],
-            median_return=analysis['median_return'],
-            std_return=analysis['std_return'],
-            max_return=analysis['max_return'],
-            min_return=analysis['min_return'],
-            confidence_interval_95=analysis['confidence_interval_95'],
-            sharpe_ratio=analysis['sharpe_ratio'],
-            max_drawdown_avg=analysis['max_drawdown_avg'],
-            win_rate=analysis['win_rate'],
-            profit_factor=analysis['profit_factor'],
+            success_rate=analysis["success_rate"],
+            average_return=analysis["average_return"],
+            median_return=analysis["median_return"],
+            std_return=analysis["std_return"],
+            max_return=analysis["max_return"],
+            min_return=analysis["min_return"],
+            confidence_interval_95=analysis["confidence_interval_95"],
+            sharpe_ratio=analysis["sharpe_ratio"],
+            max_drawdown_avg=analysis["max_drawdown_avg"],
+            win_rate=analysis["win_rate"],
+            profit_factor=analysis["profit_factor"],
             simulation_results=simulation_results,
-            description=f"Monte Carlo analysis with {len(simulation_results)} successful simulations"
+            description=f"Monte Carlo analysis with {len(simulation_results)} successful simulations",
         )
 
-    def _run_single_simulation(self, df: pd.DataFrame, strategy_function: Callable[[list[Candle], float, float], Any],
-                             initial_capital: float, commission: float, sim_id: int) -> dict[str, Any]:
+    def _run_single_simulation(
+        self,
+        df: pd.DataFrame,
+        strategy_function: Callable[[list[Candle], float, float], Any],
+        initial_capital: float,
+        commission: float,
+        sim_id: int,
+    ) -> dict[str, Any]:
         """Run a single Monte Carlo simulation"""
         try:
             # Create bootstrapped sample (sample with replacement)
@@ -147,9 +168,9 @@ class MonteCarloBacktester:
 
             # Add some noise to prices to simulate different market conditions
             price_noise = np.random.normal(0, 0.02, len(bootstrapped_data))  # 2% volatility
-            bootstrapped_data['close'] *= (1 + price_noise)
-            bootstrapped_data['high'] = bootstrapped_data[['high', 'close']].max(axis=1)
-            bootstrapped_data['low'] = bootstrapped_data[['low', 'close']].min(axis=1)
+            bootstrapped_data["close"] *= 1 + price_noise
+            bootstrapped_data["high"] = bootstrapped_data[["high", "close"]].max(axis=1)
+            bootstrapped_data["low"] = bootstrapped_data[["low", "close"]].min(axis=1)
 
             # Convert back to candles
             candles = self._dataframe_to_candles(bootstrapped_data)
@@ -158,33 +179,34 @@ class MonteCarloBacktester:
             result = strategy_function(candles, initial_capital, commission)
 
             return {
-                'simulation_id': sim_id,
-                'final_capital': result.final_capital,
-                'total_return': result.total_return,
-                'total_trades': result.total_trades,
-                'winning_trades': result.winning_trades,
-                'max_drawdown': result.max_drawdown,
-                'sharpe_ratio': result.sharpe_ratio,
-                'trades': result.trades
+                "simulation_id": sim_id,
+                "final_capital": result.final_capital,
+                "total_return": result.total_return,
+                "total_trades": result.total_trades,
+                "winning_trades": result.winning_trades,
+                "max_drawdown": result.max_drawdown,
+                "sharpe_ratio": result.sharpe_ratio,
+                "trades": result.trades,
             }
 
         except Exception as e:
             logger.error(f"Simulation {sim_id} failed: {e}")
             return {
-                'simulation_id': sim_id,
-                'final_capital': initial_capital,
-                'total_return': 0.0,
-                'total_trades': 0,
-                'winning_trades': 0,
-                'max_drawdown': 0.0,
-                'sharpe_ratio': 0.0,
-                'trades': []
+                "simulation_id": sim_id,
+                "final_capital": initial_capital,
+                "total_return": 0.0,
+                "total_trades": 0,
+                "winning_trades": 0,
+                "max_drawdown": 0.0,
+                "sharpe_ratio": 0.0,
+                "trades": [],
             }
 
-    def _analyze_simulation_results(self, results: list[dict[str, Any]],
-                                  initial_capital: float) -> dict[str, Any]:
+    def _analyze_simulation_results(
+        self, results: list[dict[str, Any]], initial_capital: float
+    ) -> dict[str, Any]:
         """Analyze Monte Carlo simulation results"""
-        returns = [r['total_return'] for r in results]
+        returns = [r["total_return"] for r in results]
 
         # Basic statistics
         average_return = np.mean(returns)
@@ -210,7 +232,7 @@ class MonteCarloBacktester:
             sharpe_ratio = 0.0
 
         # Maximum drawdown analysis
-        max_drawdowns = [r['max_drawdown'] for r in results]
+        max_drawdowns = [r["max_drawdown"] for r in results]
         max_drawdown_avg = np.mean(max_drawdowns)
 
         # Win rate
@@ -218,13 +240,13 @@ class MonteCarloBacktester:
         profit_factors = []
 
         for r in results:
-            if r['total_trades'] > 0:
-                win_rate = r['winning_trades'] / r['total_trades']
+            if r["total_trades"] > 0:
+                win_rate = r["winning_trades"] / r["total_trades"]
                 win_rates.append(win_rate)
 
                 # Calculate profit factor
-                winning_trades = [t for t in r['trades'] if t.profit_loss > 0]
-                losing_trades = [t for t in r['trades'] if t.profit_loss < 0]
+                winning_trades = [t for t in r["trades"] if t.profit_loss > 0]
+                losing_trades = [t for t in r["trades"] if t.profit_loss < 0]
 
                 gross_profit = sum(t.profit_loss for t in winning_trades)
                 gross_loss = abs(sum(t.profit_loss for t in losing_trades))
@@ -232,7 +254,7 @@ class MonteCarloBacktester:
                 if gross_loss > 0:
                     profit_factor = gross_profit / gross_loss
                 else:
-                    profit_factor = float('inf') if gross_profit > 0 else 1.0
+                    profit_factor = float("inf") if gross_profit > 0 else 1.0
 
                 profit_factors.append(profit_factor)
 
@@ -240,31 +262,31 @@ class MonteCarloBacktester:
         profit_factor = np.mean(profit_factors) if profit_factors else 1.0
 
         return {
-            'success_rate': success_rate,
-            'average_return': average_return,
-            'median_return': median_return,
-            'std_return': std_return,
-            'max_return': max_return,
-            'min_return': min_return,
-            'confidence_interval_95': confidence_interval_95,
-            'sharpe_ratio': sharpe_ratio,
-            'max_drawdown_avg': max_drawdown_avg,
-            'win_rate': win_rate,
-            'profit_factor': profit_factor
+            "success_rate": success_rate,
+            "average_return": average_return,
+            "median_return": median_return,
+            "std_return": std_return,
+            "max_return": max_return,
+            "min_return": min_return,
+            "confidence_interval_95": confidence_interval_95,
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown_avg": max_drawdown_avg,
+            "win_rate": win_rate,
+            "profit_factor": profit_factor,
         }
 
     def _candles_to_dataframe(self, candles: list[Candle]) -> pd.DataFrame:
         """Convert list of candles to DataFrame"""
         data = {
-            'timestamp': [c.timestamp for c in candles],
-            'open': [c.open for c in candles],
-            'high': [c.high for c in candles],
-            'low': [c.low for c in candles],
-            'close': [c.close for c in candles],
-            'volume': [c.volume for c in candles]
+            "timestamp": [c.timestamp for c in candles],
+            "open": [c.open for c in candles],
+            "high": [c.high for c in candles],
+            "low": [c.low for c in candles],
+            "close": [c.close for c in candles],
+            "volume": [c.volume for c in candles],
         }
         df = pd.DataFrame(data)
-        df.set_index('timestamp', inplace=True)
+        df.set_index("timestamp", inplace=True)
         return df
 
     def _dataframe_to_candles(self, df: pd.DataFrame) -> list[Candle]:
@@ -272,7 +294,7 @@ class MonteCarloBacktester:
         candles = []
         for idx, row in df.iterrows():
             # Ensure timestamp is datetime
-            if hasattr(idx, 'to_pydatetime'):
+            if hasattr(idx, "to_pydatetime"):
                 ts = idx.to_pydatetime()  # type: ignore
             elif isinstance(idx, str):
                 ts = datetime.fromisoformat(idx)
@@ -281,11 +303,11 @@ class MonteCarloBacktester:
 
             candle = Candle(
                 timestamp=ts,
-                open=float(row['open']),
-                high=float(row['high']),
-                low=float(row['low']),
-                close=float(row['close']),
-                volume=int(row['volume'])
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=int(row["volume"]),
             )
             candles.append(candle)
         return candles
@@ -300,22 +322,22 @@ class MonteCarloBacktester:
         Returns:
             Probability distribution statistics
         """
-        returns = [r['total_return'] for r in results.simulation_results]
+        returns = [r["total_return"] for r in results.simulation_results]
 
         # Create histogram bins
         hist, bin_edges = np.histogram(returns, bins=50, density=True)
 
         # Calculate percentiles
         percentiles = {
-            '1%': np.percentile(returns, 1),
-            '5%': np.percentile(returns, 5),
-            '10%': np.percentile(returns, 10),
-            '25%': np.percentile(returns, 25),
-            '50%': np.percentile(returns, 50),
-            '75%': np.percentile(returns, 75),
-            '90%': np.percentile(returns, 90),
-            '95%': np.percentile(returns, 95),
-            '99%': np.percentile(returns, 99)
+            "1%": np.percentile(returns, 1),
+            "5%": np.percentile(returns, 5),
+            "10%": np.percentile(returns, 10),
+            "25%": np.percentile(returns, 25),
+            "50%": np.percentile(returns, 50),
+            "75%": np.percentile(returns, 75),
+            "90%": np.percentile(returns, 90),
+            "95%": np.percentile(returns, 95),
+            "99%": np.percentile(returns, 99),
         }
 
         # Value at Risk (VaR)
@@ -327,23 +349,14 @@ class MonteCarloBacktester:
         cvar_99 = np.mean([r for r in returns if r <= var_99])
 
         return {
-            'histogram': {
-                'counts': hist.tolist(),
-                'bin_edges': bin_edges.tolist()
+            "histogram": {"counts": hist.tolist(), "bin_edges": bin_edges.tolist()},
+            "percentiles": percentiles,
+            "value_at_risk": {"var_95": var_95, "var_99": var_99},
+            "conditional_var": {"cvar_95": cvar_95, "cvar_99": cvar_99},
+            "distribution_stats": {
+                "skewness": float(pd.Series(returns).skew()),  # type: ignore
+                "kurtosis": float(pd.Series(returns).kurtosis()),  # type: ignore
             },
-            'percentiles': percentiles,
-            'value_at_risk': {
-                'var_95': var_95,
-                'var_99': var_99
-            },
-            'conditional_var': {
-                'cvar_95': cvar_95,
-                'cvar_99': cvar_99
-            },
-            'distribution_stats': {
-                'skewness': float(pd.Series(returns).skew()),  # type: ignore
-                'kurtosis': float(pd.Series(returns).kurtosis())  # type: ignore
-            }
         }
 
 
@@ -360,8 +373,11 @@ def create_monte_carlo_backtester(num_simulations: int = 1000) -> MonteCarloBack
     return MonteCarloBacktester(num_simulations=num_simulations)
 
 
-def run_monte_carlo_backtest(historical_data: list[Candle], strategy_function: Callable[[list[Candle], float, float], Any],
-                           num_simulations: int = 1000) -> MonteCarloResult:
+def run_monte_carlo_backtest(
+    historical_data: list[Candle],
+    strategy_function: Callable[[list[Candle], float, float], Any],
+    num_simulations: int = 1000,
+) -> MonteCarloResult:
     """
     Convenience function to run Monte Carlo backtest
 
