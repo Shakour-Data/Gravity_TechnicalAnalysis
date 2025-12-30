@@ -42,7 +42,7 @@ class TestTrendIndicators:
                 high=price + 2.0,
                 low=price - 2.0,
                 close=price,
-                volume=1000 + i * 10
+                volume=1000 + i * 10,
             )
             candles.append(candle)
 
@@ -76,6 +76,7 @@ class TestTrendIndicators:
 
         closes = np.array([c.close for c in sample_candles])
         import pandas as pd
+
         expected_sma = pd.Series(closes).rolling(window=20).mean().iloc[-1]
         assert abs(result.value - expected_sma) < 0.01
 
@@ -85,9 +86,13 @@ class TestTrendIndicators:
 
         # Signal should be based on price vs SMA and slope
         assert result.signal in [
-            SignalStrength.VERY_BULLISH, SignalStrength.BULLISH,
-            SignalStrength.BULLISH_BROKEN, SignalStrength.NEUTRAL,
-            SignalStrength.BEARISH_BROKEN, SignalStrength.BEARISH, SignalStrength.VERY_BEARISH
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.BULLISH,
+            SignalStrength.BULLISH_BROKEN,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BEARISH_BROKEN,
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
         ]
 
     def test_ema_normal_operation(self, sample_candles):
@@ -217,41 +222,39 @@ class TestTrendIndicators:
         """Test ADX calculation accuracy"""
         result = TrendIndicators.adx(sample_candles, period=14)
 
-        df = pd.DataFrame({
-            'high': [c.high for c in sample_candles],
-            'low': [c.low for c in sample_candles],
-            'close': [c.close for c in sample_candles]
-        })
+        df = pd.DataFrame(
+            {
+                "high": [c.high for c in sample_candles],
+                "low": [c.low for c in sample_candles],
+                "close": [c.close for c in sample_candles],
+            }
+        )
 
         # Calculate +DM and -DM
-        df['high_diff'] = df['high'].diff()
-        df['low_diff'] = -df['low'].diff()
+        df["high_diff"] = df["high"].diff()
+        df["low_diff"] = -df["low"].diff()
 
-        df['+DM'] = np.where(
-            (df['high_diff'] > df['low_diff']) & (df['high_diff'] > 0),
-            df['high_diff'],
-            0
+        df["+DM"] = np.where(
+            (df["high_diff"] > df["low_diff"]) & (df["high_diff"] > 0), df["high_diff"], 0
         )
-        df['-DM'] = np.where(
-            (df['low_diff'] > df['high_diff']) & (df['low_diff'] > 0),
-            df['low_diff'],
-            0
+        df["-DM"] = np.where(
+            (df["low_diff"] > df["high_diff"]) & (df["low_diff"] > 0), df["low_diff"], 0
         )
 
         # True Range
-        df['TR'] = df.apply(
+        df["TR"] = df.apply(
             lambda row: max(
-                row['high'] - row['low'],
-                abs(row['high'] - df['close'].shift(1).loc[row.name]) if row.name > 0 else 0,
-                abs(row['low'] - df['close'].shift(1).loc[row.name]) if row.name > 0 else 0
+                row["high"] - row["low"],
+                abs(row["high"] - df["close"].shift(1).loc[row.name]) if row.name > 0 else 0,
+                abs(row["low"] - df["close"].shift(1).loc[row.name]) if row.name > 0 else 0,
             ),
-            axis=1
+            axis=1,
         )
 
         # Smooth values
-        atr = df['TR'].rolling(window=14).mean()
-        plus_di = 100 * (df['+DM'].rolling(window=14).mean() / atr)
-        minus_di = 100 * (df['-DM'].rolling(window=14).mean() / atr)
+        atr = df["TR"].rolling(window=14).mean()
+        plus_di = 100 * (df["+DM"].rolling(window=14).mean() / atr)
+        minus_di = 100 * (df["-DM"].rolling(window=14).mean() / atr)
         dx = 100 * np.abs(plus_di - minus_di) / (plus_di + minus_di)
         expected_adx = dx.rolling(window=14).mean()
 
@@ -347,10 +350,16 @@ class TestTrendIndicators:
 
     def test_all_indicators_with_single_candle(self):
         """Test all indicators with single candle"""
-        single_candle = [Candle(
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
-            open=100, high=101, low=99, close=100.5, volume=1000
-        )]
+        single_candle = [
+            Candle(
+                timestamp=datetime(2024, 1, 1, 12, 0, 0),
+                open=100,
+                high=101,
+                low=99,
+                close=100.5,
+                volume=1000,
+            )
+        ]
 
         # همه اندیکاتورها باید ValueError بدهند
         with pytest.raises(ValueError):
@@ -405,9 +414,7 @@ class TestTrendIndicators:
         base_time = datetime(2024, 1, 1, 12, 0, 0)
         for _i in range(30):
             candle = Candle(
-                timestamp=base_time,
-                open=100, high=100.5, low=99.5, close=100,
-                volume=1000
+                timestamp=base_time, open=100, high=100.5, low=99.5, close=100, volume=1000
             )
             flat_candles.append(candle)
 
@@ -452,8 +459,14 @@ class TestTrendIndicators:
         vortex_plus = np.abs(highs[1:] - lows[:-1])
         vortex_minus = np.abs(lows[1:] - highs[:-1])
 
-        vi_plus = pd.Series(vortex_plus).rolling(window=14).sum() / pd.Series(highs[1:] - lows[1:]).rolling(window=14).sum()
-        vi_minus = pd.Series(vortex_minus).rolling(window=14).sum() / pd.Series(highs[1:] - lows[1:]).rolling(window=14).sum()
+        vi_plus = (
+            pd.Series(vortex_plus).rolling(window=14).sum()
+            / pd.Series(highs[1:] - lows[1:]).rolling(window=14).sum()
+        )
+        vi_minus = (
+            pd.Series(vortex_minus).rolling(window=14).sum()
+            / pd.Series(highs[1:] - lows[1:]).rolling(window=14).sum()
+        )
 
         expected_diff = vi_plus.iloc[-1] - vi_minus.iloc[-1]
 
@@ -493,10 +506,19 @@ class TestTrendIndicators:
         assert TrendIndicators.tema(sample_candles, 20).indicator_name == "TEMA(20)"
         assert TrendIndicators.macd(sample_candles).indicator_name == "MACD"
         assert TrendIndicators.adx(sample_candles, 21).indicator_name == "ADX(21)"
-        assert "Donchian Channels" in TrendIndicators.donchian_channels(sample_candles, 25).indicator_name
+        assert (
+            "Donchian Channels"
+            in TrendIndicators.donchian_channels(sample_candles, 25).indicator_name
+        )
         assert "Aroon" in TrendIndicators.aroon(sample_candles, 30).indicator_name
-        assert "Vortex Indicator" in TrendIndicators.vortex_indicator(sample_candles, 21).indicator_name
-        assert "McGinley Dynamic" in TrendIndicators.mcginley_dynamic(sample_candles, 25).indicator_name
+        assert (
+            "Vortex Indicator"
+            in TrendIndicators.vortex_indicator(sample_candles, 21).indicator_name
+        )
+        assert (
+            "McGinley Dynamic"
+            in TrendIndicators.mcginley_dynamic(sample_candles, 25).indicator_name
+        )
 
     def test_description_content(self, sample_candles):
         """Test that descriptions contain relevant information"""
@@ -505,7 +527,9 @@ class TestTrendIndicators:
 
         result_macd = TrendIndicators.macd(sample_candles)
         # متن فارسی: انتظار داریم 'MACD' و 'خط سیگنال' یا 'سیگنال' در توضیح باشد
-        assert "MACD" in result_macd.description and ("خط سیگنال" in result_macd.description or "سیگنال" in result_macd.description)
+        assert "MACD" in result_macd.description and (
+            "خط سیگنال" in result_macd.description or "سیگنال" in result_macd.description
+        )
 
         result_adx = TrendIndicators.adx(sample_candles)
         # متن فارسی: انتظار داریم 'قدرت روند' در توضیح باشد و 'ADX' نباشد
@@ -524,7 +548,13 @@ class TestTrendIndicators:
             assert key in result_adx.additional_values
 
         result_donchian = TrendIndicators.donchian_channels(sample_candles)
-        required_donchian_keys = ["upper_band", "middle_band", "lower_band", "channel_width_pct", "price_position_pct"]
+        required_donchian_keys = [
+            "upper_band",
+            "middle_band",
+            "lower_band",
+            "channel_width_pct",
+            "price_position_pct",
+        ]
         for key in required_donchian_keys:
             assert key in result_donchian.additional_values
 
@@ -556,7 +586,7 @@ class TestTrendIndicators:
                 high=price + 1.0,
                 low=price - 1.0,
                 close=price,
-                volume=1000
+                volume=1000,
             )
             converging_candles.append(candle)
 
@@ -573,9 +603,18 @@ class TestTrendIndicators:
         # ADX should indicate trend strength
         adx_value = result_adx.value
         if adx_value > 25:
-            assert result_adx.signal in [SignalStrength.VERY_BULLISH, SignalStrength.BULLISH, SignalStrength.VERY_BEARISH, SignalStrength.BEARISH]
+            assert result_adx.signal in [
+                SignalStrength.VERY_BULLISH,
+                SignalStrength.BULLISH,
+                SignalStrength.VERY_BEARISH,
+                SignalStrength.BEARISH,
+            ]
         else:
-            assert result_adx.signal in [SignalStrength.BULLISH_BROKEN, SignalStrength.BEARISH_BROKEN, SignalStrength.NEUTRAL]
+            assert result_adx.signal in [
+                SignalStrength.BULLISH_BROKEN,
+                SignalStrength.BEARISH_BROKEN,
+                SignalStrength.NEUTRAL,
+            ]
 
     def test_breakout_detection(self, sample_candles):
         """Test breakout detection in trend indicators"""
@@ -590,4 +629,3 @@ class TestTrendIndicators:
             assert "شکست سقف" in result_donchian.description
         elif current_price <= lower:
             assert "شکست کف" in result_donchian.description
-
