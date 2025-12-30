@@ -11,23 +11,23 @@ Version: 1.0.0
 License: MIT
 """
 
-import os
-import sys
+import asyncio
 import json
 import shutil
 import sqlite3
-import asyncio
-from pathlib import Path
+import sys
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from pathlib import Path
+from typing import Any
+
 import structlog
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.gravity_tech.database.database_manager import DatabaseManager
 from src.gravity_tech.config.settings import settings
+from src.gravity_tech.database.database_manager import DatabaseManager
 
 logger = structlog.get_logger()
 
@@ -91,11 +91,11 @@ class DatabaseBackupManager:
             "timestamp": datetime.now().isoformat(),
             "database_path": str(db_path),
             "backup_path": str(backup_path),
-            "version": settings.app_version
+            "version": settings.app_version,
         }
 
         metadata_path = self.backup_dir / f"{backup_name}.json"
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
         return backup_path
@@ -127,21 +127,25 @@ class DatabaseBackupManager:
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = cursor.fetchall()
 
-            with open(schema_path, 'w') as f:
+            with open(schema_path, "w") as f:
                 f.write("-- Database Schema Export\n")
                 f.write(f"-- Generated: {datetime.now().isoformat()}\n\n")
 
                 for table in tables:
                     table_name = table[0]
-                    if not table_name.startswith('sqlite_'):
+                    if not table_name.startswith("sqlite_"):
                         # Get CREATE statement
-                        cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}';")
+                        cursor.execute(
+                            f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}';"
+                        )
                         create_stmt = cursor.fetchone()
                         if create_stmt and create_stmt[0]:
                             f.write(f"{create_stmt[0]};\n\n")
 
                             # Get indexes
-                            cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='{table_name}' AND sql IS NOT NULL;")
+                            cursor.execute(
+                                f"SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='{table_name}' AND sql IS NOT NULL;"
+                            )
                             indexes = cursor.fetchall()
                             for index in indexes:
                                 f.write(f"{index[0]};\n")
@@ -151,7 +155,7 @@ class DatabaseBackupManager:
         finally:
             await db_manager.close()
 
-    async def restore_backup(self, backup_path: str, target_db: Optional[str] = None) -> bool:
+    async def restore_backup(self, backup_path: str, target_db: str | None = None) -> bool:
         """
         Restore database from backup
 
@@ -175,15 +179,17 @@ class DatabaseBackupManager:
 
         # Create backup of current database before restore
         if target_path.exists():
-            backup_current = target_path.with_suffix(f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db")
+            backup_current = target_path.with_suffix(
+                f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+            )
             shutil.copy2(target_path, backup_current)
             logger.info("current_db_backed_up", path=str(backup_current))
 
         try:
-            if backup_file.suffix == '.db':
+            if backup_file.suffix == ".db":
                 # Full database restore
                 shutil.copy2(backup_file, target_path)
-            elif backup_file.suffix == '.sql':
+            elif backup_file.suffix == ".sql":
                 # Schema restore
                 await self._restore_from_sql(backup_file, target_path)
             else:
@@ -195,7 +201,7 @@ class DatabaseBackupManager:
         except Exception as e:
             logger.error("backup_restore_failed", error=str(e), backup_path=str(backup_file))
             # Restore the backup of current database
-            if 'backup_current' in locals() and backup_current.exists():
+            if "backup_current" in locals() and backup_current.exists():
                 shutil.copy2(backup_current, target_path)
                 logger.info("rolled_back_to_previous_state")
             raise
@@ -205,11 +211,15 @@ class DatabaseBackupManager:
         conn = sqlite3.connect(target_db)
 
         try:
-            with open(sql_file, 'r') as f:
+            with open(sql_file) as f:
                 sql_content = f.read()
 
             # Split SQL commands and execute them
-            commands = [cmd.strip() for cmd in sql_content.split(';') if cmd.strip() and not cmd.strip().startswith('--')]
+            commands = [
+                cmd.strip()
+                for cmd in sql_content.split(";")
+                if cmd.strip() and not cmd.strip().startswith("--")
+            ]
 
             for command in commands:
                 if command:
@@ -233,7 +243,7 @@ class DatabaseBackupManager:
             backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             # Remove old backups
-            for old_backup in backup_files[self.max_backups:]:
+            for old_backup in backup_files[self.max_backups :]:
                 old_backup.unlink()
                 logger.info("old_backup_removed", path=str(old_backup))
 
@@ -252,36 +262,38 @@ class DatabaseBackupManager:
         backups = []
 
         for backup_file in self.backup_dir.glob("backup_*"):
-            if backup_file.suffix in ['.db', '.sql']:
+            if backup_file.suffix in [".db", ".sql"]:
                 # Try to read metadata
-                metadata_file = backup_file.with_suffix('.json')
+                metadata_file = backup_file.with_suffix(".json")
                 metadata = {}
 
                 if metadata_file.exists():
                     try:
-                        with open(metadata_file, 'r') as f:
+                        with open(metadata_file) as f:
                             metadata = json.load(f)
                     except:
                         pass
 
-                backups.append({
-                    "filename": backup_file.name,
-                    "path": str(backup_file),
-                    "size": backup_file.stat().st_size,
-                    "created": datetime.fromtimestamp(backup_file.stat().st_mtime).isoformat(),
-                    "type": metadata.get('backup_type', 'unknown'),
-                    **metadata
-                })
+                backups.append(
+                    {
+                        "filename": backup_file.name,
+                        "path": str(backup_file),
+                        "size": backup_file.stat().st_size,
+                        "created": datetime.fromtimestamp(backup_file.stat().st_mtime).isoformat(),
+                        "type": metadata.get("backup_type", "unknown"),
+                        **metadata,
+                    }
+                )
 
-        return sorted(backups, key=lambda x: x['created'], reverse=True)
+        return sorted(backups, key=lambda x: x["created"], reverse=True)
 
-    async def get_backup_info(self, backup_name: str) -> Optional[Dict[str, Any]]:
+    async def get_backup_info(self, backup_name: str) -> dict[str, Any] | None:
         """Get detailed information about a specific backup"""
         metadata_file = self.backup_dir / f"{backup_name}.json"
 
         if metadata_file.exists():
             try:
-                with open(metadata_file, 'r') as f:
+                with open(metadata_file) as f:
                     return json.load(f)
             except:
                 pass
@@ -294,7 +306,7 @@ class DatabaseBackupManager:
                 "path": str(backup_file),
                 "size": backup_file.stat().st_size,
                 "created": datetime.fromtimestamp(backup_file.stat().st_mtime).isoformat(),
-                "type": "unknown"
+                "type": "unknown",
             }
 
         return None
