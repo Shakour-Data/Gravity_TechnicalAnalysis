@@ -33,7 +33,14 @@ def read_symbols(path: Path) -> list[str]:
 def backtest_exists(dbm: DatabaseManager, symbol: str, interval: str, source: str) -> bool:
     if dbm.db_type == DatabaseType.JSON_FILE:
         runs = dbm.json_data.get("backtest_runs", [])
-        return any((r.get("symbol") == symbol and (r.get("interval") or "") == interval and r.get("source") == source) for r in runs)
+        return any(
+            (
+                r.get("symbol") == symbol
+                and (r.get("interval") or "") == interval
+                and r.get("source") == source
+            )
+            for r in runs
+        )
 
     conn = dbm.get_connection()
     cursor = conn.cursor()
@@ -55,13 +62,17 @@ def backtest_exists(dbm: DatabaseManager, symbol: str, interval: str, source: st
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fill missing backtests into backtest_runs.")
-    parser.add_argument("--symbols-file", type=Path, default=SYMBOLS_PATH, help="مسیر فایل نمادها (هر خط یک نماد)")
+    parser.add_argument(
+        "--symbols-file", type=Path, default=SYMBOLS_PATH, help="مسیر فایل نمادها (هر خط یک نماد)"
+    )
     parser.add_argument("--interval", default="1d", help="بازه زمانی (مثال: 1d, 4h)")
     parser.add_argument("--limit", type=int, default=1200, help="تعداد کندل برای بارگذاری")
     parser.add_argument("--min-confidence", type=float, default=0.6, help="حداقل اعتماد به الگو")
     parser.add_argument("--batch-size", type=int, default=50, help="اندازه هر بچ برای گزارش‌دادن")
     parser.add_argument("--source", default="db", help="منبع داده (db یا connector)")
-    parser.add_argument("--no-fallback", action="store_true", help="عدم استفاده از fallback در صورت قطع Postgres")
+    parser.add_argument(
+        "--no-fallback", action="store_true", help="عدم استفاده از fallback در صورت قطع Postgres"
+    )
     args = parser.parse_args()
 
     symbols = read_symbols(args.symbols_file)
@@ -82,7 +93,7 @@ def main() -> None:
 
     for start in range(0, total, args.batch_size):
         batch = symbols[start : start + args.batch_size]
-        print(f"در حال پردازش نمادهای {start+1}-{start+len(batch)} از {total} ...")
+        print(f"در حال پردازش نمادهای {start + 1}-{start + len(batch)} از {total} ...")
         for sym in batch:
             try:
                 if backtest_exists(dbm, sym, args.interval, args.source):
@@ -103,7 +114,9 @@ def main() -> None:
                 failed.append((sym, str(exc)))
                 print(f"⚠️ خطا در {sym}: {exc}")
 
-    print(f"تمام شد. جدید ذخیره شد: {processed}, از قبل موجود بود: {skipped}, ناموفق: {len(failed)}")
+    print(
+        f"تمام شد. جدید ذخیره شد: {processed}, از قبل موجود بود: {skipped}, ناموفق: {len(failed)}"
+    )
     if failed:
         print("نمادهای ناموفق:")
         for sym, err in failed:
@@ -112,4 +125,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
