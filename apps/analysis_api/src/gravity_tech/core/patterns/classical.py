@@ -45,19 +45,20 @@ Continuation Patterns:
 14. Rectangle
 """
 
-
-
 import numpy as np
+from scipy.signal import find_peaks
+
 from gravity_tech.core.domain.entities import Candle, PatternResult, PatternType
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
-from scipy.signal import find_peaks
 
 
 class ClassicalPatterns:
     """Classical chart pattern recognition"""
 
     @staticmethod
-    def find_swing_points(candles: list[Candle], order: int = 5) -> dict[str, list[tuple[int, float]]]:
+    def find_swing_points(
+        candles: list[Candle], order: int = 5
+    ) -> dict[str, list[tuple[int, float]]]:
         """
         Find swing highs and lows
 
@@ -79,13 +80,12 @@ class ClassicalPatterns:
         troughs, _ = find_peaks(-lows, distance=order)
         swing_lows = [(i, lows[i]) for i in troughs]
 
-        return {
-            'highs': swing_highs,
-            'lows': swing_lows
-        }
+        return {"highs": swing_highs, "lows": swing_lows}
 
     @staticmethod
-    def detect_head_and_shoulders(candles: list[Candle], min_pattern_bars: int = 20) -> PatternResult | None:
+    def detect_head_and_shoulders(
+        candles: list[Candle], min_pattern_bars: int = 20
+    ) -> PatternResult | None:
         """
         Detect Head and Shoulders pattern (bearish reversal)
 
@@ -106,8 +106,8 @@ class ClassicalPatterns:
             return None
 
         swings = ClassicalPatterns.find_swing_points(candles[-50:])
-        highs = swings['highs']
-        lows = swings['lows']
+        highs = swings["highs"]
+        lows = swings["lows"]
 
         if len(highs) < 3 or len(lows) < 2:
             return None
@@ -170,11 +170,13 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=h_price,
-            description=description
+            description=description,
         )
 
     @staticmethod
-    def detect_inverse_head_and_shoulders(candles: list[Candle], min_pattern_bars: int = 20) -> PatternResult | None:
+    def detect_inverse_head_and_shoulders(
+        candles: list[Candle], min_pattern_bars: int = 20
+    ) -> PatternResult | None:
         """
         Detect Inverse Head and Shoulders pattern (bullish reversal)
 
@@ -189,8 +191,8 @@ class ClassicalPatterns:
             return None
 
         swings = ClassicalPatterns.find_swing_points(candles[-50:])
-        lows = swings['lows']
-        highs = swings['highs']
+        lows = swings["lows"]
+        highs = swings["highs"]
 
         if len(lows) < 3 or len(highs) < 2:
             return None
@@ -253,7 +255,7 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=h_price,
-            description=description
+            description=description,
         )
 
     @staticmethod
@@ -272,8 +274,8 @@ class ClassicalPatterns:
             return None
 
         swings = ClassicalPatterns.find_swing_points(candles[-40:])
-        highs = swings['highs']
-        lows = swings['lows']
+        highs = swings["highs"]
+        lows = swings["lows"]
 
         if len(highs) < 2:
             return None
@@ -328,11 +330,13 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=avg_peak,
-            description=description
+            description=description,
         )
 
     @staticmethod
-    def detect_double_bottom(candles: list[Candle], tolerance: float = 0.02) -> PatternResult | None:
+    def detect_double_bottom(
+        candles: list[Candle], tolerance: float = 0.02
+    ) -> PatternResult | None:
         """
         Detect Double Bottom pattern (bullish reversal)
 
@@ -347,8 +351,8 @@ class ClassicalPatterns:
             return None
 
         swings = ClassicalPatterns.find_swing_points(candles[-40:])
-        lows = swings['lows']
-        highs = swings['highs']
+        lows = swings["lows"]
+        highs = swings["highs"]
 
         if len(lows) < 2:
             return None
@@ -403,11 +407,13 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=avg_trough,
-            description=description
+            description=description,
         )
 
     @staticmethod
-    def detect_ascending_triangle(candles: list[Candle], min_touches: int = 2) -> PatternResult | None:
+    def detect_ascending_triangle(
+        candles: list[Candle], min_touches: int = 2
+    ) -> PatternResult | None:
         """
         Detect Ascending Triangle pattern (bullish continuation)
 
@@ -427,8 +433,8 @@ class ClassicalPatterns:
 
         recent = candles[-30:]
         swings = ClassicalPatterns.find_swing_points(recent)
-        highs = swings['highs']
-        lows = swings['lows']
+        highs = swings["highs"]
+        lows = swings["lows"]
 
         if len(highs) < min_touches or len(lows) < min_touches:
             return None
@@ -448,7 +454,7 @@ class ClassicalPatterns:
 
         low_prices = [price for idx, price in recent_lows]
         # Lows should be increasing
-        is_rising = all(low_prices[i] < low_prices[i+1] for i in range(len(low_prices)-1))
+        is_rising = all(low_prices[i] < low_prices[i + 1] for i in range(len(low_prices) - 1))
 
         if not is_rising:
             return None
@@ -482,11 +488,13 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=base_support,
-            description=description
+            description=description,
         )
 
     @staticmethod
-    def detect_descending_triangle(candles: list[Candle], min_touches: int = 2) -> PatternResult | None:
+    def detect_descending_triangle(
+        candles: list[Candle], min_touches: int = 2
+    ) -> PatternResult | None:
         """
         Detect Descending Triangle pattern (bearish continuation)
 
@@ -506,8 +514,8 @@ class ClassicalPatterns:
 
         recent = candles[-30:]
         swings = ClassicalPatterns.find_swing_points(recent)
-        highs = swings['highs']
-        lows = swings['lows']
+        highs = swings["highs"]
+        lows = swings["lows"]
 
         if len(highs) < min_touches or len(lows) < min_touches:
             return None
@@ -527,7 +535,7 @@ class ClassicalPatterns:
 
         high_prices = [price for idx, price in recent_highs]
         # Highs should be decreasing
-        is_falling = all(high_prices[i] > high_prices[i+1] for i in range(len(high_prices)-1))
+        is_falling = all(high_prices[i] > high_prices[i + 1] for i in range(len(high_prices) - 1))
 
         if not is_falling:
             return None
@@ -561,7 +569,7 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=base_resistance,
-            description=description
+            description=description,
         )
 
     @staticmethod
@@ -583,8 +591,8 @@ class ClassicalPatterns:
 
         recent = candles[-30:]
         swings = ClassicalPatterns.find_swing_points(recent)
-        highs = swings['highs']
-        lows = swings['lows']
+        highs = swings["highs"]
+        lows = swings["lows"]
 
         if len(highs) < 2 or len(lows) < 2:
             return None
@@ -595,11 +603,13 @@ class ClassicalPatterns:
 
         # Check if highs are descending
         high_prices = [price for idx, price in recent_highs]
-        highs_descending = all(high_prices[i] > high_prices[i+1] for i in range(len(high_prices)-1))
+        highs_descending = all(
+            high_prices[i] > high_prices[i + 1] for i in range(len(high_prices) - 1)
+        )
 
         # Check if lows are ascending
         low_prices = [price for idx, price in recent_lows]
-        lows_ascending = all(low_prices[i] < low_prices[i+1] for i in range(len(low_prices)-1))
+        lows_ascending = all(low_prices[i] < low_prices[i + 1] for i in range(len(low_prices) - 1))
 
         if not (highs_descending and lows_ascending):
             return None
@@ -650,7 +660,7 @@ class ClassicalPatterns:
             end_time=candles[-1].timestamp,
             price_target=price_target,
             stop_loss=stop_loss,
-            description=description
+            description=description,
         )
 
     @staticmethod
