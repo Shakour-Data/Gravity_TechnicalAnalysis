@@ -48,6 +48,7 @@ import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from gravity_tech.api.v1 import router as api_v1_router
 from gravity_tech.api.v1 import scenarios as scenarios_router
 from gravity_tech.api.v1.auth import router as auth_router
@@ -68,13 +69,15 @@ except Exception as e:  # Catch any import-time errors (e.g., incompatible consu
     warnings.warn(f"Service discovery unavailable: {e}", stacklevel=2)
     shutdown_service_discovery = None
     startup_service_discovery = None
+from prometheus_client import make_asgi_app
+
 from gravity_tech.services.cache_service import cache_manager
 from gravity_tech.services.data_ingestor_service import start_data_ingestor, stop_data_ingestor
-from prometheus_client import make_asgi_app
 
 # Setup structured logging
 setup_logging()
 logger = structlog.get_logger()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -91,9 +94,9 @@ async def lifespan(app: FastAPI):
 
         # Event publisher (optional)
         try:
-            if hasattr(settings, 'kafka_enabled') and settings.kafka_enabled:
+            if hasattr(settings, "kafka_enabled") and settings.kafka_enabled:
                 await event_publisher.initialize(broker_type="kafka")
-            elif hasattr(settings, 'rabbitmq_enabled') and settings.rabbitmq_enabled:
+            elif hasattr(settings, "rabbitmq_enabled") and settings.rabbitmq_enabled:
                 await event_publisher.initialize(broker_type="rabbitmq")
         except Exception as e:
             logger.warning("event_publisher_initialization_failed", error=str(e))
@@ -136,8 +139,10 @@ async def lifespan(app: FastAPI):
 
         logger.info("application_stopped")
 
+
 # Create FastAPI application
-app = FastAPI(lifespan=lifespan,
+app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description="""
 # Comprehensive Technical Analysis Microservice
@@ -189,26 +194,17 @@ This API follows semantic versioning. Current version: **v1**
     openapi_tags=[
         {
             "name": "Technical Analysis",
-            "description": "Complete technical analysis with all indicators"
+            "description": "Complete technical analysis with all indicators",
         },
-        {
-            "name": "Health",
-            "description": "Service health and readiness checks"
-        },
-        {
-            "name": "Metrics",
-            "description": "Prometheus metrics endpoint"
-        }
+        {"name": "Health", "description": "Service health and readiness checks"},
+        {"name": "Metrics", "description": "Prometheus metrics endpoint"},
     ],
     contact={
         "name": "Gravity Tech Analysis Team",
         "url": "https://github.com/GravityWavesMl/Gravity_TechAnalysis",
-        "email": "support@gravity-tech.com"
+        "email": "support@gravity-tech.com",
     },
-    license_info={
-        "name": "MIT License",
-        "url": "https://opensource.org/licenses/MIT"
-    }
+    license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
 )
 
 # CORS Configuration
@@ -231,7 +227,7 @@ async def log_requests(request: Request, call_next):
         "request_started",
         method=request.method,
         path=request.url.path,
-        client=request.client.host if request.client else None
+        client=request.client.host if request.client else None,
     )
 
     response = await call_next(request)
@@ -242,7 +238,7 @@ async def log_requests(request: Request, call_next):
         method=request.method,
         path=request.url.path,
         status_code=response.status_code,
-        duration=f"{duration:.3f}s"
+        duration=f"{duration:.3f}s",
     )
 
     return response
@@ -261,7 +257,6 @@ app.include_router(auth_router, prefix="/api")
 if settings.enable_scenarios:
     app.include_router(scenarios_router.router, prefix="/api/v1")
 
-from gravity_tech.config.settings import Settings
 
 # Always mount DB explorer router; authorization is enforced in handlers
 app.include_router(db_router, prefix="/api/v1")
@@ -293,7 +288,7 @@ async def health_check():
         "status": "healthy",
         "service": settings.app_name,
         "version": settings.app_version,
-        "environment": settings.environment
+        "environment": settings.environment,
     }
 
 
@@ -315,11 +310,8 @@ async def root():
             "openapi": "/api/openapi.json",
             "health": "/health",
             "metrics": "/metrics" if settings.metrics_enabled else None,
-            "api": {
-                "v1": "/api/v1",
-                "current": "v1"
-            }
-        }
+            "api": {"v1": "/api/v1", "current": "v1"},
+        },
     }
 
 
@@ -341,7 +333,7 @@ async def readiness_check():
         "status": "ready",
         "service": settings.app_name,
         "version": settings.app_version,
-        "checks": {}
+        "checks": {},
     }
 
     # Check Redis connection if enabled
@@ -353,15 +345,13 @@ async def readiness_check():
             if not redis_healthy:
                 health_status["status"] = "not_ready"
                 return JSONResponse(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    content=health_status
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=health_status
                 )
         except Exception as e:
             health_status["status"] = "not_ready"
             health_status["checks"]["redis"] = f"unhealthy: {str(e)}"
             return JSONResponse(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content=health_status
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=health_status
             )
     else:
         health_status["checks"]["redis"] = "disabled"
@@ -402,10 +392,7 @@ async def root():
         "openapi": "/api/openapi.json",
         "health": "/health",
         "metrics": "/metrics" if settings.metrics_enabled else None,
-        "api": {
-            "v1": "/api/v1",
-            "current": "v1"
-        }
+        "api": {"v1": "/api/v1", "current": "v1"},
     }
 
 
@@ -414,18 +401,15 @@ async def root():
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler"""
     logger.error(
-        "unhandled_exception",
-        error=str(exc),
-        path=request.url.path,
-        method=request.method
+        "unhandled_exception", error=str(exc), path=request.url.path, method=request.method
     )
 
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
-            "message": str(exc) if settings.debug else "An error occurred"
-        }
+            "message": str(exc) if settings.debug else "An error occurred",
+        },
     )
 
 
@@ -437,5 +421,5 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
-        workers=1 if settings.debug else settings.workers
+        workers=1 if settings.debug else settings.workers,
     )
