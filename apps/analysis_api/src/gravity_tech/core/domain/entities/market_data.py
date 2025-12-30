@@ -90,8 +90,8 @@ class MarketData:
         low_price: Decimal,
         close_price: Decimal,
         volume: Decimal,
-        source: str | None = None
-    ) -> 'MarketData':
+        source: str | None = None,
+    ) -> "MarketData":
         """
         Create MarketData from candle/OHLCV data.
 
@@ -116,7 +116,7 @@ class MarketData:
             high_price=high_price,
             low_price=low_price,
             volume=volume,
-            source=source
+            source=source,
         )
 
     @classmethod
@@ -126,8 +126,8 @@ class MarketData:
         timestamp: datetime,
         price: Decimal,
         volume: Decimal | None = None,
-        source: str | None = None
-    ) -> 'MarketData':
+        source: str | None = None,
+    ) -> "MarketData":
         """
         Create MarketData from tick price data.
 
@@ -141,13 +141,7 @@ class MarketData:
         Returns:
             MarketData instance
         """
-        return cls(
-            symbol=symbol,
-            timestamp=timestamp,
-            price=price,
-            volume=volume,
-            source=source
-        )
+        return cls(symbol=symbol, timestamp=timestamp, price=price, volume=volume, source=source)
 
     def to_dict(self) -> dict:
         """
@@ -159,15 +153,25 @@ class MarketData:
         result = {
             "symbol": self.symbol,
             "timestamp": self.timestamp.isoformat(),
-            "price": str(self.price)
+            "price": str(self.price),
         }
 
         # Add optional fields if present
         optional_fields = [
-            "open_price", "high_price", "low_price", "volume", "quote_volume",
-            "price_change", "price_change_percent", "weighted_avg_price",
-            "bid_price", "bid_quantity", "ask_price", "ask_quantity",
-            "source", "sequence_number"
+            "open_price",
+            "high_price",
+            "low_price",
+            "volume",
+            "quote_volume",
+            "price_change",
+            "price_change_percent",
+            "weighted_avg_price",
+            "bid_price",
+            "bid_quantity",
+            "ask_price",
+            "ask_quantity",
+            "source",
+            "sequence_number",
         ]
 
         for field in optional_fields:
@@ -178,7 +182,7 @@ class MarketData:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'MarketData':
+    def from_dict(cls, data: dict) -> "MarketData":
         """
         Create from dictionary (JSON deserialization).
 
@@ -200,9 +204,18 @@ class MarketData:
             # Optional fields
             kwargs = {}
             decimal_fields = [
-                "open_price", "high_price", "low_price", "volume", "quote_volume",
-                "price_change", "price_change_percent", "weighted_avg_price",
-                "bid_price", "bid_quantity", "ask_price", "ask_quantity"
+                "open_price",
+                "high_price",
+                "low_price",
+                "volume",
+                "quote_volume",
+                "price_change",
+                "price_change_percent",
+                "weighted_avg_price",
+                "bid_price",
+                "bid_quantity",
+                "ask_price",
+                "ask_quantity",
             ]
 
             for field in decimal_fields:
@@ -215,12 +228,7 @@ class MarketData:
             if "sequence_number" in data:
                 kwargs["sequence_number"] = data["sequence_number"]
 
-            return cls(
-                symbol=symbol,
-                timestamp=timestamp,
-                price=price,
-                **kwargs
-            )
+            return cls(symbol=symbol, timestamp=timestamp, price=price, **kwargs)
 
         except KeyError as e:
             raise ValueError(f"Missing required field: {e}") from e
@@ -230,11 +238,9 @@ class MarketData:
     @property
     def is_complete_candle(self) -> bool:
         """Check if this represents complete OHLC data."""
-        return all([
-            self.open_price is not None,
-            self.high_price is not None,
-            self.low_price is not None
-        ])
+        return all(
+            [self.open_price is not None, self.high_price is not None, self.low_price is not None]
+        )
 
     @property
     def price_range(self) -> Decimal | None:
@@ -271,9 +277,11 @@ class MarketData:
         # Validate OHLC relationship
         if self.is_complete_candle:
             # All values are guaranteed to be non-None here due to is_complete_candle check
-            if not (self.low_price is not None and  # type: ignore
-                    self.open_price is not None and  # type: ignore
-                    self.high_price is not None and  # type: ignore
-                    self.low_price <= self.open_price <= self.high_price and
-                    self.low_price <= self.price <= self.high_price):
+            if not (
+                self.low_price is not None  # type: ignore
+                and self.open_price is not None  # type: ignore
+                and self.high_price is not None  # type: ignore
+                and self.low_price <= self.open_price <= self.high_price
+                and self.low_price <= self.price <= self.high_price
+            ):
                 raise ValueError("OHLC prices are inconsistent")
