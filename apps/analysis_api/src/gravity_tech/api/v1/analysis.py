@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
+
 from gravity_tech.config.settings import settings
 from gravity_tech.core.contracts.analysis import AnalysisRequest, TechnicalAnalysisResult
 from gravity_tech.core.domain.entities import Candle, IndicatorResult
@@ -16,7 +18,6 @@ from gravity_tech.middleware.events import MessageType, event_publisher
 from gravity_tech.services.analysis_service import TechnicalAnalysisService
 from gravity_tech.services.data_ingestor_service import data_ingestor
 from gravity_tech.services.ingestion_payload import build_ingestion_payload
-from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
 
@@ -25,6 +26,7 @@ router = APIRouter(tags=["Technical Analysis"])
 
 class IndicatorCandle(BaseModel):
     """Candle payload for indicator-only endpoint."""
+
     timestamp: str
     open: float
     high: float
@@ -35,10 +37,15 @@ class IndicatorCandle(BaseModel):
 
 class IndicatorAnalysisRequest(BaseModel):
     """Request model for specific indicators analysis."""
+
     symbol: str = Field(..., description="Trading symbol")
     timeframe: str = Field(..., description="Timeframe", pattern="^(1m|5m|15m|30m|1h|4h|1d|1w)$")
-    candles: list[IndicatorCandle] = Field(..., min_length=60, description="OHLCV data (min 60 candles)")
-    indicator_names: list[str] = Field(..., min_length=1, description="List of indicator names to calculate")
+    candles: list[IndicatorCandle] = Field(
+        ..., min_length=60, description="OHLCV data (min 60 candles)"
+    )
+    indicator_names: list[str] = Field(
+        ..., min_length=1, description="List of indicator names to calculate"
+    )
 
 
 @router.get(
@@ -68,7 +75,9 @@ async def analyze_historical(
     candles = [Candle(symbol=symbol, timeframe=timeframe, **c) for c in raw_candles]
 
     if len(candles) < 60:
-        raise HTTPException(status_code=400, detail="Insufficient data for analysis (min 60 candles recommended)")
+        raise HTTPException(
+            status_code=400, detail="Insufficient data for analysis (min 60 candles recommended)"
+        )
 
     request = AnalysisRequest(symbol=symbol, timeframe=timeframe, candles=candles)
     result = await TechnicalAnalysisService.analyze(request)
@@ -252,7 +261,9 @@ async def list_indicators():
     }
 
 
-async def _maybe_publish_analysis_event(result: TechnicalAnalysisResult, candles: list[Candle]) -> None:
+async def _maybe_publish_analysis_event(
+    result: TechnicalAnalysisResult, candles: list[Candle]
+) -> None:
     """Publish ANALYSIS_COMPLETED or persist directly when ingestion is enabled."""
     if not settings.enable_data_ingestion:
         return
