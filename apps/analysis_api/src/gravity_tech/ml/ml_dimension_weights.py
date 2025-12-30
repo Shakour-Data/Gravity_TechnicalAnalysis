@@ -23,19 +23,22 @@ import pandas as pd
 
 try:
     import lightgbm as lgb
+
     LIGHTGBM_AVAILABLE = True
 except ImportError:
     LIGHTGBM_AVAILABLE = False
 
 try:
     import xgboost as xgb
+
     XGBOOST_AVAILABLE = True
 except ImportError:
     XGBOOST_AVAILABLE = False
+from datetime import UTC
+
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
-from datetime import timezone
 
 
 class DimensionWeightLearner:
@@ -48,12 +51,15 @@ class DimensionWeightLearner:
         """Lazy load matplotlib to avoid import-time dependency."""
         try:
             import matplotlib.pyplot as plt
+
             return plt
         except ImportError as e:
-            raise ImportError("matplotlib is required for visualization. Install with: pip install matplotlib") from e
+            raise ImportError(
+                "matplotlib is required for visualization. Install with: pip install matplotlib"
+            ) from e
 
     # 4 Dimensions of Trend Analysis
-    DIMENSIONS = ['indicators', 'candlestick', 'elliott', 'classical']
+    DIMENSIONS = ["indicators", "candlestick", "elliott", "classical"]
 
     def __init__(self, model_type: str = "lightgbm"):
         """
@@ -78,11 +84,7 @@ class DimensionWeightLearner:
             self.model_type = "sklearn"
 
     def train(
-        self,
-        X: pd.DataFrame,
-        y: pd.Series,
-        test_size: float = 0.2,
-        random_state: int = 42
+        self, X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, random_state: int = 42
     ) -> dict:
         """
         Train model to predict future returns from 4 dimension signals
@@ -116,7 +118,7 @@ class DimensionWeightLearner:
                 max_depth=4,  # Shallower for fewer features
                 num_leaves=15,
                 random_state=random_state,
-                verbose=-1
+                verbose=-1,
             )
         elif self.model_type == "xgboost":
             self.model = xgb.XGBRegressor(
@@ -124,14 +126,11 @@ class DimensionWeightLearner:
                 learning_rate=0.05,
                 max_depth=4,
                 random_state=random_state,
-                verbosity=0
+                verbosity=0,
             )
         else:  # sklearn
             self.model = GradientBoostingRegressor(
-                n_estimators=100,
-                learning_rate=0.05,
-                max_depth=4,
-                random_state=random_state
+                n_estimators=100, learning_rate=0.05, max_depth=4, random_state=random_state
             )
 
         # Fit model
@@ -143,12 +142,12 @@ class DimensionWeightLearner:
 
         # Calculate metrics
         metrics = {
-            'train_mse': mean_squared_error(y_train, y_train_pred),
-            'test_mse': mean_squared_error(y_test, y_test_pred),
-            'train_mae': mean_absolute_error(y_train, y_train_pred),
-            'test_mae': mean_absolute_error(y_test, y_test_pred),
-            'train_r2': r2_score(y_train, y_train_pred),
-            'test_r2': r2_score(y_test, y_test_pred)
+            "train_mse": mean_squared_error(y_train, y_train_pred),
+            "test_mse": mean_squared_error(y_test, y_test_pred),
+            "train_mae": mean_absolute_error(y_train, y_train_pred),
+            "test_mae": mean_absolute_error(y_test, y_test_pred),
+            "train_r2": r2_score(y_train, y_train_pred),
+            "test_r2": r2_score(y_test, y_test_pred),
         }
 
         print("\n📊 Training Results:")
@@ -178,15 +177,12 @@ class DimensionWeightLearner:
 
         # Create importance dict
         self.feature_importance = {
-            name: float(imp)
-            for name, imp in zip(feature_names, importance, strict=True)
+            name: float(imp) for name, imp in zip(feature_names, importance, strict=True)
         }
 
         # Sort by importance
         sorted_importance = sorted(
-            self.feature_importance.items(),
-            key=lambda x: x[1],
-            reverse=True
+            self.feature_importance.items(), key=lambda x: x[1], reverse=True
         )
 
         print(f"\n🔝 Feature Importance (All {len(sorted_importance)} features):")
@@ -210,8 +206,8 @@ class DimensionWeightLearner:
             # Sum importance of all features for this dimension
             total_imp = 0.0
 
-            for suffix in ['_score', '_confidence', '_weighted']:
-                feature_name = f'dim{i}_{dimension}{suffix}'
+            for suffix in ["_score", "_confidence", "_weighted"]:
+                feature_name = f"dim{i}_{dimension}{suffix}"
                 if feature_name in self.feature_importance:
                     total_imp += self.feature_importance[feature_name]
 
@@ -221,29 +217,22 @@ class DimensionWeightLearner:
         total = sum(dimension_importance.values())
 
         if total > 0:
-            self.learned_weights = {
-                dim: imp / total
-                for dim, imp in dimension_importance.items()
-            }
+            self.learned_weights = {dim: imp / total for dim, imp in dimension_importance.items()}
         else:
             # Fallback to proposed weights: 40%, 30%, 20%, 10%
             self.learned_weights = {
-                'indicators': 0.40,
-                'elliott': 0.30,
-                'classical': 0.20,
-                'candlestick': 0.10
+                "indicators": 0.40,
+                "elliott": 0.30,
+                "classical": 0.20,
+                "candlestick": 0.10,
             }
 
         print("\n⚖️  Learned Dimension Weights:")
-        sorted_weights = sorted(
-            self.learned_weights.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_weights = sorted(self.learned_weights.items(), key=lambda x: x[1], reverse=True)
 
         for dimension, weight in sorted_weights:
-            bar = '█' * int(weight * 100)
-            print(f"   {dimension:15s}: {weight:.4f} ({weight*100:.1f}%) {bar}")
+            bar = "█" * int(weight * 100)
+            print(f"   {dimension:15s}: {weight:.4f} ({weight * 100:.1f}%) {bar}")
 
         # Verify sum
         weight_sum = sum(self.learned_weights.values())
@@ -258,7 +247,9 @@ class DimensionWeightLearner:
         """
         return self.learned_weights.copy()
 
-    def get_weights_with_confidence(self, X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, dict[str, float] | float | str]:
+    def get_weights_with_confidence(
+        self, X_test: pd.DataFrame, y_test: pd.Series
+    ) -> dict[str, dict[str, float] | float | str]:
         """
         Get learned weights with confidence metrics and reliability factor
 
@@ -273,7 +264,7 @@ class DimensionWeightLearner:
 
         # Calculate metrics
         r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)        # Calculate residuals for confidence intervals
+        mae = mean_absolute_error(y_test, y_pred)  # Calculate residuals for confidence intervals
         residuals = y_test - y_pred
         std_residual = np.std(residuals)
 
@@ -299,10 +290,10 @@ class DimensionWeightLearner:
 
         # Proposed weights as fallback
         proposed_weights = {
-            'indicators': 0.40,
-            'elliott': 0.30,
-            'classical': 0.20,
-            'candlestick': 0.10
+            "indicators": 0.40,
+            "elliott": 0.30,
+            "classical": 0.20,
+            "candlestick": 0.10,
         }
 
         # Blend ML weights with proposed weights based on reliability
@@ -316,22 +307,21 @@ class DimensionWeightLearner:
         total_blended = sum(blended_weights.values())
         if total_blended > 0:
             blended_weights = {
-                dim: weight / total_blended
-                for dim, weight in blended_weights.items()
+                dim: weight / total_blended for dim, weight in blended_weights.items()
             }
 
         result = {
-            'weights': self.learned_weights.copy(),
-            'metrics': {
-                'r2_score': r2,
-                'mae': mae,
-                'confidence_interval_95': confidence_95,
-                'reliability': weight_reliability,
-                'reliability_factor': reliability_factor,
-                'blend_ratio': f"{int(blend_ml*100)}% ML / {int((1-blend_ml)*100)}% Proposed"
+            "weights": self.learned_weights.copy(),
+            "metrics": {
+                "r2_score": r2,
+                "mae": mae,
+                "confidence_interval_95": confidence_95,
+                "reliability": weight_reliability,
+                "reliability_factor": reliability_factor,
+                "blend_ratio": f"{int(blend_ml * 100)}% ML / {int((1 - blend_ml) * 100)}% Proposed",
             },
-            'adjusted_weights': blended_weights,
-            'proposed_weights': proposed_weights
+            "adjusted_weights": blended_weights,
+            "proposed_weights": proposed_weights,
         }
 
         return result
@@ -350,18 +340,18 @@ class DimensionWeightLearner:
         # Save weights with metadata
         weights_path = self.model_path / "dimension_weights.json"
         weights_data = {
-            'weights': self.learned_weights,
-            'timestamp': datetime.now().isoformat(),
-            'model_type': self.model_type,
-            'feature_importance': self.feature_importance
+            "weights": self.learned_weights,
+            "timestamp": datetime.now().isoformat(),
+            "model_type": self.model_type,
+            "feature_importance": self.feature_importance,
         }
 
-        with open(weights_path, 'w') as f:
+        with open(weights_path, "w") as f:
             json.dump(weights_data, f, indent=2)
 
         # Save feature importance
         importance_path = self.model_path / "dimension_feature_importance.json"
-        with open(importance_path, 'w') as f:
+        with open(importance_path, "w") as f:
             json.dump(self.feature_importance, f, indent=2)
 
         print("\n💾 Saved:")
@@ -411,16 +401,16 @@ class DimensionWeightLearner:
 
         # Proposed weights: 40%, 30%, 20%, 10%
         proposed_weights = {
-            'indicators': 0.40,
-            'elliott': 0.30,
-            'classical': 0.20,
-            'candlestick': 0.10
+            "indicators": 0.40,
+            "elliott": 0.30,
+            "classical": 0.20,
+            "candlestick": 0.10,
         }
 
         # Calculate weighted average with proposed weights
         weighted_features = []
         for i, dim in enumerate(self.DIMENSIONS, 1):
-            feature_name = f'dim{i}_{dim}_weighted'
+            feature_name = f"dim{i}_{dim}_weighted"
             if feature_name in X.columns:
                 weighted_features.append(X[feature_name] * proposed_weights[dim])
 
@@ -430,7 +420,7 @@ class DimensionWeightLearner:
             proposed_mae = mean_absolute_error(y, proposed_pred)
         else:
             proposed_r2 = 0.0
-            proposed_mae = float('inf')
+            proposed_mae = float("inf")
 
         print("\n   ML Learned Weights:")
         print(f"      R²:  {ml_r2:.4f}")
@@ -441,8 +431,12 @@ class DimensionWeightLearner:
         print(f"      MAE: {proposed_mae:.6f}")
 
         print("\n   Improvement:")
-        print(f"      R²:  {(ml_r2 - proposed_r2):.4f} ({((ml_r2/proposed_r2 - 1)*100 if proposed_r2 != 0 else 0):.1f}%)")
-        print(f"      MAE: {(proposed_mae - ml_mae):.6f} ({((1 - ml_mae/proposed_mae)*100 if proposed_mae != 0 else 0):.1f}%)")
+        print(
+            f"      R²:  {(ml_r2 - proposed_r2):.4f} ({((ml_r2 / proposed_r2 - 1) * 100 if proposed_r2 != 0 else 0):.1f}%)"
+        )
+        print(
+            f"      MAE: {(proposed_mae - ml_mae):.6f} ({((1 - ml_mae / proposed_mae) * 100 if proposed_mae != 0 else 0):.1f}%)"
+        )
 
     def plot_feature_importance(self) -> None:
         """
@@ -455,20 +449,16 @@ class DimensionWeightLearner:
         plt = self._get_matplotlib()
 
         # Sort features
-        sorted_features = sorted(
-            self.feature_importance.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_features = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)
 
         features, importances = zip(*sorted_features, strict=True)
 
         # Plot
         plt.figure(figsize=(10, 8))
-        plt.barh(range(len(features)), importances, color='steelblue')
+        plt.barh(range(len(features)), importances, color="steelblue")
         plt.yticks(range(len(features)), features)
-        plt.xlabel('Feature Importance')
-        plt.title('Feature Importance - 4 Dimension Weights')
+        plt.xlabel("Feature Importance")
+        plt.title("Feature Importance - 4 Dimension Weights")
         plt.tight_layout()
 
         plot_path = self.model_path / "dimension_feature_importance.png"
@@ -486,7 +476,7 @@ class DimensionWeightLearner:
 
         plt = self._get_matplotlib()
 
-        dimensions = ['indicators', 'elliott', 'classical', 'candlestick']
+        dimensions = ["indicators", "elliott", "classical", "candlestick"]
         ml_weights = [self.learned_weights.get(dim, 0.0) for dim in dimensions]
         proposed_weights = [0.40, 0.30, 0.20, 0.10]
 
@@ -494,27 +484,44 @@ class DimensionWeightLearner:
         width = 0.35
 
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.bar(x - width/2, ml_weights, width, label='ML Learned Weights', color='steelblue')
-        ax.bar(x + width/2, proposed_weights, width, label='Proposed Weights (40-30-20-10)', color='coral')
+        ax.bar(x - width / 2, ml_weights, width, label="ML Learned Weights", color="steelblue")
+        ax.bar(
+            x + width / 2,
+            proposed_weights,
+            width,
+            label="Proposed Weights (40-30-20-10)",
+            color="coral",
+        )
 
-        ax.set_xlabel('Dimension')
-        ax.set_ylabel('Weight')
-        ax.set_title('Learned Weights vs Proposed Weights (4 Dimensions)')
+        ax.set_xlabel("Dimension")
+        ax.set_ylabel("Weight")
+        ax.set_title("Learned Weights vs Proposed Weights (4 Dimensions)")
         ax.set_xticks(x)
         ax.set_xticklabels(dimensions, rotation=0)
         ax.legend()
-        ax.grid(axis='y', alpha=0.3)
+        ax.grid(axis="y", alpha=0.3)
 
         # Add percentage labels
         for i, (ml, prop) in enumerate(zip(ml_weights, proposed_weights, strict=True)):
-            ax.text(i - width/2, ml + 0.01, f'{ml*100:.1f}%', ha='center', va='bottom', fontsize=9)
-            ax.text(i + width/2, prop + 0.01, f'{prop*100:.1f}%', ha='center', va='bottom', fontsize=9)
+            ax.text(
+                i - width / 2, ml + 0.01, f"{ml * 100:.1f}%", ha="center", va="bottom", fontsize=9
+            )
+            ax.text(
+                i + width / 2,
+                prop + 0.01,
+                f"{prop * 100:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
 
         plt.tight_layout()
         plot_path = self.model_path / "dimension_weights_comparison.png"
         plt.savefig(plot_path, dpi=150)
         print(f"📈 Saved plot: {plot_path}")
         plt.close()
+
+
 # Example usage and testing
 if __name__ == "__main__":
     from datetime import datetime, timedelta
@@ -529,7 +536,7 @@ if __name__ == "__main__":
     # Step 1: Fetch data
     print("\n📥 Step 1: Fetching Bitcoin historical data...")
     connector = DataConnector()
-    end_date = datetime.now(timezone.utc)
+    end_date = datetime.now(UTC)
     start_date = end_date - timedelta(days=730)  # 2 years
 
     candles = connector.fetch_daily_candles("BTCUSDT", start_date, end_date)
@@ -549,8 +556,8 @@ if __name__ == "__main__":
 
     # Step 4: Compare with proposed weights
     print("\n🔍 Step 4: Comparing with proposed weights...")
-    X_test = X.iloc[int(len(X) * 0.8):]
-    y_test = y.iloc[int(len(y) * 0.8):]
+    X_test = X.iloc[int(len(X) * 0.8) :]
+    y_test = y.iloc[int(len(y) * 0.8) :]
     learner.compare_with_proposed_weights(X_test, y_test)
 
     # Step 5: Visualize
@@ -569,4 +576,4 @@ if __name__ == "__main__":
     # Display final weights
     print("\n🎯 Final Learned Weights:")
     for dim, weight in sorted(learner.get_weights().items(), key=lambda x: x[1], reverse=True):
-        print(f"   {dim:15s}: {weight:.4f} ({weight*100:.1f}%)")
+        print(f"   {dim:15s}: {weight:.4f} ({weight * 100:.1f}%)")
