@@ -59,8 +59,12 @@ def mirror_indices(cur):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Mirror tse_input.* into analytics.market_data_cache.")
-    parser.add_argument("--pg-dsn", required=True, help="Postgres DSN, e.g. postgresql://user:pass@host:port/db")
+    parser = argparse.ArgumentParser(
+        description="Mirror tse_input.* into analytics.market_data_cache."
+    )
+    parser.add_argument(
+        "--pg-dsn", required=True, help="Postgres DSN, e.g. postgresql://user:pass@host:port/db"
+    )
     args = parser.parse_args()
 
     conn = psycopg2.connect(args.pg_dsn)
