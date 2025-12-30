@@ -18,14 +18,16 @@ def sample_candles():
     candles = []
     base_time = datetime(2025, 1, 1)
     for i in range(100):  # Sufficient data for ML analysis
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=100 + i * 0.5,
-            high=105 + i * 0.5,
-            low=95 + i * 0.5,
-            close=102 + i * 0.5,
-            volume=1000000 + i * 10000
-        ))
+        candles.append(
+            Candle(
+                timestamp=base_time + timedelta(hours=i),
+                open=100 + i * 0.5,
+                high=105 + i * 0.5,
+                low=95 + i * 0.5,
+                close=102 + i * 0.5,
+                volume=1000000 + i * 10000,
+            )
+        )
     return candles
 
 
@@ -35,7 +37,7 @@ class TestMLRouter:
     def test_ml_router_import(self):
         """Test that ML router can be imported successfully"""
         assert ml_router is not None
-        assert hasattr(ml_router, 'routes')
+        assert hasattr(ml_router, "routes")
         assert len(ml_router.routes) > 0
 
     def test_ml_router_has_expected_routes(self):
@@ -43,7 +45,7 @@ class TestMLRouter:
         # Check that routes exist
         assert len(ml_router.routes) >= 4  # Should have at least 4 ML endpoints
 
-    @patch('gravity_tech.api.v1.ml.load_ml_model')
+    @patch("gravity_tech.api.v1.ml.load_ml_model")
     def test_load_ml_model_mock(self, mock_load):
         """Test that ML model loading function can be mocked"""
         # Setup mock
@@ -62,12 +64,12 @@ class TestMLModels:
     def test_candle_data_structure(self, sample_candles):
         """Test that candle data has expected structure"""
         candle = sample_candles[0]
-        assert hasattr(candle, 'timestamp')
-        assert hasattr(candle, 'open')
-        assert hasattr(candle, 'high')
-        assert hasattr(candle, 'low')
-        assert hasattr(candle, 'close')
-        assert hasattr(candle, 'volume')
+        assert hasattr(candle, "timestamp")
+        assert hasattr(candle, "open")
+        assert hasattr(candle, "high")
+        assert hasattr(candle, "low")
+        assert hasattr(candle, "close")
+        assert hasattr(candle, "volume")
 
         # Test attribute access
         assert isinstance(candle.timestamp, datetime)
@@ -80,11 +82,11 @@ class TestMLModels:
 
         # Test chronological order
         for i in range(1, len(sample_candles)):
-            assert sample_candles[i].timestamp > sample_candles[i-1].timestamp
+            assert sample_candles[i].timestamp > sample_candles[i - 1].timestamp
 
         # Test price progression
         for i in range(1, len(sample_candles)):
-            assert sample_candles[i].open > sample_candles[i-1].open
+            assert sample_candles[i].open > sample_candles[i - 1].open
 
     def test_ml_response_structure_validation(self):
         """Test that ML response structures are properly defined"""
@@ -92,18 +94,19 @@ class TestMLModels:
         prediction_response = {
             "pattern_type": "gartley",
             "confidence": 0.85,
-            "probabilities": {
-                "gartley": 0.85,
-                "butterfly": 0.10,
-                "bat": 0.03,
-                "crab": 0.02
-            },
+            "probabilities": {"gartley": 0.85, "butterfly": 0.10, "bat": 0.03, "crab": 0.02},
             "processing_time": 0.12,
-            "model_version": "v1.0.0"
+            "model_version": "v1.0.0",
         }
 
         # Validate structure
-        required_keys = ["pattern_type", "confidence", "probabilities", "processing_time", "model_version"]
+        required_keys = [
+            "pattern_type",
+            "confidence",
+            "probabilities",
+            "processing_time",
+            "model_version",
+        ]
         for key in required_keys:
             assert key in prediction_response, f"Missing required key: {key}"
 
