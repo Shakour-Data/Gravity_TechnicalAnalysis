@@ -39,16 +39,18 @@ from gravity_tech.core.domain.entities import Candle
 
 class DivergenceType(Enum):
     """نوع واگرایی"""
-    REGULAR_BULLISH = "REGULAR_BULLISH"          # واگرایی معمولی صعودی
-    REGULAR_BEARISH = "REGULAR_BEARISH"          # واگرایی معمولی نزولی
-    HIDDEN_BULLISH = "HIDDEN_BULLISH"            # واگرایی پنهان صعودی
-    HIDDEN_BEARISH = "HIDDEN_BEARISH"            # واگرایی پنهان نزولی
-    NONE = "NONE"                                 # بدون واگرایی
+
+    REGULAR_BULLISH = "REGULAR_BULLISH"  # واگرایی معمولی صعودی
+    REGULAR_BEARISH = "REGULAR_BEARISH"  # واگرایی معمولی نزولی
+    HIDDEN_BULLISH = "HIDDEN_BULLISH"  # واگرایی پنهان صعودی
+    HIDDEN_BEARISH = "HIDDEN_BEARISH"  # واگرایی پنهان نزولی
+    NONE = "NONE"  # بدون واگرایی
 
 
 @dataclass
 class SwingPoint:
     """نقطه سوئینگ (قله یا دره)"""
+
     index: int
     value: float
     is_high: bool  # True = High/Peak, False = Low/Trough
@@ -59,6 +61,7 @@ class DivergenceResult:
     """
     نتیجه تشخیص واگرایی
     """
+
     divergence_type: DivergenceType
     strength: float  # [0, 1] قدرت واگرایی
     confidence: float  # [0, 1] اعتماد
@@ -95,7 +98,7 @@ class DivergenceDetector:
         self,
         lookback: int = 20,
         min_swing_distance: int = 5,
-        swing_threshold: float = 0.02  # 2%
+        swing_threshold: float = 0.02,  # 2%
     ):
         """
         Initialize divergence detector
@@ -113,7 +116,7 @@ class DivergenceDetector:
         self,
         candles: list[Candle],
         indicator_values: list[float],
-        indicator_name: str = "Indicator"
+        indicator_name: str = "Indicator",
     ) -> DivergenceResult:
         """
         تشخیص واگرایی بین قیمت و اندیکاتور
@@ -131,12 +134,12 @@ class DivergenceDetector:
                 divergence_type=DivergenceType.NONE,
                 strength=0.0,
                 confidence=0.5,
-                description="داده کافی برای تشخیص واگرایی نیست"
+                description="داده کافی برای تشخیص واگرایی نیست",
             )
 
         # استخراج بخش مورد نظر
-        recent_candles = candles[-self.lookback:]
-        recent_indicators = indicator_values[-self.lookback:]
+        recent_candles = candles[-self.lookback :]
+        recent_indicators = indicator_values[-self.lookback :]
 
         # پیدا کردن swing points در قیمت
         price_highs = [c.high for c in recent_candles]
@@ -174,7 +177,7 @@ class DivergenceDetector:
             (DivergenceType.REGULAR_BULLISH, regular_bullish),
             (DivergenceType.REGULAR_BEARISH, regular_bearish),
             (DivergenceType.HIDDEN_BULLISH, hidden_bullish),
-            (DivergenceType.HIDDEN_BEARISH, hidden_bearish)
+            (DivergenceType.HIDDEN_BEARISH, hidden_bearish),
         ]
 
         # فیلتر واگرایی‌های یافت شده
@@ -185,7 +188,7 @@ class DivergenceDetector:
                 divergence_type=DivergenceType.NONE,
                 strength=0.0,
                 confidence=0.5,
-                description="واگرایی تشخیص داده نشد"
+                description="واگرایی تشخیص داده نشد",
             )
 
         # انتخاب قوی‌ترین (Regular > Hidden)
@@ -198,10 +201,7 @@ class DivergenceDetector:
         return self._create_result(dtype, data, indicator_name)
 
     def _find_swing_points(
-        self,
-        values: list[float],
-        is_high: bool,
-        window: int = 3
+        self, values: list[float], is_high: bool, window: int = 3
     ) -> list[SwingPoint]:
         """
         پیدا کردن swing points (قله‌ها یا دره‌ها)
@@ -218,24 +218,22 @@ class DivergenceDetector:
 
             if is_high:
                 # بررسی قله: باید از همه نقاط قبل و بعد بیشتر باشد
-                is_swing = all(current >= values[j] for j in range(i - window, i + window + 1) if j != i)
+                is_swing = all(
+                    current >= values[j] for j in range(i - window, i + window + 1) if j != i
+                )
             else:
                 # بررسی دره: باید از همه نقاط قبل و بعد کمتر باشد
-                is_swing = all(current <= values[j] for j in range(i - window, i + window + 1) if j != i)
+                is_swing = all(
+                    current <= values[j] for j in range(i - window, i + window + 1) if j != i
+                )
 
             if is_swing:
-                swings.append(SwingPoint(
-                    index=i,
-                    value=current,
-                    is_high=is_high
-                ))
+                swings.append(SwingPoint(index=i, value=current, is_high=is_high))
 
         return swings
 
     def _check_regular_bullish_divergence(
-        self,
-        price_lows: list[SwingPoint],
-        indicator_lows: list[SwingPoint]
+        self, price_lows: list[SwingPoint], indicator_lows: list[SwingPoint]
     ) -> tuple[SwingPoint, SwingPoint, SwingPoint, SwingPoint] | None:
         """
         واگرایی معمولی صعودی:
@@ -267,9 +265,7 @@ class DivergenceDetector:
         return None
 
     def _check_regular_bearish_divergence(
-        self,
-        price_highs: list[SwingPoint],
-        indicator_highs: list[SwingPoint]
+        self, price_highs: list[SwingPoint], indicator_highs: list[SwingPoint]
     ) -> tuple[SwingPoint, SwingPoint, SwingPoint, SwingPoint] | None:
         """
         واگرایی معمولی نزولی:
@@ -299,9 +295,7 @@ class DivergenceDetector:
         return None
 
     def _check_hidden_bullish_divergence(
-        self,
-        price_lows: list[SwingPoint],
-        indicator_lows: list[SwingPoint]
+        self, price_lows: list[SwingPoint], indicator_lows: list[SwingPoint]
     ) -> tuple[SwingPoint, SwingPoint, SwingPoint, SwingPoint] | None:
         """
         واگرایی پنهان صعودی:
@@ -331,9 +325,7 @@ class DivergenceDetector:
         return None
 
     def _check_hidden_bearish_divergence(
-        self,
-        price_highs: list[SwingPoint],
-        indicator_highs: list[SwingPoint]
+        self, price_highs: list[SwingPoint], indicator_highs: list[SwingPoint]
     ) -> tuple[SwingPoint, SwingPoint, SwingPoint, SwingPoint] | None:
         """
         واگرایی پنهان نزولی:
@@ -363,14 +355,11 @@ class DivergenceDetector:
         return None
 
     def _find_nearest_swing(
-        self,
-        swings: list[SwingPoint],
-        target_index: int,
-        max_distance: int = 5
+        self, swings: list[SwingPoint], target_index: int, max_distance: int = 5
     ) -> SwingPoint | None:
         """پیدا کردن نزدیک‌ترین swing به index مورد نظر"""
         nearest = None
-        min_dist = float('inf')
+        min_dist = float("inf")
 
         for swing in swings:
             dist = abs(swing.index - target_index)
@@ -384,7 +373,7 @@ class DivergenceDetector:
         self,
         divergence_type: DivergenceType,
         data: tuple[SwingPoint, SwingPoint, SwingPoint, SwingPoint],
-        indicator_name: str
+        indicator_name: str,
     ) -> DivergenceResult:
         """ایجاد نتیجه واگرایی"""
         p1, p2, i1, i2 = data
@@ -405,7 +394,7 @@ class DivergenceDetector:
             DivergenceType.REGULAR_BULLISH: f"واگرایی صعودی: قیمت Lower Low اما {indicator_name} Higher Low - احتمال برگشت صعودی",
             DivergenceType.REGULAR_BEARISH: f"واگرایی نزولی: قیمت Higher High اما {indicator_name} Lower High - احتمال برگشت نزولی",
             DivergenceType.HIDDEN_BULLISH: f"واگرایی پنهان صعودی: قیمت Higher Low اما {indicator_name} Lower Low - ادامه روند صعودی",
-            DivergenceType.HIDDEN_BEARISH: f"واگرایی پنهان نزولی: قیمت Lower High اما {indicator_name} Higher High - ادامه روند نزولی"
+            DivergenceType.HIDDEN_BEARISH: f"واگرایی پنهان نزولی: قیمت Lower High اما {indicator_name} Higher High - ادامه روند نزولی",
         }
 
         return DivergenceResult(
@@ -416,7 +405,7 @@ class DivergenceDetector:
             price_swing1=p1,
             price_swing2=p2,
             indicator_swing1=i1,
-            indicator_swing2=i2
+            indicator_swing2=i2,
         )
 
 
@@ -428,9 +417,9 @@ if __name__ == "__main__":
     import random
     from datetime import datetime, timedelta
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🧪 Testing Divergence Detection")
-    print("="*70)
+    print("=" * 70)
 
     # ساخت داده تست با واگرایی معمولی صعودی
     base_time = datetime.now() - timedelta(days=30)
@@ -460,7 +449,7 @@ if __name__ == "__main__":
             high=price + 200,
             low=price - 200,
             close=price + random.uniform(-100, 100),
-            volume=1000000
+            volume=1000000,
         )
 
         candles.append(candle)
@@ -479,12 +468,20 @@ if __name__ == "__main__":
 
     if result.price_swing1:
         print("\n   Price Swings:")
-        print(f"     Swing 1: ${result.price_swing1.value:.2f} at index {result.price_swing1.index}")
-        print(f"     Swing 2: ${result.price_swing2.value:.2f} at index {result.price_swing2.index}")
+        print(
+            f"     Swing 1: ${result.price_swing1.value:.2f} at index {result.price_swing1.index}"
+        )
+        print(
+            f"     Swing 2: ${result.price_swing2.value:.2f} at index {result.price_swing2.index}"
+        )
         print("   Indicator Swings:")
-        print(f"     Swing 1: {result.indicator_swing1.value:.2f} at index {result.indicator_swing1.index}")
-        print(f"     Swing 2: {result.indicator_swing2.value:.2f} at index {result.indicator_swing2.index}")
+        print(
+            f"     Swing 1: {result.indicator_swing1.value:.2f} at index {result.indicator_swing1.index}"
+        )
+        print(
+            f"     Swing 2: {result.indicator_swing2.value:.2f} at index {result.indicator_swing2.index}"
+        )
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("✅ Divergence detection tested!")
-    print("="*70)
+    print("=" * 70)
