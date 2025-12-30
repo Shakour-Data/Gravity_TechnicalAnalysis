@@ -29,7 +29,6 @@ Represents the result of chart pattern detection (classical or candlestick).
 from dataclasses import dataclass
 from datetime import datetime
 
-
 from .pattern_type import PatternType
 from .signal_strength import SignalStrength
 
@@ -50,6 +49,7 @@ class PatternResult:
         price_target: Optional projected price target
         stop_loss: Optional stop loss level
     """
+
     pattern_name: str
     pattern_type: PatternType
     signal: SignalStrength
@@ -65,7 +65,9 @@ class PatternResult:
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"confidence must be 0.0-1.0, got {self.confidence}")
         if self.end_time < self.start_time:
-            raise ValueError(f"end_time ({self.end_time}) must be >= start_time ({self.start_time})")
+            raise ValueError(
+                f"end_time ({self.end_time}) must be >= start_time ({self.start_time})"
+            )
         if not self.pattern_name or not self.pattern_name.strip():
             raise ValueError("pattern_name cannot be empty")
         if self.price_target is not None and self.price_target <= 0:
