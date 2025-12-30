@@ -16,7 +16,6 @@ License: MIT
 import os
 import pickle
 
-
 import numpy as np
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, classification_report
@@ -51,9 +50,9 @@ class PatternClassifier:
             n_estimators=n_estimators,
             max_depth=max_depth,
             learning_rate=learning_rate,
-            objective='multi:softmax',
+            objective="multi:softmax",
             num_class=4,  # 4 pattern types
-            random_state=42
+            random_state=42,
         )
 
         # Success probability regressor
@@ -61,12 +60,12 @@ class PatternClassifier:
             n_estimators=n_estimators,
             max_depth=max_depth,
             learning_rate=learning_rate,
-            objective='reg:squarederror',
-            random_state=42
+            objective="reg:squarederror",
+            random_state=42,
         )
 
         # Pattern classes
-        self.pattern_classes = ['gartley', 'butterfly', 'bat', 'crab']
+        self.pattern_classes = ["gartley", "butterfly", "bat", "crab"]
         self.class_to_idx = {cls: idx for idx, cls in enumerate(self.pattern_classes)}
         self.idx_to_class = {idx: cls for cls, idx in self.class_to_idx.items()}
 
@@ -84,7 +83,7 @@ class PatternClassifier:
         y_type: list[str],
         y_success: np.ndarray | None = None,
         test_size: float = 0.2,
-        verbose: bool = True
+        verbose: bool = True,
     ) -> dict:
         """
         Train pattern classifier on labeled data.
@@ -151,18 +150,18 @@ class PatternClassifier:
 
             y_pred_s = self.success_regressor.predict(X_test_s)
             success_r2 = self.success_regressor.score(X_test_s, y_test_s)
-            success_metrics['r2_score'] = success_r2
+            success_metrics["r2_score"] = success_r2
 
             if verbose:
                 print(f"\n✅ Success Regressor R² Score: {success_r2:.4f}")
 
         return {
-            'train_accuracy': self.train_accuracy,
-            'test_accuracy': self.test_accuracy,
-            'cv_mean': self.cv_scores.mean(),
-            'cv_std': self.cv_scores.std(),
-            'feature_importance': self.feature_importance,
-            **success_metrics
+            "train_accuracy": self.train_accuracy,
+            "test_accuracy": self.test_accuracy,
+            "cv_mean": self.cv_scores.mean(),
+            "cv_std": self.cv_scores.std(),
+            "feature_importance": self.feature_importance,
+            **success_metrics,
         }
 
     def predict(self, X: np.ndarray) -> tuple[list[str], np.ndarray, np.ndarray]:
@@ -175,7 +174,7 @@ class PatternClassifier:
         Returns:
             Tuple of (pattern_types, confidences, success_probabilities)
         """
-        if not hasattr(self.type_classifier, 'n_features_in_'):
+        if not hasattr(self.type_classifier, "n_features_in_"):
             raise ValueError("Model not trained. Call train() first.")
 
         # Predict pattern types
@@ -208,10 +207,10 @@ class PatternClassifier:
         pattern_types, confidences, success_probs = self.predict(features)
 
         return {
-            'pattern_type': pattern_types[0],
-            'confidence': float(confidences[0]),
-            'success_probability': float(success_probs[0]),
-            'quality_score': float(confidences[0] * success_probs[0])  # Combined score
+            "pattern_type": pattern_types[0],
+            "confidence": float(confidences[0]),
+            "success_probability": float(success_probs[0]),
+            "quality_score": float(confidences[0] * success_probs[0]),  # Combined score
         }
 
     def get_feature_importance(self, feature_names: list[str]) -> dict[str, float]:
@@ -229,43 +228,43 @@ class PatternClassifier:
 
         return {
             name: float(importance)
-            for name, importance in zip(feature_names, self.feature_importance)
+            for name, importance in zip(feature_names, self.feature_importance, strict=False)
         }
 
     def save(self, filepath: str):
         """Save trained model to file."""
         model_data = {
-            'type_classifier': self.type_classifier,
-            'success_regressor': self.success_regressor,
-            'pattern_classes': self.pattern_classes,
-            'class_to_idx': self.class_to_idx,
-            'idx_to_class': self.idx_to_class,
-            'feature_importance': self.feature_importance,
-            'train_accuracy': self.train_accuracy,
-            'test_accuracy': self.test_accuracy,
-            'cv_scores': self.cv_scores
+            "type_classifier": self.type_classifier,
+            "success_regressor": self.success_regressor,
+            "pattern_classes": self.pattern_classes,
+            "class_to_idx": self.class_to_idx,
+            "idx_to_class": self.idx_to_class,
+            "feature_importance": self.feature_importance,
+            "train_accuracy": self.train_accuracy,
+            "test_accuracy": self.test_accuracy,
+            "cv_scores": self.cv_scores,
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             pickle.dump(model_data, f)
 
     @classmethod
-    def load(cls, filepath: str) -> 'PatternClassifier':
+    def load(cls, filepath: str) -> "PatternClassifier":
         """Load trained model from file."""
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             model_data = pickle.load(f)
 
         classifier = cls()
-        classifier.type_classifier = model_data['type_classifier']
-        classifier.success_regressor = model_data['success_regressor']
-        classifier.pattern_classes = model_data['pattern_classes']
-        classifier.class_to_idx = model_data['class_to_idx']
-        classifier.idx_to_class = model_data['idx_to_class']
-        classifier.feature_importance = model_data['feature_importance']
-        classifier.train_accuracy = model_data.get('train_accuracy')
-        classifier.test_accuracy = model_data.get('test_accuracy')
-        classifier.cv_scores = model_data.get('cv_scores')
+        classifier.type_classifier = model_data["type_classifier"]
+        classifier.success_regressor = model_data["success_regressor"]
+        classifier.pattern_classes = model_data["pattern_classes"]
+        classifier.class_to_idx = model_data["class_to_idx"]
+        classifier.idx_to_class = model_data["idx_to_class"]
+        classifier.feature_importance = model_data["feature_importance"]
+        classifier.train_accuracy = model_data.get("train_accuracy")
+        classifier.test_accuracy = model_data.get("test_accuracy")
+        classifier.cv_scores = model_data.get("cv_scores")
 
         return classifier
 
@@ -285,11 +284,11 @@ class PatternConfidenceScorer:
     def __init__(self):
         """Initialize confidence scorer."""
         self.weights = {
-            'fibonacci_accuracy': 0.30,
-            'ml_confidence': 0.25,
-            'volume_confirmation': 0.15,
-            'momentum_confirmation': 0.15,
-            'geometric_quality': 0.15
+            "fibonacci_accuracy": 0.30,
+            "ml_confidence": 0.25,
+            "volume_confirmation": 0.15,
+            "momentum_confirmation": 0.15,
+            "geometric_quality": 0.15,
         }
 
     def calculate_confidence(
@@ -298,7 +297,7 @@ class PatternConfidenceScorer:
         ml_confidence: float,
         volume_confirmation: float,
         momentum_confirmation: float,
-        geometric_quality: float
+        geometric_quality: float,
     ) -> dict:
         """
         Calculate overall pattern confidence score.
@@ -310,11 +309,11 @@ class PatternConfidenceScorer:
         """
         # Weighted average
         total_score = (
-            fibonacci_accuracy * self.weights['fibonacci_accuracy'] +
-            ml_confidence * self.weights['ml_confidence'] +
-            volume_confirmation * self.weights['volume_confirmation'] +
-            momentum_confirmation * self.weights['momentum_confirmation'] +
-            geometric_quality * self.weights['geometric_quality']
+            fibonacci_accuracy * self.weights["fibonacci_accuracy"]
+            + ml_confidence * self.weights["ml_confidence"]
+            + volume_confirmation * self.weights["volume_confirmation"]
+            + momentum_confirmation * self.weights["momentum_confirmation"]
+            + geometric_quality * self.weights["geometric_quality"]
         )
 
         # Convert to 0-100 scale
@@ -338,17 +337,17 @@ class PatternConfidenceScorer:
             signal = "AVOID"
 
         return {
-            'confidence': float(confidence),
-            'category': category,
-            'signal': signal,
-            'breakdown': {
-                'fibonacci_accuracy': float(fibonacci_accuracy * 100),
-                'ml_confidence': float(ml_confidence * 100),
-                'volume_confirmation': float(volume_confirmation * 100),
-                'momentum_confirmation': float(momentum_confirmation * 100),
-                'geometric_quality': float(geometric_quality * 100)
+            "confidence": float(confidence),
+            "category": category,
+            "signal": signal,
+            "breakdown": {
+                "fibonacci_accuracy": float(fibonacci_accuracy * 100),
+                "ml_confidence": float(ml_confidence * 100),
+                "volume_confirmation": float(volume_confirmation * 100),
+                "momentum_confirmation": float(momentum_confirmation * 100),
+                "geometric_quality": float(geometric_quality * 100),
             },
-            'weights': self.weights
+            "weights": self.weights,
         }
 
 
@@ -356,7 +355,7 @@ def train_pattern_classifier(
     X_train: np.ndarray,
     y_train: list[str],
     y_success: np.ndarray | None = None,
-    save_path: str | None = None
+    save_path: str | None = None,
 ) -> PatternClassifier:
     """
     Convenience function to train and optionally save pattern classifier.
@@ -370,11 +369,7 @@ def train_pattern_classifier(
     Returns:
         Trained PatternClassifier
     """
-    classifier = PatternClassifier(
-        n_estimators=100,
-        max_depth=6,
-        learning_rate=0.1
-    )
+    classifier = PatternClassifier(n_estimators=100, max_depth=6, learning_rate=0.1)
 
     metrics = classifier.train(X_train, y_train, y_success, verbose=True)
 
@@ -385,7 +380,9 @@ def train_pattern_classifier(
     return classifier
 
 
-def generate_synthetic_training_data(n_samples: int = 1000) -> tuple[np.ndarray, list[str], np.ndarray]:
+def generate_synthetic_training_data(
+    n_samples: int = 1000,
+) -> tuple[np.ndarray, list[str], np.ndarray]:
     """
     Generate synthetic training data for initial model training.
 
@@ -404,26 +401,26 @@ def generate_synthetic_training_data(n_samples: int = 1000) -> tuple[np.ndarray,
     y_type = []
     y_success = []
 
-    patterns = ['gartley', 'butterfly', 'bat', 'crab']
+    patterns = ["gartley", "butterfly", "bat", "crab"]
 
     for _ in range(n_samples):
         # Randomly select pattern type
         pattern = np.random.choice(patterns)
 
         # Generate features based on pattern type
-        if pattern == 'gartley':
+        if pattern == "gartley":
             fib_acc = np.random.beta(5, 2)  # High accuracy
             xab = np.random.normal(0.85, 0.1)
             abc = np.random.normal(0.85, 0.1)
             bcd = np.random.normal(0.85, 0.1)
             xad = np.random.normal(0.85, 0.1)
-        elif pattern == 'butterfly':
+        elif pattern == "butterfly":
             fib_acc = np.random.beta(4, 3)
             xab = np.random.normal(0.80, 0.12)
             abc = np.random.normal(0.75, 0.15)
             bcd = np.random.normal(0.75, 0.15)
             xad = np.random.normal(0.80, 0.12)
-        elif pattern == 'bat':
+        elif pattern == "bat":
             fib_acc = np.random.beta(5, 2)
             xab = np.random.normal(0.88, 0.08)
             abc = np.random.normal(0.88, 0.08)
