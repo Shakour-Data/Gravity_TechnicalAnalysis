@@ -8,6 +8,7 @@ import os
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.multi_horizon_momentum_features import MultiHorizonMomentumFeatureExtractor
 from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
@@ -15,14 +16,14 @@ from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
 def create_realistic_market_data(
     num_samples: int = 2000,
-    trend: str = 'mixed'  # 'uptrend', 'downtrend', 'mixed'
+    trend: str = "mixed",  # 'uptrend', 'downtrend', 'mixed'
 ) -> pd.DataFrame:
     """
     ایجاد داده‌های واقعی بازار برای تست
     """
     np.random.seed(42)
 
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1h')
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq="1h")
 
     # قیمت پایه
     base_price = 30000
@@ -30,9 +31,9 @@ def create_realistic_market_data(
     volumes = []
 
     for i in range(1, num_samples):
-        if trend == 'uptrend':
+        if trend == "uptrend":
             drift = 0.002
-        elif trend == 'downtrend':
+        elif trend == "downtrend":
             drift = -0.002
         else:  # mixed
             if i < num_samples // 3:
@@ -55,15 +56,12 @@ def create_realistic_market_data(
     volumes.insert(0, 1000000)
 
     # OHLC
-    df = pd.DataFrame({
-        'timestamp': dates,
-        'close': prices
-    })
+    df = pd.DataFrame({"timestamp": dates, "close": prices})
 
-    df['high'] = df['close'] * (1 + np.abs(np.random.normal(0, 0.005, len(df))))
-    df['low'] = df['close'] * (1 - np.abs(np.random.normal(0, 0.005, len(df))))
-    df['open'] = df['close'].shift(1).fillna(df['close'].iloc[0])
-    df['volume'] = volumes
+    df["high"] = df["close"] * (1 + np.abs(np.random.normal(0, 0.005, len(df))))
+    df["low"] = df["close"] * (1 - np.abs(np.random.normal(0, 0.005, len(df))))
+    df["open"] = df["close"].shift(1).fillna(df["close"].iloc[0])
+    df["volume"] = volumes
 
     return df
 
@@ -72,8 +70,8 @@ def train_momentum_model(
     candles: list,
     horizons: list[str] = None,
     test_size: float = 0.2,
-    output_dir: str = 'models/momentum',
-    verbose: bool = True
+    output_dir: str = "models/momentum",
+    verbose: bool = True,
 ) -> MultiHorizonWeightLearner:
     """
     آموزش مدل مومنتوم چند افقی
@@ -86,12 +84,12 @@ def train_momentum_model(
         verbose: نمایش جزئیات
     """
     if horizons is None:
-        horizons = ['3d', '7d', '30d']
+        horizons = ["3d", "7d", "30d"]
 
     if verbose:
-        print("="*70)
+        print("=" * 70)
         print("🎯 TRAINING MULTI-HORIZON MOMENTUM MODEL")
-        print("="*70)
+        print("=" * 70)
         print(f"\n📊 Dataset: {len(candles)} candles")
         print(f"⏱️  Horizons: {horizons}")
         print(f"✂️  Test Size: {test_size:.0%}")
@@ -104,12 +102,12 @@ def train_momentum_model(
     if isinstance(candles, pd.DataFrame):
         candles = [
             Candle(
-                timestamp=row['timestamp'],
-                open=float(row['open']),
-                high=float(row['high']),
-                low=float(row['low']),
-                close=float(row['close']),
-                volume=float(row['volume']),
+                timestamp=row["timestamp"],
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=float(row["volume"]),
             )
             for _, row in candles.iterrows()
         ]
@@ -131,23 +129,23 @@ def train_momentum_model(
         test_size=test_size,
         random_state=42,
         lgbm_params={
-            'objective': 'regression',
-            'metric': 'rmse',
-            'verbosity': -1,
-            'n_estimators': 100,
-            'learning_rate': 0.05,
-            'num_leaves': 31,
-            'max_depth': 6
-        }
+            "objective": "regression",
+            "metric": "rmse",
+            "verbosity": -1,
+            "n_estimators": 100,
+            "learning_rate": 0.05,
+            "num_leaves": 31,
+            "max_depth": 6,
+        },
     )
 
     learner.train(X, Y, verbose=verbose)
 
     # ذخیره مدل
     os.makedirs(output_dir, exist_ok=True)
-    model_path = os.path.join(output_dir, 'momentum_weights.json')
+    model_path = os.path.join(output_dir, "momentum_weights.json")
     learner.save_weights(model_path)
-    model_state = os.path.join(output_dir, 'momentum_weights.pkl')
+    model_state = os.path.join(output_dir, "momentum_weights.pkl")
     learner.save_model_state(model_state)
 
     if verbose:
@@ -155,9 +153,9 @@ def train_momentum_model(
 
     # نمایش نتایج
     if verbose:
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📈 TRAINING RESULTS")
-        print("="*70)
+        print("=" * 70)
 
         for horizon in horizons:
             weights_info = learner.get_horizon_weights(horizon)
@@ -175,26 +173,26 @@ def main():
 
     # ایجاد داده
     print("📦 Generating market data...")
-    candles = create_realistic_market_data(num_samples=3000, trend='mixed')
+    candles = create_realistic_market_data(num_samples=3000, trend="mixed")
     print(f"   ✅ Generated {len(candles)} candles\n")
 
     # آموزش مدل
     learner = train_momentum_model(
         candles=candles,
-        horizons=['3d', '7d', '30d'],
+        horizons=["3d", "7d", "30d"],
         test_size=0.2,
-        output_dir='models/momentum',
-        verbose=True
+        output_dir="models/momentum",
+        verbose=True,
     )
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("✅ TRAINING COMPLETE")
-    print("="*70)
+    print("=" * 70)
     print("\nModel ready for inference!")
     print("Use: learner.predict_multi_horizon(X)")
 
     return learner
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     learner = main()
