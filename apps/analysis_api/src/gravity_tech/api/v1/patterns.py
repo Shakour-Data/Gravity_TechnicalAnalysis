@@ -54,8 +54,10 @@ MAX_CANDLES = 5000
 # Request/Response Models
 # ============================================================================
 
+
 class CandleData(BaseModel):
     """Single candle/bar data"""
+
     timestamp: int = Field(..., description="Unix timestamp")
     open: float = Field(..., gt=0, description="Open price")
     high: float = Field(..., gt=0, description="High price")
@@ -66,24 +68,32 @@ class CandleData(BaseModel):
 
 class PatternDetectionRequest(BaseModel):
     """Request for pattern detection"""
+
     symbol: str = Field(..., description="Trading pair symbol (e.g., BTCUSDT)")
     timeframe: str = Field(
         ...,
         description="Timeframe (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)",
-        pattern="^(1m|5m|15m|30m|1h|4h|1d|1w)$"
+        pattern="^(1m|5m|15m|30m|1h|4h|1d|1w)$",
     )
-    candles: list[CandleData] = Field(..., min_items=60, description="OHLCV candle data (minimum 60)")  # type: ignore[call-overload]
+    candles: list[CandleData] = Field(
+        ..., min_items=60, description="OHLCV candle data (minimum 60)"
+    )  # type: ignore[call-overload]
     pattern_types: list[str] | None = Field(
         default=None,
-        description="Specific patterns to detect (if None, detect all). Options: gartley, butterfly, bat, crab"
+        description="Specific patterns to detect (if None, detect all). Options: gartley, butterfly, bat, crab",
     )
     use_ml: bool = Field(default=True, description="Use ML confidence scoring")
-    min_confidence: float = Field(default=0.5, ge=0, le=1, description="Minimum ML confidence threshold")
-    tolerance: float = Field(default=0.05, ge=0, le=0.2, description="Pattern ratio tolerance (0.05 = 5%)")
+    min_confidence: float = Field(
+        default=0.5, ge=0, le=1, description="Minimum ML confidence threshold"
+    )
+    tolerance: float = Field(
+        default=0.05, ge=0, le=0.2, description="Pattern ratio tolerance (0.05 = 5%)"
+    )
 
 
 class PatternPoint(BaseModel):
     """Pattern point (X, A, B, C, D)"""
+
     label: str
     index: int
     price: float
@@ -92,6 +102,7 @@ class PatternPoint(BaseModel):
 
 class PatternResult(BaseModel):
     """Detected pattern result"""
+
     pattern_type: str = Field(..., description="Pattern type (gartley, butterfly, bat, crab)")
     direction: str = Field(..., description="bullish or bearish")
     points: dict[str, PatternPoint] = Field(..., description="Pattern points (X, A, B, C, D)")
@@ -105,17 +116,21 @@ class PatternResult(BaseModel):
 
 class PatternDetectionResponse(BaseModel):
     """Pattern detection response"""
+
     symbol: str
     timeframe: str
     patterns_found: int = Field(..., description="Number of patterns detected")
     patterns: list[PatternResult] = Field(..., description="Detected patterns")
     analysis_time_ms: float = Field(..., description="Analysis duration in milliseconds")
     ml_enabled: bool = Field(..., description="Whether ML scoring was used")
-    ml_status: str | None = Field(default=None, description="Model status: enabled/disabled/not_available/failed")
+    ml_status: str | None = Field(
+        default=None, description="Model status: enabled/disabled/not_available/failed"
+    )
 
 
 class PatternStatsResponse(BaseModel):
     """Pattern statistics response"""
+
     total_patterns: int
     by_type: dict[str, int]
     by_direction: dict[str, int]
@@ -127,11 +142,12 @@ class PatternStatsResponse(BaseModel):
 # Endpoints
 # ============================================================================
 
+
 @router.post(
     "/detect",
     response_model=PatternDetectionResponse,
     summary="Detect Harmonic Patterns",
-    description="Detect harmonic patterns (Gartley, Butterfly, Bat, Crab) with optional ML scoring"
+    description="Detect harmonic patterns (Gartley, Butterfly, Bat, Crab) with optional ML scoring",
 )
 async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionResponse:
     """
@@ -174,8 +190,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
 
     if len(request.candles) > MAX_CANDLES:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Too many candles (max {MAX_CANDLES})"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Too many candles (max {MAX_CANDLES})"
         )
 
     # Initialize detector
@@ -195,8 +210,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
         # Filter by pattern type if specified
         if request.pattern_types:
             detected_patterns = [
-                p for p in detected_patterns
-                if p.pattern_type in request.pattern_types
+                p for p in detected_patterns if p.pattern_type in request.pattern_types
             ]
 
         # Validate chronological order
@@ -215,14 +229,12 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 clf: Any = classifier
 
                 for pattern in detected_patterns:
-                    features = extractor.extract_features(
-                        pattern, highs, lows, closes, volumes
-                    )
+                    features = extractor.extract_features(pattern, highs, lows, closes, volumes)
                     feature_array = extractor.features_to_array(features)
 
-                    if hasattr(clf, 'predict_single'):
+                    if hasattr(clf, "predict_single"):
                         prediction = clf.predict_single(feature_array)
-                        confidence = prediction['confidence']
+                        confidence = prediction["confidence"]
                     else:
                         probas = clf.predict_proba(feature_array.reshape(1, -1))[0]
                         confidence = float(np.max(probas))
@@ -252,7 +264,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
         logger.error("pattern_detection_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Pattern detection failed: {str(e)}"
+            detail=f"Pattern detection failed: {str(e)}",
         ) from e
 
     # Format response
@@ -265,28 +277,32 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
                 label=label,
                 index=point.index,
                 price=point.price,
-                timestamp=int(timestamps[point.index])
+                timestamp=int(timestamps[point.index]),
             )
 
         # Calculate targets and stop-loss (ATR-like dynamic)
-        d_price = pattern.points['D'].price
+        d_price = pattern.points["D"].price
         target1, target2, stop_loss = _dynamic_targets(
             highs=highs,
             lows=lows,
             completion_price=d_price,
-            is_bullish=(pattern.direction == 'bullish')
+            is_bullish=(pattern.direction == "bullish"),
         )
 
         pattern_result = PatternResult(
-            pattern_type=pattern.pattern_type.value if hasattr(pattern.pattern_type, 'value') else str(pattern.pattern_type),
-            direction=pattern.direction.value if hasattr(pattern.direction, 'value') else str(pattern.direction),
+            pattern_type=pattern.pattern_type.value
+            if hasattr(pattern.pattern_type, "value")
+            else str(pattern.pattern_type),
+            direction=pattern.direction.value
+            if hasattr(pattern.direction, "value")
+            else str(pattern.direction),
             points=points_dict,
             ratios=pattern.ratios,
             completion_price=d_price,
-            confidence=getattr(pattern, 'confidence', None),
-            targets={'target1': target1, 'target2': target2},
+            confidence=getattr(pattern, "confidence", None),
+            targets={"target1": target1, "target2": target2},
             stop_loss=stop_loss,
-            detected_at=datetime.now(UTC).isoformat()
+            detected_at=datetime.now(UTC).isoformat(),
         )
         patterns_list.append(pattern_result)
 
@@ -299,7 +315,7 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
         patterns=patterns_list,
         analysis_time_ms=round(analysis_time, 2),
         ml_enabled=request.use_ml,
-        ml_status=ml_status
+        ml_status=ml_status,
     )
 
     logger.info(
@@ -307,15 +323,16 @@ async def detect_patterns(request: PatternDetectionRequest) -> PatternDetectionR
         symbol=request.symbol,
         timeframe=request.timeframe,
         patterns_found=len(patterns_list),
-        analysis_time_ms=round(analysis_time, 2)
+        analysis_time_ms=round(analysis_time, 2),
     )
 
     return response
 
+
 @router.get(
     "/types",
     summary="List Pattern Types",
-    description="Get list of available harmonic pattern types"
+    description="Get list of available harmonic pattern types",
 )
 async def list_pattern_types():
     """
@@ -333,9 +350,9 @@ async def list_pattern_types():
                     "XAB": "0.618",
                     "ABC": "0.382-0.886",
                     "BCD": "1.13-1.618",
-                    "XAD": "0.786"
+                    "XAD": "0.786",
                 },
-                "reliability": "High"
+                "reliability": "High",
             },
             {
                 "type": "butterfly",
@@ -345,9 +362,9 @@ async def list_pattern_types():
                     "XAB": "0.786",
                     "ABC": "0.382-0.886",
                     "BCD": "1.618-2.24",
-                    "XAD": "1.27-1.618"
+                    "XAD": "1.27-1.618",
                 },
-                "reliability": "Medium-High"
+                "reliability": "Medium-High",
             },
             {
                 "type": "bat",
@@ -357,9 +374,9 @@ async def list_pattern_types():
                     "XAB": "0.382-0.50",
                     "ABC": "0.382-0.886",
                     "BCD": "1.618-2.618",
-                    "XAD": "0.886"
+                    "XAD": "0.886",
                 },
-                "reliability": "Very High"
+                "reliability": "Very High",
             },
             {
                 "type": "crab",
@@ -369,20 +386,20 @@ async def list_pattern_types():
                     "XAB": "0.382-0.618",
                     "ABC": "0.382-0.886",
                     "BCD": "2.24-3.618",
-                    "XAD": "1.618"
+                    "XAD": "1.618",
                 },
-                "reliability": "High"
-            }
+                "reliability": "High",
+            },
         ],
         "total": 4,
-        "ml_confidence_available": True
+        "ml_confidence_available": True,
     }
 
 
 @router.get(
     "/health",
     summary="Pattern Detection Service Health",
-    description="Check pattern detection service health and ML model availability"
+    description="Check pattern detection service health and ML model availability",
 )
 async def pattern_service_health():
     """Check pattern detection service health"""
@@ -390,7 +407,9 @@ async def pattern_service_health():
     model_v1_path = ML_MODELS_DIR / "pattern_classifier_v1.pkl"
 
     ml_available = model_v2_path.exists() or model_v1_path.exists()
-    ml_model_version = "v2" if model_v2_path.exists() else ("v1" if model_v1_path.exists() else None)
+    ml_model_version = (
+        "v2" if model_v2_path.exists() else ("v1" if model_v1_path.exists() else None)
+    )
 
     return {
         "status": "healthy",
@@ -403,14 +422,15 @@ async def pattern_service_health():
             "harmonic_detection": True,
             "ml_confidence_scoring": ml_available,
             "batch_analysis": True,
-            "real_time_monitoring": True
-        }
+            "real_time_monitoring": True,
+        },
     }
 
 
 # ============================================================================
 # Helpers
 # ============================================================================
+
 
 def _hash_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -450,7 +470,9 @@ def _load_pattern_model():
     raise FileNotFoundError("No pattern classifier model found in ml_models/")
 
 
-def _dynamic_targets(highs: np.ndarray, lows: np.ndarray, completion_price: float, is_bullish: bool):
+def _dynamic_targets(
+    highs: np.ndarray, lows: np.ndarray, completion_price: float, is_bullish: bool
+):
     """Compute dynamic targets using an ATR-like range."""
     lookback = min(14, len(highs))
     if lookback < 2:
@@ -463,11 +485,13 @@ def _dynamic_targets(highs: np.ndarray, lows: np.ndarray, completion_price: floa
     high_tail = highs[-lookback:]
     low_tail = lows[-lookback:]
     prev_close = (high_tail[:-1] + low_tail[:-1]) / 2
-    tr = np.maximum.reduce([
-        high_tail[1:] - low_tail[1:],
-        np.abs(high_tail[1:] - prev_close),
-        np.abs(low_tail[1:] - prev_close),
-    ])
+    tr = np.maximum.reduce(
+        [
+            high_tail[1:] - low_tail[1:],
+            np.abs(high_tail[1:] - prev_close),
+            np.abs(low_tail[1:] - prev_close),
+        ]
+    )
     atr = float(np.mean(tr)) if len(tr) else float(np.std(high_tail - low_tail))
     if atr <= 0:
         atr = float(abs(completion_price) * 0.02)  # fallback 2%
