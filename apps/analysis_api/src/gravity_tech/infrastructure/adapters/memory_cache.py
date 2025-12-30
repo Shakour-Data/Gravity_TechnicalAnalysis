@@ -64,13 +64,14 @@ class MemoryCacheAdapter:
         logger.debug("cache_hit", key=key)
         return self.data[key]
 
-    async def set(
-        self, key: str, value: Any, ttl: int | None = None
-    ) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache"""
-        ttl = ttl or self.default_ttl
+        ttl = self.default_ttl if ttl is None else ttl
         self.data[key] = value
-        self.ttls[key] = datetime.now() + timedelta(seconds=ttl)
+        if ttl <= 0:
+            self.ttls[key] = datetime.now()
+        else:
+            self.ttls[key] = datetime.now() + timedelta(seconds=ttl)
         logger.debug("cache_set", key=key, ttl=ttl)
 
     async def delete(self, key: str) -> None:
