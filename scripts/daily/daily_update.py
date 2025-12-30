@@ -22,13 +22,17 @@ if str(ROOT) not in sys.path:
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Import local modules after path setup
-gravity_tech_core_domain = importlib.import_module('gravity_tech.core.domain.entities')
-gravity_tech_indicators_cycle = importlib.import_module('gravity_tech.core.indicators.cycle')
-gravity_tech_indicators_momentum = importlib.import_module('gravity_tech.core.indicators.momentum')
-gravity_tech_indicators_support_resistance = importlib.import_module('gravity_tech.core.indicators.support_resistance')
-gravity_tech_indicators_trend = importlib.import_module('gravity_tech.core.indicators.trend')
-gravity_tech_indicators_volatility = importlib.import_module('gravity_tech.core.indicators.volatility')
-gravity_tech_indicators_volume = importlib.import_module('gravity_tech.core.indicators.volume')
+gravity_tech_core_domain = importlib.import_module("gravity_tech.core.domain.entities")
+gravity_tech_indicators_cycle = importlib.import_module("gravity_tech.core.indicators.cycle")
+gravity_tech_indicators_momentum = importlib.import_module("gravity_tech.core.indicators.momentum")
+gravity_tech_indicators_support_resistance = importlib.import_module(
+    "gravity_tech.core.indicators.support_resistance"
+)
+gravity_tech_indicators_trend = importlib.import_module("gravity_tech.core.indicators.trend")
+gravity_tech_indicators_volatility = importlib.import_module(
+    "gravity_tech.core.indicators.volatility"
+)
+gravity_tech_indicators_volume = importlib.import_module("gravity_tech.core.indicators.volume")
 
 # Extract classes/functions for easier use
 Candle = gravity_tech_core_domain.Candle
@@ -37,7 +41,9 @@ MomentumIndicators = gravity_tech_indicators_momentum.MomentumIndicators
 SupportResistanceIndicators = gravity_tech_indicators_support_resistance.SupportResistanceIndicators
 TrendIndicators = gravity_tech_indicators_trend.TrendIndicators
 VolatilityIndicators = gravity_tech_indicators_volatility.VolatilityIndicators
-convert_volatility_to_indicator_result = gravity_tech_indicators_volatility.convert_volatility_to_indicator_result
+convert_volatility_to_indicator_result = (
+    gravity_tech_indicators_volatility.convert_volatility_to_indicator_result
+)
 VolumeIndicators = gravity_tech_indicators_volume.VolumeIndicators
 
 
@@ -84,13 +90,16 @@ def process_daily_data(target_date: date):
         for symbol in symbols[:5]:  # Process first 5 symbols for testing
             # Get candle data with buffer for calculations
             buffer_start = target_date - timedelta(days=200)
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT timestamp, open, high, low, close, volume
                 FROM market_data_cache
                 WHERE symbol=? AND timeframe='1d'
                   AND date(timestamp) >= ? AND date(timestamp) <= ?
                 ORDER BY timestamp ASC
-            """, (symbol, buffer_start.isoformat(), target_date.isoformat()))
+            """,
+                (symbol, buffer_start.isoformat(), target_date.isoformat()),
+            )
 
             rows = cur.fetchall()
             if len(rows) < 50:
@@ -99,12 +108,18 @@ def process_daily_data(target_date: date):
             # Convert to Candle objects
             candles = []
             for row in rows:
-                candles.append(Candle(
-                    timestamp=datetime.fromisoformat(row[0]),
-                    open=float(row[1]), high=float(row[2]),
-                    low=float(row[3]), close=float(row[4]), volume=float(row[5]),
-                    symbol=symbol, timeframe="1d"
-                ))
+                candles.append(
+                    Candle(
+                        timestamp=datetime.fromisoformat(row[0]),
+                        open=float(row[1]),
+                        high=float(row[2]),
+                        low=float(row[3]),
+                        close=float(row[4]),
+                        volume=float(row[5]),
+                        symbol=symbol,
+                        timeframe="1d",
+                    )
+                )
 
             # Calculate indicators
             try:
@@ -114,114 +129,186 @@ def process_daily_data(target_date: date):
                 continue
 
             # Process indicator results
-            by_category = defaultdict(lambda: {'signals': [], 'confidences': []})
+            by_category = defaultdict(lambda: {"signals": [], "confidences": []})
 
             for res in results:
-                if res.value is None or str(res.value).lower() == 'nan':
+                if res.value is None or str(res.value).lower() == "nan":
                     continue
 
                 # Store individual indicator result
-                indicator_buffer.append((
-                    f"{symbol}_{target_date.isoformat()}_{res.indicator_name}",
-                    symbol,
-                    target_date.isoformat(),
-                    "1d",
-                    res.indicator_name,
-                    res.category.value,
-                    json.dumps(res.additional_values) if res.additional_values else None,
-                    float(res.value),
-                    res.signal.name if hasattr(res.signal, 'name') else str(res.signal),
-                    res.confidence
-                ))
+                indicator_buffer.append(
+                    (
+                        f"{symbol}_{target_date.isoformat()}_{res.indicator_name}",
+                        symbol,
+                        target_date.isoformat(),
+                        "1d",
+                        res.indicator_name,
+                        res.category.value,
+                        json.dumps(res.additional_values) if res.additional_values else None,
+                        float(res.value),
+                        res.signal.name if hasattr(res.signal, "name") else str(res.signal),
+                        res.confidence,
+                    )
+                )
 
                 # Aggregate by category
                 if res.signal:
-                    signal_name = res.signal.name if hasattr(res.signal, 'name') else str(res.signal)
+                    signal_name = (
+                        res.signal.name if hasattr(res.signal, "name") else str(res.signal)
+                    )
                     signal_score = {
-                        'VERY_BEARISH': -3, 'BEARISH': -2, 'BEARISH_BROKEN': -1,
-                        'NEUTRAL': 0,
-                        'BULLISH_BROKEN': 1, 'BULLISH': 2, 'VERY_BULLISH': 3
+                        "VERY_BEARISH": -3,
+                        "BEARISH": -2,
+                        "BEARISH_BROKEN": -1,
+                        "NEUTRAL": 0,
+                        "BULLISH_BROKEN": 1,
+                        "BULLISH": 2,
+                        "VERY_BULLISH": 3,
                     }.get(signal_name, 0)
-                    by_category[res.category.value]['signals'].append(signal_score)
-                    by_category[res.category.value]['confidences'].append(res.confidence or 0)
+                    by_category[res.category.value]["signals"].append(signal_score)
+                    by_category[res.category.value]["confidences"].append(res.confidence or 0)
 
             # Create summary row
             if by_category:
-                trend_signals = by_category['TREND']['signals']
-                momentum_signals = by_category['MOMENTUM']['signals']
-                volatility_signals = by_category['VOLATILITY']['signals']
-                volume_signals = by_category['VOLUME']['signals']
-                cycle_signals = by_category['CYCLE']['signals']
-                sr_signals = by_category['SUPPORT_RESISTANCE']['signals']
+                trend_signals = by_category["TREND"]["signals"]
+                momentum_signals = by_category["MOMENTUM"]["signals"]
+                volatility_signals = by_category["VOLATILITY"]["signals"]
+                volume_signals = by_category["VOLUME"]["signals"]
+                cycle_signals = by_category["CYCLE"]["signals"]
+                sr_signals = by_category["SUPPORT_RESISTANCE"]["signals"]
 
                 trend_score = sum(trend_signals) / len(trend_signals) if trend_signals else 0
-                momentum_score = sum(momentum_signals) / len(momentum_signals) if momentum_signals else 0
-                volatility_score = sum(volatility_signals) / len(volatility_signals) if volatility_signals else 0
+                momentum_score = (
+                    sum(momentum_signals) / len(momentum_signals) if momentum_signals else 0
+                )
+                volatility_score = (
+                    sum(volatility_signals) / len(volatility_signals) if volatility_signals else 0
+                )
                 volume_score = sum(volume_signals) / len(volume_signals) if volume_signals else 0
                 cycle_score = sum(cycle_signals) / len(cycle_signals) if cycle_signals else 0
                 sr_score = sum(sr_signals) / len(sr_signals) if sr_signals else 0
 
-                all_signals = trend_signals + momentum_signals + volatility_signals + volume_signals + cycle_signals + sr_signals
+                all_signals = (
+                    trend_signals
+                    + momentum_signals
+                    + volatility_signals
+                    + volume_signals
+                    + cycle_signals
+                    + sr_signals
+                )
                 overall_score = sum(all_signals) / len(all_signals) if all_signals else 0
 
                 all_confidences = []
                 for cat in by_category.values():
-                    all_confidences.extend(cat['confidences'])
-                avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0
+                    all_confidences.extend(cat["confidences"])
+                avg_confidence = (
+                    sum(all_confidences) / len(all_confidences) if all_confidences else 0
+                )
 
-                summary_buffer.append((
-                    symbol, target_date.isoformat(), "1d",
-                    trend_score, sum(by_category['TREND']['confidences']) / len(by_category['TREND']['confidences']) if by_category['TREND']['confidences'] else 0,
-                    momentum_score, sum(by_category['MOMENTUM']['confidences']) / len(by_category['MOMENTUM']['confidences']) if by_category['MOMENTUM']['confidences'] else 0,
-                    overall_score, avg_confidence,
-                    0.4, 0.6,  # Default weights
-                    "NEUTRAL", "NEUTRAL", "NEUTRAL",  # Signals
-                    volume_score, volatility_score, cycle_score, sr_score,
-                    "HOLD", "HOLD", candles[-1].close if candles else 0,
-                    json.dumps({'processed_at': datetime.now().isoformat()}),
-                    datetime.now().isoformat(), datetime.now().isoformat()
-                ))
+                summary_buffer.append(
+                    (
+                        symbol,
+                        target_date.isoformat(),
+                        "1d",
+                        trend_score,
+                        sum(by_category["TREND"]["confidences"])
+                        / len(by_category["TREND"]["confidences"])
+                        if by_category["TREND"]["confidences"]
+                        else 0,
+                        momentum_score,
+                        sum(by_category["MOMENTUM"]["confidences"])
+                        / len(by_category["MOMENTUM"]["confidences"])
+                        if by_category["MOMENTUM"]["confidences"]
+                        else 0,
+                        overall_score,
+                        avg_confidence,
+                        0.4,
+                        0.6,  # Default weights
+                        "NEUTRAL",
+                        "NEUTRAL",
+                        "NEUTRAL",  # Signals
+                        volume_score,
+                        volatility_score,
+                        cycle_score,
+                        sr_score,
+                        "HOLD",
+                        "HOLD",
+                        candles[-1].close if candles else 0,
+                        json.dumps({"processed_at": datetime.now().isoformat()}),
+                        datetime.now().isoformat(),
+                        datetime.now().isoformat(),
+                    )
+                )
 
             # Sample pattern detection (simplified)
-            pattern_buffer.append((
-                symbol, target_date.isoformat(), "1d",
-                "sample_pattern", "BULLISH", 0.75,
-                json.dumps({'detected_at': datetime.now().isoformat()})
-            ))
+            pattern_buffer.append(
+                (
+                    symbol,
+                    target_date.isoformat(),
+                    "1d",
+                    "sample_pattern",
+                    "BULLISH",
+                    0.75,
+                    json.dumps({"detected_at": datetime.now().isoformat()}),
+                )
+            )
 
             # Sample backtest result
-            backtest_buffer.append((
-                symbol, "pattern_detector", "1d",
-                json.dumps({"pattern": "sample_pattern"}),
-                json.dumps({"win_rate": 0.6, "profit_factor": 1.2}),
-                (target_date - timedelta(days=30)).isoformat(),
-                target_date.isoformat(),
-                "v1.0",
-                datetime.now().isoformat()
-            ))
+            backtest_buffer.append(
+                (
+                    symbol,
+                    "pattern_detector",
+                    "1d",
+                    json.dumps({"pattern": "sample_pattern"}),
+                    json.dumps({"win_rate": 0.6, "profit_factor": 1.2}),
+                    (target_date - timedelta(days=30)).isoformat(),
+                    target_date.isoformat(),
+                    "v1.0",
+                    datetime.now().isoformat(),
+                )
+            )
 
             # Tool performance
-            performance_buffer.append((
-                "indicator_calculator", "analysis", symbol, "1d",
-                "normal", 0.5, 0.7, "average",
-                "signal", 0.8, 0.75, "pending", 0.0,
-                True, 0.8,
-                target_date.isoformat(), None, 24,
-                json.dumps({'symbols_processed': 1, 'indicators_calculated': len(results)}),
-                datetime.now().isoformat()
-            ))
+            performance_buffer.append(
+                (
+                    "indicator_calculator",
+                    "analysis",
+                    symbol,
+                    "1d",
+                    "normal",
+                    0.5,
+                    0.7,
+                    "average",
+                    "signal",
+                    0.8,
+                    0.75,
+                    "pending",
+                    0.0,
+                    True,
+                    0.8,
+                    target_date.isoformat(),
+                    None,
+                    24,
+                    json.dumps({"symbols_processed": 1, "indicators_calculated": len(results)}),
+                    datetime.now().isoformat(),
+                )
+            )
 
         # Insert all data
         if indicator_buffer:
-            cur.executemany("""
+            cur.executemany(
+                """
                 INSERT OR REPLACE INTO historical_indicator_scores
                 (score_id, symbol, timestamp, timeframe, indicator_name, indicator_category,
                  indicator_params, value, signal, confidence)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, indicator_buffer)
+            """,
+                indicator_buffer,
+            )
 
         if summary_buffer:
-            cur.executemany("""
+            cur.executemany(
+                """
                 INSERT OR REPLACE INTO historical_scores
                 (symbol, timestamp, timeframe,
                  trend_score, trend_confidence,
@@ -233,24 +320,33 @@ def process_daily_data(target_date: date):
                  recommendation, action, price_at_analysis, raw_data,
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, summary_buffer)
+            """,
+                summary_buffer,
+            )
 
         if pattern_buffer:
-            cur.executemany("""
+            cur.executemany(
+                """
                 INSERT OR REPLACE INTO pattern_detection_results
                 (symbol, timestamp, timeframe, pattern_name, pattern_type, confidence, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, pattern_buffer)
+            """,
+                pattern_buffer,
+            )
 
         if backtest_buffer:
-            cur.executemany("""
+            cur.executemany(
+                """
                 INSERT OR REPLACE INTO backtest_runs
                 (symbol, source, interval, params, metrics, period_start, period_end, model_version, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, backtest_buffer)
+            """,
+                backtest_buffer,
+            )
 
         if performance_buffer:
-            cur.executemany("""
+            cur.executemany(
+                """
                 INSERT OR REPLACE INTO tool_performance_history
                 (tool_name, tool_category, symbol, timeframe, market_regime,
                  volatility_level, trend_strength, volume_profile, prediction_type,
@@ -258,11 +354,15 @@ def process_daily_data(target_date: date):
                  success, accuracy, prediction_timestamp, result_timestamp,
                  evaluation_period_hours, metadata, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, performance_buffer)
+            """,
+                performance_buffer,
+            )
 
         conn.commit()
 
-        print(f"✅ Processed {len(indicator_buffer)} indicators, {len(summary_buffer)} summaries, {len(pattern_buffer)} patterns")
+        print(
+            f"✅ Processed {len(indicator_buffer)} indicators, {len(summary_buffer)} summaries, {len(pattern_buffer)} patterns"
+        )
 
     finally:
         conn.close()
