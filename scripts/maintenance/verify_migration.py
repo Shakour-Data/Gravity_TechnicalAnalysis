@@ -1,6 +1,7 @@
 """
 Verify database migration results
 """
+
 import sqlite3
 from pathlib import Path
 
@@ -8,9 +9,9 @@ db_path = Path("data/gravity_tech.db")
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
-print("\n" + "="*80)
+print("\n" + "=" * 80)
 print("✅ MIGRATION VERIFICATION")
-print("="*80)
+print("=" * 80)
 
 # 1. Check historical_scores schema
 print("\n1️⃣ historical_scores columns:")
@@ -20,10 +21,10 @@ for col, dtype in sorted(columns.items()):
     print(f"   • {col}: {dtype}")
 
 # Verify key columns
-assert 'ticker' in columns, "❌ Missing 'ticker' column"
-assert 'analysis_date' in columns, "❌ Missing 'analysis_date' column"
-assert columns['analysis_date'] == 'DATETIME', "❌ analysis_date should be DATETIME"
-assert columns['updated_at'] == 'DATETIME', "❌ updated_at should be DATETIME"
+assert "ticker" in columns, "❌ Missing 'ticker' column"
+assert "analysis_date" in columns, "❌ Missing 'analysis_date' column"
+assert columns["analysis_date"] == "DATETIME", "❌ analysis_date should be DATETIME"
+assert columns["updated_at"] == "DATETIME", "❌ updated_at should be DATETIME"
 print("   ✅ All columns correct")
 
 # 2. Check historical_indicator_scores schema
@@ -33,9 +34,9 @@ columns = {col[1]: col[2] for col in cursor.fetchall()}
 for col, dtype in sorted(columns.items()):
     print(f"   • {col}: {dtype}")
 
-assert 'ticker' in columns, "❌ Missing 'ticker' column"
-assert 'analysis_date' in columns, "❌ Missing 'analysis_date' column"
-assert columns['analysis_date'] == 'DATETIME', "❌ analysis_date should be DATETIME"
+assert "ticker" in columns, "❌ Missing 'ticker' column"
+assert "analysis_date" in columns, "❌ Missing 'analysis_date' column"
+assert columns["analysis_date"] == "DATETIME", "❌ analysis_date should be DATETIME"
 print("   ✅ All columns correct")
 
 # 3. Check FOREIGN KEY constraint
@@ -77,9 +78,9 @@ cursor.execute("SELECT COUNT(DISTINCT ticker) FROM historical_indicator_scores")
 tickers_ind = cursor.fetchone()[0]
 print(f"   • Unique tickers in indicators: {tickers_ind}")
 
-print("\n" + "="*80)
+print("\n" + "=" * 80)
 print("✅ ALL VERIFICATIONS PASSED!")
-print("="*80 + "\n")
+print("=" * 80 + "\n")
 
 cursor.close()
 conn.close()
