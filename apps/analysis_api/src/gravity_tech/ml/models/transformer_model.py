@@ -43,18 +43,26 @@ class PositionalEncoding(nn.Module):
         pe[:, 1::2] = torch.cos(position * div_term)
 
         pe = pe.unsqueeze(0).transpose(0, 1)
-        self.register_buffer('pe', pe)
+        self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         pe: torch.Tensor = self.pe  # type: ignore
-        return x + pe[:x.size(0), :]
+        return x + pe[: x.size(0), :]
 
 
 class TransformerModel(nn.Module):
     """Transformer model for time series prediction"""
 
-    def __init__(self, input_size: int, d_model: int, nhead: int, num_layers: int,
-                 dim_feedforward: int, output_size: int, dropout: float = 0.1):
+    def __init__(
+        self,
+        input_size: int,
+        d_model: int,
+        nhead: int,
+        num_layers: int,
+        dim_feedforward: int,
+        output_size: int,
+        dropout: float = 0.1,
+    ):
         super().__init__()
 
         self.input_size = input_size
@@ -72,7 +80,7 @@ class TransformerModel(nn.Module):
             nhead=nhead,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
@@ -111,17 +119,30 @@ class TimeSeriesDataset(Dataset):
         return len(self.data) - self.seq_length
 
     def __getitem__(self, idx):
-        x = self.data[idx:idx + self.seq_length]
-        y = self.data[idx + self.seq_length, self.target_idx] if self.target_idx != -1 else self.data[idx + self.seq_length]
+        x = self.data[idx : idx + self.seq_length]
+        y = (
+            self.data[idx + self.seq_length, self.target_idx]
+            if self.target_idx != -1
+            else self.data[idx + self.seq_length]
+        )
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
 
 class TransformerPredictor:
     """Transformer-based time series predictor"""
 
-    def __init__(self, seq_length: int = 60, d_model: int = 64, nhead: int = 8, num_layers: int = 3,
-                 dim_feedforward: int = 256, learning_rate: float = 0.001, epochs: int = 100,
-                 batch_size: int = 32, dropout: float = 0.1):
+    def __init__(
+        self,
+        seq_length: int = 60,
+        d_model: int = 64,
+        nhead: int = 8,
+        num_layers: int = 3,
+        dim_feedforward: int = 256,
+        learning_rate: float = 0.001,
+        epochs: int = 100,
+        batch_size: int = 32,
+        dropout: float = 0.1,
+    ):
         self.seq_length = seq_length
         self.d_model = d_model
         self.nhead = nhead
@@ -134,10 +155,12 @@ class TransformerPredictor:
 
         self.model = None
         self.scaler = MinMaxScaler()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.input_size = None
 
-    def prepare_data(self, candles: list[Candle], features: list[str] | None = None) -> tuple[np.ndarray, MinMaxScaler]:
+    def prepare_data(
+        self, candles: list[Candle], features: list[str] | None = None
+    ) -> tuple[np.ndarray, MinMaxScaler]:
         """
         Prepare candle data for Transformer training
 
@@ -149,20 +172,20 @@ class TransformerPredictor:
             Prepared data array and scaler
         """
         if features is None:
-            features = ['open', 'high', 'low', 'close', 'volume']
+            features = ["open", "high", "low", "close", "volume"]
 
         data = []
         for candle in candles:
             row = []
-            if 'open' in features:
+            if "open" in features:
                 row.append(candle.open)
-            if 'high' in features:
+            if "high" in features:
                 row.append(candle.high)
-            if 'low' in features:
+            if "low" in features:
                 row.append(candle.low)
-            if 'close' in features:
+            if "close" in features:
                 row.append(candle.close)
-            if 'volume' in features:
+            if "volume" in features:
                 row.append(candle.volume)
             data.append(row)
 
@@ -174,8 +197,9 @@ class TransformerPredictor:
 
         return scaled_data, self.scaler
 
-    def train(self, candles: list[Candle], target_feature: str = 'close',
-              validation_split: float = 0.2) -> dict[str, Any]:
+    def train(
+        self, candles: list[Candle], target_feature: str = "close", validation_split: float = 0.2
+    ) -> dict[str, Any]:
         """
         Train Transformer model
 
@@ -191,7 +215,9 @@ class TransformerPredictor:
         data, _ = self.prepare_data(candles)
 
         # Create target data (next close price)
-        target_idx = {'open': 0, 'high': 1, 'low': 2, 'close': 3, 'volume': 4}.get(target_feature, 3)
+        target_idx = {"open": 0, "high": 1, "low": 2, "close": 3, "volume": 4}.get(
+            target_feature, 3
+        )
 
         # Split data
         train_size = int(len(data) * (1 - validation_split))
@@ -214,14 +240,14 @@ class TransformerPredictor:
             num_layers=self.num_layers,
             dim_feedforward=self.dim_feedforward,
             output_size=1,
-            dropout=self.dropout
+            dropout=self.dropout,
         ).to(self.device)
 
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
         # Training loop
-        best_loss = float('inf')
+        best_loss = float("inf")
         patience = 10
         patience_counter = 0
 
@@ -269,7 +295,7 @@ class TransformerPredictor:
                 best_loss = epoch_val_loss
                 patience_counter = 0
                 # Save best model
-                torch.save(self.model.state_dict(), 'best_transformer_model.pth')
+                torch.save(self.model.state_dict(), "best_transformer_model.pth")
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -277,16 +303,18 @@ class TransformerPredictor:
                     break
 
             if (epoch + 1) % 10 == 0:
-                logger.info(f"Epoch {epoch+1}/{self.epochs}, Train Loss: {epoch_train_loss:.6f}, Val Loss: {epoch_val_loss:.6f}")
+                logger.info(
+                    f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {epoch_train_loss:.6f}, Val Loss: {epoch_val_loss:.6f}"
+                )
 
         # Load best model
-        self.model.load_state_dict(torch.load('best_transformer_model.pth'))
+        self.model.load_state_dict(torch.load("best_transformer_model.pth"))
 
         return {
-            'train_losses': train_losses,
-            'val_losses': val_losses,
-            'best_val_loss': best_loss,
-            'epochs_trained': len(train_losses)
+            "train_losses": train_losses,
+            "val_losses": val_losses,
+            "best_val_loss": best_loss,
+            "epochs_trained": len(train_losses),
         }
 
     def predict(self, candles: list[Candle], steps_ahead: int = 1) -> PredictionResult:
@@ -304,8 +332,10 @@ class TransformerPredictor:
             raise ValueError("Model not trained. Call train() first.")
 
         # Prepare input data
-        data, _ = self.prepare_data(candles[-self.seq_length:])
-        input_seq = torch.tensor(data[-self.seq_length:], dtype=torch.float32).unsqueeze(0).to(self.device)
+        data, _ = self.prepare_data(candles[-self.seq_length :])
+        input_seq = (
+            torch.tensor(data[-self.seq_length :], dtype=torch.float32).unsqueeze(0).to(self.device)
+        )
 
         self.model.eval()
         predictions = []
@@ -321,15 +351,19 @@ class TransformerPredictor:
                 if steps_ahead > 1:
                     # Create new input by appending prediction and removing oldest
                     input_size = self.input_size if self.input_size is not None else 5
-                    new_input = np.append(input_seq.cpu().numpy()[0, 1:], [[pred_value] * input_size], axis=0)
-                    input_seq = torch.tensor(new_input, dtype=torch.float32).unsqueeze(0).to(self.device)
+                    new_input = np.append(
+                        input_seq.cpu().numpy()[0, 1:], [[pred_value] * input_size], axis=0
+                    )
+                    input_seq = (
+                        torch.tensor(new_input, dtype=torch.float32).unsqueeze(0).to(self.device)
+                    )
 
         # Inverse transform predictions
         pred_array = np.array(predictions).reshape(-1, 1)
         input_size = self.input_size if self.input_size is not None else 5
-        predictions_unscaled = self.scaler.inverse_transform(
-            np.tile(pred_array, (1, input_size))
-        )[:, 0]  # Take first column (close price)
+        predictions_unscaled = self.scaler.inverse_transform(np.tile(pred_array, (1, input_size)))[
+            :, 0
+        ]  # Take first column (close price)
 
         # Calculate confidence based on attention weights (simplified)
         recent_prices = [c.close for c in candles[-20:]]
@@ -348,6 +382,7 @@ class TransformerPredictor:
             signal = PredictionSignal.NEUTRAL
 
         from datetime import datetime
+
         return PredictionResult(
             predictions=list(predictions_unscaled),
             confidence=float(confidence),
@@ -355,8 +390,8 @@ class TransformerPredictor:
             model_type="Transformer",
             description=f"Transformer prediction for next {steps_ahead} steps",
             prediction_timestamp=datetime.now(),
-            input_features={'features': ['open', 'high', 'low', 'close', 'volume']},
-            metadata={'steps_ahead': steps_ahead, 'volatility': float(volatility)}
+            input_features={"features": ["open", "high", "low", "close", "volume"]},
+            metadata={"steps_ahead": steps_ahead, "volatility": float(volatility)},
         )
 
     def get_attention_weights(self, candles: list[Candle]) -> np.ndarray | None:
@@ -374,7 +409,7 @@ class TransformerPredictor:
 
         # This is a simplified version - in practice, you'd need to modify the model
         # to return attention weights
-        data, _ = self.prepare_data(candles[-self.seq_length:])
+        data, _ = self.prepare_data(candles[-self.seq_length :])
         _ = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(self.device)
 
         self.model.eval()
@@ -400,7 +435,9 @@ def create_transformer_predictor(seq_length: int = 60, d_model: int = 64) -> Tra
     return TransformerPredictor(seq_length=seq_length, d_model=d_model)
 
 
-def train_transformer_model(candles: list[Candle], target_feature: str = 'close') -> TransformerPredictor:
+def train_transformer_model(
+    candles: list[Candle], target_feature: str = "close"
+) -> TransformerPredictor:
     """
     Convenience function to train Transformer model
 
