@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 import pandas as pd
+
 from gravity_tech.ml.multi_horizon_analysis import MultiHorizonAnalysis, MultiHorizonAnalyzer
 from gravity_tech.ml.multi_horizon_momentum_analysis import (
     MultiHorizonMomentumAnalysis,
@@ -21,6 +22,7 @@ from gravity_tech.ml.multi_horizon_momentum_analysis import (
 
 class ActionRecommendation(Enum):
     """توصیه نهایی"""
+
     STRONG_BUY = "STRONG_BUY"
     BUY = "BUY"
     ACCUMULATE = "ACCUMULATE"
@@ -33,6 +35,7 @@ class ActionRecommendation(Enum):
 @dataclass
 class CombinedAnalysis:
     """نتیجه تحلیل ترکیبی"""
+
     timestamp: str
 
     # تحلیل‌های جداگانه
@@ -60,26 +63,23 @@ class CombinedAnalysis:
 
     def to_dict(self) -> dict:
         return {
-            'timestamp': self.timestamp,
-            'combined_scores': {
-                '3d': self.combined_score_3d,
-                '7d': self.combined_score_7d,
-                '30d': self.combined_score_30d
+            "timestamp": self.timestamp,
+            "combined_scores": {
+                "3d": self.combined_score_3d,
+                "7d": self.combined_score_7d,
+                "30d": self.combined_score_30d,
             },
-            'confidence': {
-                '3d': self.confidence_3d,
-                '7d': self.confidence_7d,
-                '30d': self.confidence_30d
+            "confidence": {
+                "3d": self.confidence_3d,
+                "7d": self.confidence_7d,
+                "30d": self.confidence_30d,
             },
-            'actions': {
-                '3d': self.action_3d.value,
-                '7d': self.action_7d.value,
-                '30d': self.action_30d.value
+            "actions": {
+                "3d": self.action_3d.value,
+                "7d": self.action_7d.value,
+                "30d": self.action_30d.value,
             },
-            'final': {
-                'action': self.final_action.value,
-                'confidence': self.final_confidence
-            }
+            "final": {"action": self.final_action.value, "confidence": self.final_confidence},
         }
 
 
@@ -91,7 +91,7 @@ class CombinedTrendMomentumAnalyzer:
         trend_analyzer: MultiHorizonAnalyzer,
         momentum_analyzer: MultiHorizonMomentumAnalyzer,
         trend_weight: float = 0.5,
-        momentum_weight: float = 0.5
+        momentum_weight: float = 0.5,
     ):
         """
         Args:
@@ -109,9 +109,7 @@ class CombinedTrendMomentumAnalyzer:
         self.momentum_weight = momentum_weight / total
 
     def analyze(
-        self,
-        trend_features: dict[str, float],
-        momentum_features: dict[str, float]
+        self, trend_features: dict[str, float], momentum_features: dict[str, float]
     ) -> CombinedAnalysis:
         """
         تحلیل ترکیبی
@@ -129,21 +127,21 @@ class CombinedTrendMomentumAnalyzer:
             trend_analysis.score_3d.score,
             trend_analysis.score_3d.confidence,
             momentum_analysis.momentum_3d.score,
-            momentum_analysis.momentum_3d.confidence
+            momentum_analysis.momentum_3d.confidence,
         )
 
         combined_7d, conf_7d = self._combine_scores(
             trend_analysis.score_7d.score,
             trend_analysis.score_7d.confidence,
             momentum_analysis.momentum_7d.score,
-            momentum_analysis.momentum_7d.confidence
+            momentum_analysis.momentum_7d.confidence,
         )
 
         combined_30d, conf_30d = self._combine_scores(
             trend_analysis.score_30d.score,
             trend_analysis.score_30d.confidence,
             momentum_analysis.momentum_30d.score,
-            momentum_analysis.momentum_30d.confidence
+            momentum_analysis.momentum_30d.confidence,
         )
 
         # تعیین توصیه‌ها
@@ -170,15 +168,11 @@ class CombinedTrendMomentumAnalyzer:
             action_7d=action_7d,
             action_30d=action_30d,
             final_action=final_action,
-            final_confidence=final_conf
+            final_confidence=final_conf,
         )
 
     def _combine_scores(
-        self,
-        trend_score: float,
-        trend_conf: float,
-        momentum_score: float,
-        momentum_conf: float
+        self, trend_score: float, trend_conf: float, momentum_score: float, momentum_conf: float
     ) -> tuple[float, float]:
         """ترکیب امتیاز روند و مومنتوم"""
         # اگر یکی از اعتمادها خیلی پایین است، وزن بیشتری به دیگری
@@ -190,19 +184,12 @@ class CombinedTrendMomentumAnalyzer:
             conf = trend_conf
         else:
             # ترکیب عادی
-            combined = (
-                self.trend_weight * trend_score +
-                self.momentum_weight * momentum_score
-            )
+            combined = self.trend_weight * trend_score + self.momentum_weight * momentum_score
             conf = (trend_conf + momentum_conf) / 2
 
         return combined, conf
 
-    def _score_to_action(
-        self,
-        score: float,
-        confidence: float
-    ) -> ActionRecommendation:
+    def _score_to_action(self, score: float, confidence: float) -> ActionRecommendation:
         """تبدیل امتیاز به توصیه"""
         if confidence < 0.2:
             return ActionRecommendation.HOLD
@@ -223,8 +210,7 @@ class CombinedTrendMomentumAnalyzer:
             return ActionRecommendation.STRONG_SELL
 
     def _final_recommendation(
-        self,
-        scores_confs: list[tuple[float, float]]
+        self, scores_confs: list[tuple[float, float]]
     ) -> tuple[ActionRecommendation, float]:
         """توصیه نهایی با میانگین وزنی"""
         scores = [s for s, c in scores_confs]
@@ -241,30 +227,27 @@ class CombinedTrendMomentumAnalyzer:
         action = self._score_to_action(weighted_score, avg_conf)
         return action, avg_conf
 
-    def print_analysis(
-        self,
-        analysis: CombinedAnalysis
-    ):
+    def print_analysis(self, analysis: CombinedAnalysis):
         """نمایش زیبای تحلیل ترکیبی"""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🎯 COMBINED TREND + MOMENTUM ANALYSIS")
-        print("="*80)
+        print("=" * 80)
 
         print(f"\n📅 Timestamp: {analysis.timestamp}")
 
         # امتیازهای ترکیبی
-        print("\n" + "-"*80)
+        print("\n" + "-" * 80)
         print("📊 COMBINED SCORES (Trend + Momentum)")
-        print("-"*80)
+        print("-" * 80)
 
-        for horizon in ['3d', '7d', '30d']:
-            if horizon == '3d':
+        for horizon in ["3d", "7d", "30d"]:
+            if horizon == "3d":
                 score = analysis.combined_score_3d
                 conf = analysis.confidence_3d
                 action = analysis.action_3d
                 t_score = analysis.trend_analysis.score_3d.score
                 m_score = analysis.momentum_analysis.momentum_3d.score
-            elif horizon == '7d':
+            elif horizon == "7d":
                 score = analysis.combined_score_7d
                 conf = analysis.confidence_7d
                 action = analysis.action_7d
@@ -285,16 +268,16 @@ class CombinedTrendMomentumAnalyzer:
             print(f"  💡 Action:      {action.value}")
 
         # توصیه نهایی
-        print("\n" + "-"*80)
+        print("\n" + "-" * 80)
         print("🎓 FINAL RECOMMENDATION")
-        print("-"*80)
+        print("-" * 80)
         print(f"  Action:     {analysis.final_action.value}")
         print(f"  Confidence: {analysis.final_confidence:.0%}")
 
         # توضیح
         self._print_explanation(analysis)
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
 
     def _print_explanation(self, analysis: CombinedAnalysis):
         """توضیح توصیه"""
