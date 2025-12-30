@@ -8,8 +8,8 @@ Multi-Horizon Feature Extraction for Cycle
 - Cycle period estimation
 """
 
-
 import numpy as np
+
 from gravity_tech.core.indicators.cycle import CycleIndicators
 from gravity_tech.models.schemas import Candle
 
@@ -23,20 +23,16 @@ class MultiHorizonCycleFeatureExtractor:
 
     # اندیکاتورهای سیکل
     CYCLE_INDICATORS = [
-        'dpo',
-        'ehlers_cycle',
-        'dominant_cycle',
-        'schaff_trend_cycle',
-        'phase_accumulation',
-        'hilbert_transform',
-        'market_cycle_model'
+        "dpo",
+        "ehlers_cycle",
+        "dominant_cycle",
+        "schaff_trend_cycle",
+        "phase_accumulation",
+        "hilbert_transform",
+        "market_cycle_model",
     ]
 
-    def __init__(
-        self,
-        lookback_period: int = 100,
-        horizons: list = None
-    ):
+    def __init__(self, lookback_period: int = 100, horizons: list = None):
         """
         Initialize feature extractor
 
@@ -54,16 +50,13 @@ class MultiHorizonCycleFeatureExtractor:
             self.horizons = []
             for h in horizons:
                 if isinstance(h, str):
-                    self.horizons.append(int(h.replace('d', '')))
+                    self.horizons.append(int(h.replace("d", "")))
                 else:
                     self.horizons.append(int(h))
 
         self.max_horizon = max(self.horizons)
 
-    def extract_cycle_features(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_cycle_features(self, candles: list[Candle]) -> dict[str, float]:
         """
         استخراج ویژگی‌های سیکل
 
@@ -82,11 +75,11 @@ class MultiHorizonCycleFeatureExtractor:
         features = {}
 
         # محاسبه همه اندیکاتورهای سیکل
-        cycle_results = CycleIndicators.calculate_all(candles[-self.lookback_period:])
+        cycle_results = CycleIndicators.calculate_all(candles[-self.lookback_period :])
 
         # استخراج ویژگی از هر اندیکاتور
         for result in cycle_results:
-            indicator_key = result.indicator_name.lower().replace(' ', '_')
+            indicator_key = result.indicator_name.lower().replace(" ", "_")
 
             # Signal (normalized to [-1, 1])
             signal_value = self._signal_to_numeric(result.signal)
@@ -121,13 +114,13 @@ class MultiHorizonCycleFeatureExtractor:
     def _signal_to_numeric(self, signal) -> float:
         """تبدیل SignalStrength به مقدار عددی"""
         signal_map = {
-            'VERY_BULLISH': 1.0,
-            'BULLISH': 0.5,
-            'NEUTRAL': 0.0,
-            'BEARISH': -0.5,
-            'VERY_BEARISH': -1.0
+            "VERY_BULLISH": 1.0,
+            "BULLISH": 0.5,
+            "NEUTRAL": 0.0,
+            "BEARISH": -0.5,
+            "VERY_BEARISH": -1.0,
         }
-        signal_str = str(signal).split('.')[-1] if hasattr(signal, 'name') else str(signal)
+        signal_str = str(signal).split(".")[-1] if hasattr(signal, "name") else str(signal)
         return signal_map.get(signal_str, 0.0)
 
     def _extract_combined_features(self, cycle_results: list) -> dict[str, float]:
@@ -136,30 +129,27 @@ class MultiHorizonCycleFeatureExtractor:
 
         # میانگین سیگنال همه اندیکاتورها
         signals = [self._signal_to_numeric(r.signal) for r in cycle_results]
-        features['cycle_avg_signal'] = np.mean(signals)
-        features['cycle_signal_std'] = np.std(signals)
+        features["cycle_avg_signal"] = np.mean(signals)
+        features["cycle_signal_std"] = np.std(signals)
 
         # میانگین confidence
         confidences = [r.confidence for r in cycle_results]
-        features['cycle_avg_confidence'] = np.mean(confidences)
-        features['cycle_confidence_std'] = np.std(confidences)
+        features["cycle_avg_confidence"] = np.mean(confidences)
+        features["cycle_confidence_std"] = np.std(confidences)
 
         # Weighted average signal
-        weighted_signals = [
-            self._signal_to_numeric(r.signal) * r.confidence
-            for r in cycle_results
-        ]
+        weighted_signals = [self._signal_to_numeric(r.signal) * r.confidence for r in cycle_results]
         total_confidence = sum(confidences)
         if total_confidence > 0:
-            features['cycle_weighted_signal'] = sum(weighted_signals) / total_confidence
+            features["cycle_weighted_signal"] = sum(weighted_signals) / total_confidence
         else:
-            features['cycle_weighted_signal'] = 0.0
+            features["cycle_weighted_signal"] = 0.0
 
         # Agreement (چند درصد اندیکاتورها هماهنگ هستند)
         bullish = sum(1 for s in signals if s > 0.2)
         bearish = sum(1 for s in signals if s < -0.2)
         total = len(signals)
-        features['cycle_agreement'] = max(bullish, bearish) / total if total > 0 else 0.0
+        features["cycle_agreement"] = max(bullish, bearish) / total if total > 0 else 0.0
 
         return features
 
@@ -179,19 +169,19 @@ class MultiHorizonCycleFeatureExtractor:
         if avg_phase < 0:
             avg_phase += 360
 
-        features['cycle_avg_phase'] = avg_phase
+        features["cycle_avg_phase"] = avg_phase
 
         # Phase quadrant distribution - all zero since no phase data
-        features['cycle_phase_q1_accumulation'] = 0.0
-        features['cycle_phase_q2_markup'] = 0.0
-        features['cycle_phase_q3_distribution'] = 0.0
-        features['cycle_phase_q4_markdown'] = 0.0
+        features["cycle_phase_q1_accumulation"] = 0.0
+        features["cycle_phase_q2_markup"] = 0.0
+        features["cycle_phase_q3_distribution"] = 0.0
+        features["cycle_phase_q4_markdown"] = 0.0
 
         # Dominant quadrant - placeholder
-        features['cycle_dominant_quadrant'] = 1.0
+        features["cycle_dominant_quadrant"] = 1.0
 
         # Phase dispersion - placeholder
-        features['cycle_phase_dispersion'] = 0.0
+        features["cycle_phase_dispersion"] = 0.0
 
         return features
 
@@ -203,29 +193,27 @@ class MultiHorizonCycleFeatureExtractor:
         periods = [20.0] * len(cycle_results)  # Default period
 
         # میانگین دوره سیکل
-        features['cycle_avg_period'] = np.mean(periods)
-        features['cycle_period_std'] = np.std(periods)
-        features['cycle_min_period'] = float(min(periods))
-        features['cycle_max_period'] = float(max(periods))
+        features["cycle_avg_period"] = np.mean(periods)
+        features["cycle_period_std"] = np.std(periods)
+        features["cycle_min_period"] = float(min(periods))
+        features["cycle_max_period"] = float(max(periods))
 
         # Period consistency (یکنواختی دوره‌ها)
-        if features['cycle_avg_period'] > 0:
-            features['cycle_period_cv'] = features['cycle_period_std'] / features['cycle_avg_period']
+        if features["cycle_avg_period"] > 0:
+            features["cycle_period_cv"] = (
+                features["cycle_period_std"] / features["cycle_avg_period"]
+            )
         else:
-            features['cycle_period_cv'] = 0.0
+            features["cycle_period_cv"] = 0.0
 
         # دسته‌بندی دوره - all normal since placeholder
-        features['cycle_fast_ratio'] = 0.0
-        features['cycle_normal_ratio'] = 1.0
-        features['cycle_slow_ratio'] = 0.0
+        features["cycle_fast_ratio"] = 0.0
+        features["cycle_normal_ratio"] = 1.0
+        features["cycle_slow_ratio"] = 0.0
 
         return features
 
-    def extract_horizon_features(
-        self,
-        candles: list[Candle],
-        horizon: int
-    ) -> dict[str, float]:
+    def extract_horizon_features(self, candles: list[Candle], horizon: int) -> dict[str, float]:
         """
         استخراج ویژگی برای یک افق زمانی خاص
 
@@ -243,7 +231,7 @@ class MultiHorizonCycleFeatureExtractor:
         current_features = self.extract_cycle_features(candles)
 
         # برچسب برای آینده (target)
-        future_candles = candles[-(self.lookback_period - horizon):]
+        future_candles = candles[-(self.lookback_period - horizon) :]
         future_features = self.extract_cycle_features(future_candles)
 
         # Feature suffix
@@ -254,15 +242,12 @@ class MultiHorizonCycleFeatureExtractor:
             features[f"{key}{suffix}"] = value
 
         # هدف پیش‌بینی: سیگنال و فاز آینده
-        features[f"target_signal{suffix}"] = future_features.get('cycle_weighted_signal', 0.0)
-        features[f"target_phase{suffix}"] = future_features.get('cycle_avg_phase', 0.0)
+        features[f"target_signal{suffix}"] = future_features.get("cycle_weighted_signal", 0.0)
+        features[f"target_phase{suffix}"] = future_features.get("cycle_avg_phase", 0.0)
 
         return features
 
-    def extract_all_horizons(
-        self,
-        candles: list[Candle]
-    ) -> dict[str, float]:
+    def extract_all_horizons(self, candles: list[Candle]) -> dict[str, float]:
         """
         استخراج ویژگی برای همه افق‌های زمانی
 
@@ -294,31 +279,31 @@ class MultiHorizonCycleFeatureExtractor:
             features[f"{indicator}_cycle_period"] = 20.0  # دوره پیش‌فرض
 
         # ویژگی‌های ترکیبی
-        features['cycle_avg_signal'] = 0.0
-        features['cycle_signal_std'] = 0.0
-        features['cycle_avg_confidence'] = 0.0
-        features['cycle_confidence_std'] = 0.0
-        features['cycle_weighted_signal'] = 0.0
-        features['cycle_agreement'] = 0.0
+        features["cycle_avg_signal"] = 0.0
+        features["cycle_signal_std"] = 0.0
+        features["cycle_avg_confidence"] = 0.0
+        features["cycle_confidence_std"] = 0.0
+        features["cycle_weighted_signal"] = 0.0
+        features["cycle_agreement"] = 0.0
 
         # ویژگی‌های فاز
-        features['cycle_avg_phase'] = 0.0
-        features['cycle_phase_q1_accumulation'] = 0.25
-        features['cycle_phase_q2_markup'] = 0.25
-        features['cycle_phase_q3_distribution'] = 0.25
-        features['cycle_phase_q4_markdown'] = 0.25
-        features['cycle_dominant_quadrant'] = 1.0
-        features['cycle_phase_dispersion'] = 0.0
+        features["cycle_avg_phase"] = 0.0
+        features["cycle_phase_q1_accumulation"] = 0.25
+        features["cycle_phase_q2_markup"] = 0.25
+        features["cycle_phase_q3_distribution"] = 0.25
+        features["cycle_phase_q4_markdown"] = 0.25
+        features["cycle_dominant_quadrant"] = 1.0
+        features["cycle_phase_dispersion"] = 0.0
 
         # ویژگی‌های دوره
-        features['cycle_avg_period'] = 20.0
-        features['cycle_period_std'] = 0.0
-        features['cycle_min_period'] = 20.0
-        features['cycle_max_period'] = 20.0
-        features['cycle_period_cv'] = 0.0
-        features['cycle_fast_ratio'] = 0.0
-        features['cycle_normal_ratio'] = 1.0
-        features['cycle_slow_ratio'] = 0.0
+        features["cycle_avg_period"] = 20.0
+        features["cycle_period_std"] = 0.0
+        features["cycle_min_period"] = 20.0
+        features["cycle_max_period"] = 20.0
+        features["cycle_period_cv"] = 0.0
+        features["cycle_fast_ratio"] = 0.0
+        features["cycle_normal_ratio"] = 1.0
+        features["cycle_slow_ratio"] = 0.0
 
         return features
 
@@ -348,14 +333,11 @@ if __name__ == "__main__":
         count=200,
         base_price=50000,
         volatility=0.02,
-        trend='sideways'  # سیکل بهتر در رنج دیده می‌شود
+        trend="sideways",  # سیکل بهتر در رنج دیده می‌شود
     )
 
     # ایجاد extractor
-    extractor = MultiHorizonCycleFeatureExtractor(
-        lookback_period=100,
-        horizons=[3, 7, 30]
-    )
+    extractor = MultiHorizonCycleFeatureExtractor(lookback_period=100, horizons=[3, 7, 30])
 
     # استخراج ویژگی‌های فعلی
     print("\n1. استخراج ویژگی‌های فعلی:")
@@ -372,8 +354,8 @@ if __name__ == "__main__":
     print(f"تعداد ویژگی‌های افق 7d: {len(horizon_features)}")
 
     # Target values
-    target_signal = horizon_features.get('target_signal_7d', 0)
-    target_phase = horizon_features.get('target_phase_7d', 0)
+    target_signal = horizon_features.get("target_signal_7d", 0)
+    target_phase = horizon_features.get("target_phase_7d", 0)
     print(f"\nTarget Signal (7d): {target_signal:.4f}")
     print(f"Target Phase (7d): {target_phase:.2f}°")
 
@@ -385,24 +367,24 @@ if __name__ == "__main__":
     # نمایش ویژگی‌های کلیدی
     print("\n4. ویژگی‌های کلیدی سیکل:")
     key_features = [
-        'cycle_avg_signal',
-        'cycle_avg_confidence',
-        'cycle_weighted_signal',
-        'cycle_agreement',
-        'cycle_avg_phase',
-        'cycle_dominant_quadrant',
-        'cycle_avg_period',
-        'cycle_fast_ratio',
-        'cycle_normal_ratio',
-        'cycle_slow_ratio'
+        "cycle_avg_signal",
+        "cycle_avg_confidence",
+        "cycle_weighted_signal",
+        "cycle_agreement",
+        "cycle_avg_phase",
+        "cycle_dominant_quadrant",
+        "cycle_avg_period",
+        "cycle_fast_ratio",
+        "cycle_normal_ratio",
+        "cycle_slow_ratio",
     ]
 
     for key in key_features:
         if key in features:
             value = features[key]
-            if 'phase' in key:
+            if "phase" in key:
                 print(f"  {key}: {value:.2f}°")
-            elif 'period' in key:
+            elif "period" in key:
                 print(f"  {key}: {value:.1f} candles")
             else:
                 print(f"  {key}: {value:.4f}")
@@ -414,9 +396,9 @@ if __name__ == "__main__":
     print(f"  Q3 (Distribution 180-270°): {features['cycle_phase_q3_distribution']:.2%}")
     print(f"  Q4 (Markdown 270-360°): {features['cycle_phase_q4_markdown']:.2%}")
 
-    dominant_q = int(features['cycle_dominant_quadrant'])
-    phases = ['Accumulation', 'Markup', 'Distribution', 'Markdown']
-    print(f"\n  → فاز غالب: Q{dominant_q} ({phases[dominant_q-1]})")
+    dominant_q = int(features["cycle_dominant_quadrant"])
+    phases = ["Accumulation", "Markup", "Distribution", "Markdown"]
+    print(f"\n  → فاز غالب: Q{dominant_q} ({phases[dominant_q - 1]})")
 
     print("\n" + "=" * 70)
     print("✅ Feature extraction completed successfully!")
