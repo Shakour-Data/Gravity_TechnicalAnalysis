@@ -17,15 +17,15 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
 from fastapi import Request
+from sse_starlette.sse import EventSourceResponse
+
 from gravity_tech.core.indicators import MomentumIndicators, TrendIndicators
 from gravity_tech.models.schemas import Candle, MarketData, SubscriptionType
-from sse_starlette.sse import EventSourceResponse
-from datetime import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +49,14 @@ class SSEConnectionManager:
         self.active_connections[client_id] = queue
         self.subscriptions[client_id] = set()
         self.client_data[client_id] = {
-            'connected_at': datetime.now(timezone.utc),
-            'last_activity': datetime.now(timezone.utc),
-            'message_count': 0,
-            'subscriptions': set()
+            "connected_at": datetime.now(UTC),
+            "last_activity": datetime.now(UTC),
+            "message_count": 0,
+            "subscriptions": set(),
         }
-        logger.info(f"SSE Client {client_id} connected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"SSE Client {client_id} connected. Total connections: {len(self.active_connections)}"
+        )
         return queue
 
     def disconnect(self, client_id: str) -> None:
@@ -65,7 +67,9 @@ class SSEConnectionManager:
             del self.subscriptions[client_id]
         if client_id in self.client_data:
             del self.client_data[client_id]
-        logger.info(f"SSE Client {client_id} disconnected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"SSE Client {client_id} disconnected. Total connections: {len(self.active_connections)}"
+        )
 
     async def subscribe(self, client_id: str, subscription_type: SubscriptionType) -> None:
         """Subscribe client to a data stream"""
@@ -75,7 +79,7 @@ class SSEConnectionManager:
 
         # Mirror subscription state in client metadata for quick access
         if client_id in self.client_data:
-            self.client_data[client_id].setdefault('subscriptions', set()).add(subscription_type)
+            self.client_data[client_id].setdefault("subscriptions", set()).add(subscription_type)
 
         logger.info(f"SSE Client {client_id} subscribed to {subscription_type}")
 
@@ -84,11 +88,14 @@ class SSEConnectionManager:
         if client_id in self.subscriptions:
             self.subscriptions[client_id].discard(subscription_type)
             if client_id in self.client_data:
-                self.client_data[client_id].setdefault('subscriptions', set()).discard(subscription_type)
+                self.client_data[client_id].setdefault("subscriptions", set()).discard(
+                    subscription_type
+                )
             logger.info(f"SSE Client {client_id} unsubscribed from {subscription_type}")
 
-    async def broadcast_to_subscribers(self, subscription_type: SubscriptionType,
-                                     message: dict[str, Any]) -> None:
+    async def broadcast_to_subscribers(
+        self, subscription_type: SubscriptionType, message: dict[str, Any]
+    ) -> None:
         """Broadcast message to all subscribers of a type"""
         recipients = [
             (client_id, self.active_connections[client_id])
@@ -105,26 +112,26 @@ class SSEConnectionManager:
             # Track activity for the client when delivering broadcasts
             client_meta = self.client_data.get(client_id)
             if client_meta is not None:
-                client_meta['last_activity'] = datetime.now(timezone.utc)
-                client_meta['message_count'] += 1
+                client_meta["last_activity"] = datetime.now(UTC)
+                client_meta["message_count"] += 1
 
     async def send_personal_message(self, client_id: str, message: dict[str, Any]) -> None:
         """Send message to specific client"""
         if client_id in self.active_connections:
             queue = self.active_connections[client_id]
             await queue.put(message)
-            self.client_data[client_id]['last_activity'] = datetime.now(timezone.utc)
-            self.client_data[client_id]['message_count'] += 1
+            self.client_data[client_id]["last_activity"] = datetime.now(UTC)
+            self.client_data[client_id]["message_count"] += 1
 
     def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics"""
         return {
-            'total_connections': len(self.active_connections),
-            'total_subscriptions': sum(len(subs) for subs in self.subscriptions.values()),
-            'subscription_breakdown': {
+            "total_connections": len(self.active_connections),
+            "total_subscriptions": sum(len(subs) for subs in self.subscriptions.values()),
+            "subscription_breakdown": {
                 sub_type.value: sum(1 for subs in self.subscriptions.values() if sub_type in subs)
                 for sub_type in SubscriptionType
-            }
+            },
         }
 
     def get_client_data(self, client_id: str) -> dict[str, Any] | None:
@@ -143,8 +150,9 @@ class SSEHandler:
         self.is_streaming = False
         self.broadcast_task = None
 
-    async def handle_connection(self, request: Request, client_id: str,
-                              subscriptions: list[SubscriptionType]) -> AsyncGenerator[str, None]:
+    async def handle_connection(
+        self, request: Request, client_id: str, subscriptions: list[SubscriptionType]
+    ) -> AsyncGenerator[str, None]:
         """Handle individual SSE connection"""
         queue = await self.connection_manager.connect(client_id)
 
@@ -152,16 +160,20 @@ class SSEHandler:
         for sub_type in subscriptions:
             await self.connection_manager.subscribe(client_id, sub_type)
 
-        logger.info(f"SSE connection established for {client_id} with subscriptions: {subscriptions}")
+        logger.info(
+            f"SSE connection established for {client_id} with subscriptions: {subscriptions}"
+        )
 
         try:
             # Send initial connection message
-            yield self._format_sse_message({
-                "type": "connection_established",
-                "client_id": client_id,
-                "subscriptions": [s.value for s in subscriptions],
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
+            yield self._format_sse_message(
+                {
+                    "type": "connection_established",
+                    "client_id": client_id,
+                    "subscriptions": [s.value for s in subscriptions],
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
             while True:
                 # Wait for messages
@@ -170,20 +182,18 @@ class SSEHandler:
 
                     # Send heartbeat if no message
                     if message is None:
-                        yield self._format_sse_message({
-                            "type": "heartbeat",
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        })
+                        yield self._format_sse_message(
+                            {"type": "heartbeat", "timestamp": datetime.now(UTC).isoformat()}
+                        )
                         continue
 
                     yield self._format_sse_message(message)
 
                 except TimeoutError:
                     # Send heartbeat
-                    yield self._format_sse_message({
-                        "type": "heartbeat",
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    })
+                    yield self._format_sse_message(
+                        {"type": "heartbeat", "timestamp": datetime.now(UTC).isoformat()}
+                    )
 
         except Exception as e:
             logger.error(f"Error in SSE connection for {client_id}: {e}")
@@ -266,12 +276,12 @@ class SSEHandler:
             # Prepare market data message
             market_data = MarketData(
                 symbol=symbol,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 price=Decimal(str(candle.close)),
                 open_price=Decimal(str(candle.open)),
                 high_price=Decimal(str(candle.high)),
                 low_price=Decimal(str(candle.low)),
-                volume=Decimal(str(candle.volume))
+                volume=Decimal(str(candle.volume)),
             )
 
             # Broadcast to subscribers
@@ -282,8 +292,8 @@ class SSEHandler:
                     "data": market_data.to_dict(),
                     "indicators": indicators,
                     "patterns": patterns,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
             )
 
         except Exception as e:
@@ -300,20 +310,21 @@ class SSEHandler:
                 try:
                     sma_20 = self.trend_indicators.sma(candles, 20)
                     sma_50 = self.trend_indicators.sma(candles, 50)
-                    indicators['sma'] = {
-                        'sma_20': sma_20.value,
-                        'sma_50': sma_50.value
-                    }
+                    indicators["sma"] = {"sma_20": sma_20.value, "sma_50": sma_50.value}
                 except Exception as e:
                     logger.warning(f"Error calculating SMA: {e}")
 
                 # MACD
                 try:
                     macd_result = self.trend_indicators.macd(candles)
-                    indicators['macd'] = {
-                        'macd': macd_result.value,
-                        'signal': macd_result.additional_values.get('signal', 0) if macd_result.additional_values else 0,
-                        'histogram': macd_result.additional_values.get('histogram', 0) if macd_result.additional_values else 0
+                    indicators["macd"] = {
+                        "macd": macd_result.value,
+                        "signal": macd_result.additional_values.get("signal", 0)
+                        if macd_result.additional_values
+                        else 0,
+                        "histogram": macd_result.additional_values.get("histogram", 0)
+                        if macd_result.additional_values
+                        else 0,
                     }
                 except Exception as e:
                     logger.warning(f"Error calculating MACD: {e}")
@@ -324,7 +335,7 @@ class SSEHandler:
                     closes = [c.close for c in candles]
                     # Use a simple RSI calculation for now
                     rsi = self._calculate_simple_rsi(closes, 14)
-                    indicators['rsi'] = rsi
+                    indicators["rsi"] = rsi
                 except Exception as e:
                     logger.warning(f"Error calculating RSI: {e}")
 
@@ -343,7 +354,7 @@ class SSEHandler:
         losses = []
 
         for i in range(1, len(prices)):
-            change = prices[i] - prices[i-1]
+            change = prices[i] - prices[i - 1]
             if change > 0:
                 gains.append(change)
                 losses.append(0)
@@ -399,12 +410,12 @@ class SSEHandler:
         volume = random.randint(1000, 10000)
 
         return Candle(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             open=open_price,
             high=high,
             low=low,
             close=close_price,
-            volume=volume
+            volume=volume,
         )
 
     def _format_sse_message(self, data: dict[str, Any]) -> str:
@@ -414,10 +425,11 @@ class SSEHandler:
     def get_stats(self) -> dict[str, Any]:
         """Get SSE handler statistics"""
         return {
-            'connections': self.connection_manager.get_connection_stats(),
-            'streaming_symbols': list(self.market_data_buffer.keys()),
-            'is_streaming': self.is_streaming,
-            'broadcast_task_running': self.broadcast_task is not None and not self.broadcast_task.done()
+            "connections": self.connection_manager.get_connection_stats(),
+            "streaming_symbols": list(self.market_data_buffer.keys()),
+            "is_streaming": self.is_streaming,
+            "broadcast_task_running": self.broadcast_task is not None
+            and not self.broadcast_task.done(),
         }
 
 
@@ -425,8 +437,9 @@ class SSEHandler:
 sse_handler = SSEHandler()
 
 
-async def handle_sse_connection(request: Request, client_id: str,
-                              subscriptions: list[str]) -> EventSourceResponse:
+async def handle_sse_connection(
+    request: Request, client_id: str, subscriptions: list[str]
+) -> EventSourceResponse:
     """FastAPI endpoint handler for SSE connections"""
     # Convert string subscriptions to enum
     sub_types = []
