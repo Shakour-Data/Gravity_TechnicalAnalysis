@@ -9,17 +9,18 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import requests
+
 from gravity_tech.config.settings import settings
 from gravity_tech.core.domain.entities import Candle
-from datetime import timezone
 
 try:
     from prometheus_client import Counter, Histogram
 except Exception:  # pragma: no cover - fallback when prometheus_client is unavailable
+
     class _Noop:
         def labels(self, *args, **kwargs):
             return self
@@ -106,7 +107,7 @@ class DataConnector:
         """
         interval_delta = self._interval_to_timedelta(interval)
         if end_date is None:
-            end_date = datetime.now(timezone.utc)
+            end_date = datetime.now(UTC)
         if start_date is None:
             start_date = end_date - interval_delta * max(1, limit)
 
@@ -152,8 +153,15 @@ class DataConnector:
                 },
             )
             if self.allow_mock:
-                logger.info("data_connector.mock_fallback_enabled", symbol=symbol, interval=interval, limit=limit)
-                mock_candles = self._generate_mock_candles(symbol, interval, start_date, end_date, limit)
+                logger.info(
+                    "data_connector.mock_fallback_enabled",
+                    symbol=symbol,
+                    interval=interval,
+                    limit=limit,
+                )
+                mock_candles = self._generate_mock_candles(
+                    symbol, interval, start_date, end_date, limit
+                )
                 self.last_data_source = "mock"
                 return mock_candles
             raise
@@ -209,7 +217,7 @@ class DataConnector:
                 last_exc = exc
                 if attempt == self.max_retries:
                     break
-                sleep_duration = self.backoff_factor * (2 ** attempt)
+                sleep_duration = self.backoff_factor * (2**attempt)
                 logger.debug(
                     "data_connector.retrying",
                     extra={
