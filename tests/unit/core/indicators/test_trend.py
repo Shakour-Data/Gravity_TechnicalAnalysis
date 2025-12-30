@@ -55,9 +55,9 @@ class TestTrendIndicators:
     def test_sma_basic(self, sample_candles):
         result = TrendIndicators.sma(sample_candles, period=5)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "SMA(5)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -69,9 +69,9 @@ class TestTrendIndicators:
     def test_ema_basic(self, sample_candles):
         result = TrendIndicators.ema(sample_candles, period=5)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "EMA(5)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -83,9 +83,9 @@ class TestTrendIndicators:
     def test_wma_basic(self, sample_candles):
         result = TrendIndicators.wma(sample_candles, period=5)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "WMA(5)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -97,9 +97,9 @@ class TestTrendIndicators:
     def test_dema_basic(self, sample_candles):
         result = TrendIndicators.dema(sample_candles, period=5)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "DEMA(5)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -111,9 +111,9 @@ class TestTrendIndicators:
     def test_tema_basic(self, sample_candles):
         result = TrendIndicators.tema(sample_candles, period=5)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "TEMA(5)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -125,9 +125,9 @@ class TestTrendIndicators:
     def test_macd_basic(self, sample_candles):
         result = TrendIndicators.macd(sample_candles, fast=12, slow=26, signal_period=9)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "MACD"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -139,9 +139,9 @@ class TestTrendIndicators:
     def test_adx_basic(self, sample_candles):
         result = TrendIndicators.adx(sample_candles, period=14)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "ADX(14)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -153,9 +153,9 @@ class TestTrendIndicators:
     def test_donchian_channels_basic(self, sample_candles):
         result = TrendIndicators.donchian_channels(sample_candles, period=20)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "Donchian Channels(20)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -167,9 +167,9 @@ class TestTrendIndicators:
     def test_aroon_basic(self, sample_candles):
         result = TrendIndicators.aroon(sample_candles, period=25)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "Aroon(25)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -181,9 +181,9 @@ class TestTrendIndicators:
     def test_vortex_indicator_basic(self, sample_candles):
         result = TrendIndicators.vortex_indicator(sample_candles, period=14)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "Vortex Indicator(14)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -195,9 +195,9 @@ class TestTrendIndicators:
     def test_mcginley_dynamic_basic(self, sample_candles):
         result = TrendIndicators.mcginley_dynamic(sample_candles, period=20, k_factor=0.6)
         assert result is not None
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
         assert result.indicator_name == "McGinley Dynamic(20)"
         assert result.confidence >= 0.0
         assert result.confidence <= 1.0
@@ -211,8 +211,8 @@ class TestTrendIndicators:
         assert isinstance(results, list)
         assert len(results) > 0
         for result in results:
-            assert hasattr(result, 'indicator_name')
-            assert hasattr(result, 'signal')
-            assert hasattr(result, 'confidence')
+            assert hasattr(result, "indicator_name")
+            assert hasattr(result, "signal")
+            assert hasattr(result, "confidence")
             assert result.confidence >= 0.0
             assert result.confidence <= 1.0
