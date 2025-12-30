@@ -16,12 +16,12 @@ License: MIT
 import os
 import sys
 
-
 import numpy as np
 
 try:
     import matplotlib.pyplot as plt
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
@@ -54,7 +54,7 @@ class PatternModelInterpreter:
         self.explainer = None
         self.shap_values = None
 
-    def create_explainer(self, X_background: np.ndarray, model_type: str = 'tree'):
+    def create_explainer(self, X_background: np.ndarray, model_type: str = "tree"):
         """
         Create SHAP explainer for the model.
 
@@ -68,14 +68,14 @@ class PatternModelInterpreter:
 
         print(f"\n🔍 Creating SHAP {model_type.upper()} Explainer...")
 
-        if model_type == 'tree':
+        if model_type == "tree":
             # For tree-based models (XGBoost, RandomForest, etc.)
             self.explainer = shap.TreeExplainer(self.model)
-        elif model_type == 'kernel':
+        elif model_type == "kernel":
             # For any model (slower but more general)
             self.explainer = shap.KernelExplainer(
                 self.model.predict_proba,
-                X_background[:100]  # Use subset for speed
+                X_background[:100],  # Use subset for speed
             )
         else:
             raise ValueError(f"Unknown explainer type: {model_type}")
@@ -83,9 +83,7 @@ class PatternModelInterpreter:
         print("✅ Explainer created")
 
     def explain_predictions(
-        self,
-        X: np.ndarray,
-        class_names: list[str | None] = None
+        self, X: np.ndarray, class_names: list[str | None] = None
     ) -> np.ndarray:
         """
         Generate SHAP values for predictions.
@@ -107,12 +105,7 @@ class PatternModelInterpreter:
         print("✅ SHAP values computed")
         return self.shap_values
 
-    def plot_summary(
-        self,
-        X: np.ndarray,
-        max_display: int = 20,
-        save_path: str | None = None
-    ):
+    def plot_summary(self, X: np.ndarray, max_display: int = 20, save_path: str | None = None):
         """
         Create summary plot showing feature importance.
 
@@ -135,26 +128,18 @@ class PatternModelInterpreter:
             shap_vals = self.shap_values
 
         shap.summary_plot(
-            shap_vals,
-            X,
-            feature_names=self.feature_names,
-            max_display=max_display,
-            show=False
+            shap_vals, X, feature_names=self.feature_names, max_display=max_display, show=False
         )
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
             print(f"✅ Summary plot saved to: {save_path}")
         else:
             plt.show()
 
         plt.close()
 
-    def plot_feature_importance(
-        self,
-        X: np.ndarray,
-        save_path: str | None = None
-    ):
+    def plot_feature_importance(self, X: np.ndarray, save_path: str | None = None):
         """
         Create bar plot of mean absolute SHAP values (feature importance).
 
@@ -187,13 +172,13 @@ class PatternModelInterpreter:
 
         plt.barh(range(top_n), importance[top_indices])
         plt.yticks(range(top_n), [self.feature_names[i] for i in top_indices])
-        plt.xlabel('Mean |SHAP Value| (Feature Importance)')
-        plt.title('Top Feature Importance (SHAP)')
+        plt.xlabel("Mean |SHAP Value| (Feature Importance)")
+        plt.title("Top Feature Importance (SHAP)")
         plt.gca().invert_yaxis()
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
             print(f"✅ Feature importance plot saved to: {save_path}")
         else:
             plt.show()
@@ -201,10 +186,7 @@ class PatternModelInterpreter:
         plt.close()
 
     def explain_single_prediction(
-        self,
-        X_single: np.ndarray,
-        class_idx: int = 0,
-        save_path: str | None = None
+        self, X_single: np.ndarray, class_idx: int = 0, save_path: str | None = None
     ):
         """
         Explain a single prediction with waterfall plot.
@@ -247,18 +229,26 @@ class PatternModelInterpreter:
         if isinstance(base_value, np.ndarray):
             base_value = base_value[class_idx]
 
-        plt.barh(range(len(indices)), shap_contributions,
-                color=['red' if x < 0 else 'green' for x in shap_contributions])
-        plt.yticks(range(len(indices)),
-                  [f"{label}={val:.3f}" for label, val in zip(feature_labels, feature_values)])
-        plt.xlabel('SHAP Value (Impact on Prediction)')
-        plt.title(f'Single Prediction Explanation (Class {class_idx})')
-        plt.axvline(x=0, color='black', linestyle='--', linewidth=0.5)
+        plt.barh(
+            range(len(indices)),
+            shap_contributions,
+            color=["red" if x < 0 else "green" for x in shap_contributions],
+        )
+        plt.yticks(
+            range(len(indices)),
+            [
+                f"{label}={val:.3f}"
+                for label, val in zip(feature_labels, feature_values, strict=False)
+            ],
+        )
+        plt.xlabel("SHAP Value (Impact on Prediction)")
+        plt.title(f"Single Prediction Explanation (Class {class_idx})")
+        plt.axvline(x=0, color="black", linestyle="--", linewidth=0.5)
         plt.gca().invert_yaxis()
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
             print(f"✅ Single prediction plot saved to: {save_path}")
         else:
             plt.show()
@@ -270,7 +260,9 @@ class PatternModelInterpreter:
         print(f"   Base Value: {base_value:.4f}")
         print(f"   Final Prediction: {base_value + np.sum(shap_vals):.4f}")
         print("\n   Top 5 Contributing Features:")
-        for i, (idx, contrib) in enumerate(zip(indices[:5], shap_contributions[:5]), 1):
+        for i, (idx, contrib) in enumerate(
+            zip(indices[:5], shap_contributions[:5], strict=False), 1
+        ):
             direction = "↑" if contrib > 0 else "↓"
             print(f"   {i}. {self.feature_names[idx]}: {contrib:+.4f} {direction}")
 
@@ -299,17 +291,10 @@ class PatternModelInterpreter:
         # Normalize to sum to 1
         importance = importance / importance.sum()
 
-        return {
-            name: float(imp)
-            for name, imp in zip(self.feature_names, importance)
-        }
+        return {name: float(imp) for name, imp in zip(self.feature_names, importance, strict=False)}
 
     def analyze_feature_interactions(
-        self,
-        X: np.ndarray,
-        feature_idx1: int,
-        feature_idx2: int,
-        save_path: str | None = None
+        self, X: np.ndarray, feature_idx1: int, feature_idx2: int, save_path: str | None = None
     ):
         """
         Analyze interaction between two features.
@@ -340,11 +325,11 @@ class PatternModelInterpreter:
             X,
             feature_names=self.feature_names,
             interaction_index=feature_idx2,
-            show=False
+            show=False,
         )
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
             print(f"✅ Interaction plot saved to: {save_path}")
         else:
             plt.show()
@@ -367,7 +352,7 @@ def demo_shap_analysis():
     # Train simple model for demo
     from sklearn.ensemble import RandomForestClassifier
 
-    class_to_idx = {'gartley': 0, 'butterfly': 1, 'bat': 2, 'crab': 3}
+    class_to_idx = {"gartley": 0, "butterfly": 1, "bat": 2, "crab": 3}
     y_idx = np.array([class_to_idx[t] for t in y_type])
 
     model = RandomForestClassifier(n_estimators=100, max_depth=8, random_state=42)
@@ -377,16 +362,32 @@ def demo_shap_analysis():
 
     # Feature names
     feature_names = [
-        'xab_ratio_accuracy', 'abc_ratio_accuracy', 'bcd_ratio_accuracy', 'xad_ratio_accuracy',
-        'pattern_symmetry', 'pattern_slope', 'xa_angle', 'ab_angle', 'bc_angle', 'cd_angle',
-        'pattern_duration', 'xa_magnitude', 'ab_magnitude', 'bc_magnitude', 'cd_magnitude',
-        'volume_at_d', 'volume_trend', 'volume_confirmation',
-        'rsi_at_d', 'macd_at_d', 'momentum_divergence'
+        "xab_ratio_accuracy",
+        "abc_ratio_accuracy",
+        "bcd_ratio_accuracy",
+        "xad_ratio_accuracy",
+        "pattern_symmetry",
+        "pattern_slope",
+        "xa_angle",
+        "ab_angle",
+        "bc_angle",
+        "cd_angle",
+        "pattern_duration",
+        "xa_magnitude",
+        "ab_magnitude",
+        "bc_magnitude",
+        "cd_magnitude",
+        "volume_at_d",
+        "volume_trend",
+        "volume_confirmation",
+        "rsi_at_d",
+        "macd_at_d",
+        "momentum_divergence",
     ]
 
     # Create interpreter
     interpreter = PatternModelInterpreter(model, feature_names)
-    interpreter.create_explainer(X[:100], model_type='tree')
+    interpreter.create_explainer(X[:100], model_type="tree")
 
     # Explain predictions
     interpreter.explain_predictions(X[:100])
