@@ -23,6 +23,7 @@ from datetime import datetime
 from enum import Enum
 
 import numpy as np
+
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.multi_horizon_analysis import TrendScore
 from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
@@ -36,82 +37,87 @@ MIN_CANDLES = 120  # برای پوشش پنجره‌های 100/120
 
 class DecisionSignal(Enum):
     """سیگنال نهایی 5D"""
-    VERY_STRONG_BUY = "VERY_STRONG_BUY"      # خرید بسیار قوی (همه ابعاد موافق)
-    STRONG_BUY = "STRONG_BUY"                # خرید قوی (اکثریت قاطع موافق)
-    BUY = "BUY"                              # خرید (اکثریت ساده موافق)
-    WEAK_BUY = "WEAK_BUY"                    # خرید ضعیف (کمی مثبت)
-    NEUTRAL = "NEUTRAL"                      # خنثی (بدون سیگنال واضح)
-    WEAK_SELL = "WEAK_SELL"                  # فروش ضعیف (کمی منفی)
-    SELL = "SELL"                            # فروش (اکثریت ساده موافق)
-    STRONG_SELL = "STRONG_SELL"              # فروش قوی (اکثریت قاطع موافق)
-    VERY_STRONG_SELL = "VERY_STRONG_SELL"    # فروش بسیار قوی (همه ابعاد موافق)
+
+    VERY_STRONG_BUY = "VERY_STRONG_BUY"  # خرید بسیار قوی (همه ابعاد موافق)
+    STRONG_BUY = "STRONG_BUY"  # خرید قوی (اکثریت قاطع موافق)
+    BUY = "BUY"  # خرید (اکثریت ساده موافق)
+    WEAK_BUY = "WEAK_BUY"  # خرید ضعیف (کمی مثبت)
+    NEUTRAL = "NEUTRAL"  # خنثی (بدون سیگنال واضح)
+    WEAK_SELL = "WEAK_SELL"  # فروش ضعیف (کمی منفی)
+    SELL = "SELL"  # فروش (اکثریت ساده موافق)
+    STRONG_SELL = "STRONG_SELL"  # فروش قوی (اکثریت قاطع موافق)
+    VERY_STRONG_SELL = "VERY_STRONG_SELL"  # فروش بسیار قوی (همه ابعاد موافق)
 
 
 class RiskLevel(Enum):
     """سطح ریسک تصمیم"""
-    VERY_LOW = "VERY_LOW"          # ریسک بسیار کم (همه ابعاد هماهنگ)
-    LOW = "LOW"                    # ریسک کم (توافق بالا)
-    MODERATE = "MODERATE"          # ریسک متوسط (توافق متوسط)
-    HIGH = "HIGH"                  # ریسک بالا (عدم توافق)
-    VERY_HIGH = "VERY_HIGH"        # ریسک بسیار بالا (تناقض شدید)
+
+    VERY_LOW = "VERY_LOW"  # ریسک بسیار کم (همه ابعاد هماهنگ)
+    LOW = "LOW"  # ریسک کم (توافق بالا)
+    MODERATE = "MODERATE"  # ریسک متوسط (توافق متوسط)
+    HIGH = "HIGH"  # ریسک بالا (عدم توافق)
+    VERY_HIGH = "VERY_HIGH"  # ریسک بسیار بالا (تناقض شدید)
 
 
 @dataclass
 class DimensionState:
     """وضعیت یک dimension"""
-    name: str                       # نام dimension
-    score: float                    # امتیاز [-1, +1]
-    confidence: float               # اطمینان [0, 1]
-    signal: SignalStrength          # سیگنال
-    weight: float                   # وزن در ترکیب نهایی
-    volume_adjusted_score: float    # امتیاز بعد از تعدیل حجم
-    volume_adjustment: float        # میزان تعدیل حجم
-    description: str                # توضیحات
+
+    name: str  # نام dimension
+    score: float  # امتیاز [-1, +1]
+    confidence: float  # اطمینان [0, 1]
+    signal: SignalStrength  # سیگنال
+    weight: float  # وزن در ترکیب نهایی
+    volume_adjusted_score: float  # امتیاز بعد از تعدیل حجم
+    volume_adjustment: float  # میزان تعدیل حجم
+    description: str  # توضیحات
 
 
 @dataclass
 class DimensionAgreement:
     """توافق بین dimensions"""
-    overall_agreement: float        # توافق کلی [0, 1]
-    bullish_dimensions: list[str]   # dimensions صعودی
-    bearish_dimensions: list[str]   # dimensions نزولی
-    neutral_dimensions: list[str]   # dimensions خنثی
-    strongest_dimension: str        # قوی‌ترین dimension
-    weakest_dimension: str          # ضعیف‌ترین dimension
-    conflicting: bool               # آیا تناقض وجود دارد؟
+
+    overall_agreement: float  # توافق کلی [0, 1]
+    bullish_dimensions: list[str]  # dimensions صعودی
+    bearish_dimensions: list[str]  # dimensions نزولی
+    neutral_dimensions: list[str]  # dimensions خنثی
+    strongest_dimension: str  # قوی‌ترین dimension
+    weakest_dimension: str  # ضعیف‌ترین dimension
+    conflicting: bool  # آیا تناقض وجود دارد؟
 
 
 @dataclass
 class FiveDimensionalDecision:
     """تصمیم نهایی 5 بُعدی"""
+
     timestamp: datetime
 
     # وضعیت هر dimension
     dimensions: dict[str, DimensionState]
 
     # امتیاز نهایی
-    final_score: float              # [-1, +1]
-    final_confidence: float         # [0, 1]
+    final_score: float  # [-1, +1]
+    final_confidence: float  # [0, 1]
     final_signal: DecisionSignal
-    signal_strength: float          # [0, 1] قدرت سیگنال
+    signal_strength: float  # [0, 1] قدرت سیگنال
 
     # تحلیل توافق
     agreement: DimensionAgreement
 
     # ریسک
     risk_level: RiskLevel
-    risk_factors: list[str]         # عوامل ریسک
+    risk_factors: list[str]  # عوامل ریسک
 
     # توصیه‌ها
-    recommendation: str             # توصیه اصلی
-    entry_strategy: str             # استراتژی ورود
-    exit_strategy: str              # استراتژی خروج
-    stop_loss_suggestion: str       # پیشنهاد استاپ لاس
-    take_profit_suggestion: str     # پیشنهاد حد سود
+    recommendation: str  # توصیه اصلی
+    entry_strategy: str  # استراتژی ورود
+    exit_strategy: str  # استراتژی خروج
+    stop_loss_suggestion: str  # پیشنهاد استاپ لاس
+    take_profit_suggestion: str  # پیشنهاد حد سود
 
     # اطلاعات اضافی
-    market_condition: str           # شرایط کلی بازار
-    key_insights: list[str]         # نکات کلیدی
+    market_condition: str  # شرایط کلی بازار
+    key_insights: list[str]  # نکات کلیدی
 
 
 class FiveDimensionalDecisionMatrix:
@@ -126,7 +132,9 @@ class FiveDimensionalDecisionMatrix:
         """Scale/clip any score to [-100, 100]. Keeps internal logic on [-1, 1] but returns 100-based."""
         return float(np.clip(value * 100.0, -100.0, 100.0))
 
-    def _scale_dimensions_100(self, dimensions: dict[str, DimensionState]) -> dict[str, DimensionState]:
+    def _scale_dimensions_100(
+        self, dimensions: dict[str, DimensionState]
+    ) -> dict[str, DimensionState]:
         """Return dimensions with scores scaled to [-100, 100] for output."""
         for dim in dimensions.values():
             dim.score = self._scale_score_100(dim.score)
@@ -135,18 +143,18 @@ class FiveDimensionalDecisionMatrix:
 
     # وزن‌های پایه هر dimension (قابل یادگیری با ML)
     DEFAULT_WEIGHTS = {
-        'trend': 0.30,
-        'momentum': 0.25,
-        'volatility': 0.15,
-        'cycle': 0.20,
-        'support_resistance': 0.10
+        "trend": 0.30,
+        "momentum": 0.25,
+        "volatility": 0.15,
+        "cycle": 0.20,
+        "support_resistance": 0.10,
     }
 
     def __init__(
         self,
         candles: list[Candle],
         dimension_weights: dict[str, float] | None = None,
-        use_volume_matrix: bool = True
+        use_volume_matrix: bool = True,
     ):
         """
         Args:
@@ -163,13 +171,15 @@ class FiveDimensionalDecisionMatrix:
         if total_weight <= 0:
             self.weights = self.DEFAULT_WEIGHTS
             total_weight = sum(self.weights.values())
-        self.weights = {k: v/total_weight for k, v in self.weights.items()}
+        self.weights = {k: v / total_weight for k, v in self.weights.items()}
 
     @staticmethod
     def _validate_candles(candles: list[Candle]) -> list[Candle]:
         """Ensure minimum length and finite OHLCV"""
         if len(candles) < MIN_CANDLES:
-            raise ValueError(f"FiveDimensionalDecisionMatrix requires at least {MIN_CANDLES} candles (got {len(candles)})")
+            raise ValueError(
+                f"FiveDimensionalDecisionMatrix requires at least {MIN_CANDLES} candles (got {len(candles)})"
+            )
         for c in candles:
             vals = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
             if not np.all(np.isfinite(vals)):
@@ -186,7 +196,7 @@ class FiveDimensionalDecisionMatrix:
         momentum_score: MomentumScore,
         volatility_score: VolatilityScore,
         cycle_score: CycleScore,
-        sr_score: SupportResistanceScore
+        sr_score: SupportResistanceScore,
     ) -> FiveDimensionalDecision:
         """
         تحلیل جامع و تولید تصمیم نهایی 5D
@@ -210,8 +220,7 @@ class FiveDimensionalDecisionMatrix:
         # گام 2: اعمال تعدیلات حجم (اگر فعال باشد)
         if self.use_volume_matrix:
             dimensions = self._apply_volume_adjustments(
-                dimensions, trend_score, momentum_score, volatility_score,
-                cycle_score, sr_score
+                dimensions, trend_score, momentum_score, volatility_score, cycle_score, sr_score
             )
 
         # گام 3: محاسبه وزن‌های داینامیک بر اساس confidence
@@ -227,43 +236,29 @@ class FiveDimensionalDecisionMatrix:
         final_signal = self._determine_signal(final_score, agreement)
 
         # گام 7: محاسبه قدرت سیگنال
-        signal_strength = self._calculate_signal_strength(
-            final_score, final_confidence, agreement
-        )
+        signal_strength = self._calculate_signal_strength(final_score, final_confidence, agreement)
 
         # گام 8: ارزیابی ریسک
-        risk_level, risk_factors = self._assess_risk(
-            dimensions, agreement, final_confidence
-        )
+        risk_level, risk_factors = self._assess_risk(dimensions, agreement, final_confidence)
 
         # گام 9: تولید توصیه‌ها
         recommendation = self._generate_recommendation(
             final_signal, signal_strength, risk_level, agreement, dimensions
         )
 
-        entry_strategy = self._generate_entry_strategy(
-            final_signal, dimensions, risk_level
-        )
+        entry_strategy = self._generate_entry_strategy(final_signal, dimensions, risk_level)
 
-        exit_strategy = self._generate_exit_strategy(
-            final_signal, dimensions, risk_level
-        )
+        exit_strategy = self._generate_exit_strategy(final_signal, dimensions, risk_level)
 
-        stop_loss = self._suggest_stop_loss(
-            final_signal, dimensions, risk_level
-        )
+        stop_loss = self._suggest_stop_loss(final_signal, dimensions, risk_level)
 
-        take_profit = self._suggest_take_profit(
-            final_signal, dimensions, signal_strength
-        )
+        take_profit = self._suggest_take_profit(final_signal, dimensions, signal_strength)
 
         # گام 10: تحلیل شرایط بازار
         market_condition = self._analyze_market_condition(dimensions)
 
         # گام 11: استخراج نکات کلیدی
-        key_insights = self._extract_key_insights(
-            dimensions, agreement, final_signal
-        )
+        key_insights = self._extract_key_insights(dimensions, agreement, final_signal)
 
         # خروجی امتیازها در مقیاس [-100, 100]
         dimensions = self._scale_dimensions_100(dimensions)
@@ -285,7 +280,7 @@ class FiveDimensionalDecisionMatrix:
             stop_loss_suggestion=stop_loss,
             take_profit_suggestion=take_profit,
             market_condition=market_condition,
-            key_insights=key_insights
+            key_insights=key_insights,
         )
 
     def _collect_dimension_states(
@@ -294,61 +289,61 @@ class FiveDimensionalDecisionMatrix:
         momentum: MomentumScore,
         volatility: VolatilityScore,
         cycle: CycleScore,
-        sr: SupportResistanceScore
+        sr: SupportResistanceScore,
     ) -> dict[str, DimensionState]:
         """جمع‌آوری state هر dimension"""
 
         return {
-            'trend': DimensionState(
-                name='Trend',
+            "trend": DimensionState(
+                name="Trend",
                 score=trend.score,
                 confidence=trend.accuracy,
                 signal=trend.signal,
-                weight=self.weights['trend'],
+                weight=self.weights["trend"],
                 volume_adjusted_score=trend.score,
                 volume_adjustment=0.0,
-                description=f"روند {self._translate_signal(trend.signal)}"
+                description=f"روند {self._translate_signal(trend.signal)}",
             ),
-            'momentum': DimensionState(
-                name='Momentum',
+            "momentum": DimensionState(
+                name="Momentum",
                 score=momentum.score,
                 confidence=momentum.accuracy,
                 signal=momentum.signal,
-                weight=self.weights['momentum'],
+                weight=self.weights["momentum"],
                 volume_adjusted_score=momentum.score,
                 volume_adjustment=0.0,
-                description=f"مومنتوم {self._translate_signal(momentum.signal)}"
+                description=f"مومنتوم {self._translate_signal(momentum.signal)}",
             ),
-            'volatility': DimensionState(
-                name='Volatility',
+            "volatility": DimensionState(
+                name="Volatility",
                 score=volatility.score,
                 confidence=volatility.accuracy,
                 signal=volatility.signal,
-                weight=self.weights['volatility'],
+                weight=self.weights["volatility"],
                 volume_adjusted_score=volatility.score,
                 volume_adjustment=0.0,
-                description=f"نوسان {self._translate_signal(volatility.signal)}"
+                description=f"نوسان {self._translate_signal(volatility.signal)}",
             ),
-            'cycle': DimensionState(
-                name='Cycle',
+            "cycle": DimensionState(
+                name="Cycle",
                 score=cycle.score,
                 confidence=cycle.accuracy,
                 signal=cycle.signal,
-                weight=self.weights['cycle'],
+                weight=self.weights["cycle"],
                 volume_adjusted_score=cycle.score,
                 volume_adjustment=0.0,
-                description=f"سیکل در فاز {cycle.phase}"
+                description=f"سیکل در فاز {cycle.phase}",
             ),
-            'support_resistance': DimensionState(
-                name='Support/Resistance',
+            "support_resistance": DimensionState(
+                name="Support/Resistance",
                 score=sr.score,
                 confidence=sr.accuracy,
                 signal=self._map_sr_signal_to_signal_strength(sr.signal),
-                weight=self.weights['support_resistance'],
+                weight=self.weights["support_resistance"],
                 volume_adjusted_score=sr.score,
                 volume_adjustment=0.0,
-                description=f"نزدیک {sr.nearest_level_type if sr.nearest_level_type else 'سطح'}"
-            )
+                description=f"نزدیک {sr.nearest_level_type if sr.nearest_level_type else 'سطح'}",
+            ),
         }
 
     def _map_sr_signal_to_signal_strength(self, sr_signal: str) -> SignalStrength:
@@ -369,7 +364,7 @@ class FiveDimensionalDecisionMatrix:
         momentum: MomentumScore,
         volatility: VolatilityScore,
         cycle: CycleScore,
-        sr: SupportResistanceScore
+        sr: SupportResistanceScore,
     ) -> dict[str, DimensionState]:
         """
         اعمال تعدیلات حجم از Volume-Dimension Matrix
@@ -393,8 +388,7 @@ class FiveDimensionalDecisionMatrix:
 
                     # تعدیل score
                     dim.volume_adjusted_score = np.clip(
-                        dim.score + interaction.interaction_score,
-                        -1.0, 1.0
+                        dim.score + interaction.interaction_score, -1.0, 1.0
                     )
                     dim.volume_adjustment = interaction.interaction_score
 
@@ -403,8 +397,7 @@ class FiveDimensionalDecisionMatrix:
                         interaction.interaction_type
                     )
                     dim.confidence = np.clip(
-                        max(0.1, dim.confidence) * confidence_multiplier,
-                        0.0, 1.0
+                        max(0.1, dim.confidence) * confidence_multiplier, 0.0, 1.0
                     )
 
                     # به‌روزرسانی description
@@ -427,20 +420,18 @@ class FiveDimensionalDecisionMatrix:
             InteractionType.NEUTRAL: 1.0,
             InteractionType.WARN: 0.92,
             InteractionType.DIVERGENCE: 0.75,
-            InteractionType.FAKE: 0.60
+            InteractionType.FAKE: 0.60,
         }
         return multipliers.get(interaction_type, 1.0)
 
     def _calculate_dynamic_weights(
-        self,
-        dimensions: dict[str, DimensionState]
+        self, dimensions: dict[str, DimensionState]
     ) -> dict[str, DimensionState]:
         """محاسبه وزن‌های داینامیک بر اساس confidence"""
 
         # محاسبه weighted confidence با کف 0.1 برای جلوگیری از حذف کامل یک بعد
         weighted_confidences = {
-            name: dim.weight * max(0.1, dim.confidence)
-            for name, dim in dimensions.items()
+            name: dim.weight * max(0.1, dim.confidence) for name, dim in dimensions.items()
         }
 
         total_weighted = sum(weighted_confidences.values())
@@ -452,17 +443,11 @@ class FiveDimensionalDecisionMatrix:
 
         return dimensions
 
-    def _calculate_final_score(
-        self,
-        dimensions: dict[str, DimensionState]
-    ) -> tuple[float, float]:
+    def _calculate_final_score(self, dimensions: dict[str, DimensionState]) -> tuple[float, float]:
         """محاسبه امتیاز و اطمینان نهایی"""
 
         # امتیاز نهایی = میانگین وزن‌دار
-        final_score = sum(
-            dim.volume_adjusted_score * dim.weight
-            for dim in dimensions.values()
-        )
+        final_score = sum(dim.volume_adjusted_score * dim.weight for dim in dimensions.values())
 
         # اطمینان نهایی = ترکیب agreement + accuracy
         scores = [dim.volume_adjusted_score for dim in dimensions.values()]
@@ -484,10 +469,7 @@ class FiveDimensionalDecisionMatrix:
 
         return np.clip(final_score, -1.0, 1.0), np.clip(final_confidence, 0.0, 1.0)
 
-    def _analyze_agreement(
-        self,
-        dimensions: dict[str, DimensionState]
-    ) -> DimensionAgreement:
+    def _analyze_agreement(self, dimensions: dict[str, DimensionState]) -> DimensionAgreement:
         """تحلیل توافق بین dimensions"""
 
         bullish = []
@@ -514,7 +496,7 @@ class FiveDimensionalDecisionMatrix:
         sorted_dims = sorted(
             dimensions.items(),
             key=lambda x: abs(x[1].volume_adjusted_score * x[1].weight),
-            reverse=True
+            reverse=True,
         )
         strongest = sorted_dims[0][0] if sorted_dims else ""
         weakest = sorted_dims[-1][0] if sorted_dims else ""
@@ -529,13 +511,11 @@ class FiveDimensionalDecisionMatrix:
             neutral_dimensions=neutral,
             strongest_dimension=strongest,
             weakest_dimension=weakest,
-            conflicting=conflicting
+            conflicting=conflicting,
         )
 
     def _determine_signal(
-        self,
-        final_score: float,
-        agreement: DimensionAgreement
+        self, final_score: float, agreement: DimensionAgreement
     ) -> DecisionSignal:
         """تعیین سیگنال نهایی بر اساس score و agreement"""
 
@@ -569,10 +549,7 @@ class FiveDimensionalDecisionMatrix:
             return DecisionSignal.NEUTRAL
 
     def _calculate_signal_strength(
-        self,
-        final_score: float,
-        final_confidence: float,
-        agreement: DimensionAgreement
+        self, final_score: float, final_confidence: float, agreement: DimensionAgreement
     ) -> float:
         """محاسبه قدرت سیگنال [0, 1]"""
 
@@ -583,9 +560,7 @@ class FiveDimensionalDecisionMatrix:
 
         # میانگین وزن‌دار (score مهم‌تر است)
         signal_strength = (
-            score_strength * 0.5 +
-            confidence_strength * 0.3 +
-            agreement_strength * 0.2
+            score_strength * 0.5 + confidence_strength * 0.3 + agreement_strength * 0.2
         )
 
         return np.clip(signal_strength, 0.0, 1.0)
@@ -594,7 +569,7 @@ class FiveDimensionalDecisionMatrix:
         self,
         dimensions: dict[str, DimensionState],
         agreement: DimensionAgreement,
-        final_confidence: float
+        final_confidence: float,
     ) -> tuple[RiskLevel, list[str]]:
         """ارزیابی سطح ریسک و عوامل ریسک"""
 
@@ -612,19 +587,20 @@ class FiveDimensionalDecisionMatrix:
             risk_factors.append("اطمینان پایین در تحلیل")
 
         # عامل 3: نوسان بالا
-        vol_dim = dimensions.get('volatility')
+        vol_dim = dimensions.get("volatility")
         if vol_dim and vol_dim.score > 0.5:
             risk_factors.append("نوسان بالای بازار")
 
         # عامل 4: فاز بازار
-        cycle_dim = dimensions.get('cycle')
-        if cycle_dim and 'distribution' in cycle_dim.description.lower():
+        cycle_dim = dimensions.get("cycle")
+        if cycle_dim and "distribution" in cycle_dim.description.lower():
             risk_factors.append("فاز توزیع - احتمال ریزش")
 
         # عامل 5: واگرایی حجم
         volume_divergences = [
-            dim.name for dim in dimensions.values()
-            if 'DIVERGENCE' in dim.description or 'FAKE' in dim.description
+            dim.name
+            for dim in dimensions.values()
+            if "DIVERGENCE" in dim.description or "FAKE" in dim.description
         ]
         if volume_divergences:
             risk_factors.append(f"واگرایی حجم در {', '.join(volume_divergences)}")
@@ -651,7 +627,7 @@ class FiveDimensionalDecisionMatrix:
         strength: float,
         risk: RiskLevel,
         agreement: DimensionAgreement,
-        dimensions: dict[str, DimensionState]
+        dimensions: dict[str, DimensionState],
     ) -> str:
         """تولید توصیه اصلی"""
 
@@ -660,22 +636,22 @@ class FiveDimensionalDecisionMatrix:
         # بر اساس سیگنال
         if signal in [DecisionSignal.VERY_STRONG_BUY, DecisionSignal.STRONG_BUY]:
             recommendations.append("🟢 **خرید قوی توصیه می‌شود**")
-            recommendations.append(f"قدرت سیگنال: {strength*100:.1f}%")
-            recommendations.append(f"توافق dimensions: {agreement.overall_agreement*100:.1f}%")
+            recommendations.append(f"قدرت سیگنال: {strength * 100:.1f}%")
+            recommendations.append(f"توافق dimensions: {agreement.overall_agreement * 100:.1f}%")
 
             if len(agreement.bullish_dimensions) == 5:
                 recommendations.append("✅ همه 5 dimension سیگنال صعودی می‌دهند!")
 
         elif signal == DecisionSignal.BUY:
             recommendations.append("🟢 خرید توصیه می‌شود")
-            recommendations.append(f"قدرت سیگنال: {strength*100:.1f}%")
+            recommendations.append(f"قدرت سیگنال: {strength * 100:.1f}%")
 
         elif signal == DecisionSignal.WEAK_BUY:
             recommendations.append("🟡 خرید محتاطانه یا انتظار برای تایید بیشتر")
 
         elif signal in [DecisionSignal.VERY_STRONG_SELL, DecisionSignal.STRONG_SELL]:
             recommendations.append("🔴 **فروش قوی توصیه می‌شود**")
-            recommendations.append(f"قدرت سیگنال: {strength*100:.1f}%")
+            recommendations.append(f"قدرت سیگنال: {strength * 100:.1f}%")
 
         elif signal == DecisionSignal.SELL:
             recommendations.append("🔴 فروش توصیه می‌شود")
@@ -696,14 +672,15 @@ class FiveDimensionalDecisionMatrix:
         return "\n".join(recommendations)
 
     def _generate_entry_strategy(
-        self,
-        signal: DecisionSignal,
-        dimensions: dict[str, DimensionState],
-        risk: RiskLevel
+        self, signal: DecisionSignal, dimensions: dict[str, DimensionState], risk: RiskLevel
     ) -> str:
         """تولید استراتژی ورود"""
 
-        if signal in [DecisionSignal.VERY_STRONG_BUY, DecisionSignal.STRONG_BUY, DecisionSignal.BUY]:
+        if signal in [
+            DecisionSignal.VERY_STRONG_BUY,
+            DecisionSignal.STRONG_BUY,
+            DecisionSignal.BUY,
+        ]:
             if risk in [RiskLevel.VERY_LOW, RiskLevel.LOW]:
                 return "ورود فوری با 50-70% سرمایه، بقیه در اصلاحات"
             else:
@@ -712,7 +689,11 @@ class FiveDimensionalDecisionMatrix:
         elif signal == DecisionSignal.WEAK_BUY:
             return "انتظار برای تایید بیشتر یا ورود با مقدار کم (10-20%)"
 
-        elif signal in [DecisionSignal.VERY_STRONG_SELL, DecisionSignal.STRONG_SELL, DecisionSignal.SELL]:
+        elif signal in [
+            DecisionSignal.VERY_STRONG_SELL,
+            DecisionSignal.STRONG_SELL,
+            DecisionSignal.SELL,
+        ]:
             if risk in [RiskLevel.VERY_LOW, RiskLevel.LOW]:
                 return "خروج فوری 50-70% یا Short با حجم متوسط"
             else:
@@ -722,10 +703,7 @@ class FiveDimensionalDecisionMatrix:
             return "بدون ورود - انتظار برای سیگنال واضح"
 
     def _generate_exit_strategy(
-        self,
-        signal: DecisionSignal,
-        dimensions: dict[str, DimensionState],
-        risk: RiskLevel
+        self, signal: DecisionSignal, dimensions: dict[str, DimensionState], risk: RiskLevel
     ) -> str:
         """تولید استراتژی خروج"""
 
@@ -742,22 +720,27 @@ class FiveDimensionalDecisionMatrix:
             return "خروج در صورت شکست سطح حمایت/مقاومت کلیدی"
 
     def _suggest_stop_loss(
-        self,
-        signal: DecisionSignal,
-        dimensions: dict[str, DimensionState],
-        risk: RiskLevel
+        self, signal: DecisionSignal, dimensions: dict[str, DimensionState], risk: RiskLevel
     ) -> str:
         """پیشنهاد استاپ لاس"""
 
-        sr_dim = dimensions.get('support_resistance')
+        sr_dim = dimensions.get("support_resistance")
 
-        if signal in [DecisionSignal.VERY_STRONG_BUY, DecisionSignal.STRONG_BUY, DecisionSignal.BUY]:
+        if signal in [
+            DecisionSignal.VERY_STRONG_BUY,
+            DecisionSignal.STRONG_BUY,
+            DecisionSignal.BUY,
+        ]:
             if sr_dim and sr_dim.score > 0:
                 return "استاپ 2-3% زیر نزدیک‌ترین سطح حمایت"
             else:
                 return "استاپ 3-5% زیر قیمت ورود"
 
-        elif signal in [DecisionSignal.VERY_STRONG_SELL, DecisionSignal.STRONG_SELL, DecisionSignal.SELL]:
+        elif signal in [
+            DecisionSignal.VERY_STRONG_SELL,
+            DecisionSignal.STRONG_SELL,
+            DecisionSignal.SELL,
+        ]:
             if sr_dim and sr_dim.score < 0:
                 return "استاپ 2-3% بالای نزدیک‌ترین سطح مقاومت"
             else:
@@ -767,10 +750,7 @@ class FiveDimensionalDecisionMatrix:
             return "استاپ سفت 5-7% (با توجه به عدم قطعیت)"
 
     def _suggest_take_profit(
-        self,
-        signal: DecisionSignal,
-        dimensions: dict[str, DimensionState],
-        strength: float
+        self, signal: DecisionSignal, dimensions: dict[str, DimensionState], strength: float
     ) -> str:
         """پیشنهاد حد سود"""
 
@@ -789,16 +769,13 @@ class FiveDimensionalDecisionMatrix:
         else:
             return "هدف مشخص نیست - بر اساس R/R حداقل 1:2"
 
-    def _analyze_market_condition(
-        self,
-        dimensions: dict[str, DimensionState]
-    ) -> str:
+    def _analyze_market_condition(self, dimensions: dict[str, DimensionState]) -> str:
         """تحلیل شرایط کلی بازار"""
 
         conditions = []
 
         # Trend
-        trend = dimensions.get('trend')
+        trend = dimensions.get("trend")
         if trend:
             if trend.volume_adjusted_score > 0.5:
                 conditions.append("روند صعودی قوی")
@@ -808,12 +785,12 @@ class FiveDimensionalDecisionMatrix:
                 conditions.append("روند ضعیف یا خنثی")
 
         # Cycle
-        cycle = dimensions.get('cycle')
+        cycle = dimensions.get("cycle")
         if cycle:
             conditions.append(cycle.description)
 
         # Volatility
-        vol = dimensions.get('volatility')
+        vol = dimensions.get("volatility")
         if vol and vol.score > 0.5:
             conditions.append("نوسان بالا")
         elif vol and vol.score < -0.5:
@@ -825,7 +802,7 @@ class FiveDimensionalDecisionMatrix:
         self,
         dimensions: dict[str, DimensionState],
         agreement: DimensionAgreement,
-        signal: DecisionSignal
+        signal: DecisionSignal,
     ) -> list[str]:
         """استخراج نکات کلیدی"""
 
@@ -855,12 +832,12 @@ class FiveDimensionalDecisionMatrix:
             insights.append(f"📊 تاثیر حجم: {', '.join(volume_impacts)}")
 
         # نکته 4: فاز بازار
-        cycle = dimensions.get('cycle')
+        cycle = dimensions.get("cycle")
         if cycle:
             insights.append(f"🔄 {cycle.description}")
 
         # نکته 5: نزدیکی به S/R
-        sr = dimensions.get('support_resistance')
+        sr = dimensions.get("support_resistance")
         if sr:
             insights.append(f"📍 {sr.description}")
 
@@ -876,6 +853,6 @@ class FiveDimensionalDecisionMatrix:
             SignalStrength.NEUTRAL: "خنثی",
             SignalStrength.BEARISH_BROKEN: "نزولی شکسته",
             SignalStrength.BEARISH: "نزولی",
-            SignalStrength.VERY_BEARISH: "بسیار نزولی"
+            SignalStrength.VERY_BEARISH: "بسیار نزولی",
         }
         return translations.get(signal, str(signal))
