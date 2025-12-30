@@ -17,7 +17,6 @@ from gravity_tech.config.settings import settings
 from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.ml.backtesting import run_backtest_with_real_data
 
-
 DEFAULT_SYMBOLS_PATH = Path("data/symbols.txt")
 
 
@@ -32,12 +31,19 @@ def read_symbols(path: Path) -> list[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Batch backtest runner (50 symbols per batch).")
-    parser.add_argument("--symbols-file", type=Path, default=DEFAULT_SYMBOLS_PATH, help="فایل نمادها (هر خط یک نماد)")
+    parser.add_argument(
+        "--symbols-file",
+        type=Path,
+        default=DEFAULT_SYMBOLS_PATH,
+        help="فایل نمادها (هر خط یک نماد)",
+    )
     parser.add_argument("--interval", default="1d", help="بازه زمانی (مثلا 1d,4h)")
     parser.add_argument("--limit", type=int, default=1200, help="تعداد کندل برای بارگذاری")
     parser.add_argument("--min-confidence", type=float, default=0.6, help="حداقل اعتماد به الگو")
     parser.add_argument("--batch-size", type=int, default=50, help="اندازه هر بچ")
-    parser.add_argument("--no-fallback", action="store_true", help="عدم استفاده از fallback در صورت قطع Postgres")
+    parser.add_argument(
+        "--no-fallback", action="store_true", help="عدم استفاده از fallback در صورت قطع Postgres"
+    )
     args = parser.parse_args()
 
     symbols = read_symbols(args.symbols_file)
@@ -57,7 +63,7 @@ def main() -> None:
 
     for start in range(0, total, args.batch_size):
         batch = symbols[start : start + args.batch_size]
-        print(f"در حال پردازش نمادهای {start+1}-{start+len(batch)} از {total} ...")
+        print(f"در حال پردازش نمادهای {start + 1}-{start + len(batch)} از {total} ...")
         for sym in batch:
             try:
                 run_backtest_with_real_data(
@@ -83,4 +89,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
