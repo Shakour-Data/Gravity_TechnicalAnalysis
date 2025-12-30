@@ -277,38 +277,219 @@ def compute_and_store(
             ts_val = _ts_from_date(row["timestamp"])
             # Indicators per dimension (sample set)
             # Trend
-            ind_rows.append((sym, "1d", ts_val, "trend", "sma_20", None, clean_num(row["sma_20"]), clean_num(row["trend_score"]), None, 0.5, None, 20))
-            ind_rows.append((sym, "1d", ts_val, "trend", "ema_20", None, clean_num(row["ema_20"]), clean_num(row["trend_score"]), None, 0.5, None, 20))
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "trend",
+                    "sma_20",
+                    None,
+                    clean_num(row["sma_20"]),
+                    clean_num(row["trend_score"]),
+                    None,
+                    0.5,
+                    None,
+                    20,
+                )
+            )
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "trend",
+                    "ema_20",
+                    None,
+                    clean_num(row["ema_20"]),
+                    clean_num(row["trend_score"]),
+                    None,
+                    0.5,
+                    None,
+                    20,
+                )
+            )
             # Momentum
-            ind_rows.append((sym, "1d", ts_val, "momentum", "rsi_14", None, clean_num(row["rsi_14"]), clean_num(row["momentum_score"]), None, 0.5, None, 14))
-            ind_rows.append((sym, "1d", ts_val, "momentum", "macd", None, clean_num(row["macd"]), None, None, 0.5, None, None))
-            ind_rows.append((sym, "1d", ts_val, "momentum", "macd_signal", None, clean_num(row["macd_signal"]), None, None, 0.5, None, None))
-            ind_rows.append((sym, "1d", ts_val, "momentum", "macd_hist", None, clean_num(row["macd_hist"]), None, None, 0.5, None, None))
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "momentum",
+                    "rsi_14",
+                    None,
+                    clean_num(row["rsi_14"]),
+                    clean_num(row["momentum_score"]),
+                    None,
+                    0.5,
+                    None,
+                    14,
+                )
+            )
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "momentum",
+                    "macd",
+                    None,
+                    clean_num(row["macd"]),
+                    None,
+                    None,
+                    0.5,
+                    None,
+                    None,
+                )
+            )
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "momentum",
+                    "macd_signal",
+                    None,
+                    clean_num(row["macd_signal"]),
+                    None,
+                    None,
+                    0.5,
+                    None,
+                    None,
+                )
+            )
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "momentum",
+                    "macd_hist",
+                    None,
+                    clean_num(row["macd_hist"]),
+                    None,
+                    None,
+                    0.5,
+                    None,
+                    None,
+                )
+            )
             # Volatility
-            ind_rows.append((sym, "1d", ts_val, "volatility", "atr_14", None, clean_num(row["atr_14"]), clean_num(row["volatility_score"]), None, 0.5, None, 14))
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "volatility",
+                    "atr_14",
+                    None,
+                    clean_num(row["atr_14"]),
+                    clean_num(row["volatility_score"]),
+                    None,
+                    0.5,
+                    None,
+                    14,
+                )
+            )
             # Use row's index to access rolling_std_20
             vol_std_val = rolling_std_20.get(row.name, None)
-            ind_rows.append((sym, "1d", ts_val, "volatility", "return_std_20", None,
-                             clean_num(vol_std_val),
-                             clean_num(row["volatility_score"]), None, 0.5, None, 20))
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "volatility",
+                    "return_std_20",
+                    None,
+                    clean_num(vol_std_val),
+                    clean_num(row["volatility_score"]),
+                    None,
+                    0.5,
+                    None,
+                    20,
+                )
+            )
             # Volume
-            ind_rows.append((sym, "1d", ts_val, "volume", "vol_zscore_20", None, clean_num(row["volume_score"]), clean_num(row["volume_score"]), None, 0.5, None, 20))
+            ind_rows.append(
+                (
+                    sym,
+                    "1d",
+                    ts_val,
+                    "volume",
+                    "vol_zscore_20",
+                    None,
+                    clean_num(row["volume_score"]),
+                    clean_num(row["volume_score"]),
+                    None,
+                    0.5,
+                    None,
+                    20,
+                )
+            )
 
             # Dimension scores (simple aggregates for now)
             trend_score = clean_num(row["trend_score"])
             momentum_score = clean_num(row["momentum_score"])
             volatility_score = clean_num(row["volatility_score"])
             volume_score = clean_num(row["volume_score"])
-            dim_rows.extend([
-                (sym, "1d", ts_val, "trend", trend_score, 0.5, None,
-                 "BULLISH" if trend_score is not None and trend_score > 0 else "BEARISH" if trend_score is not None and trend_score < 0 else "NEUTRAL", None),
-                (sym, "1d", ts_val, "momentum", momentum_score, 0.5, None,
-                 "BULLISH" if momentum_score is not None and momentum_score > 0 else "BEARISH" if momentum_score is not None and momentum_score < 0 else "NEUTRAL", None),
-                (sym, "1d", ts_val, "volatility", volatility_score, 0.5, None,
-                 "HIGH" if volatility_score is not None and volatility_score > 0.05 else "NORMAL", None),
-                (sym, "1d", ts_val, "volume", volume_score, 0.5, None,
-                 "HIGH" if volume_score is not None and volume_score > 0 else "LOW", None),
-            ])
+            dim_rows.extend(
+                [
+                    (
+                        sym,
+                        "1d",
+                        ts_val,
+                        "trend",
+                        trend_score,
+                        0.5,
+                        None,
+                        "BULLISH"
+                        if trend_score is not None and trend_score > 0
+                        else "BEARISH"
+                        if trend_score is not None and trend_score < 0
+                        else "NEUTRAL",
+                        None,
+                    ),
+                    (
+                        sym,
+                        "1d",
+                        ts_val,
+                        "momentum",
+                        momentum_score,
+                        0.5,
+                        None,
+                        "BULLISH"
+                        if momentum_score is not None and momentum_score > 0
+                        else "BEARISH"
+                        if momentum_score is not None and momentum_score < 0
+                        else "NEUTRAL",
+                        None,
+                    ),
+                    (
+                        sym,
+                        "1d",
+                        ts_val,
+                        "volatility",
+                        volatility_score,
+                        0.5,
+                        None,
+                        "HIGH"
+                        if volatility_score is not None and volatility_score > 0.05
+                        else "NORMAL",
+                        None,
+                    ),
+                    (
+                        sym,
+                        "1d",
+                        ts_val,
+                        "volume",
+                        volume_score,
+                        0.5,
+                        None,
+                        "HIGH" if volume_score is not None and volume_score > 0 else "LOW",
+                        None,
+                    ),
+                ]
+            )
 
         cur = conn.cursor()
         try:
@@ -328,14 +509,29 @@ def compute_and_store(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Compute daily indicators and dimension scores (PostgreSQL or SQLite).")
-    parser.add_argument("--symbols", default="AUTO", help="Comma-separated symbols or AUTO to read from price_data.")
+    parser = argparse.ArgumentParser(
+        description="Compute daily indicators and dimension scores (PostgreSQL or SQLite)."
+    )
+    parser.add_argument(
+        "--symbols", default="AUTO", help="Comma-separated symbols or AUTO to read from price_data."
+    )
     parser.add_argument("--lookback-days", type=int, default=365, help="Lookback window in days.")
     parser.add_argument("--pg-dsn", default=None, help="Override DATABASE_URL for this run.")
-    parser.add_argument("--db-type", choices=["auto", "postgresql", "sqlite"], default="auto", help="Select backend; default auto-detect.")
-    parser.add_argument("--sqlite-path", default=None, help="Path to SQLite DB when db-type=sqlite (default: data/TechAnalysis.db).")
+    parser.add_argument(
+        "--db-type",
+        choices=["auto", "postgresql", "sqlite"],
+        default="auto",
+        help="Select backend; default auto-detect.",
+    )
+    parser.add_argument(
+        "--sqlite-path",
+        default=None,
+        help="Path to SQLite DB when db-type=sqlite (default: data/TechAnalysis.db).",
+    )
     parser.add_argument("--tse-dsn", default=None, help="Override TSE db path/DSN.")
-    parser.add_argument("--max-symbols", type=int, default=0, help="Cap number of symbols to process (0 = all).")
+    parser.add_argument(
+        "--max-symbols", type=int, default=0, help="Cap number of symbols to process (0 = all)."
+    )
     args = parser.parse_args()
 
     db_type = None
@@ -366,7 +562,9 @@ def main():
 
     backend_str = manager.db_type.value if manager.db_type is not None else "unknown"
     total_symbols = len(symbols)
-    print(f"[daily] Starting daily computation for {total_symbols} symbols (backend: {backend_str}).")
+    print(
+        f"[daily] Starting daily computation for {total_symbols} symbols (backend: {backend_str})."
+    )
 
     def progress_cb(idx: int, total: int, symbol: str, wrote: bool) -> None:
         pct = (idx / total * 100) if total else 100.0
@@ -380,7 +578,9 @@ def main():
         tse_source=args.tse_dsn,
         progress_cb=progress_cb,
     )
-    print(f"✅ Computed daily indicators/dimensions for {total_symbols} symbols (backend: {backend_str}).")
+    print(
+        f"✅ Computed daily indicators/dimensions for {total_symbols} symbols (backend: {backend_str})."
+    )
 
 
 if __name__ == "__main__":
