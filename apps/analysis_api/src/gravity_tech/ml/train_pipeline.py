@@ -32,7 +32,7 @@ class MLTrainingPipeline:
         days: int = 730,
         model_type: str = "lightgbm",
         lookback_period: int = 100,
-        forward_days: int = 5
+        forward_days: int = 5,
     ):
         """
         Initialize training pipeline
@@ -73,9 +73,7 @@ class MLTrainingPipeline:
         print(f"Days:   {self.days}")
 
         self.candles = self.connector.fetch_daily_candles(
-            symbol=self.symbol,
-            start_date=start_date,
-            end_date=end_date
+            symbol=self.symbol, start_date=start_date, end_date=end_date
         )
 
         print(f"\n✅ Fetched {len(self.candles)} daily candles")
@@ -83,8 +81,9 @@ class MLTrainingPipeline:
         print(f"   Last:  {self.candles[-1].timestamp.date()} @ ${self.candles[-1].close:,.2f}")
 
         # Calculate price change
-        price_change = ((self.candles[-1].close - self.candles[0].close)
-                       / self.candles[0].close * 100)
+        price_change = (
+            (self.candles[-1].close - self.candles[0].close) / self.candles[0].close * 100
+        )
         print(f"   Change: {price_change:+.2f}%")
 
     def step2_train_indicator_weights(self):
@@ -98,10 +97,7 @@ class MLTrainingPipeline:
 
         # Extract features
         print("\n📊 Extracting indicator-level features...")
-        X, y = self.extractor.extract_training_dataset(
-            self.candles,
-            level="indicators"
-        )
+        X, y = self.extractor.extract_training_dataset(self.candles, level="indicators")
 
         print(f"✅ Features: {X.shape}")
         print(f"   Samples: {X.shape[0]}")
@@ -115,8 +111,8 @@ class MLTrainingPipeline:
 
         # Compare with baseline
         print("\n🔍 Comparing with equal weights baseline...")
-        X_test = X.iloc[int(len(X) * 0.8):]
-        y_test = y.iloc[int(len(y) * 0.8):]
+        X_test = X.iloc[int(len(X) * 0.8) :]
+        y_test = y.iloc[int(len(y) * 0.8) :]
         self.indicator_learner.compare_with_equal_weights(X_test, y_test)
 
         # Visualize
@@ -143,10 +139,7 @@ class MLTrainingPipeline:
 
         # Extract features
         print("\n📊 Extracting dimension-level features...")
-        X, y = self.extractor.extract_training_dataset(
-            self.candles,
-            level="dimensions"
-        )
+        X, y = self.extractor.extract_training_dataset(self.candles, level="dimensions")
 
         print(f"✅ Features: {X.shape}")
         print(f"   Samples: {X.shape[0]}")
@@ -160,8 +153,8 @@ class MLTrainingPipeline:
 
         # Compare with proposed weights
         print("\n🔍 Comparing with proposed weights (40-30-20-10)...")
-        X_test = X.iloc[int(len(X) * 0.8):]
-        y_test = y.iloc[int(len(y) * 0.8):]
+        X_test = X.iloc[int(len(X) * 0.8) :]
+        y_test = y.iloc[int(len(y) * 0.8) :]
         self.dimension_learner.compare_with_proposed_weights(X_test, y_test)
 
         # Visualize
@@ -187,22 +180,26 @@ class MLTrainingPipeline:
         print("=" * 70)
 
         summary = {
-            'timestamp': datetime.now(UTC).isoformat(),
-            'symbol': self.symbol,
-            'days': self.days,
-            'model_type': self.model_type,
-            'lookback_period': self.lookback_period,
-            'forward_days': self.forward_days,
-            'total_candles': len(self.candles),
-            'level1_metrics': metrics_level1,
-            'level2_metrics': metrics_level2,
-            'level1_weights': self.indicator_learner.get_weights() if self.indicator_learner else {},
-            'level2_weights': self.dimension_learner.get_weights() if self.dimension_learner else {}
+            "timestamp": datetime.now(UTC).isoformat(),
+            "symbol": self.symbol,
+            "days": self.days,
+            "model_type": self.model_type,
+            "lookback_period": self.lookback_period,
+            "forward_days": self.forward_days,
+            "total_candles": len(self.candles),
+            "level1_metrics": metrics_level1,
+            "level2_metrics": metrics_level2,
+            "level1_weights": self.indicator_learner.get_weights()
+            if self.indicator_learner
+            else {},
+            "level2_weights": self.dimension_learner.get_weights()
+            if self.dimension_learner
+            else {},
         }
 
         # Save summary
         summary_path = Path("models/ml_weights/training_summary.json")
-        with open(summary_path, 'w') as f:
+        with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2)
 
         print(f"\n💾 Saved training summary: {summary_path}")
@@ -216,13 +213,13 @@ class MLTrainingPipeline:
                 market_regime=None,
                 timeframe=f"{self.forward_days}d" if self.forward_days else None,
                 weights={
-                    "level1_weights": summary['level1_weights'],
-                    "level2_weights": summary['level2_weights'],
+                    "level1_weights": summary["level1_weights"],
+                    "level2_weights": summary["level2_weights"],
                 },
-                training_accuracy=metrics_level2.get('train_r2'),
-                validation_accuracy=metrics_level2.get('test_r2'),
-                r2_score=metrics_level2.get('test_r2'),
-                mae=metrics_level2.get('test_mae'),
+                training_accuracy=metrics_level2.get("train_r2"),
+                validation_accuracy=metrics_level2.get("test_r2"),
+                r2_score=metrics_level2.get("test_r2"),
+                mae=metrics_level2.get("test_mae"),
                 training_samples=len(self.candles) if self.candles is not None else None,
                 training_date=datetime.now(UTC),
                 metadata={
@@ -245,22 +242,18 @@ class MLTrainingPipeline:
         print(f"      Test MAE: {metrics_level1['test_mae']:.6f}")
         print("\n      Learned Weights:")
         for ind, weight in sorted(
-            summary['level1_weights'].items(),
-            key=lambda x: x[1],
-            reverse=True
+            summary["level1_weights"].items(), key=lambda x: x[1], reverse=True
         )[:5]:
-            print(f"         {ind:15s}: {weight:.4f} ({weight*100:.1f}%)")
+            print(f"         {ind:15s}: {weight:.4f} ({weight * 100:.1f}%)")
 
         print("\n   Level 2: 4 Dimension Weights")
         print(f"      Test R²:  {metrics_level2['test_r2']:.4f}")
         print(f"      Test MAE: {metrics_level2['test_mae']:.6f}")
         print("\n      Learned Weights:")
         for dim, weight in sorted(
-            summary['level2_weights'].items(),
-            key=lambda x: x[1],
-            reverse=True
+            summary["level2_weights"].items(), key=lambda x: x[1], reverse=True
         ):
-            print(f"         {dim:15s}: {weight:.4f} ({weight*100:.1f}%)")
+            print(f"         {dim:15s}: {weight:.4f} ({weight * 100:.1f}%)")
 
         return summary
 
@@ -312,6 +305,7 @@ class MLTrainingPipeline:
         except Exception as e:
             print(f"\n❌ Error during training: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -320,44 +314,30 @@ def main():
     """
     Command-line interface for training pipeline
     """
-    parser = argparse.ArgumentParser(
-        description='ML-Based Weight Training Pipeline'
+    parser = argparse.ArgumentParser(description="ML-Based Weight Training Pipeline")
+
+    parser.add_argument(
+        "--symbol", type=str, default="BTCUSDT", help="Trading symbol (default: BTCUSDT)"
     )
 
     parser.add_argument(
-        '--symbol',
+        "--days", type=int, default=730, help="Number of historical days (default: 730 = 2 years)"
+    )
+
+    parser.add_argument(
+        "--model",
         type=str,
-        default='BTCUSDT',
-        help='Trading symbol (default: BTCUSDT)'
+        default="lightgbm",
+        choices=["lightgbm", "xgboost", "sklearn"],
+        help="ML model type (default: lightgbm)",
     )
 
     parser.add_argument(
-        '--days',
-        type=int,
-        default=730,
-        help='Number of historical days (default: 730 = 2 years)'
+        "--lookback", type=int, default=100, help="Lookback period for indicators (default: 100)"
     )
 
     parser.add_argument(
-        '--model',
-        type=str,
-        default='lightgbm',
-        choices=['lightgbm', 'xgboost', 'sklearn'],
-        help='ML model type (default: lightgbm)'
-    )
-
-    parser.add_argument(
-        '--lookback',
-        type=int,
-        default=100,
-        help='Lookback period for indicators (default: 100)'
-    )
-
-    parser.add_argument(
-        '--forward',
-        type=int,
-        default=5,
-        help='Forward days for return prediction (default: 5)'
+        "--forward", type=int, default=5, help="Forward days for return prediction (default: 5)"
     )
 
     args = parser.parse_args()
@@ -368,7 +348,7 @@ def main():
         days=args.days,
         model_type=args.model,
         lookback_period=args.lookback,
-        forward_days=args.forward
+        forward_days=args.forward,
     )
 
     summary = pipeline.run_complete_pipeline()
