@@ -69,8 +69,14 @@ def suggest_params(
                 )
             else:
                 # tuple ordering params, metrics, interval
-                params_val, metrics_val, interval_val = row[0], row[1], row[2] if len(row) > 2 else None
-                runs.append({"params": params_val, "metrics": metrics_val, "interval": interval_val})
+                params_val, metrics_val, interval_val = (
+                    row[0],
+                    row[1],
+                    row[2] if len(row) > 2 else None,
+                )
+                runs.append(
+                    {"params": params_val, "metrics": metrics_val, "interval": interval_val}
+                )
 
     best_min_conf = default_min_confidence
     best_limit = None
