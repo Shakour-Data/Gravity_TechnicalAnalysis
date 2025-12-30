@@ -34,6 +34,7 @@ class Trade(NamedTuple):
     profit_loss: float
     commission: float
 
+
 class BacktestResult(NamedTuple):
     final_capital: float
     total_return: float
@@ -42,6 +43,7 @@ class BacktestResult(NamedTuple):
     max_drawdown: float
     sharpe_ratio: float
     trades: list
+
 
 class WalkForwardResult(NamedTuple):
     num_windows: int
@@ -58,24 +60,31 @@ class WalkForwardResult(NamedTuple):
     walk_forward_results: list
     description: str
 
+
 logger = logging.getLogger(__name__)
 
 
 class WalkForwardBacktester:
     """Walk-forward optimization for backtesting trading strategies"""
 
-    def __init__(self, optimization_window: int = 252,  # 1 year
-                 testing_window: int = 63,     # 3 months
-                 step_size: int = 21):         # 1 month
+    def __init__(
+        self,
+        optimization_window: int = 252,  # 1 year
+        testing_window: int = 63,  # 3 months
+        step_size: int = 21,
+    ):  # 1 month
         self.optimization_window = optimization_window
         self.testing_window = testing_window
         self.step_size = step_size
 
-    def run_walk_forward_analysis(self, historical_data: list[Candle],
-                                 strategy_optimizer: Callable,
-                                 parameter_ranges: dict[str, list[Any]],
-                                 initial_capital: float = 10000.0,
-                                 commission: float = 0.001) -> WalkForwardResult:
+    def run_walk_forward_analysis(
+        self,
+        historical_data: list[Candle],
+        strategy_optimizer: Callable,
+        parameter_ranges: dict[str, list[Any]],
+        initial_capital: float = 10000.0,
+        commission: float = 0.001,
+    ) -> WalkForwardResult:
         """
         Run walk-forward optimization analysis
 
@@ -106,7 +115,9 @@ class WalkForwardBacktester:
         walk_forward_results = []
 
         for i, (opt_start, opt_end, test_start, test_end) in enumerate(windows):
-            logger.info(f"Processing window {i+1}/{len(windows)}: Opt {opt_start}-{opt_end}, Test {test_start}-{test_end}")
+            logger.info(
+                f"Processing window {i + 1}/{len(windows)}: Opt {opt_start}-{opt_end}, Test {test_start}-{test_end}"
+            )
 
             # Optimization phase
             optimization_data = df.iloc[opt_start:opt_end]
@@ -120,22 +131,17 @@ class WalkForwardBacktester:
             test_candles = self._dataframe_to_candles(testing_data)
 
             # Run strategy with optimal parameters
-            test_result = self._run_strategy_with_params(test_candles, optimal_params,
-                                                        initial_capital, commission)
+            test_result = self._run_strategy_with_params(
+                test_candles, optimal_params, initial_capital, commission
+            )
 
             window_result = {
-                'window_id': i,
-                'optimization_period': {
-                    'start': df.index[opt_start],
-                    'end': df.index[opt_end-1]
-                },
-                'testing_period': {
-                    'start': df.index[test_start],
-                    'end': df.index[test_end-1]
-                },
-                'optimal_parameters': optimal_params,
-                'test_result': test_result,
-                'out_of_sample_return': test_result.total_return
+                "window_id": i,
+                "optimization_period": {"start": df.index[opt_start], "end": df.index[opt_end - 1]},
+                "testing_period": {"start": df.index[test_start], "end": df.index[test_end - 1]},
+                "optimal_parameters": optimal_params,
+                "test_result": test_result,
+                "out_of_sample_return": test_result.total_return,
             }
 
             walk_forward_results.append(window_result)
@@ -143,22 +149,24 @@ class WalkForwardBacktester:
         # Analyze overall results
         analysis = self._analyze_walk_forward_results(walk_forward_results)
 
-        logger.info(f"Walk-forward analysis completed. Average OOS return: {analysis['average_oos_return']:.2%}")
+        logger.info(
+            f"Walk-forward analysis completed. Average OOS return: {analysis['average_oos_return']:.2%}"
+        )
 
         return WalkForwardResult(
             num_windows=len(walk_forward_results),
             optimization_window=self.optimization_window,
             testing_window=self.testing_window,
             step_size=self.step_size,
-            average_oos_return=analysis['average_oos_return'],
-            median_oos_return=analysis['median_oos_return'],
-            oos_return_std=analysis['oos_return_std'],
-            oos_sharpe_ratio=analysis['oos_sharpe_ratio'],
-            consistency_ratio=analysis['consistency_ratio'],
-            max_drawdown_avg=analysis['max_drawdown_avg'],
-            parameter_stability=analysis['parameter_stability'],
+            average_oos_return=analysis["average_oos_return"],
+            median_oos_return=analysis["median_oos_return"],
+            oos_return_std=analysis["oos_return_std"],
+            oos_sharpe_ratio=analysis["oos_sharpe_ratio"],
+            consistency_ratio=analysis["consistency_ratio"],
+            max_drawdown_avg=analysis["max_drawdown_avg"],
+            parameter_stability=analysis["parameter_stability"],
             walk_forward_results=walk_forward_results,
-            description=f"Walk-forward analysis with {len(walk_forward_results)} windows"
+            description=f"Walk-forward analysis with {len(walk_forward_results)} windows",
         )
 
     def _generate_walk_forward_windows(self, data_length: int) -> list[tuple[int, int, int, int]]:
@@ -181,18 +189,23 @@ class WalkForwardBacktester:
 
         return windows
 
-    def _run_strategy_with_params(self, candles: list[Candle], params: dict[str, Any],
-                                 initial_capital: float, commission: float) -> BacktestResult:
+    def _run_strategy_with_params(
+        self,
+        candles: list[Candle],
+        params: dict[str, Any],
+        initial_capital: float,
+        commission: float,
+    ) -> BacktestResult:
         """Run strategy with specific parameters"""
         # This is a placeholder - in practice, you'd implement your specific strategy
         # For now, we'll create a simple moving average crossover strategy
 
         try:
             # Extract parameters
-            fast_period = params.get('fast_period', 10)
-            slow_period = params.get('slow_period', 20)
-            stop_loss = params.get('stop_loss', 0.02)
-            take_profit = params.get('take_profit', 0.05)
+            fast_period = params.get("fast_period", 10)
+            slow_period = params.get("slow_period", 20)
+            stop_loss = params.get("stop_loss", 0.02)
+            take_profit = params.get("take_profit", 0.05)
 
             # Simple MA crossover strategy
             capital = initial_capital
@@ -220,8 +233,9 @@ class WalkForwardBacktester:
                 # Trading logic
                 if position == 0:
                     # Look for entry
-                    if (fast_ma[i] > slow_ma[i] and
-                        fast_ma[i-1] <= slow_ma[i-1]):  # Bullish crossover
+                    if (
+                        fast_ma[i] > slow_ma[i] and fast_ma[i - 1] <= slow_ma[i - 1]
+                    ):  # Bullish crossover
                         position = 1
                         entry_price = current_price * (1 + commission)
                         capital -= entry_price * commission  # Commission
@@ -241,13 +255,12 @@ class WalkForwardBacktester:
                         exit_signal = True
 
                     # Bearish crossover
-                    elif (fast_ma[i] < slow_ma[i] and
-                          fast_ma[i-1] >= slow_ma[i-1]):
+                    elif fast_ma[i] < slow_ma[i] and fast_ma[i - 1] >= slow_ma[i - 1]:
                         exit_price = current_price * (1 - commission)
                         exit_signal = True
 
                     if exit_signal:
-                        profit_loss = (exit_price - entry_price)
+                        profit_loss = exit_price - entry_price
                         capital += profit_loss
 
                         trade = Trade(
@@ -257,7 +270,7 @@ class WalkForwardBacktester:
                             exit_price=exit_price,
                             quantity=1,
                             profit_loss=profit_loss,
-                            commission=commission * entry_price
+                            commission=commission * entry_price,
                         )
                         trades.append(trade)
 
@@ -272,7 +285,9 @@ class WalkForwardBacktester:
             # Calculate Sharpe ratio (simplified)
             if trades:
                 returns = [t.profit_loss / initial_capital for t in trades]
-                sharpe_ratio = np.mean(returns) / (np.std(returns) + 1e-8) * np.sqrt(252)  # Annualized
+                sharpe_ratio = (
+                    np.mean(returns) / (np.std(returns) + 1e-8) * np.sqrt(252)
+                )  # Annualized
             else:
                 sharpe_ratio = 0.0
 
@@ -283,7 +298,7 @@ class WalkForwardBacktester:
                 winning_trades=winning_trades,
                 max_drawdown=max_drawdown,
                 sharpe_ratio=sharpe_ratio,
-                trades=trades
+                trades=trades,
             )
 
         except Exception as e:
@@ -295,12 +310,12 @@ class WalkForwardBacktester:
                 winning_trades=0,
                 max_drawdown=0.0,
                 sharpe_ratio=0.0,
-                trades=[]
+                trades=[],
             )
 
     def _analyze_walk_forward_results(self, results: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze walk-forward results"""
-        oos_returns = [r['out_of_sample_return'] for r in results]
+        oos_returns = [r["out_of_sample_return"] for r in results]
 
         # Basic statistics
         average_oos_return = np.mean(oos_returns)
@@ -317,11 +332,11 @@ class WalkForwardBacktester:
         consistency_ratio = np.mean([1 if r > 0 else 0 for r in oos_returns])
 
         # Average maximum drawdown
-        max_drawdowns = [r['test_result'].max_drawdown for r in results]
+        max_drawdowns = [r["test_result"].max_drawdown for r in results]
         max_drawdown_avg = np.mean(max_drawdowns)
 
         # Parameter stability (how much parameters change between windows)
-        parameters_list = [r['optimal_parameters'] for r in results]
+        parameters_list = [r["optimal_parameters"] for r in results]
         if parameters_list:
             param_keys = parameters_list[0].keys()
             stability_scores = {}
@@ -342,13 +357,13 @@ class WalkForwardBacktester:
             parameter_stability = 0.0
 
         return {
-            'average_oos_return': average_oos_return,
-            'median_oos_return': median_oos_return,
-            'oos_return_std': oos_return_std,
-            'oos_sharpe_ratio': oos_sharpe_ratio,
-            'consistency_ratio': consistency_ratio,
-            'max_drawdown_avg': max_drawdown_avg,
-            'parameter_stability': parameter_stability
+            "average_oos_return": average_oos_return,
+            "median_oos_return": median_oos_return,
+            "oos_return_std": oos_return_std,
+            "oos_sharpe_ratio": oos_sharpe_ratio,
+            "consistency_ratio": consistency_ratio,
+            "max_drawdown_avg": max_drawdown_avg,
+            "parameter_stability": parameter_stability,
         }
 
     def _calculate_sma(self, data: list[float], period: int) -> list[float]:
@@ -358,21 +373,21 @@ class WalkForwardBacktester:
             if i < period - 1:
                 sma.append(np.nan)
             else:
-                sma.append(np.mean(data[i-period+1:i+1]))
+                sma.append(np.mean(data[i - period + 1 : i + 1]))
         return sma
 
     def _candles_to_dataframe(self, candles: list[Candle]) -> pd.DataFrame:
         """Convert list of candles to DataFrame"""
         data = {
-            'timestamp': [c.timestamp for c in candles],
-            'open': [c.open for c in candles],
-            'high': [c.high for c in candles],
-            'low': [c.low for c in candles],
-            'close': [c.close for c in candles],
-            'volume': [c.volume for c in candles]
+            "timestamp": [c.timestamp for c in candles],
+            "open": [c.open for c in candles],
+            "high": [c.high for c in candles],
+            "low": [c.low for c in candles],
+            "close": [c.close for c in candles],
+            "volume": [c.volume for c in candles],
         }
         df = pd.DataFrame(data)
-        df.set_index('timestamp', inplace=True)
+        df.set_index("timestamp", inplace=True)
         return df
 
     def _dataframe_to_candles(self, df: pd.DataFrame) -> list[Candle]:
@@ -381,18 +396,19 @@ class WalkForwardBacktester:
         for idx, row in df.iterrows():
             candle = Candle(
                 timestamp=pd.to_datetime(str(idx)),
-                open=float(row['open']),
-                high=float(row['high']),
-                low=float(row['low']),
-                close=float(row['close']),
-                volume=int(row['volume'])
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=int(row["volume"]),
             )
             candles.append(candle)
         return candles
 
 
-def create_walk_forward_backtester(optimization_window: int = 252,
-                                 testing_window: int = 63) -> WalkForwardBacktester:
+def create_walk_forward_backtester(
+    optimization_window: int = 252, testing_window: int = 63
+) -> WalkForwardBacktester:
     """
     Factory function to create walk-forward backtester
 
@@ -404,15 +420,16 @@ def create_walk_forward_backtester(optimization_window: int = 252,
         Configured WalkForwardBacktester instance
     """
     return WalkForwardBacktester(
-        optimization_window=optimization_window,
-        testing_window=testing_window
+        optimization_window=optimization_window, testing_window=testing_window
     )
 
 
-def run_walk_forward_backtest(historical_data: list[Candle],
-                             strategy_optimizer: Callable,
-                             parameter_ranges: dict[str, list[Any]],
-                             optimization_window: int = 252) -> WalkForwardResult:
+def run_walk_forward_backtest(
+    historical_data: list[Candle],
+    strategy_optimizer: Callable,
+    parameter_ranges: dict[str, list[Any]],
+    optimization_window: int = 252,
+) -> WalkForwardResult:
     """
     Convenience function to run walk-forward backtest
 
