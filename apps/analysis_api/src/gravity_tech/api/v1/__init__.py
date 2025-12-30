@@ -10,6 +10,7 @@ License: MIT
 """
 
 from fastapi import APIRouter
+
 from gravity_tech.api.v1 import analysis as analysis_router
 from gravity_tech.api.v1 import auth as auth_router
 from gravity_tech.api.v1 import backtest as backtest_router
