@@ -15,16 +15,14 @@ License: MIT
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from pathlib import Path
-
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
-from datetime import timezone
 
 try:
     import lightgbm as lgb
+
     LIGHTGBM_AVAILABLE = True
 except ImportError:
     LIGHTGBM_AVAILABLE = False
@@ -32,6 +30,7 @@ except ImportError:
 
 try:
     import xgboost as xgb
+
     XGBOOST_AVAILABLE = True
 except ImportError:
     XGBOOST_AVAILABLE = False
@@ -39,10 +38,10 @@ except ImportError:
 from gravity_tech.config.paths import ML_MODELS_DIR
 
 
-
 @dataclass
 class ToolRecommendation:
     """پیشنهاد یک ابزار"""
+
     tool_name: str
     category: str
     ml_weight: float
@@ -56,6 +55,7 @@ class ToolRecommendation:
 @dataclass
 class MarketContext:
     """کانتکست بازار برای پیشنهاد ابزار"""
+
     symbol: str
     timeframe: str
     market_regime: str  # trending_bullish, trending_bearish, ranging, volatile
@@ -79,50 +79,115 @@ class DynamicToolRecommender:
     # دسته‌بندی 95+ ابزار
     TOOL_CATEGORIES = {
         "trend_indicators": [
-            "SMA", "EMA", "WMA", "DEMA", "TEMA", "HMA",
-            "MACD", "ADX", "Parabolic_SAR", "Supertrend"
+            "SMA",
+            "EMA",
+            "WMA",
+            "DEMA",
+            "TEMA",
+            "HMA",
+            "MACD",
+            "ADX",
+            "Parabolic_SAR",
+            "Supertrend",
         ],
         "momentum_indicators": [
-            "RSI", "Stochastic", "CCI", "Williams_R",
-            "ROC", "MFI", "Ultimate_Oscillator", "TSI"
+            "RSI",
+            "Stochastic",
+            "CCI",
+            "Williams_R",
+            "ROC",
+            "MFI",
+            "Ultimate_Oscillator",
+            "TSI",
         ],
         "volatility_indicators": [
-            "Bollinger_Bands", "ATR", "Keltner_Channels",
-            "Standard_Deviation", "Historical_Volatility",
-            "Chaikin_Volatility", "Donchian_Channels",
-            "Mass_Index", "Volatility_Ratio", "True_Range"
+            "Bollinger_Bands",
+            "ATR",
+            "Keltner_Channels",
+            "Standard_Deviation",
+            "Historical_Volatility",
+            "Chaikin_Volatility",
+            "Donchian_Channels",
+            "Mass_Index",
+            "Volatility_Ratio",
+            "True_Range",
         ],
         "volume_indicators": [
-            "OBV", "VWAP", "Volume_Profile", "Accumulation_Distribution",
-            "Chaikin_Money_Flow", "Money_Flow_Index", "Force_Index",
-            "Ease_of_Movement", "Volume_Oscillator", "Klinger_Oscillator"
+            "OBV",
+            "VWAP",
+            "Volume_Profile",
+            "Accumulation_Distribution",
+            "Chaikin_Money_Flow",
+            "Money_Flow_Index",
+            "Force_Index",
+            "Ease_of_Movement",
+            "Volume_Oscillator",
+            "Klinger_Oscillator",
         ],
         "cycle_indicators": [
-            "Detrended_Price", "Schaff_Trend_Cycle", "Ehlers_Fisher",
-            "Hilbert_Transform", "Mesa_Adaptive", "Cycle_Period",
-            "Dominant_Cycle", "Phase_Accumulation", "Sine_Wave", "Lead_Sine"
+            "Detrended_Price",
+            "Schaff_Trend_Cycle",
+            "Ehlers_Fisher",
+            "Hilbert_Transform",
+            "Mesa_Adaptive",
+            "Cycle_Period",
+            "Dominant_Cycle",
+            "Phase_Accumulation",
+            "Sine_Wave",
+            "Lead_Sine",
         ],
         "support_resistance": [
-            "Pivot_Points", "Fibonacci_Retracement", "Fibonacci_Extension",
-            "Fibonacci_Fan", "Fibonacci_Arc", "Gann_Levels",
-            "Camarilla_Pivots", "Woodie_Pivots", "Floor_Pivots",
-            "CPR", "Support_Zones", "Resistance_Zones"
+            "Pivot_Points",
+            "Fibonacci_Retracement",
+            "Fibonacci_Extension",
+            "Fibonacci_Fan",
+            "Fibonacci_Arc",
+            "Gann_Levels",
+            "Camarilla_Pivots",
+            "Woodie_Pivots",
+            "Floor_Pivots",
+            "CPR",
+            "Support_Zones",
+            "Resistance_Zones",
         ],
         "candlestick_patterns": [
-            "Doji", "Hammer", "Hanging_Man", "Shooting_Star",
-            "Engulfing_Bullish", "Engulfing_Bearish", "Morning_Star", "Evening_Star",
-            "Three_White_Soldiers", "Three_Black_Crows", "Harami", "Piercing",
-            "Dark_Cloud", "Tweezer_Top", "Tweezer_Bottom", "Marubozu",
+            "Doji",
+            "Hammer",
+            "Hanging_Man",
+            "Shooting_Star",
+            "Engulfing_Bullish",
+            "Engulfing_Bearish",
+            "Morning_Star",
+            "Evening_Star",
+            "Three_White_Soldiers",
+            "Three_Black_Crows",
+            "Harami",
+            "Piercing",
+            "Dark_Cloud",
+            "Tweezer_Top",
+            "Tweezer_Bottom",
+            "Marubozu",
             # ... 40 الگو
         ],
         "classical_patterns": [
-            "Head_Shoulders", "Inverse_Head_Shoulders", "Double_Top", "Double_Bottom",
-            "Triple_Top", "Triple_Bottom", "Ascending_Triangle", "Descending_Triangle",
-            "Symmetrical_Triangle", "Wedge_Rising", "Wedge_Falling",
-            "Flag_Bullish", "Flag_Bearish", "Pennant", "Cup_Handle"
+            "Head_Shoulders",
+            "Inverse_Head_Shoulders",
+            "Double_Top",
+            "Double_Bottom",
+            "Triple_Top",
+            "Triple_Bottom",
+            "Ascending_Triangle",
+            "Descending_Triangle",
+            "Symmetrical_Triangle",
+            "Wedge_Rising",
+            "Wedge_Falling",
+            "Flag_Bullish",
+            "Flag_Bearish",
+            "Pennant",
+            "Cup_Handle",
         ],
         "elliott_wave": ["Elliott_Wave_Analysis"],
-        "divergence": ["RSI_Divergence", "MACD_Divergence", "Volume_Divergence"]
+        "divergence": ["RSI_Divergence", "MACD_Divergence", "Volume_Divergence"],
     }
 
     # وزن پایه هر دسته (قابل یادگیری)
@@ -136,7 +201,7 @@ class DynamicToolRecommender:
         "candlestick_patterns": 0.03,
         "classical_patterns": 0.01,
         "elliott_wave": 0.005,
-        "divergence": 0.005
+        "divergence": 0.005,
     }
 
     def __init__(self, model_type: str = "lightgbm"):
@@ -163,10 +228,7 @@ class DynamicToolRecommender:
             self.model_type = "sklearn"
 
     def recommend_tools(
-        self,
-        context: MarketContext,
-        ml_weights: dict[str, float | None] = None,
-        top_n: int = 15
+        self, context: MarketContext, ml_weights: dict[str, float | None] = None, top_n: int = 15
     ) -> list[ToolRecommendation]:
         """
         پیشنهاد ابزارها بر اساس کانتکست بازار و وزن‌های ML
@@ -192,16 +254,12 @@ class DynamicToolRecommender:
             for tool in tools:
                 # محاسبه امتیاز ابزار
                 tool_score = self._calculate_tool_score(
-                    tool=tool,
-                    category=category,
-                    category_weight=category_weight,
-                    context=context
+                    tool=tool, category=category, category_weight=category_weight, context=context
                 )
 
                 # دریافت عملکرد تاریخی
                 historical_accuracy = self._get_historical_accuracy(
-                    tool=tool,
-                    market_regime=context.market_regime
+                    tool=tool, market_regime=context.market_regime
                 )
 
                 # تعیین اولویت
@@ -209,10 +267,7 @@ class DynamicToolRecommender:
 
                 # تولید دلیل
                 reason = self._generate_reason(
-                    tool=tool,
-                    category=category,
-                    context=context,
-                    score=tool_score
+                    tool=tool, category=category, context=context, score=tool_score
                 )
 
                 # بهترین کاربردها
@@ -226,7 +281,7 @@ class DynamicToolRecommender:
                     historical_accuracy=historical_accuracy,
                     reason=reason,
                     priority=priority,
-                    best_for=best_for
+                    best_for=best_for,
                 )
 
                 recommendations.append(rec)
@@ -256,7 +311,7 @@ class DynamicToolRecommender:
                 "classical_patterns": 0.01,
                 "candlestick_patterns": 0.005,
                 "elliott_wave": 0.003,
-                "divergence": 0.002
+                "divergence": 0.002,
             },
             "trending_bearish": {
                 "trend_indicators": 0.35,
@@ -268,7 +323,7 @@ class DynamicToolRecommender:
                 "classical_patterns": 0.01,
                 "candlestick_patterns": 0.005,
                 "elliott_wave": 0.003,
-                "divergence": 0.002
+                "divergence": 0.002,
             },
             "ranging": {
                 "momentum_indicators": 0.30,
@@ -280,7 +335,7 @@ class DynamicToolRecommender:
                 "candlestick_patterns": 0.01,
                 "classical_patterns": 0.005,
                 "divergence": 0.003,
-                "elliott_wave": 0.002
+                "elliott_wave": 0.002,
             },
             "volatile": {
                 "volatility_indicators": 0.35,
@@ -292,18 +347,14 @@ class DynamicToolRecommender:
                 "candlestick_patterns": 0.01,
                 "classical_patterns": 0.005,
                 "divergence": 0.003,
-                "elliott_wave": 0.002
-            }
+                "elliott_wave": 0.002,
+            },
         }
 
         return regime_weights.get(market_regime, self.BASE_CATEGORY_WEIGHTS)
 
     def _calculate_tool_score(
-        self,
-        tool: str,
-        category: str,
-        category_weight: float,
-        context: MarketContext
+        self, tool: str, category: str, category_weight: float, context: MarketContext
     ) -> float:
         """
         محاسبه امتیاز یک ابزار در کانتکست فعلی
@@ -339,22 +390,37 @@ class DynamicToolRecommender:
         # نقشه سازگاری ابزارها با رژیم‌های مختلف
         regime_compatibility = {
             "trending_bullish": {
-                "ADX": 1.0, "MACD": 0.9, "EMA": 0.9, "Parabolic_SAR": 0.8,
-                "RSI": 0.6, "Bollinger_Bands": 0.5
+                "ADX": 1.0,
+                "MACD": 0.9,
+                "EMA": 0.9,
+                "Parabolic_SAR": 0.8,
+                "RSI": 0.6,
+                "Bollinger_Bands": 0.5,
             },
             "trending_bearish": {
-                "ADX": 1.0, "MACD": 0.9, "EMA": 0.9, "Parabolic_SAR": 0.8,
-                "RSI": 0.6, "Bollinger_Bands": 0.5
+                "ADX": 1.0,
+                "MACD": 0.9,
+                "EMA": 0.9,
+                "Parabolic_SAR": 0.8,
+                "RSI": 0.6,
+                "Bollinger_Bands": 0.5,
             },
             "ranging": {
-                "RSI": 1.0, "Stochastic": 0.9, "Bollinger_Bands": 0.9,
-                "Support_Zones": 0.8, "Resistance_Zones": 0.8,
-                "ADX": 0.3, "MACD": 0.4
+                "RSI": 1.0,
+                "Stochastic": 0.9,
+                "Bollinger_Bands": 0.9,
+                "Support_Zones": 0.8,
+                "Resistance_Zones": 0.8,
+                "ADX": 0.3,
+                "MACD": 0.4,
             },
             "volatile": {
-                "ATR": 1.0, "Bollinger_Bands": 0.9, "Keltner_Channels": 0.8,
-                "Standard_Deviation": 0.8, "Historical_Volatility": 0.9
-            }
+                "ATR": 1.0,
+                "Bollinger_Bands": 0.9,
+                "Keltner_Channels": 0.8,
+                "Standard_Deviation": 0.8,
+                "Historical_Volatility": 0.9,
+            },
         }
 
         return regime_compatibility.get(regime, {}).get(tool, 0.5)
@@ -368,7 +434,7 @@ class DynamicToolRecommender:
             "15m": {"RSI": 0.9, "MACD": 0.8, "EMA": 0.8},
             "1h": {"MACD": 0.9, "RSI": 0.9, "EMA": 0.9, "ADX": 0.8},
             "4h": {"MACD": 0.9, "ADX": 0.9, "EMA": 0.9},
-            "1d": {"MACD": 1.0, "ADX": 1.0, "EMA": 1.0, "Elliott_Wave_Analysis": 0.9}
+            "1d": {"MACD": 1.0, "ADX": 1.0, "EMA": 1.0, "Elliott_Wave_Analysis": 0.9},
         }
 
         return timeframe_scores.get(timeframe, {}).get(tool, 0.7)
@@ -391,7 +457,7 @@ class DynamicToolRecommender:
             "scalp": {"RSI": 1.0, "Stochastic": 0.9, "MACD": 0.7},
             "day": {"MACD": 1.0, "RSI": 0.9, "ADX": 0.8, "VWAP": 0.9},
             "swing": {"MACD": 1.0, "ADX": 0.9, "EMA": 0.9, "Fibonacci_Retracement": 0.8},
-            "position": {"ADX": 1.0, "MACD": 0.9, "EMA": 1.0, "Elliott_Wave_Analysis": 0.9}
+            "position": {"ADX": 1.0, "MACD": 0.9, "EMA": 1.0, "Elliott_Wave_Analysis": 0.9},
         }
 
         return style_tools.get(style, {}).get(tool, 0.7)
@@ -408,9 +474,15 @@ class DynamicToolRecommender:
 
         # فعلاً مقادیر شبیه‌سازی شده
         base_accuracy = {
-            "ADX": 0.82, "MACD": 0.79, "RSI": 0.76, "EMA": 0.78,
-            "Bollinger_Bands": 0.74, "ATR": 0.71, "Stochastic": 0.75,
-            "VWAP": 0.77, "Fibonacci_Retracement": 0.68
+            "ADX": 0.82,
+            "MACD": 0.79,
+            "RSI": 0.76,
+            "EMA": 0.78,
+            "Bollinger_Bands": 0.74,
+            "ATR": 0.71,
+            "Stochastic": 0.75,
+            "VWAP": 0.77,
+            "Fibonacci_Retracement": 0.68,
         }
 
         return base_accuracy.get(tool, 0.70)
@@ -429,11 +501,7 @@ class DynamicToolRecommender:
             return "avoid"
 
     def _generate_reason(
-        self,
-        tool: str,
-        category: str,
-        context: MarketContext,
-        score: float
+        self, tool: str, category: str, context: MarketContext, score: float
     ) -> str:
         """تولید دلیل پیشنهاد ابزار"""
         reasons = []
@@ -467,16 +535,13 @@ class DynamicToolRecommender:
             "Bollinger_Bands": ["محدوده قیمت", "شناسایی نوسانات", "شکست"],
             "ATR": ["محاسبه حد ضرر", "اندازه پوزیشن", "نوسانات"],
             "EMA": ["تشخیص ترند", "سطوح حمایت/مقاومت پویا"],
-            "VWAP": ["قیمت میانگین", "ورود نهادی"]
+            "VWAP": ["قیمت میانگین", "ورود نهادی"],
         }
 
         return use_cases.get(tool, ["تحلیل تکنیکال عمومی"])
 
     def get_contextual_recommendations(
-        self,
-        symbol: str,
-        candles: pd.DataFrame,
-        analysis_goal: str = "entry_signal"
+        self, symbol: str, candles: pd.DataFrame, analysis_goal: str = "entry_signal"
     ) -> dict:
         """
         پیشنهاد ابزارها با تحلیل کامل کانتکست بازار
@@ -513,21 +578,21 @@ class DynamicToolRecommender:
                 "regime": context.market_regime,
                 "volatility": context.volatility_level,
                 "trend_strength": context.trend_strength,
-                "volume_profile": context.volume_profile
+                "volume_profile": context.volume_profile,
             },
             "analysis_goal": analysis_goal,
             "recommendations": {
                 "must_use": [self._rec_to_dict(r) for r in must_use],
                 "recommended": [self._rec_to_dict(r) for r in recommended],
                 "optional": [self._rec_to_dict(r) for r in optional],
-                "avoid": [self._rec_to_dict(r) for r in avoid]
+                "avoid": [self._rec_to_dict(r) for r in avoid],
             },
             "dynamic_strategy": strategy,
             "ml_metadata": {
                 "model_type": self.model_type,
                 "regime_weights": ml_weights,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
         }
 
     def _analyze_market_context(self, symbol: str, candles: pd.DataFrame) -> MarketContext:
@@ -536,12 +601,12 @@ class DynamicToolRecommender:
         # در production باید از indicator calculators استفاده شود
 
         # محاسبه volatility
-        returns = candles['close'].pct_change()
+        returns = candles["close"].pct_change()
         volatility = returns.std() * 100
 
         # محاسبه trend strength (ساده شده)
-        sma_20 = candles['close'].rolling(20).mean()
-        current_price = candles['close'].iloc[-1]
+        sma_20 = candles["close"].rolling(20).mean()
+        current_price = candles["close"].iloc[-1]
         trend_strength = abs((current_price - sma_20.iloc[-1]) / sma_20.iloc[-1]) * 100
 
         # تشخیص رژیم
@@ -556,8 +621,8 @@ class DynamicToolRecommender:
             regime = "ranging"
 
         # Volume profile
-        avg_volume = candles['volume'].mean()
-        recent_volume = candles['volume'].iloc[-10:].mean()
+        avg_volume = candles["volume"].mean()
+        recent_volume = candles["volume"].iloc[-10:].mean()
         volume_ratio = recent_volume / avg_volume
 
         if volume_ratio > 1.5:
@@ -574,14 +639,14 @@ class DynamicToolRecommender:
             volatility_level=min(volatility * 10, 100),
             trend_strength=min(trend_strength * 10, 100),
             volume_profile=volume_profile,
-            trading_style="swing"
+            trading_style="swing",
         )
 
     def _build_strategy(
         self,
         must_use: list[ToolRecommendation],
         recommended: list[ToolRecommendation],
-        context: MarketContext
+        context: MarketContext,
     ) -> dict:
         """ساخت استراتژی پیشنهادی"""
         primary_tools = [r.tool_name for r in must_use[:5]]
@@ -595,7 +660,7 @@ class DynamicToolRecommender:
             "confidence": float(avg_confidence),
             "based_on": f"تحلیل {len(must_use) + len(recommended)} ابزار برتر",
             "regime": context.market_regime,
-            "expected_accuracy": f"{avg_confidence * 100:.1f}%"
+            "expected_accuracy": f"{avg_confidence * 100:.1f}%",
         }
 
     def _rec_to_dict(self, rec: ToolRecommendation) -> dict:
@@ -607,14 +672,10 @@ class DynamicToolRecommender:
             "confidence": float(rec.confidence),
             "historical_accuracy": f"{rec.historical_accuracy * 100:.1f}%",
             "reason": rec.reason,
-            "best_for": rec.best_for
+            "best_for": rec.best_for,
         }
 
-    def train_recommender(
-        self,
-        training_data: pd.DataFrame,
-        test_size: float = 0.2
-    ) -> dict:
+    def train_recommender(self, training_data: pd.DataFrame, test_size: float = 0.2) -> dict:
         """
         آموزش مدل ML برای پیشنهاد ابزارها
 
@@ -637,7 +698,7 @@ class DynamicToolRecommender:
 
         return {
             "status": "not_implemented",
-            "message": "Training requires historical performance data"
+            "message": "Training requires historical performance data",
         }
 
     def save_model(self, filename: str = "tool_recommender.pkl"):
@@ -669,7 +730,7 @@ if __name__ == "__main__":
         volatility_level=45.0,
         trend_strength=75.0,
         volume_profile="high",
-        trading_style="swing"
+        trading_style="swing",
     )
 
     recommender = DynamicToolRecommender(model_type="lightgbm")
