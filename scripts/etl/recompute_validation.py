@@ -25,22 +25,22 @@ import argparse
 import math
 import sqlite3
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-def load_symbols(path: Path) -> List[str]:
+def load_symbols(path: Path) -> list[str]:
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def load_prices(src_db: Path, symbols: Iterable[str]) -> Dict[str, List[Tuple[str, float]]]:
+def load_prices(src_db: Path, symbols: Iterable[str]) -> dict[str, list[tuple[str, float]]]:
     conn = sqlite3.connect(src_db)
     cur = conn.cursor()
-    data: Dict[str, List[Tuple[str, float]]] = {}
+    data: dict[str, list[tuple[str, float]]] = {}
     for sym in symbols:
         rows = cur.execute(
             """
@@ -57,16 +57,16 @@ def load_prices(src_db: Path, symbols: Iterable[str]) -> Dict[str, List[Tuple[st
     return data
 
 
-def rolling_metrics(closes: List[Tuple[str, float]], window: int) -> Dict[str, Tuple[float, float]]:
+def rolling_metrics(closes: list[tuple[str, float]], window: int) -> dict[str, tuple[float, float]]:
     """
     Return mapping from date string -> (trend, vol) using rolling window ending at that date.
     trend: (close / close_{t-window+1}) - 1
     vol: stddev of daily returns in window
     """
-    result: Dict[str, Tuple[float, float]] = {}
+    result: dict[str, tuple[float, float]] = {}
     prices = [c for _, c in closes]
     dates = [d for d, _ in closes]
-    rets: List[float] = []
+    rets: list[float] = []
     for i in range(1, len(prices)):
         if prices[i - 1] != 0:
             rets.append((prices[i] - prices[i - 1]) / prices[i - 1])
@@ -90,7 +90,7 @@ def rolling_metrics(closes: List[Tuple[str, float]], window: int) -> Dict[str, T
     return result
 
 
-def fetch_scores(pg_conn, symbols: List[str]) -> Dict[str, Dict[str, Tuple[float, float]]]:
+def fetch_scores(pg_conn, symbols: list[str]) -> dict[str, dict[str, tuple[float, float]]]:
     """Return mapping symbol -> date(str) -> (trend_score, volatility_score)."""
     cur = pg_conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
@@ -102,15 +102,22 @@ def fetch_scores(pg_conn, symbols: List[str]) -> Dict[str, Dict[str, Tuple[float
         """,
         (symbols,),
     )
-    out: Dict[str, Dict[str, Tuple[float, float]]] = defaultdict(dict)
+    out: dict[str, dict[str, tuple[float, float]]] = defaultdict(dict)
     for row in cur.fetchall():
         d = row["ts"].date().isoformat()
-        out[row["symbol"]][d] = (float(row["trend_score"] or 0.0), float(row["volatility_score"] or 0.0))
+        out[row["symbol"]][d] = (
+            float(row["trend_score"] or 0.0),
+            float(row["volatility_score"] or 0.0),
+        )
     cur.close()
     return out
 
 
-def compare(prices: Dict[str, List[Tuple[str, float]]], db_scores: Dict[str, Dict[str, Tuple[float, float]]], window: int):
+def compare(
+    prices: dict[str, list[tuple[str, float]]],
+    db_scores: dict[str, dict[str, tuple[float, float]]],
+    window: int,
+):
     stats = {
         "trend_mae": 0.0,
         "vol_mae": 0.0,
@@ -118,7 +125,7 @@ def compare(prices: Dict[str, List[Tuple[str, float]]], db_scores: Dict[str, Dic
         "trend_miss": 0,
         "vol_miss": 0,
     }
-    mismatches: List[str] = []
+    mismatches: list[str] = []
     tolerance_trend = 0.02  # 2%
     tolerance_vol = 0.02
     for sym, rows in prices.items():
@@ -145,7 +152,9 @@ def compare(prices: Dict[str, List[Tuple[str, float]]], db_scores: Dict[str, Dic
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Recompute metrics from source and compare with DB.")
+    parser = argparse.ArgumentParser(
+        description="Recompute metrics from source and compare with DB."
+    )
     parser.add_argument("--target-db", required=True, help="Postgres DSN.")
     parser.add_argument("--source-db", required=True, help="SQLite source DB.")
     parser.add_argument("--symbols-file", required=True, help="File with symbols (one per line).")
