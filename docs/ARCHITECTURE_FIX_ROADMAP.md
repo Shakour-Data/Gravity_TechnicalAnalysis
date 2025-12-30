@@ -1039,7 +1039,7 @@ Security Tests (0% → Comprehensive OWASP)
 **Implementation:**
 - Created `apps/analysis_api/tests/test_phase4_comprehensive.py` (500+ test templates)
 - Created `apps/analysis_api/tests/test_phase4_security.py` (200+ security tests)
-- Created `docs/PHASE_4_TESTING_STRATEGY.md` (comprehensive guide)
+- Testing guide lives at `apps/analysis_api/tests/PHASE_4_TESTING_GUIDE.md`
 
 **Tool: pytest with coverage gates**
 
