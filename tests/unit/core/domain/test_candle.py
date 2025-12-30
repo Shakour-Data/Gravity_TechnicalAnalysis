@@ -17,7 +17,7 @@ class TestCandle:
             high=110.0,
             low=90.0,
             close=105.0,
-            volume=1000
+            volume=1000,
         )
 
         assert candle.open == 100.0
@@ -36,7 +36,7 @@ class TestCandle:
             high=110.0,
             low=90.0,
             close=105.0,
-            volume=1000
+            volume=1000,
         )
 
         assert candle.body_size == 5.0  # |105 - 100|
@@ -55,7 +55,7 @@ class TestCandle:
             high=110.0,
             low=90.0,
             close=105.0,
-            volume=1000
+            volume=1000,
         )
 
         assert candle.candle_type == CandleType.BULLISH
@@ -68,7 +68,7 @@ class TestCandle:
             high=110.0,
             low=90.0,
             close=100.0,
-            volume=1000
+            volume=1000,
         )
 
         assert candle.candle_type == CandleType.BEARISH
@@ -81,7 +81,7 @@ class TestCandle:
             high=110.0,
             low=90.0,
             close=100.1,
-            volume=1000
+            volume=1000,
         )
 
         assert candle.candle_type == CandleType.DOJI
@@ -95,7 +95,7 @@ class TestCandle:
                 high=100.0,
                 low=110.0,  # low > high
                 close=105.0,
-                volume=1000
+                volume=1000,
             )
 
     def test_candle_validation_negative_volume(self):
@@ -107,5 +107,5 @@ class TestCandle:
                 high=110.0,
                 low=90.0,
                 close=105.0,
-                volume=-1000
+                volume=-1000,
             )
