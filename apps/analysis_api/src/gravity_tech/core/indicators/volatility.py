@@ -41,6 +41,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+
 from gravity_tech.core.domain.entities import Candle, IndicatorCategory, IndicatorResult
 from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStrength
 
@@ -48,6 +49,7 @@ from gravity_tech.core.domain.entities import CoreSignalStrength as SignalStreng
 @dataclass
 class VolatilityResult:
     """Result of a volatility indicator calculation"""
+
     value: float  # Raw indicator value
     normalized: float  # Normalized to [-1, +1] for ML
     percentile: float  # Historical percentile [0, 100]
@@ -157,16 +159,19 @@ class VolatilityIndicators:
             signal=signal,
             value=current_atr,
             confidence=confidence,
-            description=f"ATR={current_atr:.4f} ({current_atr/current_price*100:.2f}% قیمت) - {percentile:.0f}th percentile - {description}",
+            description=f"ATR={current_atr:.4f} ({current_atr / current_price * 100:.2f}% قیمت) - {percentile:.0f}th percentile - {description}",
             additional_values={
                 "atr": float(current_atr),
                 "atr_percent": float(current_atr / current_price * 100),
-                "percentile": float(percentile)
-            }
+                "percentile": float(percentile),
+                "normalized": float(normalized),
+            },
         )
 
     @staticmethod
-    def bollinger_bands(candles: list[Candle], period: int = 20, std_dev: float = 2.0) -> IndicatorResult:
+    def bollinger_bands(
+        candles: list[Candle], period: int = 20, std_dev: float = 2.0
+    ) -> IndicatorResult:
         """
         Bollinger Bands
 
@@ -249,19 +254,22 @@ class VolatilityIndicators:
             signal=signal,
             value=current_bandwidth,
             confidence=confidence,
-            description=f"Bandwidth={current_bandwidth:.2f}% ({percentile:.0f}th) - قیمت در {price_position*100:.0f}% باند - {description}",
+            description=f"Bandwidth={current_bandwidth:.2f}% ({percentile:.0f}th) - قیمت در {price_position * 100:.0f}% باند - {description}",
             additional_values={
                 "upper": float(current_upper),
                 "middle": float(sma.iloc[-1]),
                 "lower": float(current_lower),
                 "bandwidth": float(current_bandwidth),
                 "percentile": float(percentile),
-                "price_position": float(price_position)
-            }
+                "price_position": float(price_position),
+                "normalized": float(normalized),
+            },
         )
 
     @staticmethod
-    def keltner_channel(candles: list[Candle], period: int = 20, atr_mult: float = 2.0) -> VolatilityResult:
+    def keltner_channel(
+        candles: list[Candle], period: int = 20, atr_mult: float = 2.0
+    ) -> VolatilityResult:
         """
         Keltner Channel
 
@@ -315,10 +323,6 @@ class VolatilityIndicators:
         # Normalize
         normalized = (percentile - 50) / 50
 
-        # Price position
-        channel_range = current_upper - current_lower
-        price_position = (current_price - current_lower) / channel_range if channel_range > 0 else 0.5
-
         # Signal
         if percentile > 80:
             signal = SignalStrength.VERY_BULLISH
@@ -347,7 +351,7 @@ class VolatilityIndicators:
             percentile=percentile,
             signal=signal,
             confidence=confidence,
-            description=f"Channel Width={current_width:.2f}% ({percentile:.0f}th) - {description}"
+            description=f"Channel Width={current_width:.2f}% ({percentile:.0f}th) - {description}",
         )
 
     @staticmethod
@@ -402,7 +406,9 @@ class VolatilityIndicators:
 
         # Price position
         channel_range = current_upper - current_lower
-        price_position = (current_price - current_lower) / channel_range if channel_range > 0 else 0.5
+        price_position = (
+            (current_price - current_lower) / channel_range if channel_range > 0 else 0.5
+        )
 
         # Signal
         if percentile > 80:
@@ -441,7 +447,7 @@ class VolatilityIndicators:
             percentile=percentile,
             signal=signal,
             confidence=confidence,
-            description=f"Width={current_width:.2f}% ({percentile:.0f}th) - قیمت در {price_position*100:.0f}% کانال{breakout_desc} - {description}"
+            description=f"Width={current_width:.2f}% ({percentile:.0f}th) - قیمت در {price_position * 100:.0f}% کانال{breakout_desc} - {description}",
         )
 
     @staticmethod
@@ -478,8 +484,6 @@ class VolatilityIndicators:
 
         current_std = std.iloc[-1]
         current_cv = cv.iloc[-1]
-        current_price = closes[-1]
-
         # Historical percentile
         lookback = min(100, len(cv))
         historical_cv = cv.iloc[-lookback:]
@@ -516,11 +520,13 @@ class VolatilityIndicators:
             percentile=percentile,
             signal=signal,
             confidence=confidence,
-            description=f"StdDev={current_std:.2f}, CV={current_cv:.2f}% ({percentile:.0f}th) - {description}"
+            description=f"StdDev={current_std:.2f}, CV={current_cv:.2f}% ({percentile:.0f}th) - {description}",
         )
 
     @staticmethod
-    def historical_volatility(candles: list[Candle], period: int = 20, annualize: bool = True) -> VolatilityResult:
+    def historical_volatility(
+        candles: list[Candle], period: int = 20, annualize: bool = True
+    ) -> VolatilityResult:
         """
         Historical Volatility (HV)
 
@@ -621,7 +627,7 @@ class VolatilityIndicators:
             percentile=percentile,
             signal=signal,
             confidence=confidence,
-            description=f"HV={'Annualized' if annualize else ''}={current_hv:.2f}% ({percentile:.0f}th) - {description}"
+            description=f"HV={'Annualized' if annualize else ''}={current_hv:.2f}% ({percentile:.0f}th) - {description}",
         )
 
     @staticmethod
@@ -695,11 +701,13 @@ class VolatilityIndicators:
             percentile=percentile,
             signal=signal,
             confidence=confidence,
-            description=f"ATR%={current_atr_pct:.2f}% ({percentile:.0f}th) - {description}"
+            description=f"ATR%={current_atr_pct:.2f}% ({percentile:.0f}th) - {description}",
         )
 
     @staticmethod
-    def chaikin_volatility(candles: list[Candle], period: int = 10, roc_period: int = 10) -> VolatilityResult:
+    def chaikin_volatility(
+        candles: list[Candle], period: int = 10, roc_period: int = 10
+    ) -> VolatilityResult:
         """
         Chaikin Volatility
 
@@ -774,7 +782,7 @@ class VolatilityIndicators:
             percentile=percentile,
             signal=signal,
             confidence=confidence,
-            description=f"Chaikin Vol={current_cv:.2f}% ({percentile:.0f}th) - {description}"
+            description=f"Chaikin Vol={current_cv:.2f}% ({percentile:.0f}th) - {description}",
         )
 
     @staticmethod
@@ -789,19 +797,21 @@ class VolatilityIndicators:
             Dictionary with all volatility results
         """
         results = {
-            'atr': VolatilityIndicators.atr(candles),
-            'bollinger_bands': VolatilityIndicators.bollinger_bands(candles),
-            'keltner_channel': VolatilityIndicators.keltner_channel(candles),
-            'donchian_channel': VolatilityIndicators.donchian_channel(candles),
-            'standard_deviation': VolatilityIndicators.standard_deviation(candles),
-            'historical_volatility': VolatilityIndicators.historical_volatility(candles),
-            'atr_percentage': VolatilityIndicators.atr_percentage(candles),
-            'chaikin_volatility': VolatilityIndicators.chaikin_volatility(candles),
+            "atr": VolatilityIndicators.atr(candles),
+            "bollinger_bands": VolatilityIndicators.bollinger_bands(candles),
+            "keltner_channel": VolatilityIndicators.keltner_channel(candles),
+            "donchian_channel": VolatilityIndicators.donchian_channel(candles),
+            "standard_deviation": VolatilityIndicators.standard_deviation(candles),
+            "historical_volatility": VolatilityIndicators.historical_volatility(candles),
+            "atr_percentage": VolatilityIndicators.atr_percentage(candles),
+            "chaikin_volatility": VolatilityIndicators.chaikin_volatility(candles),
         }
         return results
 
 
-def convert_volatility_to_indicator_result(vol_result: VolatilityResult, indicator_name: str) -> IndicatorResult:
+def convert_volatility_to_indicator_result(
+    vol_result: VolatilityResult, indicator_name: str
+) -> IndicatorResult:
     """
     Convert VolatilityResult to IndicatorResult for compatibility
 
@@ -818,5 +828,5 @@ def convert_volatility_to_indicator_result(vol_result: VolatilityResult, indicat
         signal=vol_result.signal,
         value=vol_result.value,
         confidence=vol_result.confidence,
-        description=vol_result.description
+        description=vol_result.description,
     )
