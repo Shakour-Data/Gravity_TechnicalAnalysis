@@ -49,15 +49,21 @@ class TransformerResult:
 
     def __post_init__(self):
         """Validate Transformer result data"""
-        if not isinstance(self.training_accuracy, int | float) or not (0.0 <= self.training_accuracy <= 1.0):
+        if not isinstance(self.training_accuracy, int | float) or not (
+            0.0 <= self.training_accuracy <= 1.0
+        ):
             raise ValueError("training_accuracy must be a float between 0.0 and 1.0")
 
         if self.validation_accuracy is not None:
-            if not isinstance(self.validation_accuracy, int | float) or not (0.0 <= self.validation_accuracy <= 1.0):
+            if not isinstance(self.validation_accuracy, int | float) or not (
+                0.0 <= self.validation_accuracy <= 1.0
+            ):
                 raise ValueError("validation_accuracy must be a float between 0.0 and 1.0")
 
         if self.test_accuracy is not None:
-            if not isinstance(self.test_accuracy, int | float) or not (0.0 <= self.test_accuracy <= 1.0):
+            if not isinstance(self.test_accuracy, int | float) or not (
+                0.0 <= self.test_accuracy <= 1.0
+            ):
                 raise ValueError("test_accuracy must be a float between 0.0 and 1.0")
 
         if self.epochs_trained < 0:
@@ -80,11 +86,11 @@ class TransformerResult:
             "attention_metrics": self.attention_metrics,
             "feature_importance": self.feature_importance,
             "created_at": self.created_at.isoformat(),
-            "description": self.description
+            "description": self.description,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'TransformerResult':
+    def from_dict(cls, data: dict[str, Any]) -> "TransformerResult":
         """Create from dictionary representation"""
         return cls(
             model_id=data["model_id"],
@@ -98,15 +104,15 @@ class TransformerResult:
             attention_metrics=data.get("attention_metrics"),
             feature_importance=data.get("feature_importance"),
             created_at=datetime.fromisoformat(data["created_at"]),
-            description=data["description"]
+            description=data["description"],
         )
 
     def is_model_ready(self) -> bool:
         """Check if model is ready for production use"""
         return (
-            self.training_accuracy >= 0.7 and
-            (self.validation_accuracy is None or self.validation_accuracy >= 0.65) and
-            self.epochs_trained >= 10
+            self.training_accuracy >= 0.7
+            and (self.validation_accuracy is None or self.validation_accuracy >= 0.65)
+            and self.epochs_trained >= 10
         )
 
     def get_attention_summary(self) -> str | None:
@@ -138,4 +144,3 @@ class TransformerResult:
         summary += f" ({self.epochs_trained} epochs, {self.training_time_seconds:.1f}s)"
 
         return summary
-
