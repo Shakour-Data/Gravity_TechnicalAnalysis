@@ -100,11 +100,11 @@ class Settings(BaseSettings):
     use_fast_indicators: bool = False
 
     # Feature toggles
-    enable_scenarios: bool = False          # Mount /api/v1/scenarios router when true
-    expose_db_explorer: bool = False        # Mount /db/* endpoints when true (use only in dev)
+    enable_scenarios: bool = False  # Mount /api/v1/scenarios router when true
+    expose_db_explorer: bool = False  # Mount /db/* endpoints when true (use only in dev)
 
     # Database safety limits
-    db_backup_row_limit: int = 5000         # Max rows per table when exporting backups via DB explorer
+    db_backup_row_limit: int = 5000  # Max rows per table when exporting backups via DB explorer
 
 
 settings = Settings()
@@ -120,5 +120,5 @@ def get_settings() -> Settings:
 # Pydantic v2 stores field info in annotations, so there may be no plain class
 # attribute for fields. Create explicit class-level attributes for a few
 # toggles to ensure `patch` works as tests expect.
-if not hasattr(Settings, 'expose_db_explorer'):
+if not hasattr(Settings, "expose_db_explorer"):
     Settings.expose_db_explorer = False
