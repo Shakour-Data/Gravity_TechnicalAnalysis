@@ -16,7 +16,7 @@ COUNT_TESTS = "pytest tests/ --collect-only -q"
 LIST_SPECIFIC = "pytest tests/unit/middleware/test_auth_comprehensive.py::TestTokenCreation::test_create_access_token -v"
 PRESET_BASIC = "pytest tests/ -v"
 PRESET_WITH_COVERAGE = "pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html"
-PRESET_FAST = "pytest tests/ -m \"not slow\" -v"
+PRESET_FAST = 'pytest tests/ -m "not slow" -v'
 PRESET_DEBUG = "pytest tests/ -vv --tb=long"
 SAVE_RESULTS = "pytest tests/ -v --cov=src --cov-report=html"
 VSCODE_TASK = "Run Task: Run All Tests"
