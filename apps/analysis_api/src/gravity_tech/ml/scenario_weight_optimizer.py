@@ -13,7 +13,6 @@ Version: 1.0.0
 from dataclasses import dataclass
 from pathlib import Path
 
-
 import joblib
 import numpy as np
 import structlog
@@ -27,7 +26,10 @@ logger = structlog.get_logger()
 @dataclass
 class MarketRegime:
     """موقعیت بازار"""
-    regime_type: str  # "trending_bull", "trending_bear", "ranging", "high_volatility", "low_volatility"
+
+    regime_type: (
+        str  # "trending_bull", "trending_bear", "ranging", "high_volatility", "low_volatility"
+    )
     confidence: float  # 0-1
     trend_strength: float  # -1 to +1
     volatility_level: float  # 0-1
@@ -37,6 +39,7 @@ class MarketRegime:
 @dataclass
 class ScenarioWeights:
     """وزن‌های سه سناریو"""
+
     optimistic: float  # 0-1
     neutral: float  # 0-1
     pessimistic: float  # 0-1
@@ -89,11 +92,11 @@ class ScenarioWeightOptimizer:
 
         # وزن‌های پیش‌فرض برای هر regime
         self.default_weights = {
-            'trending_bull': ScenarioWeights(0.60, 0.30, 0.10),
-            'trending_bear': ScenarioWeights(0.10, 0.30, 0.60),
-            'ranging': ScenarioWeights(0.25, 0.50, 0.25),
-            'high_volatility': ScenarioWeights(0.20, 0.30, 0.50),
-            'low_volatility': ScenarioWeights(0.30, 0.40, 0.30),
+            "trending_bull": ScenarioWeights(0.60, 0.30, 0.10),
+            "trending_bear": ScenarioWeights(0.10, 0.30, 0.60),
+            "ranging": ScenarioWeights(0.25, 0.50, 0.25),
+            "high_volatility": ScenarioWeights(0.20, 0.30, 0.50),
+            "low_volatility": ScenarioWeights(0.30, 0.40, 0.30),
         }
 
         # Load trained model if exists
@@ -116,11 +119,11 @@ class ScenarioWeightOptimizer:
         Returns:
             MarketRegime object
         """
-        trend = dimensions.get('trend', 0.0)
-        momentum = dimensions.get('momentum', 0.0)
-        volatility = dimensions.get('volatility', 0.0)
-        cycle = dimensions.get('cycle', 0.0)
-        sr = dimensions.get('support_resistance', 0.0)
+        trend = dimensions.get("trend", 0.0)
+        momentum = dimensions.get("momentum", 0.0)
+        volatility = dimensions.get("volatility", 0.0)
+        cycle = dimensions.get("cycle", 0.0)
+        sr = dimensions.get("support_resistance", 0.0)
 
         # محاسبه قدرت روند
         trend_strength = (trend + momentum) / 2.0
@@ -161,7 +164,7 @@ class ScenarioWeightOptimizer:
             "market_regime_detected",
             regime=regime_type,
             confidence=confidence,
-            trend_strength=trend_strength
+            trend_strength=trend_strength,
         )
 
         return MarketRegime(
@@ -169,13 +172,11 @@ class ScenarioWeightOptimizer:
             confidence=confidence,
             trend_strength=trend_strength,
             volatility_level=volatility_level,
-            volume_trend=1.0  # TODO: محاسبه از volume dimension
+            volume_trend=1.0,  # TODO: محاسبه از volume dimension
         )
 
     def calculate_weights(
-        self,
-        dimensions: dict[str, float],
-        use_ml: bool = True
+        self, dimensions: dict[str, float], use_ml: bool = True
     ) -> ScenarioWeights:
         """
         محاسبه وزن‌های بهینه برای سه سناریو
@@ -201,19 +202,17 @@ class ScenarioWeightOptimizer:
             "scenario_weights_calculated",
             regime=regime.regime_type,
             weights={
-                'optimistic': weights.optimistic,
-                'neutral': weights.neutral,
-                'pessimistic': weights.pessimistic
+                "optimistic": weights.optimistic,
+                "neutral": weights.neutral,
+                "pessimistic": weights.pessimistic,
             },
-            method="ml" if use_ml and self.models else "default"
+            method="ml" if use_ml and self.models else "default",
         )
 
         return weights
 
     def _predict_weights_ml(
-        self,
-        dimensions: dict[str, float],
-        regime: MarketRegime
+        self, dimensions: dict[str, float], regime: MarketRegime
     ) -> ScenarioWeights:
         """
         پیش‌بینی وزن‌ها با ML model
@@ -229,20 +228,16 @@ class ScenarioWeightOptimizer:
         features = self._prepare_features(dimensions, regime)
 
         # Predict each weight
-        w_opt = self.models['optimistic'].predict([features])[0]
-        w_neu = self.models['neutral'].predict([features])[0]
-        w_pes = self.models['pessimistic'].predict([features])[0]
+        w_opt = self.models["optimistic"].predict([features])[0]
+        w_neu = self.models["neutral"].predict([features])[0]
+        w_pes = self.models["pessimistic"].predict([features])[0]
 
         # Normalize to sum = 1
         weights = ScenarioWeights(w_opt, w_neu, w_pes)
 
         return weights
 
-    def _prepare_features(
-        self,
-        dimensions: dict[str, float],
-        regime: MarketRegime
-    ) -> list[float]:
+    def _prepare_features(self, dimensions: dict[str, float], regime: MarketRegime) -> list[float]:
         """
         آماده‌سازی ویژگی‌ها برای ML model
 
@@ -258,38 +253,32 @@ class ScenarioWeightOptimizer:
         features = []
 
         # 1. 5D scores
-        features.extend([
-            dimensions.get('trend', 0.0),
-            dimensions.get('momentum', 0.0),
-            dimensions.get('volatility', 0.0),
-            dimensions.get('cycle', 0.0),
-            dimensions.get('support_resistance', 0.0)
-        ])
+        features.extend(
+            [
+                dimensions.get("trend", 0.0),
+                dimensions.get("momentum", 0.0),
+                dimensions.get("volatility", 0.0),
+                dimensions.get("cycle", 0.0),
+                dimensions.get("support_resistance", 0.0),
+            ]
+        )
 
         # 2. Regime one-hot encoding
-        regimes = ['trending_bull', 'trending_bear', 'ranging',
-                   'high_volatility', 'low_volatility']
+        regimes = ["trending_bull", "trending_bear", "ranging", "high_volatility", "low_volatility"]
         for r in regimes:
             features.append(1.0 if regime.regime_type == r else 0.0)
 
         # 3. Additional features
-        features.extend([
-            regime.confidence,
-            regime.trend_strength,
-            regime.volatility_level,
-            regime.volume_trend
-        ])
+        features.extend(
+            [regime.confidence, regime.trend_strength, regime.volatility_level, regime.volume_trend]
+        )
 
         # 4. Interaction feature (trend × volatility)
         features.append(regime.trend_strength * regime.volatility_level)
 
         return features
 
-    def train(
-        self,
-        training_data: list[dict],
-        validation_split: float = 0.2
-    ) -> dict[str, float]:
+    def train(self, training_data: list[dict], validation_split: float = 0.2) -> dict[str, float]:
         """
         آموزش ML models
 
@@ -321,13 +310,10 @@ class ScenarioWeightOptimizer:
         y_pes = []
 
         for sample in training_data:
-            features = self._prepare_features(
-                sample['dimensions'],
-                sample['regime']
-            )
+            features = self._prepare_features(sample["dimensions"], sample["regime"])
             X.append(features)
 
-            weights = sample['actual_best_weights']
+            weights = sample["actual_best_weights"]
             y_opt.append(weights.optimistic)
             y_neu.append(weights.neutral)
             y_pes.append(weights.pessimistic)
@@ -349,9 +335,9 @@ class ScenarioWeightOptimizer:
         metrics = {}
 
         for target_name, y_train, y_val in [
-            ('optimistic', y_opt_train, y_opt_val),
-            ('neutral', y_neu_train, y_neu_val),
-            ('pessimistic', y_pes_train, y_pes_val)
+            ("optimistic", y_opt_train, y_opt_val),
+            ("neutral", y_neu_train, y_neu_val),
+            ("pessimistic", y_pes_train, y_pes_val),
         ]:
             model = LGBMRegressor(
                 n_estimators=100,
@@ -359,7 +345,7 @@ class ScenarioWeightOptimizer:
                 max_depth=5,
                 num_leaves=31,
                 random_state=42,
-                verbose=-1
+                verbose=-1,
             )
 
             model.fit(X_train, y_train)
@@ -369,13 +355,13 @@ class ScenarioWeightOptimizer:
             mae = np.mean(np.abs(y_pred - y_val))
 
             self.models[target_name] = model
-            metrics[f'{target_name}_mae'] = mae
+            metrics[f"{target_name}_mae"] = mae
 
             logger.info(
                 f"model_trained_{target_name}",
                 mae=mae,
                 train_samples=len(X_train),
-                val_samples=len(X_val)
+                val_samples=len(X_val),
             )
 
         # Save models
