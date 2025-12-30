@@ -32,10 +32,7 @@ from gravity_tech.core.indicators.volume import VolumeIndicators
 # Database Connection & TSE Data Loading
 # ============================================================================
 
-TSE_DB_PATH = os.getenv(
-    "TSE_DB_PATH",
-    r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db"
-)
+TSE_DB_PATH = os.getenv("TSE_DB_PATH", r"E:\Shakour\MyProjects\GravityTseHisPrice\data\tse_data.db")
 
 
 def get_tse_db_connection():
@@ -82,14 +79,16 @@ def load_tse_candles(symbol: str = "TOTAL", limit: int = 200) -> list[Candle]:
             else:
                 ts = datetime.fromtimestamp(timestamp)
 
-            candles.append(Candle(
-                timestamp=ts,
-                open=float(open_price),
-                high=float(high),
-                low=float(low),
-                close=float(close),
-                volume=float(volume)
-            ))
+            candles.append(
+                Candle(
+                    timestamp=ts,
+                    open=float(open_price),
+                    high=float(high),
+                    low=float(low),
+                    close=float(close),
+                    volume=float(volume),
+                )
+            )
 
         return candles
     except Exception as e:
@@ -120,14 +119,16 @@ def generate_sample_tse_candles(symbol: str = "TOTAL", count: int = 200) -> list
         volume = int(volume_base * (1 + np.random.normal(0, 0.5)))
         volume = max(volume, 10000)  # Minimum volume
 
-        candles.append(Candle(
-            timestamp=base_time + timedelta(hours=i),
-            open=round(open_price, 2),
-            high=round(high_price, 2),
-            low=round(low_price, 2),
-            close=round(close_price, 2),
-            volume=volume
-        ))
+        candles.append(
+            Candle(
+                timestamp=base_time + timedelta(hours=i),
+                open=round(open_price, 2),
+                high=round(high_price, 2),
+                low=round(low_price, 2),
+                close=round(close_price, 2),
+                volume=volume,
+            )
+        )
 
         base_price = close_price  # Next candle starts at previous close
 
@@ -137,6 +138,7 @@ def generate_sample_tse_candles(symbol: str = "TOTAL", count: int = 200) -> list
 # ============================================================================
 # Fixtures with TSE Data
 # ============================================================================
+
 
 @pytest.fixture
 def tse_db_connection():
@@ -173,13 +175,14 @@ def service_config() -> dict[str, Any]:
         "timeout": 30,
         "max_retries": 3,
         "enable_cache": True,
-        "enable_optimization": True
+        "enable_optimization": True,
     }
 
 
 # ============================================================================
 # Test: Analysis Service with TSE Data
 # ============================================================================
+
 
 class TestAnalysisServiceWithTSEData:
     """Test analysis service with real TSE data"""
@@ -256,7 +259,7 @@ class TestAnalysisServiceWithTSEData:
             "ema": TrendIndicators.ema(candles, period=12),
             "rsi": MomentumIndicators.rsi(candles, period=14),
             "atr": VolatilityIndicators.atr(candles),
-            "obv": VolumeIndicators.on_balance_volume(candles)
+            "obv": VolumeIndicators.on_balance_volume(candles),
         }
 
         for name, result in indicators.items():
@@ -268,6 +271,7 @@ class TestAnalysisServiceWithTSEData:
 # ============================================================================
 # Test: Cache Service with TSE Data
 # ============================================================================
+
 
 class TestCacheServiceWithTSEData:
     """Test cache service with TSE data"""
@@ -283,11 +287,7 @@ class TestCacheServiceWithTSEData:
         # Compute and cache
         key = "tse_total_sma20"
         sma = TrendIndicators.sma(candles, period=20)
-        cache[key] = {
-            "result": sma,
-            "timestamp": datetime.now(),
-            "symbol": "TOTAL"
-        }
+        cache[key] = {"result": sma, "timestamp": datetime.now(), "symbol": "TOTAL"}
 
         # Retrieve from cache
         cached = cache.get(key)
@@ -304,11 +304,7 @@ class TestCacheServiceWithTSEData:
                 continue
 
             key = f"tse_{symbol}_analysis"
-            cache[key] = {
-                "symbol": symbol,
-                "candles": len(candles),
-                "last_updated": datetime.now()
-            }
+            cache[key] = {"symbol": symbol, "candles": len(candles), "last_updated": datetime.now()}
 
         assert len(cache) > 0
         print(f"✓ Cached data for {len(cache)} TSE symbols")
@@ -320,10 +316,7 @@ class TestCacheServiceWithTSEData:
         cache = {}
         ttl = 0.1
 
-        entry = {
-            "value": "test",
-            "expires_at": time.time() + ttl
-        }
+        entry = {"value": "test", "expires_at": time.time() + ttl}
         cache["key"] = entry
 
         # Should be valid immediately
@@ -340,6 +333,7 @@ class TestCacheServiceWithTSEData:
 # ============================================================================
 # Test: Data Ingestion Service with TSE Data
 # ============================================================================
+
 
 class TestDataIngestionWithTSEData:
     """Test data ingestion with TSE data"""
@@ -365,14 +359,16 @@ class TestDataIngestionWithTSEData:
         for i in range(len(candles) - 1):
             # Expect daily data
             expected_gap = timedelta(days=1)
-            actual_gap = candles[i+1].timestamp - candles[i].timestamp
+            actual_gap = candles[i + 1].timestamp - candles[i].timestamp
 
             if actual_gap > expected_gap * 1.5:  # Allow 1.5x tolerance
-                gaps.append({
-                    "from": candles[i].timestamp,
-                    "to": candles[i+1].timestamp,
-                    "gap_days": actual_gap.days
-                })
+                gaps.append(
+                    {
+                        "from": candles[i].timestamp,
+                        "to": candles[i + 1].timestamp,
+                        "gap_days": actual_gap.days,
+                    }
+                )
 
         # TSE typically has gaps due to holidays
         print(f"✓ Found {len(gaps)} gaps in TSE data (expected due to holidays)")
@@ -382,8 +378,9 @@ class TestDataIngestionWithTSEData:
         candles = real_tse_candles
 
         for i in range(len(candles) - 1):
-            assert candles[i].timestamp <= candles[i+1].timestamp, \
+            assert candles[i].timestamp <= candles[i + 1].timestamp, (
                 f"Data out of order at index {i}"
+            )
 
         print("✓ TSE data in correct chronological order")
 
@@ -404,7 +401,7 @@ class TestDataIngestionWithTSEData:
 
         batches = []
         for i in range(0, len(candles), batch_size):
-            batch = candles[i:i+batch_size]
+            batch = candles[i : i + batch_size]
             batches.append(batch)
 
         assert len(batches) > 0
@@ -414,6 +411,7 @@ class TestDataIngestionWithTSEData:
 # ============================================================================
 # Test: Tool Recommendation Service with TSE Data
 # ============================================================================
+
 
 class TestToolRecommendationWithTSEData:
     """Test tool recommendations based on TSE data"""
@@ -448,7 +446,7 @@ class TestToolRecommendationWithTSEData:
             pytest.skip("Insufficient TSE data")
 
         prices = np.array([c.close for c in candles])
-        sma_20 = np.convolve(prices, np.ones(20)/20, mode='valid')
+        sma_20 = np.convolve(prices, np.ones(20) / 20, mode="valid")
 
         trend = prices[-1] - sma_20[-1]
 
@@ -476,7 +474,7 @@ class TestToolRecommendationWithTSEData:
         tool_scores = {
             "SMA": 0.85 if sma else 0.0,
             "RSI": 0.80 if rsi else 0.0,
-            "ATR": 0.75 if atr else 0.0
+            "ATR": 0.75 if atr else 0.0,
         }
 
         best_tool = max(tool_scores, key=lambda x: tool_scores[x])
@@ -487,6 +485,7 @@ class TestToolRecommendationWithTSEData:
 # ============================================================================
 # Test: Fast Indicators Service with TSE Data
 # ============================================================================
+
 
 class TestFastIndicatorsWithTSEData:
     """Test fast indicator computation on TSE data"""
@@ -503,12 +502,12 @@ class TestFastIndicatorsWithTSEData:
         prices = np.array([c.close for c in candles])
 
         start = time.time()
-        sma = np.convolve(prices, np.ones(20)/20, mode='valid')
+        sma = np.convolve(prices, np.ones(20) / 20, mode="valid")
         elapsed = time.time() - start
 
         assert len(sma) > 0  # Ensure computation produced results
         assert elapsed < 0.01  # Should be very fast
-        print(f"✓ SMA computed in {elapsed*1000:.2f}ms on {len(candles)} TSE candles")
+        print(f"✓ SMA computed in {elapsed * 1000:.2f}ms on {len(candles)} TSE candles")
 
     def test_fast_rsi_computation(self, real_tse_candles):
         """Test fast RSI computation"""
@@ -525,7 +524,7 @@ class TestFastIndicatorsWithTSEData:
 
         assert result is not None
         assert elapsed < 0.1
-        print(f"✓ RSI computed in {elapsed*1000:.2f}ms on TSE data")
+        print(f"✓ RSI computed in {elapsed * 1000:.2f}ms on TSE data")
 
     def test_vectorized_operations(self, real_tse_candles):
         """Test vectorized operations on TSE data"""
@@ -549,6 +548,7 @@ class TestFastIndicatorsWithTSEData:
 # ============================================================================
 # Test: Service Integration with TSE Data
 # ============================================================================
+
 
 class TestServiceIntegrationWithTSEData:
     """Test service integration using real TSE data"""
@@ -574,11 +574,7 @@ class TestServiceIntegrationWithTSEData:
         assert atr is not None
 
         # Step 3: Cache results
-        cache = {
-            "sma": sma,
-            "rsi": rsi,
-            "atr": atr
-        }
+        cache = {"sma": sma, "rsi": rsi, "atr": atr}
 
         assert len(cache) == 3  # All indicators cached
 
@@ -597,10 +593,7 @@ class TestServiceIntegrationWithTSEData:
                 continue
 
             sma = TrendIndicators.sma(candles, period=20)
-            results[symbol] = {
-                "candles": len(candles),
-                "sma_computed": sma is not None
-            }
+            results[symbol] = {"candles": len(candles), "sma_computed": sma is not None}
 
         assert len(results) > 0
         print(f"✓ Analyzed {len(results)} TSE symbols")
@@ -633,12 +626,15 @@ class TestServiceIntegrationWithTSEData:
 
         total_time = sum(metrics.values())
 
-        print(f"✓ Performance metrics: Total={total_time:.2f}ms, SMA={metrics['sma_ms']:.2f}ms, RSI={metrics['rsi_ms']:.2f}ms")
+        print(
+            f"✓ Performance metrics: Total={total_time:.2f}ms, SMA={metrics['sma_ms']:.2f}ms, RSI={metrics['rsi_ms']:.2f}ms"
+        )
 
 
 # ============================================================================
 # Test: Error Handling with TSE Data
 # ============================================================================
+
 
 class TestServiceErrorHandlingWithTSE:
     """Test error handling with TSE data"""
@@ -664,7 +660,7 @@ class TestServiceErrorHandlingWithTSE:
                 high=105,
                 low=95,
                 close=102,
-                volume=1000000
+                volume=1000000,
             )
 
             if invalid_candle.open < 0:
@@ -676,6 +672,7 @@ class TestServiceErrorHandlingWithTSE:
 # ============================================================================
 # Test: Data Quality Metrics
 # ============================================================================
+
 
 class TestTSEDataQuality:
     """Test TSE data quality"""
@@ -712,7 +709,7 @@ class TestTSEDataQuality:
             "min": np.min(closes),
             "max": np.max(closes),
             "mean": np.mean(closes),
-            "std": np.std(closes)
+            "std": np.std(closes),
         }
 
         print(f"✓ TSE price statistics: {stats}")
