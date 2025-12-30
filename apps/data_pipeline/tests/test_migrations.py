@@ -37,11 +37,11 @@ def migration_config(temp_sqlite_db):
 def engine_with_schema(temp_sqlite_db):
     """Create SQLite engine with test schema"""
     engine = create_engine(f"sqlite:///{temp_sqlite_db}")
-    
+
     # Create test tables
     conn = sqlite3.connect(temp_sqlite_db)
     cursor = conn.cursor()
-    
+
     # Create candles table
     cursor.execute("""
     CREATE TABLE candles (
@@ -56,14 +56,14 @@ def engine_with_schema(temp_sqlite_db):
         UNIQUE(symbol, timestamp)
     )
     """)
-    
+
     # Create index
     cursor.execute("CREATE INDEX idx_candles_symbol ON candles(symbol)")
     cursor.execute("CREATE INDEX idx_candles_timestamp ON candles(timestamp)")
-    
+
     conn.commit()
     conn.close()
-    
+
     return engine
 
 
@@ -88,7 +88,7 @@ def test_migration_config_validation(migration_config):
 def test_get_tables(schema_manager):
     """Test getting list of tables"""
     tables = schema_manager.get_tables()
-    
+
     assert "candles" in tables
     assert len(tables) >= 1
 
@@ -96,7 +96,7 @@ def test_get_tables(schema_manager):
 def test_get_table_columns(schema_manager):
     """Test getting table columns"""
     columns = schema_manager.get_table_columns("candles")
-    
+
     assert len(columns) > 0
     column_names = [c["name"] for c in columns]
     assert "id" in column_names
@@ -107,9 +107,9 @@ def test_get_table_columns(schema_manager):
 def test_get_table_indexes(schema_manager):
     """Test getting table indexes"""
     indexes = schema_manager.get_table_indexes("candles")
-    
+
     assert len(indexes) >= 2  # Should have idx_symbol and idx_timestamp
-    
+
     index_names = [idx["name"] for idx in indexes]
     assert "idx_candles_symbol" in index_names
 
@@ -117,7 +117,7 @@ def test_get_table_indexes(schema_manager):
 def test_get_primary_key(schema_manager):
     """Test getting primary key"""
     pk = schema_manager.get_primary_key("candles")
-    
+
     assert "id" in pk
 
 
@@ -136,7 +136,7 @@ def test_column_exists(schema_manager):
 def test_get_schema_info(schema_manager):
     """Test getting complete schema information"""
     schema = schema_manager.get_schema_info()
-    
+
     assert "candles" in schema
     assert "columns" in schema["candles"]
     assert "indexes" in schema["candles"]
@@ -145,27 +145,23 @@ def test_get_schema_info(schema_manager):
 def test_validate_tables(schema_validator):
     """Test table validation"""
     results = schema_validator.validate_tables(["candles"])
-    
+
     assert results["candles"] is True
 
 
 def test_validate_columns(schema_validator):
     """Test column validation"""
     results = schema_validator.validate_columns(
-        "candles",
-        ["id", "symbol", "timestamp", "open", "high", "low", "close", "volume"]
+        "candles", ["id", "symbol", "timestamp", "open", "high", "low", "close", "volume"]
     )
-    
+
     assert all(results.values()) is True
 
 
 def test_validate_indexes(schema_validator):
     """Test index validation"""
-    results = schema_validator.validate_indexes(
-        "candles",
-        ["symbol", "timestamp"]
-    )
-    
+    results = schema_validator.validate_indexes("candles", ["symbol", "timestamp"])
+
     # Should have at least some indexes
     assert len(results) > 0
 
@@ -173,10 +169,10 @@ def test_validate_indexes(schema_validator):
 def test_validate_all(schema_validator):
     """Test complete schema validation"""
     result = schema_validator.validate_all()
-    
+
     assert "valid" in result
     assert "details" in result
-    
+
     # Check structure
     assert isinstance(result["valid"], bool)
     assert isinstance(result["details"], dict)
@@ -185,7 +181,7 @@ def test_validate_all(schema_validator):
 def test_validate_before_load(schema_validator):
     """Test schema validation before load"""
     valid = schema_validator.validate_before_load()
-    
+
     # Should be valid since we created proper schema
     assert isinstance(valid, bool)
 
@@ -193,10 +189,10 @@ def test_validate_before_load(schema_validator):
 def test_validate_missing_table(engine_with_schema):
     """Test validation with missing table"""
     validator = SchemaValidator(engine_with_schema)
-    
+
     # Try to validate non-existent table
     results = validator.validate_tables(["analysis_results"])
-    
+
     # Should fail validation
     assert results["analysis_results"] is False
 
@@ -204,9 +200,9 @@ def test_validate_missing_table(engine_with_schema):
 def test_validate_missing_column(engine_with_schema):
     """Test validation with missing column"""
     validator = SchemaValidator(engine_with_schema)
-    
+
     # Try to validate non-existent column
     results = validator.validate_columns("candles", ["nonexistent_column"])
-    
+
     # Should fail validation
     assert results["nonexistent_column"] is False
