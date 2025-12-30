@@ -7,8 +7,7 @@ Tests pattern feature extraction functionality.
 from unittest.mock import MagicMock
 
 import numpy as np
-
-from src.gravity_tech.ml.pattern_features import PatternFeatureExtractor, PatternFeatures
+from gravity_tech.ml.pattern_features import PatternFeatureExtractor, PatternFeatures
 
 
 class TestPatternFeatureExtractor:
@@ -20,7 +19,7 @@ class TestPatternFeatureExtractor:
 
         # Should initialize without errors
         assert extractor is not None
-        assert hasattr(extractor, 'extract_features')
+        assert hasattr(extractor, "extract_features")
 
     def test_extract_features_basic(self):
         """Test basic feature extraction."""
@@ -36,24 +35,20 @@ class TestPatternFeatureExtractor:
                 self.price = price
 
         mock_pattern.points = {
-            'X': MockPoint(0, 100.0),
-            'A': MockPoint(10, 90.0),
-            'B': MockPoint(20, 110.0),
-            'C': MockPoint(30, 95.0),
-            'D': MockPoint(40, 105.0)
+            "X": MockPoint(0, 100.0),
+            "A": MockPoint(10, 90.0),
+            "B": MockPoint(20, 110.0),
+            "C": MockPoint(30, 95.0),
+            "D": MockPoint(40, 105.0),
         }
         mock_pattern.direction = MagicMock()
-        mock_pattern.direction.value = 'bullish'
+        mock_pattern.direction.value = "bullish"
         mock_pattern.confidence = 85.0
         # Mock pattern_type as an enum-like object
         mock_pattern.pattern_type = MagicMock()
-        mock_pattern.pattern_type.value = 'gartley'
+        mock_pattern.pattern_type.value = "gartley"
         # Mock ratios
-        mock_pattern.ratios = {
-            'XA_BC': 0.62,
-            'AB_CD': 0.78,
-            'XA_AD': 0.79
-        }
+        mock_pattern.ratios = {"XA_BC": 0.62, "AB_CD": 0.78, "XA_AD": 0.79}
 
         # Mock price data
         highs = np.array([105.0, 103.0, 108.0, 100.0, 110.0, 108.0, 113.0, 102.0, 111.0, 109.0] * 5)
@@ -64,9 +59,9 @@ class TestPatternFeatureExtractor:
         features = extractor.extract_features(mock_pattern, highs, lows, closes, volume)
 
         assert isinstance(features, PatternFeatures)
-        assert hasattr(features, 'xab_ratio_accuracy')
-        assert hasattr(features, 'pattern_symmetry')
-        assert hasattr(features, 'pattern_duration')
+        assert hasattr(features, "xab_ratio_accuracy")
+        assert hasattr(features, "pattern_symmetry")
+        assert hasattr(features, "pattern_duration")
 
     def test_calculate_angle(self):
         """Test angle calculation."""
@@ -95,7 +90,7 @@ class TestPatternFeatureExtractor:
 
         # Test various slopes
         assert extractor._normalize_slope(0) == 0.5  # Flat
-        assert extractor._normalize_slope(1) > 0.5   # Positive
+        assert extractor._normalize_slope(1) > 0.5  # Positive
         assert extractor._normalize_slope(-1) < 0.5  # Negative
 
     def test_calculate_rsi(self):
@@ -103,8 +98,30 @@ class TestPatternFeatureExtractor:
         extractor = PatternFeatureExtractor()
 
         # Create test price data with upward trend
-        prices = np.array([100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
-                          110, 111, 112, 113, 114, 115, 116, 117, 118, 119])
+        prices = np.array(
+            [
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+            ]
+        )
 
         rsi = extractor._calculate_rsi(prices, period=14)
 
@@ -166,9 +183,9 @@ class TestPatternFeatureExtractor:
             rsi_at_d=65.0,
             macd_at_d=0.5,
             momentum_divergence=0.7,
-            pattern_type='gartley',
-            direction='bullish',
-            confidence=0.85
+            pattern_type="gartley",
+            direction="bullish",
+            confidence=0.85,
         )
 
         feature_array = extractor.features_to_array(features)
@@ -184,5 +201,5 @@ class TestPatternFeatureExtractor:
 
         assert isinstance(names, list)
         assert len(names) > 20  # Should have many feature names
-        assert 'xab_ratio_accuracy' in names
-        assert 'pattern_symmetry' in names
+        assert "xab_ratio_accuracy" in names
+        assert "pattern_symmetry" in names
