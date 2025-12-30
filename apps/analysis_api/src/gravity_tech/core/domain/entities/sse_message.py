@@ -10,11 +10,10 @@ Last Updated: 2025-11-07 (Phase 2.1 - Task 1.4)
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .subscription_type import SubscriptionType
-from datetime import timezone
 
 
 @dataclass(frozen=True)
@@ -59,8 +58,8 @@ class SSEMessage:
         subscription_type: SubscriptionType,
         data: dict[str, Any],
         client_id: str | None = None,
-        event_id: str | None = None
-    ) -> 'SSEMessage':
+        event_id: str | None = None,
+    ) -> "SSEMessage":
         """
         Create a data event.
 
@@ -77,18 +76,15 @@ class SSEMessage:
             event_type="data",
             subscription_type=subscription_type,
             client_id=client_id,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data=data,
-            event_id=event_id
+            event_id=event_id,
         )
 
     @classmethod
     def create_error_event(
-        cls,
-        error_message: str,
-        client_id: str | None = None,
-        event_id: str | None = None
-    ) -> 'SSEMessage':
+        cls, error_message: str, client_id: str | None = None, event_id: str | None = None
+    ) -> "SSEMessage":
         """
         Create an error event.
 
@@ -104,14 +100,14 @@ class SSEMessage:
             event_type="error",
             subscription_type=None,
             client_id=client_id,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data={},
             event_id=event_id,
-            error_message=error_message
+            error_message=error_message,
         )
 
     @classmethod
-    def create_ping_event(cls) -> 'SSEMessage':
+    def create_ping_event(cls) -> "SSEMessage":
         """
         Create a ping event for connection health check.
 
@@ -122,17 +118,14 @@ class SSEMessage:
             event_type="ping",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.now(timezone.utc),
-            data={}
+            timestamp=datetime.now(UTC),
+            data={},
         )
 
     @classmethod
     def create_system_event(
-        cls,
-        system_event: str,
-        data: dict[str, Any],
-        event_id: str | None = None
-    ) -> 'SSEMessage':
+        cls, system_event: str, data: dict[str, Any], event_id: str | None = None
+    ) -> "SSEMessage":
         """
         Create a system event (status, alerts, etc.).
 
@@ -148,9 +141,9 @@ class SSEMessage:
             event_type="system",
             subscription_type=None,
             client_id=None,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data={"event": system_event, **data},
-            event_id=event_id
+            event_id=event_id,
         )
 
     def to_sse_format(self) -> str:
@@ -175,6 +168,7 @@ class SSEMessage:
 
         # Data (JSON)
         import json
+
         data_str = json.dumps(self.to_dict(), ensure_ascii=False)
         lines.append(f"data: {data_str}")
 
@@ -193,7 +187,7 @@ class SSEMessage:
         result = {
             "event_type": self.event_type,
             "timestamp": self.timestamp.isoformat(),
-            "data": self.data
+            "data": self.data,
         }
 
         if self.subscription_type:
@@ -214,7 +208,7 @@ class SSEMessage:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'SSEMessage':
+    def from_dict(cls, data: dict[str, Any]) -> "SSEMessage":
         """
         Create message from dictionary (JSON deserialization).
 
@@ -240,7 +234,7 @@ class SSEMessage:
                 data=data["data"],
                 event_id=data.get("event_id"),
                 retry=data.get("retry"),
-                error_message=data.get("error_message")
+                error_message=data.get("error_message"),
             )
         except KeyError as e:
             raise ValueError(f"Missing required field: {e}") from e
