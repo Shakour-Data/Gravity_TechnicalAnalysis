@@ -17,6 +17,7 @@ from typing import Any
 # Timeframe and Conversion Utilities
 # ═══════════════════════════════════════════════════════════════════
 
+
 def convert_timeframe_to_seconds(timeframe: str) -> int:
     """
     Convert timeframe string to seconds.
@@ -36,7 +37,7 @@ def convert_timeframe_to_seconds(timeframe: str) -> int:
     timeframe = timeframe.lower().strip()
 
     # Extract number and unit
-    match = re.match(r'^(\d+)([mhdw])$', timeframe)
+    match = re.match(r"^(\d+)([mhdw])$", timeframe)
     if not match:
         raise ValueError(f"Invalid timeframe format: {timeframe}")
 
@@ -44,10 +45,10 @@ def convert_timeframe_to_seconds(timeframe: str) -> int:
     unit = match.group(2)
 
     multipliers = {
-        'm': 60,        # minutes
-        'h': 3600,      # hours
-        'd': 86400,     # days
-        'w': 604800     # weeks
+        "m": 60,  # minutes
+        "h": 3600,  # hours
+        "d": 86400,  # days
+        "w": 604800,  # weeks
     }
 
     return number * multipliers[unit]
@@ -76,7 +77,7 @@ def convert_price_units(price: float, from_unit: str = "USD", to_unit: str = "US
         "EUR": 0.85,
         "GBP": 0.73,
         "JPY": 110.0,
-        "IRR": 42000.0  # Iranian Rial
+        "IRR": 42000.0,  # Iranian Rial
     }
 
     if from_unit not in rates or to_unit not in rates:
@@ -90,6 +91,7 @@ def convert_price_units(price: float, from_unit: str = "USD", to_unit: str = "US
 # ═══════════════════════════════════════════════════════════════════
 # Validation Helpers
 # ═══════════════════════════════════════════════════════════════════
+
 
 def validate_symbol(symbol: str) -> bool:
     """
@@ -105,7 +107,7 @@ def validate_symbol(symbol: str) -> bool:
         return False
 
     # Basic validation: alphanumeric, underscores, dots allowed
-    pattern = r'^[A-Z0-9_.]{1,20}$'
+    pattern = r"^[A-Z0-9_.]{1,20}$"
     return bool(re.match(pattern, symbol.upper()))
 
 
@@ -126,7 +128,9 @@ def validate_timeframe(timeframe: str) -> bool:
         return False
 
 
-def validate_price_range(price: float, min_price: float = 0.0001, max_price: float = 1000000.0) -> bool:
+def validate_price_range(
+    price: float, min_price: float = 0.0001, max_price: float = 1000000.0
+) -> bool:
     """
     Validate price is within acceptable range.
 
@@ -164,9 +168,9 @@ def validate_candle_data(candle: Any) -> bool:
     Returns:
         True if valid
     """
-    required_fields = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+    required_fields = ["timestamp", "open", "high", "low", "close", "volume"]
 
-    if hasattr(candle, '__dict__'):
+    if hasattr(candle, "__dict__"):
         # Object with attributes
         return all(hasattr(candle, field) for field in required_fields)
     elif isinstance(candle, dict):
@@ -179,6 +183,7 @@ def validate_candle_data(candle: Any) -> bool:
 # ═══════════════════════════════════════════════════════════════════
 # Data Aggregation
 # ═══════════════════════════════════════════════════════════════════
+
 
 def aggregate_ohlc(candles: list, timeframe: str) -> list:
     """
@@ -220,6 +225,7 @@ def aggregate_multiple_timeframes(candles: list, timeframes: list[str]) -> dict:
 # Statistical Helpers
 # ═══════════════════════════════════════════════════════════════════
 
+
 def calculate_sma(data: list[float], period: int) -> list[float]:
     """
     Calculate Simple Moving Average.
@@ -236,7 +242,7 @@ def calculate_sma(data: list[float], period: int) -> list[float]:
 
     sma_values = []
     for i in range(period - 1, len(data)):
-        sma = sum(data[i - period + 1:i + 1]) / period
+        sma = sum(data[i - period + 1 : i + 1]) / period
         sma_values.append(sma)
 
     return sma_values
@@ -258,10 +264,10 @@ def calculate_std_dev(data: list[float], period: int) -> list[float]:
 
     std_values = []
     for i in range(period - 1, len(data)):
-        window = data[i - period + 1:i + 1]
+        window = data[i - period + 1 : i + 1]
         mean = sum(window) / period
         variance = sum((x - mean) ** 2 for x in window) / period
-        std_values.append(variance ** 0.5)
+        std_values.append(variance**0.5)
 
     return std_values
 
@@ -281,7 +287,7 @@ def calculate_returns(data: list[float]) -> list[float]:
 
     returns = []
     for i in range(1, len(data)):
-        ret = (data[i] - data[i-1]) / data[i-1] if data[i-1] != 0 else 0
+        ret = (data[i] - data[i - 1]) / data[i - 1] if data[i - 1] != 0 else 0
         returns.append(ret)
 
     return returns
@@ -305,11 +311,11 @@ def calculate_correlation(data1: list[float], data2: list[float]) -> float:
     sum_x = sum(data1)
     sum_y = sum(data2)
     sum_xy = sum(x * y for x, y in zip(data1, data2, strict=True))
-    sum_x2 = sum(x ** 2 for x in data1)
-    sum_y2 = sum(y ** 2 for y in data2)
+    sum_x2 = sum(x**2 for x in data1)
+    sum_y2 = sum(y**2 for y in data2)
 
     numerator = n * sum_xy - sum_x * sum_y
-    denominator = ((n * sum_x2 - sum_x ** 2) * (n * sum_y2 - sum_y ** 2)) ** 0.5
+    denominator = ((n * sum_x2 - sum_x**2) * (n * sum_y2 - sum_y**2)) ** 0.5
 
     return numerator / denominator if denominator != 0 else 0.0
 
@@ -339,6 +345,7 @@ def normalize_data(data: list[float]) -> list[float]:
 # ═══════════════════════════════════════════════════════════════════
 # Cache Helpers
 # ═══════════════════════════════════════════════════════════════════
+
 
 def generate_cache_key(*args, **kwargs) -> str:
     """
@@ -378,6 +385,7 @@ def cache_expiration_check(cache_time: datetime, ttl_seconds: int) -> bool:
 # DateTime Helpers
 # ═══════════════════════════════════════════════════════════════════
 
+
 def get_market_hours(market: str = "US") -> dict:
     """
     Get market trading hours.
@@ -392,7 +400,7 @@ def get_market_hours(market: str = "US") -> dict:
     markets = {
         "US": {"open": "09:30", "close": "16:00", "timezone": "America/New_York"},
         "EU": {"open": "09:00", "close": "17:30", "timezone": "Europe/London"},
-        "ASIA": {"open": "09:00", "close": "15:00", "timezone": "Asia/Tokyo"}
+        "ASIA": {"open": "09:00", "close": "15:00", "timezone": "Asia/Tokyo"},
     }
 
     return markets.get(market.upper(), markets["US"])
@@ -434,6 +442,7 @@ def get_next_trading_day(current_date: datetime, market: str = "US") -> datetime
 # ═══════════════════════════════════════════════════════════════════
 # Error Handling
 # ═══════════════════════════════════════════════════════════════════
+
 
 def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> float:
     """
