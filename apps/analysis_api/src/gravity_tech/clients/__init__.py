@@ -12,4 +12,4 @@ License: MIT
 
 from gravity_tech.clients.data_service_client import DataServiceClient
 
-__all__ = ['DataServiceClient']
+__all__ = ["DataServiceClient"]
