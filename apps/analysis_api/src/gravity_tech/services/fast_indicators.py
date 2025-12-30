@@ -13,6 +13,7 @@ License: MIT
 import logging
 
 import numpy as np
+
 from gravity_tech.core.domain.entities import Candle, IndicatorResult, SignalStrength
 from gravity_tech.services.performance_optimizer import (
     ResultCache,
@@ -35,6 +36,7 @@ _result_cache = ResultCache(max_size=10000)
 # ═══════════════════════════════════════════════════════════════
 # Fast Indicator Wrappers
 # ═══════════════════════════════════════════════════════════════
+
 
 class FastTrendIndicators:
     """
@@ -80,7 +82,7 @@ class FastTrendIndicators:
             signal=signal,
             value=float(current_sma),
             confidence=confidence,
-            description=f"Price {'above' if current_price > current_sma else 'below'} SMA"
+            description=f"Price {'above' if current_price > current_sma else 'below'} SMA",
         )
 
     @staticmethod
@@ -107,7 +109,7 @@ class FastTrendIndicators:
             signal=signal,
             value=float(current_ema),
             confidence=confidence,
-            description=f"Price {'above' if current_price > current_ema else 'below'} EMA"
+            description=f"Price {'above' if current_price > current_ema else 'below'} EMA",
         )
 
     @staticmethod
@@ -138,11 +140,11 @@ class FastTrendIndicators:
             signal=signal,
             value=float(macd_line[-1]),
             additional_values={
-                'signal': float(signal_line[-1]),
-                'histogram': float(current_histogram)
+                "signal": float(signal_line[-1]),
+                "histogram": float(current_histogram),
             },
             confidence=confidence,
-            description="MACD signal"
+            description="MACD signal",
         )
 
 
@@ -200,12 +202,9 @@ class FastMomentumIndicators:
             category="MOMENTUM",
             signal=signal,
             value=float(current_rsi),
-            additional_values={
-                'overbought': 70.0,
-                'oversold': 30.0
-            },
+            additional_values={"overbought": 70.0, "oversold": 30.0},
             confidence=confidence,
-            description=f"RSI at {current_rsi:.1f}"
+            description=f"RSI at {current_rsi:.1f}",
         )
 
         # Cache result
@@ -222,9 +221,9 @@ class FastVolatilityIndicators:
     """
 
     @staticmethod
-    def fast_calculate_bollinger_bands(candles: list[Candle],
-                                      period: int = 20,
-                                      num_std: float = 2.0) -> IndicatorResult:
+    def fast_calculate_bollinger_bands(
+        candles: list[Candle], period: int = 20, num_std: float = 2.0
+    ) -> IndicatorResult:
         """Ultra-fast Bollinger Bands calculation"""
         closes = np.array([c.close for c in candles], dtype=np.float32)
 
@@ -251,13 +250,13 @@ class FastVolatilityIndicators:
             signal=signal,
             value=float(middle[-1]),
             additional_values={
-                'upper': float(upper[-1]),
-                'lower': float(lower[-1]),
-                'bandwidth': float(bandwidth),
-                'position': float(position)
+                "upper": float(upper[-1]),
+                "lower": float(lower[-1]),
+                "bandwidth": float(bandwidth),
+                "position": float(position),
             },
             confidence=confidence,
-            description=f"Price at {position*100:.0f}% of band"
+            description=f"Price at {position * 100:.0f}% of band",
         )
 
     @staticmethod
@@ -292,17 +291,16 @@ class FastVolatilityIndicators:
             category="VOLATILITY",
             signal=signal,
             value=float(current_atr),
-            additional_values={
-                'atr_percent': float(atr_percent)
-            },
+            additional_values={"atr_percent": float(atr_percent)},
             confidence=confidence,
-            description=f"Volatility: {atr_percent:.2f}%"
+            description=f"Volatility: {atr_percent:.2f}%",
         )
 
 
 # ═══════════════════════════════════════════════════════════════
 # Batch Processing for Maximum Performance
 # ═══════════════════════════════════════════════════════════════
+
 
 class FastBatchAnalyzer:
     """
@@ -326,37 +324,33 @@ class FastBatchAnalyzer:
         results = {}
 
         # Convert to NumPy array once
-        candles_array = optimize_memory_usage([
-            {
-                'open': c.open,
-                'high': c.high,
-                'low': c.low,
-                'close': c.close,
-                'volume': c.volume
-            }
-            for c in candles
-        ])
+        candles_array = optimize_memory_usage(
+            [
+                {"open": c.open, "high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                for c in candles
+            ]
+        )
 
         # Define all indicators to calculate
-        indicators = ['sma_20', 'sma_50', 'ema_12', 'ema_26', 'rsi', 'macd', 'atr']
+        indicators = ["sma_20", "sma_50", "ema_12", "ema_26", "rsi", "macd", "atr"]
 
         # Batch calculation
         raw_results = batch_indicator_calculation(candles_array, indicators)
 
         # Convert to IndicatorResult objects
         # Trend
-        results['SMA_20'] = FastTrendIndicators.fast_calculate_sma(candles, 20)
-        results['SMA_50'] = FastTrendIndicators.fast_calculate_sma(candles, 50)
-        results['EMA_12'] = FastTrendIndicators.fast_calculate_ema(candles, 12)
-        results['EMA_26'] = FastTrendIndicators.fast_calculate_ema(candles, 26)
-        results['MACD'] = FastTrendIndicators.fast_calculate_macd(candles)
+        results["SMA_20"] = FastTrendIndicators.fast_calculate_sma(candles, 20)
+        results["SMA_50"] = FastTrendIndicators.fast_calculate_sma(candles, 50)
+        results["EMA_12"] = FastTrendIndicators.fast_calculate_ema(candles, 12)
+        results["EMA_26"] = FastTrendIndicators.fast_calculate_ema(candles, 26)
+        results["MACD"] = FastTrendIndicators.fast_calculate_macd(candles)
 
         # Momentum
-        results['RSI'] = FastMomentumIndicators.fast_calculate_rsi(candles, 14)
+        results["RSI"] = FastMomentumIndicators.fast_calculate_rsi(candles, 14)
 
         # Volatility
-        results['BB'] = FastVolatilityIndicators.fast_calculate_bollinger_bands(candles)
-        results['ATR'] = FastVolatilityIndicators.fast_calculate_atr(candles)
+        results["BB"] = FastVolatilityIndicators.fast_calculate_bollinger_bands(candles)
+        results["ATR"] = FastVolatilityIndicators.fast_calculate_atr(candles)
 
         return results
 
@@ -383,7 +377,7 @@ if __name__ == "__main__":
             high=101 + i * 0.1,
             low=99 + i * 0.1,
             close=100.5 + i * 0.1,
-            volume=1000000
+            volume=1000000,
         )
         for i in range(n)
     ]
@@ -396,8 +390,8 @@ if __name__ == "__main__":
     results = FastBatchAnalyzer.analyze_all_indicators(candles)
     elapsed = time.time() - start
 
-    print(f"✅ Analyzed {len(results)} indicators in {elapsed*1000:.2f}ms")
-    print(f"✅ Average per indicator: {elapsed/len(results)*1000:.2f}ms")
+    print(f"✅ Analyzed {len(results)} indicators in {elapsed * 1000:.2f}ms")
+    print(f"✅ Average per indicator: {elapsed / len(results) * 1000:.2f}ms")
     print("✅ Estimated speedup: 5000-10000x")
 
     # Show cache stats
