@@ -4,13 +4,12 @@ Unit tests for src/core/domain/entities/indicator_result.py
 Tests IndicatorResult dataclass creation, validation, and properties.
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import patch
-from gravity_tech.core.domain.entities.indicator_result import IndicatorResult
 from gravity_tech.core.domain.entities.indicator_category import IndicatorCategory
+from gravity_tech.core.domain.entities.indicator_result import IndicatorResult
 from gravity_tech.core.domain.entities.signal_strength import SignalStrength
-from datetime import timezone
 
 
 class TestIndicatorResultCreation:
@@ -27,7 +26,7 @@ class TestIndicatorResultCreation:
             additional_values={"signal": 60.0},
             confidence=0.85,
             description="RSI shows bullish momentum",
-            timestamp=timestamp
+            timestamp=timestamp,
         )
         assert result.indicator_name == "RSI"
         assert result.category == IndicatorCategory.MOMENTUM
@@ -44,7 +43,7 @@ class TestIndicatorResultCreation:
             indicator_name="MACD",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.NEUTRAL,
-            value=1.5
+            value=1.5,
         )
         assert result.additional_values is None
         assert result.confidence == 0.75
@@ -57,7 +56,7 @@ class TestIndicatorResultCreation:
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
-            value=65.5
+            value=65.5,
         )
         with pytest.raises(AttributeError):
             result.value = 70.0
@@ -70,7 +69,7 @@ class TestIndicatorResultCreation:
                 category=IndicatorCategory.MOMENTUM,
                 signal=SignalStrength.BULLISH,
                 value=65.5,
-                confidence=-0.1
+                confidence=-0.1,
             )
 
     def test_indicator_result_validation_confidence_too_high(self):
@@ -81,7 +80,7 @@ class TestIndicatorResultCreation:
                 category=IndicatorCategory.MOMENTUM,
                 signal=SignalStrength.BULLISH,
                 value=65.5,
-                confidence=1.5
+                confidence=1.5,
             )
 
     def test_indicator_result_validation_empty_name(self):
@@ -91,7 +90,7 @@ class TestIndicatorResultCreation:
                 indicator_name="",
                 category=IndicatorCategory.MOMENTUM,
                 signal=SignalStrength.BULLISH,
-                value=65.5
+                value=65.5,
             )
 
     def test_indicator_result_validation_whitespace_name(self):
@@ -101,7 +100,7 @@ class TestIndicatorResultCreation:
                 indicator_name="   ",
                 category=IndicatorCategory.MOMENTUM,
                 signal=SignalStrength.BULLISH,
-                value=65.5
+                value=65.5,
             )
 
     @pytest.mark.parametrize("confidence", [0.0, 0.5, 1.0])
@@ -112,7 +111,7 @@ class TestIndicatorResultCreation:
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5,
-            confidence=confidence
+            confidence=confidence,
         )
         assert result.confidence == confidence
 
@@ -125,7 +124,7 @@ class TestIndicatorResultCreation:
                 category=IndicatorCategory.MOMENTUM,
                 signal=SignalStrength.BULLISH,
                 value=65.5,
-                confidence=invalid_confidence
+                confidence=invalid_confidence,
             )
 
 
@@ -143,7 +142,7 @@ class TestIndicatorResultProperties:
             additional_values={"signal": 60.0, "histogram": 5.5},
             confidence=0.85,
             description="RSI indicates bullish momentum",
-            timestamp=datetime(2023, 1, 1, 12, 0, 0)
+            timestamp=datetime(2023, 1, 1, 12, 0, 0),
         )
 
     def test_indicator_result_attributes_access(self, sample_result):
@@ -165,21 +164,21 @@ class TestIndicatorResultProperties:
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5,
-            timestamp=fixed_timestamp
+            timestamp=fixed_timestamp,
         )
         result2 = IndicatorResult(
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5,
-            timestamp=fixed_timestamp
+            timestamp=fixed_timestamp,
         )
         result3 = IndicatorResult(
             indicator_name="MACD",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5,
-            timestamp=fixed_timestamp
+            timestamp=fixed_timestamp,
         )
         assert result1 == result2
         assert result1 != result3
@@ -190,7 +189,7 @@ class TestIndicatorResultProperties:
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
-            value=65.5
+            value=65.5,
         )
         result_set = {result}
         assert len(result_set) == 1
@@ -204,14 +203,14 @@ class TestIndicatorResultProperties:
 
     def test_indicator_result_timestamp_auto_generation(self):
         """Test automatic timestamp generation"""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         result = IndicatorResult(
             indicator_name="RSI",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
-            value=65.5
+            value=65.5,
         )
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         assert before <= result.timestamp <= after
 
 
@@ -225,7 +224,7 @@ class TestIndicatorResultEdgeCases:
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5,
-            additional_values=None
+            additional_values=None,
         )
         assert result.additional_values is None
 
@@ -236,7 +235,7 @@ class TestIndicatorResultEdgeCases:
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.BULLISH,
             value=65.5,
-            additional_values={}
+            additional_values={},
         )
         assert result.additional_values == {}
 
@@ -246,19 +245,19 @@ class TestIndicatorResultEdgeCases:
             indicator_name="Test",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.NEUTRAL,
-            value=float('inf'),
-            confidence=1.0
+            value=float("inf"),
+            confidence=1.0,
         )
-        assert result.value == float('inf')
+        assert result.value == float("inf")
 
         result_neg = IndicatorResult(
             indicator_name="Test",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.NEUTRAL,
-            value=float('-inf'),
-            confidence=0.0
+            value=float("-inf"),
+            confidence=0.0,
         )
-        assert result_neg.value == float('-inf')
+        assert result_neg.value == float("-inf")
 
     def test_indicator_result_special_float_values(self):
         """Test IndicatorResult with NaN values"""
@@ -266,45 +265,44 @@ class TestIndicatorResultEdgeCases:
             indicator_name="Test",
             category=IndicatorCategory.MOMENTUM,
             signal=SignalStrength.NEUTRAL,
-            value=float('nan'),
-            confidence=0.5
+            value=float("nan"),
+            confidence=0.5,
         )
-        assert str(result.value) == 'nan'  # NaN != NaN, so check string representation
+        assert str(result.value) == "nan"  # NaN != NaN, so check string representation
 
-    @pytest.mark.parametrize("category", [
-        IndicatorCategory.TREND,
-        IndicatorCategory.MOMENTUM,
-        IndicatorCategory.CYCLE,
-        IndicatorCategory.VOLUME,
-        IndicatorCategory.VOLATILITY,
-        IndicatorCategory.SUPPORT_RESISTANCE,
-    ])
+    @pytest.mark.parametrize(
+        "category",
+        [
+            IndicatorCategory.TREND,
+            IndicatorCategory.MOMENTUM,
+            IndicatorCategory.CYCLE,
+            IndicatorCategory.VOLUME,
+            IndicatorCategory.VOLATILITY,
+            IndicatorCategory.SUPPORT_RESISTANCE,
+        ],
+    )
     def test_indicator_result_all_categories(self, category):
         """Test IndicatorResult with all indicator categories"""
         result = IndicatorResult(
-            indicator_name="Test",
-            category=category,
-            signal=SignalStrength.NEUTRAL,
-            value=50.0
+            indicator_name="Test", category=category, signal=SignalStrength.NEUTRAL, value=50.0
         )
         assert result.category == category
 
-    @pytest.mark.parametrize("signal", [
-        SignalStrength.VERY_BULLISH,
-        SignalStrength.BULLISH,
-        SignalStrength.BULLISH_BROKEN,
-        SignalStrength.NEUTRAL,
-        SignalStrength.BEARISH_BROKEN,
-        SignalStrength.BEARISH,
-        SignalStrength.VERY_BEARISH,
-    ])
+    @pytest.mark.parametrize(
+        "signal",
+        [
+            SignalStrength.VERY_BULLISH,
+            SignalStrength.BULLISH,
+            SignalStrength.BULLISH_BROKEN,
+            SignalStrength.NEUTRAL,
+            SignalStrength.BEARISH_BROKEN,
+            SignalStrength.BEARISH,
+            SignalStrength.VERY_BEARISH,
+        ],
+    )
     def test_indicator_result_all_signals(self, signal):
         """Test IndicatorResult with all signal strengths"""
         result = IndicatorResult(
-            indicator_name="Test",
-            category=IndicatorCategory.MOMENTUM,
-            signal=signal,
-            value=50.0
+            indicator_name="Test", category=IndicatorCategory.MOMENTUM, signal=signal, value=50.0
         )
         assert result.signal == signal
-
