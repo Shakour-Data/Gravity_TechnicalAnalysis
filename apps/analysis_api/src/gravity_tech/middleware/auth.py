@@ -13,13 +13,13 @@ import time
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-
 import jwt
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
-from gravity_tech.config.settings import settings
 from pydantic import BaseModel, field_validator
+
+from gravity_tech.config.settings import settings
 
 logger = structlog.get_logger()
 
@@ -31,8 +31,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 # JWT Authentication
 # ═══════════════════════════════════════════════════════════════
 
+
 class TokenData(BaseModel):
     """داده‌های توکن"""
+
     username: str
     scopes: list[str] = []
     exp: datetime | None = None
@@ -74,11 +76,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(
-        to_encode,
-        settings.secret_key,
-        algorithm=settings.jwt_algorithm
-    )
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
 
     return encoded_jwt
 
@@ -97,11 +95,7 @@ def verify_token(token: str) -> TokenData:
         HTTPException: در صورت نامعتبر بودن توکن
     """
     try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
 
         username: str = payload.get("sub")
         if username is None:
@@ -114,7 +108,7 @@ def verify_token(token: str) -> TokenData:
         token_data = TokenData(
             username=username,
             scopes=payload.get("scopes", []),
-            exp=datetime.fromtimestamp(payload.get("exp"))
+            exp=datetime.fromtimestamp(payload.get("exp")),
         )
 
         return token_data
@@ -134,7 +128,7 @@ def verify_token(token: str) -> TokenData:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security)
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> TokenData | None:
     """
     دریافت کاربر فعلی از توکن
@@ -153,6 +147,7 @@ async def get_current_user(
 # ═══════════════════════════════════════════════════════════════
 # Rate Limiting
 # ═══════════════════════════════════════════════════════════════
+
 
 class RateLimiter:
     """
@@ -177,10 +172,7 @@ class RateLimiter:
         client = self.clients[client_id]
 
         time_passed = current - client["last_update"]
-        client["tokens"] = min(
-            self.burst,
-            client["tokens"] + time_passed * self.rate
-        )
+        client["tokens"] = min(self.burst, client["tokens"] + time_passed * self.rate)
         client["last_update"] = current
 
     def is_allowed(self, client_id: str) -> bool:
@@ -219,6 +211,7 @@ class RateLimiter:
         allowed = self.is_allowed(client_id)
         if not allowed:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=429, detail="Rate limit exceeded")
         return True
 
@@ -242,16 +235,13 @@ async def check_rate_limit(request: Request):
         retry_after = rate_limiter.get_retry_after(client_id)
 
         logger.warning(
-            "rate_limit_exceeded",
-            client=client_id,
-            path=request.url.path,
-            retry_after=retry_after
+            "rate_limit_exceeded", client=client_id, path=request.url.path, retry_after=retry_after
         )
 
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Rate limit exceeded",
-            headers={"Retry-After": str(retry_after)}
+            headers={"Retry-After": str(retry_after)},
         )
 
 
@@ -259,65 +249,67 @@ async def check_rate_limit(request: Request):
 # Input Validation
 # ═══════════════════════════════════════════════════════════════
 
+
 class SecureAnalysisRequest(BaseModel):
     """
     مدل validated برای درخواست تحلیل
 
     شامل validatorهای امنیتی برای جلوگیری از حملات
     """
+
     symbol: str
     timeframe: str
     candles: list | None = None
     max_candles: int | None = 100
 
-    @field_validator('candles')
+    @field_validator("candles")
     @classmethod
     def validate_candles(cls, v, info):
         if v is not None:
             if not isinstance(v, list):
-                raise ValueError('candles must be a list')
+                raise ValueError("candles must be a list")
             if len(v) < 10:
-                raise ValueError('candles must have at least 10 items')
+                raise ValueError("candles must have at least 10 items")
             max_candles = 100
             if len(v) > max_candles:
-                raise ValueError(f'candles must not exceed max_candles ({max_candles})')
+                raise ValueError(f"candles must not exceed max_candles ({max_candles})")
             for candle in v:
-                for key in ['open', 'high', 'low', 'close', 'volume']:
+                for key in ["open", "high", "low", "close", "volume"]:
                     if key in candle and candle[key] < 0:
-                        raise ValueError(f'{key} must be non-negative')
+                        raise ValueError(f"{key} must be non-negative")
         return v
 
-    @field_validator('symbol')
+    @field_validator("symbol")
     @classmethod
     def validate_symbol(cls, v):
         """Validation برای symbol"""
         if not v or len(v) > 20:
-            raise ValueError('Symbol must be between 1 and 20 characters')
+            raise ValueError("Symbol must be between 1 and 20 characters")
 
         # فقط حروف، اعداد، و /-
-        if not all(c.isalnum() or c in ['/', '-', '_'] for c in v):
-            raise ValueError('Symbol contains invalid characters')
+        if not all(c.isalnum() or c in ["/", "-", "_"] for c in v):
+            raise ValueError("Symbol contains invalid characters")
 
         return v.upper()
 
-    @field_validator('timeframe')
+    @field_validator("timeframe")
     @classmethod
     def validate_timeframe(cls, v):
         """Validation برای timeframe"""
-        valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w']
+        valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"]
 
         if v not in valid_timeframes:
-            raise ValueError(f'Invalid timeframe. Must be one of: {valid_timeframes}')
+            raise ValueError(f"Invalid timeframe. Must be one of: {valid_timeframes}")
 
         return v
 
-    @field_validator('max_candles')
+    @field_validator("max_candles")
     @classmethod
     def validate_max_candles(cls, v):
         """Validation برای تعداد کندل‌ها"""
         if v is not None:
             if v < 10 or v > 1000:
-                raise ValueError('max_candles must be between 10 and 1000')
+                raise ValueError("max_candles must be between 10 and 1000")
 
         return v
 
@@ -325,6 +317,7 @@ class SecureAnalysisRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 # Security Headers Middleware
 # ═══════════════════════════════════════════════════════════════
+
 
 def setup_security(app: FastAPI):
     """
@@ -367,7 +360,7 @@ def setup_security(app: FastAPI):
                 method=request.method,
                 path=request.url.path,
                 client=request.client.host if request.client else "unknown",
-                user_agent=request.headers.get("user-agent")
+                user_agent=request.headers.get("user-agent"),
             )
 
         response = await call_next(request)
