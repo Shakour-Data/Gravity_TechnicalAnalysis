@@ -32,7 +32,12 @@ class TestIndicatorCategory:
     def test_indicator_category_enum_members(self):
         """Test that all expected enum members exist"""
         expected_members = {
-            'TREND', 'MOMENTUM', 'CYCLE', 'VOLUME', 'VOLATILITY', 'SUPPORT_RESISTANCE'
+            "TREND",
+            "MOMENTUM",
+            "CYCLE",
+            "VOLUME",
+            "VOLATILITY",
+            "SUPPORT_RESISTANCE",
         }
         actual_members = set(IndicatorCategory.__members__.keys())
         assert actual_members == expected_members
@@ -42,14 +47,17 @@ class TestIndicatorCategory:
         assert isinstance(IndicatorCategory.TREND, str)
         assert isinstance(IndicatorCategory.TREND.value, str)
 
-    @pytest.mark.parametrize("category,expected_value", [
-        (IndicatorCategory.TREND, "TREND"),
-        (IndicatorCategory.MOMENTUM, "MOMENTUM"),
-        (IndicatorCategory.CYCLE, "CYCLE"),
-        (IndicatorCategory.VOLUME, "VOLUME"),
-        (IndicatorCategory.VOLATILITY, "VOLATILITY"),
-        (IndicatorCategory.SUPPORT_RESISTANCE, "SUPPORT_RESISTANCE"),
-    ])
+    @pytest.mark.parametrize(
+        "category,expected_value",
+        [
+            (IndicatorCategory.TREND, "TREND"),
+            (IndicatorCategory.MOMENTUM, "MOMENTUM"),
+            (IndicatorCategory.CYCLE, "CYCLE"),
+            (IndicatorCategory.VOLUME, "VOLUME"),
+            (IndicatorCategory.VOLATILITY, "VOLATILITY"),
+            (IndicatorCategory.SUPPORT_RESISTANCE, "SUPPORT_RESISTANCE"),
+        ],
+    )
     def test_indicator_category_parametrized_values(self, category, expected_value):
         """Parametrized test for all IndicatorCategory values"""
         assert category == expected_value
@@ -79,4 +87,3 @@ class TestIndicatorCategory:
 
         category_dict = {IndicatorCategory.TREND: "trend_value"}
         assert category_dict[IndicatorCategory.TREND] == "trend_value"
-
