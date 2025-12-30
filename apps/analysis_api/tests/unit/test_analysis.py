@@ -19,6 +19,7 @@ import pytest
 # TEST UTILITIES
 # ============================================================================
 
+
 class AnalysisTestData:
     """Generate test data for analysis testing"""
 
@@ -29,7 +30,7 @@ class AnalysisTestData:
         low: float | None = None,
         open_price: float | None = None,
         volume: float = 1000.0,
-        timestamp: datetime | None = None
+        timestamp: datetime | None = None,
     ) -> dict:
         """Create candle data"""
         if timestamp is None:
@@ -47,7 +48,7 @@ class AnalysisTestData:
             "high": high,
             "low": low,
             "close": close,
-            "volume": volume
+            "volume": volume,
         }
 
     @staticmethod
@@ -60,10 +61,11 @@ class AnalysisTestData:
         for day in range(50):
             # Strong uptrend
             price += 0.8 + (0.2 * (day % 3))
-            candles.append(AnalysisTestData.create_candle(
-                close=price,
-                timestamp=base_date + timedelta(days=day)
-            ))
+            candles.append(
+                AnalysisTestData.create_candle(
+                    close=price, timestamp=base_date + timedelta(days=day)
+                )
+            )
 
         return candles
 
@@ -77,10 +79,11 @@ class AnalysisTestData:
         for day in range(50):
             # Strong downtrend
             price -= 0.8 + (0.2 * (day % 3))
-            candles.append(AnalysisTestData.create_candle(
-                close=price,
-                timestamp=base_date + timedelta(days=day)
-            ))
+            candles.append(
+                AnalysisTestData.create_candle(
+                    close=price, timestamp=base_date + timedelta(days=day)
+                )
+            )
 
         return candles
 
@@ -94,12 +97,14 @@ class AnalysisTestData:
         for day in range(50):
             # Random walk (sideways)
             import random
+
             change = random.uniform(-0.5, 0.5)
             price = max(price + change, 50)  # Don't go negative
-            candles.append(AnalysisTestData.create_candle(
-                close=price,
-                timestamp=base_date + timedelta(days=day)
-            ))
+            candles.append(
+                AnalysisTestData.create_candle(
+                    close=price, timestamp=base_date + timedelta(days=day)
+                )
+            )
 
         return candles
 
@@ -107,6 +112,7 @@ class AnalysisTestData:
 # ============================================================================
 # SIGNAL GENERATION TESTS
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestSignalGeneration:
@@ -151,6 +157,7 @@ class TestSignalGeneration:
 # ============================================================================
 # CONFIDENCE CALCULATION TESTS
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestConfidenceCalculation:
@@ -204,6 +211,7 @@ class TestConfidenceCalculation:
 # ============================================================================
 # MULTI-INDICATOR CONSENSUS TESTS
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestMultiIndicatorConsensus:
@@ -272,6 +280,7 @@ class TestMultiIndicatorConsensus:
 # DIMENSION ANALYSIS TESTS
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestDimensionAnalysis:
     """Test multi-dimensional analysis (3D, 7D, 30D)"""
@@ -336,30 +345,27 @@ class TestDimensionAnalysis:
 # RISK ASSESSMENT TESTS
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestRiskAssessment:
     """Test risk assessment logic"""
 
     def test_risk_level_on_high_volatility(self):
         """Test high risk on high volatility"""
-        import random
-
         # High volatility data
         base_date = datetime.now()
-        price = 100
         high_vol = []
 
         for day in range(20):
-            change = random.uniform(-3, 3)  # Big swings
-            price = max(price + change, 50)
-            high_vol.append({"close": price, "timestamp": base_date + timedelta(days=day)})
+            close = 100 + (6 if day % 2 == 0 else -6)
+            high_vol.append({"close": close, "timestamp": base_date + timedelta(days=day)})
 
         closes = [c["close"] for c in high_vol]
 
         # Calculate volatility (std dev)
         mean = sum(closes) / len(closes)
         variance = sum((c - mean) ** 2 for c in closes) / len(closes)
-        volatility = variance ** 0.5
+        volatility = variance**0.5
 
         assert volatility > 2  # High volatility
 
@@ -370,7 +376,7 @@ class TestRiskAssessment:
 
         mean = sum(prices) / len(prices)
         variance = sum((p - mean) ** 2 for p in prices) / len(prices)
-        volatility = variance ** 0.5
+        volatility = variance**0.5
 
         assert volatility < 1  # Low volatility
 
@@ -390,6 +396,7 @@ class TestRiskAssessment:
 # ============================================================================
 # ERROR HANDLING TESTS
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestAnalysisErrorHandling:
@@ -419,7 +426,7 @@ class TestAnalysisErrorHandling:
 
         gaps = []
         for i in range(len(timestamps) - 1):
-            diff = (timestamps[i+1] - timestamps[i]).days
+            diff = (timestamps[i + 1] - timestamps[i]).days
             if diff > 1:
                 gaps.append(i)
 
@@ -429,7 +436,7 @@ class TestAnalysisErrorHandling:
         """Test handling of zero volume"""
         candle = {
             "close": 100,
-            "volume": 0  # Invalid
+            "volume": 0,  # Invalid
         }
 
         assert candle["volume"] == 0
@@ -441,7 +448,7 @@ class TestAnalysisErrorHandling:
         # Check for extreme moves
         extreme_moves = []
         for i in range(1, len(closes)):
-            pct_change = abs((closes[i] - closes[i-1]) / closes[i-1])
+            pct_change = abs((closes[i] - closes[i - 1]) / closes[i - 1])
             if pct_change > 0.5:  # >50% move
                 extreme_moves.append((i, pct_change))
 
@@ -452,6 +459,7 @@ class TestAnalysisErrorHandling:
 # PERFORMANCE TESTS
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestAnalysisPerformance:
     """Test analysis performance"""
@@ -461,6 +469,7 @@ class TestAnalysisPerformance:
         candles = AnalysisTestData.strong_buy_signal_data()
 
         import time
+
         start = time.time()
 
         # Simulate analysis
@@ -480,12 +489,14 @@ class TestAnalysisPerformance:
 
         for day in range(1000):
             price += 0.1
-            candles.append(AnalysisTestData.create_candle(
-                close=price,
-                timestamp=base_date + timedelta(days=day)
-            ))
+            candles.append(
+                AnalysisTestData.create_candle(
+                    close=price, timestamp=base_date + timedelta(days=day)
+                )
+            )
 
         import time
+
         start = time.time()
 
         # Analysis
@@ -503,6 +514,7 @@ class TestAnalysisPerformance:
 # ============================================================================
 # CONSISTENCY TESTS
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestAnalysisConsistency:
