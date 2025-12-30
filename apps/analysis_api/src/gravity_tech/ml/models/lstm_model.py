@@ -43,21 +43,37 @@ class TimeSeriesDataset(Dataset):
         return len(self.data) - self.seq_length
 
     def __getitem__(self, idx):
-        x = self.data[idx:idx + self.seq_length]
-        y = self.data[idx + self.seq_length, self.target_idx] if self.target_idx != -1 else self.data[idx + self.seq_length]
+        x = self.data[idx : idx + self.seq_length]
+        y = (
+            self.data[idx + self.seq_length, self.target_idx]
+            if self.target_idx != -1
+            else self.data[idx + self.seq_length]
+        )
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
 
 class LSTMModel(nn.Module):
     """LSTM Neural Network for time series prediction"""
 
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int, dropout: float = 0.2):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        num_layers: int,
+        output_size: int,
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers,
-                           batch_first=True, dropout=dropout if num_layers > 1 else 0)
+        self.lstm = nn.LSTM(
+            input_size,
+            hidden_size,
+            num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+        )
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
@@ -74,8 +90,15 @@ class LSTMModel(nn.Module):
 class LSTMPredictor:
     """LSTM-based time series predictor"""
 
-    def __init__(self, seq_length: int = 60, hidden_size: int = 64, num_layers: int = 2,
-                 learning_rate: float = 0.001, epochs: int = 100, batch_size: int = 32):
+    def __init__(
+        self,
+        seq_length: int = 60,
+        hidden_size: int = 64,
+        num_layers: int = 2,
+        learning_rate: float = 0.001,
+        epochs: int = 100,
+        batch_size: int = 32,
+    ):
         self.seq_length = seq_length
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -85,10 +108,12 @@ class LSTMPredictor:
 
         self.model = None
         self.scaler = MinMaxScaler()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.input_size = None
 
-    def prepare_data(self, candles: list[Candle], features: list[str] | None = None) -> tuple[np.ndarray, MinMaxScaler]:
+    def prepare_data(
+        self, candles: list[Candle], features: list[str] | None = None
+    ) -> tuple[np.ndarray, MinMaxScaler]:
         """
         Prepare candle data for LSTM training
 
@@ -100,20 +125,20 @@ class LSTMPredictor:
             Prepared data array and scaler
         """
         if features is None:
-            features = ['open', 'high', 'low', 'close', 'volume']
+            features = ["open", "high", "low", "close", "volume"]
 
         data = []
         for candle in candles:
             row = []
-            if 'open' in features:
+            if "open" in features:
                 row.append(candle.open)
-            if 'high' in features:
+            if "high" in features:
                 row.append(candle.high)
-            if 'low' in features:
+            if "low" in features:
                 row.append(candle.low)
-            if 'close' in features:
+            if "close" in features:
                 row.append(candle.close)
-            if 'volume' in features:
+            if "volume" in features:
                 row.append(candle.volume)
             data.append(row)
 
@@ -125,8 +150,9 @@ class LSTMPredictor:
 
         return scaled_data, self.scaler
 
-    def train(self, candles: list[Candle], target_feature: str = 'close',
-              validation_split: float = 0.2) -> dict[str, Any]:
+    def train(
+        self, candles: list[Candle], target_feature: str = "close", validation_split: float = 0.2
+    ) -> dict[str, Any]:
         """
         Train LSTM model
 
@@ -142,7 +168,9 @@ class LSTMPredictor:
         data, _ = self.prepare_data(candles)
 
         # Create target data (next close price)
-        target_idx = {'open': 0, 'high': 1, 'low': 2, 'close': 3, 'volume': 4}.get(target_feature, 3)
+        target_idx = {"open": 0, "high": 1, "low": 2, "close": 3, "volume": 4}.get(
+            target_feature, 3
+        )
 
         # Split data
         train_size = int(len(data) * (1 - validation_split))
@@ -163,7 +191,7 @@ class LSTMPredictor:
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
         # Training loop
-        best_loss = float('inf')
+        best_loss = float("inf")
         patience = 10
         patience_counter = 0
 
@@ -211,7 +239,7 @@ class LSTMPredictor:
                 best_loss = epoch_val_loss
                 patience_counter = 0
                 # Save best model
-                torch.save(self.model.state_dict(), 'best_lstm_model.pth')
+                torch.save(self.model.state_dict(), "best_lstm_model.pth")
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -219,16 +247,18 @@ class LSTMPredictor:
                     break
 
             if (epoch + 1) % 10 == 0:
-                logger.info(f"Epoch {epoch+1}/{self.epochs}, Train Loss: {epoch_train_loss:.6f}, Val Loss: {epoch_val_loss:.6f}")
+                logger.info(
+                    f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {epoch_train_loss:.6f}, Val Loss: {epoch_val_loss:.6f}"
+                )
 
         # Load best model
-        self.model.load_state_dict(torch.load('best_lstm_model.pth'))
+        self.model.load_state_dict(torch.load("best_lstm_model.pth"))
 
         return {
-            'train_losses': train_losses,
-            'val_losses': val_losses,
-            'best_val_loss': best_loss,
-            'epochs_trained': len(train_losses)
+            "train_losses": train_losses,
+            "val_losses": val_losses,
+            "best_val_loss": best_loss,
+            "epochs_trained": len(train_losses),
         }
 
     def predict(self, candles: list[Candle], steps_ahead: int = 1) -> PredictionResult:
@@ -246,8 +276,10 @@ class LSTMPredictor:
             raise ValueError("Model not trained. Call train() first.")
 
         # Prepare input data
-        data, _ = self.prepare_data(candles[-self.seq_length:])
-        input_seq = torch.tensor(data[-self.seq_length:], dtype=torch.float32).unsqueeze(0).to(self.device)
+        data, _ = self.prepare_data(candles[-self.seq_length :])
+        input_seq = (
+            torch.tensor(data[-self.seq_length :], dtype=torch.float32).unsqueeze(0).to(self.device)
+        )
 
         self.model.eval()
         predictions = []
@@ -263,15 +295,19 @@ class LSTMPredictor:
                 if steps_ahead > 1:
                     # Create new input by appending prediction and removing oldest
                     input_size = self.input_size if self.input_size is not None else 5
-                    new_input = np.append(input_seq.cpu().numpy()[0, 1:], [[pred_value] * input_size], axis=0)
-                    input_seq = torch.tensor(new_input, dtype=torch.float32).unsqueeze(0).to(self.device)
+                    new_input = np.append(
+                        input_seq.cpu().numpy()[0, 1:], [[pred_value] * input_size], axis=0
+                    )
+                    input_seq = (
+                        torch.tensor(new_input, dtype=torch.float32).unsqueeze(0).to(self.device)
+                    )
 
         # Inverse transform predictions
         pred_array = np.array(predictions).reshape(-1, 1)
         input_size = self.input_size if self.input_size is not None else 5
-        predictions_unscaled = self.scaler.inverse_transform(
-            np.tile(pred_array, (1, input_size))
-        )[:, 0]  # Take first column (close price)
+        predictions_unscaled = self.scaler.inverse_transform(np.tile(pred_array, (1, input_size)))[
+            :, 0
+        ]  # Take first column (close price)
 
         # Calculate confidence based on recent volatility
         recent_prices = [c.close for c in candles[-20:]]
@@ -290,6 +326,7 @@ class LSTMPredictor:
             signal = PredictionSignal.NEUTRAL
 
         from datetime import datetime
+
         return PredictionResult(
             predictions=list(predictions_unscaled),
             confidence=float(confidence),
@@ -297,8 +334,8 @@ class LSTMPredictor:
             model_type="LSTM",
             description=f"LSTM prediction for next {steps_ahead} steps",
             prediction_timestamp=datetime.now(),
-            input_features={'features': ['open', 'high', 'low', 'close', 'volume']},
-            metadata={'steps_ahead': steps_ahead, 'volatility': float(volatility)}
+            input_features={"features": ["open", "high", "low", "close", "volume"]},
+            metadata={"steps_ahead": steps_ahead, "volatility": float(volatility)},
         )
 
     def predict_volatility(self, candles: list[Candle], window: int = 20) -> float:
@@ -318,7 +355,7 @@ class LSTMPredictor:
         # Calculate historical volatility
         returns = []
         for i in range(window, len(candles)):
-            ret = (candles[i].close - candles[i-window].close) / candles[i-window].close
+            ret = (candles[i].close - candles[i - window].close) / candles[i - window].close
             returns.append(ret)
 
         # Prepare data for LSTM (use returns as features)
@@ -326,7 +363,7 @@ class LSTMPredictor:
         scaled_data = self.scaler.fit_transform(data)
 
         # Make prediction
-        input_seq = scaled_data[-self.seq_length:]
+        input_seq = scaled_data[-self.seq_length :]
         input_tensor = torch.tensor(input_seq, dtype=torch.float32).unsqueeze(0).to(self.device)
 
         if self.model is None:
@@ -357,7 +394,7 @@ def create_lstm_predictor(seq_length: int = 60, hidden_size: int = 64) -> LSTMPr
     return LSTMPredictor(seq_length=seq_length, hidden_size=hidden_size)
 
 
-def train_lstm_model(candles: list[Candle], target_feature: str = 'close') -> LSTMPredictor:
+def train_lstm_model(candles: list[Candle], target_feature: str = "close") -> LSTMPredictor:
     """
     Convenience function to train LSTM model
 
@@ -371,4 +408,3 @@ def train_lstm_model(candles: list[Candle], target_feature: str = 'close') -> LS
     predictor = LSTMPredictor()
     predictor.train(candles, target_feature)
     return predictor
-
