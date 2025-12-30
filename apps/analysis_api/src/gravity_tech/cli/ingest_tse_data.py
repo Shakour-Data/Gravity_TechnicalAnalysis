@@ -72,9 +72,7 @@ def summarize_candles(candles: list[dict]) -> dict:
     df["return"] = df["close"].pct_change()
     df["volume"] = df["volume"].astype(float)
 
-    trend_change = (df["close"].iloc[-1] - df["close"].iloc[0]) / max(
-        1e-9, df["close"].iloc[0]
-    )
+    trend_change = (df["close"].iloc[-1] - df["close"].iloc[0]) / max(1e-9, df["close"].iloc[0])
     vol = df["return"].std() * sqrt(252) if not df["return"].empty else 0.0
     vol_level = float(vol) if pd.notna(vol) else 0.0
 
@@ -108,7 +106,9 @@ def summarize_candles(candles: list[dict]) -> dict:
     return summary
 
 
-def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: str, summary: dict) -> int:
+def insert_historical_score(
+    manager: DatabaseManager, symbol: str, timeframe: str, summary: dict
+) -> int:
     """Insert a row into historical_scores and return its ID."""
     placeholders = manager.get_sql_placeholder()
     phs = ", ".join([placeholders] * 23)
@@ -127,7 +127,11 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
         {"RETURNING id" if manager.db_type.name == "POSTGRESQL" else ""}
     """
 
-    ts_iso = summary["last_timestamp"].isoformat() if isinstance(summary["last_timestamp"], datetime) else str(summary["last_timestamp"])
+    ts_iso = (
+        summary["last_timestamp"].isoformat()
+        if isinstance(summary["last_timestamp"], datetime)
+        else str(summary["last_timestamp"])
+    )
     now = datetime.now(UTC).isoformat()
 
     params = (
@@ -142,9 +146,21 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
         summary["confidence"],
         0.5,
         0.5,
-        "BULLISH" if summary["prediction"] == "bullish" else "BEARISH" if summary["prediction"] == "bearish" else "NEUTRAL",
-        "BULLISH" if summary["prediction"] == "bullish" else "BEARISH" if summary["prediction"] == "bearish" else "NEUTRAL",
-        "BULLISH" if summary["prediction"] == "bullish" else "BEARISH" if summary["prediction"] == "bearish" else "NEUTRAL",
+        "BULLISH"
+        if summary["prediction"] == "bullish"
+        else "BEARISH"
+        if summary["prediction"] == "bearish"
+        else "NEUTRAL",
+        "BULLISH"
+        if summary["prediction"] == "bullish"
+        else "BEARISH"
+        if summary["prediction"] == "bearish"
+        else "NEUTRAL",
+        "BULLISH"
+        if summary["prediction"] == "bullish"
+        else "BEARISH"
+        if summary["prediction"] == "bearish"
+        else "NEUTRAL",
         "HOLD",  # recommendation
         "HOLD",  # action
         summary["price_at_analysis"],
@@ -181,7 +197,9 @@ def insert_historical_score(manager: DatabaseManager, symbol: str, timeframe: st
                 pass
 
 
-def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str, timeframe: str, summary: dict):
+def insert_indicator_scores(
+    manager: DatabaseManager, score_id: int, symbol: str, timeframe: str, summary: dict
+):
     """Insert a few indicator-level rows tied to a historical_score."""
     placeholders = manager.get_sql_placeholder()
     query = f"""
@@ -193,7 +211,11 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
                   {placeholders}, {placeholders}, {placeholders},
                   {placeholders}, {placeholders}, {placeholders}, {placeholders})
     """
-    ts_iso = summary["last_timestamp"].isoformat() if isinstance(summary["last_timestamp"], datetime) else str(summary["last_timestamp"])
+    ts_iso = (
+        summary["last_timestamp"].isoformat()
+        if isinstance(summary["last_timestamp"], datetime)
+        else str(summary["last_timestamp"])
+    )
     rows = [
         (
             score_id,
@@ -281,7 +303,11 @@ def insert_indicator_scores(manager: DatabaseManager, score_id: int, symbol: str
             "sma_50_200_cross",
             "trend",
             json.dumps({"short": 50, "long": 200}),
-            1 if summary.get("sma_cross") == "golden" else -1 if summary.get("sma_cross") == "death" else 0,
+            1
+            if summary.get("sma_cross") == "golden"
+            else -1
+            if summary.get("sma_cross") == "death"
+            else 0,
             summary["confidence"],
             summary.get("sma_cross"),
             None,
@@ -338,9 +364,13 @@ def ingest_symbol(manager: DatabaseManager, symbol: str, limit: int, timeframe: 
     insert_indicator_scores(manager, score_id, symbol, timeframe, summary)
 
     try:
-        print(f"Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}")
+        print(
+            f"Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}"
+        )
     except UnicodeEncodeError:
-        print(f"Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}")
+        print(
+            f"Ingested {symbol}: regime={summary['regime']}, prediction={summary['prediction']}, confidence={summary['confidence']:.2f}"
+        )
 
 
 def get_last_score_ts(manager: DatabaseManager, symbol: str, timeframe: str) -> datetime | None:
@@ -422,8 +452,8 @@ def ingest_full_history(manager: DatabaseManager, symbol: str, timeframe: str):
                 sig,
                 sig,
                 sig,
-        "HOLD",  # recommendation
-        "HOLD",  # action
+                "HOLD",  # recommendation
+                "HOLD",  # action
                 row["close"],
                 vol_score,
                 volat,
@@ -467,7 +497,9 @@ def reset_tables(manager: DatabaseManager):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Ingest TSE OHLCV data into the project database.")
-    parser.add_argument("--symbols", help="Comma-separated tickers to ingest. If omitted, auto-selects from TSE DB.")
+    parser.add_argument(
+        "--symbols", help="Comma-separated tickers to ingest. If omitted, auto-selects from TSE DB."
+    )
     parser.add_argument(
         "--max-symbols",
         type=int,
@@ -486,7 +518,9 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Max number of most-recent candles per symbol. 0 means all history (default).",
     )
-    parser.add_argument("--timeframe", default="1d", help="Logical timeframe label to store with records.")
+    parser.add_argument(
+        "--timeframe", default="1d", help="Logical timeframe label to store with records."
+    )
     parser.add_argument("--reset", action="store_true", help="Clear target tables before ingest.")
     parser.add_argument(
         "--resume",
@@ -531,14 +565,18 @@ def main():
     already: set[str] = set()
     if args.resume:
         try:
-            rows = manager.execute_query(
-                "SELECT DISTINCT symbol FROM tool_performance_history", fetch=True
-            ) or []
+            rows = (
+                manager.execute_query(
+                    "SELECT DISTINCT symbol FROM tool_performance_history", fetch=True
+                )
+                or []
+            )
             already = {row["symbol"] for row in rows if row.get("symbol")}
         except Exception:
             already = set()
 
     symbols_to_run = [s for s in symbols if s not in already]
+
     def _safe_print(msg: str) -> None:
         try:
             print(msg)
