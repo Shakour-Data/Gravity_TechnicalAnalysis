@@ -9,6 +9,7 @@ from database import TSEDatabaseConnector
 
 RAW_DB_URL = "postgresql://gravity:gravity_db_pass@localhost:5544/gravity_tse"
 
+
 def main():
     db = TSEDatabaseConnector(RAW_DB_URL)
     print("Symbols with candle counts (price_data):")
@@ -28,6 +29,7 @@ def main():
     for sec in sectors:
         candles = db.fetch_sector_index(sec)
         print(f"{sec}: {len(candles)} candles")
+
 
 if __name__ == "__main__":
     main()
