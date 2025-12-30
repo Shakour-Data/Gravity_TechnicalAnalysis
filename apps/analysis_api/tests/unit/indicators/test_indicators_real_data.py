@@ -51,7 +51,7 @@ class TestTechnicalIndicatorsWithTSEData:
             pytest.skip("Not enough data for RSI")
 
         # Calculate price changes
-        changes = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        changes = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
 
         # Separate gains and losses
         gains = [max(c, 0) for c in changes]
@@ -196,9 +196,9 @@ class TestTechnicalIndicatorsWithTSEData:
             if i == 0:
                 obv = tse_candles_short[i].volume
             else:
-                if tse_candles_short[i].close > tse_candles_short[i-1].close:
+                if tse_candles_short[i].close > tse_candles_short[i - 1].close:
                     obv += tse_candles_short[i].volume
-                elif tse_candles_short[i].close < tse_candles_short[i-1].close:
+                elif tse_candles_short[i].close < tse_candles_short[i - 1].close:
                     obv -= tse_candles_short[i].volume
 
         # Verify
@@ -214,7 +214,9 @@ class TestTechnicalIndicatorsWithTSEData:
             if candle.high == candle.low:
                 clv = 0
             else:
-                clv = ((candle.close - candle.low) - (candle.high - candle.close)) / (candle.high - candle.low)
+                clv = ((candle.close - candle.low) - (candle.high - candle.close)) / (
+                    candle.high - candle.low
+                )
             ad += clv * candle.volume
 
         # Verify
@@ -273,7 +275,7 @@ class TestIndicatorPerformance:
 
         # RSI simulation
         start = time.time()
-        _ = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        _ = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
         rsi_time = time.time() - start
         assert rsi_time < 0.1
 
@@ -286,14 +288,14 @@ class TestIndicatorPerformance:
         indicators = {}
 
         if len(prices) >= 20:
-            indicators['SMA20'] = sum(prices[-20:]) / 20
+            indicators["SMA20"] = sum(prices[-20:]) / 20
 
         if len(prices) >= 14:
-            indicators['RSI14'] = 50  # Simplified
+            indicators["RSI14"] = 50  # Simplified
 
         if len(volumes) > 0:
-            indicators['AVG_VOLUME'] = sum(volumes) / len(volumes)
+            indicators["AVG_VOLUME"] = sum(volumes) / len(volumes)
 
         # Verify
-        assert 'SMA20' in indicators or 'RSI14' in indicators
+        assert "SMA20" in indicators or "RSI14" in indicators
         assert all(v > 0 for v in indicators.values())
