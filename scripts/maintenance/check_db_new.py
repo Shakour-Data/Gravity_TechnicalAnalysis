@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect('data/TechAnalysis.db')
+conn = sqlite3.connect("data/TechAnalysis.db")
 cursor = conn.cursor()
 
 # Get all tables
