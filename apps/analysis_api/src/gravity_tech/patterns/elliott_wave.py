@@ -13,8 +13,6 @@ Version: 1.0.0
 License: MIT
 """
 
-
-
 from gravity_tech.models.schemas import Candle, ElliottWaveResult, SignalStrength, WavePoint
 
 
@@ -128,8 +126,9 @@ class ElliottWaveAnalyzer:
             return False
 
     @staticmethod
-    def calculate_fibonacci_targets(wave_start: float, wave_end: float,
-                                    wave_type: str = "extension") -> dict:
+    def calculate_fibonacci_targets(
+        wave_start: float, wave_end: float, wave_type: str = "extension"
+    ) -> dict:
         """
         Calculate Fibonacci projection targets
 
@@ -151,7 +150,7 @@ class ElliottWaveAnalyzer:
                 "1.382": wave_end + (diff * 0.382),
                 "1.618": wave_end + (diff * 0.618),
                 "2.0": wave_end + diff,
-                "2.618": wave_end + (diff * 1.618)
+                "2.618": wave_end + (diff * 1.618),
             }
         else:
             # For retracement (wave 2, wave 4)
@@ -160,12 +159,13 @@ class ElliottWaveAnalyzer:
                 "0.382": wave_end - (diff * 0.382),
                 "0.5": wave_end - (diff * 0.5),
                 "0.618": wave_end - (diff * 0.618),
-                "0.786": wave_end - (diff * 0.786)
+                "0.786": wave_end - (diff * 0.786),
             }
 
     @staticmethod
-    def identify_wave_pattern(candles: list[Candle],
-                             min_wave_size: int = 5) -> ElliottWaveResult | None:
+    def identify_wave_pattern(
+        candles: list[Candle], min_wave_size: int = 5
+    ) -> ElliottWaveResult | None:
         """
         Identify Elliott Wave pattern in candle data
 
@@ -194,8 +194,11 @@ class ElliottWaveAnalyzer:
 
         # Try to find 5-wave impulsive pattern
         for i in range(len(all_pivots) - 5):
-            pattern_pivots = all_pivots[i:i+6]
-            if any(abs(pattern_pivots[j + 1][0] - pattern_pivots[j][0]) < min_wave_size for j in range(5)):
+            pattern_pivots = all_pivots[i : i + 6]
+            if any(
+                abs(pattern_pivots[j + 1][0] - pattern_pivots[j][0]) < min_wave_size
+                for j in range(5)
+            ):
                 continue
 
             # Check if alternating peaks and troughs
@@ -208,12 +211,14 @@ class ElliottWaveAnalyzer:
                 # Build wave points
                 waves = []
                 for j, (idx, price, wave_type) in enumerate(pattern_pivots):
-                    waves.append(WavePoint(
-                        wave_number=j,
-                        price=float(price),
-                        timestamp=candles[idx].timestamp,
-                        wave_type=wave_type
-                    ))
+                    waves.append(
+                        WavePoint(
+                            wave_number=j,
+                            price=float(price),
+                            timestamp=candles[idx].timestamp,
+                            wave_type=wave_type,
+                        )
+                    )
 
                 # Determine if bullish or bearish
                 is_bullish = pattern_pivots[1][1] > pattern_pivots[0][1]
@@ -230,13 +235,19 @@ class ElliottWaveAnalyzer:
                     wave3_ratio = wave3 / wave1 if wave1 > 0 else 0
                     confidence = 0.6 + min(0.3, abs(wave3_ratio - 1.618) / 10)
 
-                    signal = SignalStrength.VERY_BULLISH if len(candles) - pattern_pivots[-1][0] < 5 else SignalStrength.BULLISH
+                    signal = (
+                        SignalStrength.VERY_BULLISH
+                        if len(candles) - pattern_pivots[-1][0] < 5
+                        else SignalStrength.BULLISH
+                    )
 
                     # Project wave 5 target if we're in wave 4
                     current_price = candles[-1].close
                     if w4 < current_price < w3:
                         # Possibly forming wave 5
-                        targets = ElliottWaveAnalyzer.calculate_fibonacci_targets(w0, w3, "extension")
+                        targets = ElliottWaveAnalyzer.calculate_fibonacci_targets(
+                            w0, w3, "extension"
+                        )
                         projected_target = targets.get("1.618", w5)
                     else:
                         projected_target = w5
@@ -248,7 +259,11 @@ class ElliottWaveAnalyzer:
                     wave3_ratio = wave3 / wave1 if wave1 > 0 else 0
                     confidence = 0.6 + min(0.3, abs(wave3_ratio - 1.618) / 10)
 
-                    signal = SignalStrength.VERY_BEARISH if len(candles) - pattern_pivots[-1][0] < 5 else SignalStrength.BEARISH
+                    signal = (
+                        SignalStrength.VERY_BEARISH
+                        if len(candles) - pattern_pivots[-1][0] < 5
+                        else SignalStrength.BEARISH
+                    )
                     projected_target = w5
 
                 # Determine current wave
@@ -256,11 +271,13 @@ class ElliottWaveAnalyzer:
                 current_wave = 5  # Default to wave 5 if pattern complete
 
                 for j in range(len(pattern_pivots) - 1):
-                    if pattern_pivots[j][0] <= current_idx < pattern_pivots[j+1][0]:
+                    if pattern_pivots[j][0] <= current_idx < pattern_pivots[j + 1][0]:
                         current_wave = j + 1
                         break
 
-                description = f"الگوی {'صعودی' if is_bullish else 'نزولی'} 5 موجی - موج فعلی: {current_wave}"
+                description = (
+                    f"الگوی {'صعودی' if is_bullish else 'نزولی'} 5 موجی - موج فعلی: {current_wave}"
+                )
 
                 return ElliottWaveResult(
                     wave_pattern="IMPULSIVE",
@@ -269,12 +286,12 @@ class ElliottWaveAnalyzer:
                     signal=signal,
                     confidence=min(0.9, confidence),
                     projected_target=float(projected_target),
-                    description=description
+                    description=description,
                 )
 
         # Try to find corrective ABC pattern
         for i in range(len(all_pivots) - 3):
-            pattern_pivots = all_pivots[i:i+4]
+            pattern_pivots = all_pivots[i : i + 4]
 
             if len(pattern_pivots) == 4:
                 w0 = pattern_pivots[0][1]
@@ -287,12 +304,14 @@ class ElliottWaveAnalyzer:
 
                 waves = []
                 for j, (idx, price, wave_type) in enumerate(pattern_pivots):
-                    waves.append(WavePoint(
-                        wave_number=j,
-                        price=float(price),
-                        timestamp=candles[idx].timestamp,
-                        wave_type=wave_type
-                    ))
+                    waves.append(
+                        WavePoint(
+                            wave_number=j,
+                            price=float(price),
+                            timestamp=candles[idx].timestamp,
+                            wave_type=wave_type,
+                        )
+                    )
 
                 current_idx = len(candles) - 1
                 if pattern_pivots[-1][0] < current_idx:
@@ -300,7 +319,9 @@ class ElliottWaveAnalyzer:
                 else:
                     current_wave = 3  # Pattern complete
 
-                signal = SignalStrength.BULLISH_BROKEN if is_bullish else SignalStrength.BEARISH_BROKEN
+                signal = (
+                    SignalStrength.BULLISH_BROKEN if is_bullish else SignalStrength.BEARISH_BROKEN
+                )
 
                 return ElliottWaveResult(
                     wave_pattern="CORRECTIVE",
@@ -309,7 +330,7 @@ class ElliottWaveAnalyzer:
                     signal=signal,
                     confidence=0.65,
                     projected_target=float(wc),
-                    description=f"الگوی اصلاحی ABC - موج {['A', 'B', 'C'][min(current_wave-1, 2)]}"
+                    description=f"الگوی اصلاحی ABC - موج {['A', 'B', 'C'][min(current_wave - 1, 2)]}",
                 )
 
         return None
