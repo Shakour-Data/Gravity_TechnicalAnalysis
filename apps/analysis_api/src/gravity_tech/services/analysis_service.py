@@ -9,10 +9,10 @@ Version: 1.0.0
 License: MIT
 """
 
-
 import asyncio
 
 import structlog
+
 from gravity_tech.analysis.market_phase import analyze_market_phase
 from gravity_tech.config.settings import settings
 from gravity_tech.core.contracts.analysis import (
@@ -61,9 +61,7 @@ class TechnicalAnalysisService:
         )
 
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None, TechnicalAnalysisService._analyze_sync, request
-        )
+        return await loop.run_in_executor(None, TechnicalAnalysisService._analyze_sync, request)
 
     @staticmethod
     def _analyze_sync(request: AnalysisRequest) -> TechnicalAnalysisResult:
@@ -118,11 +116,14 @@ class TechnicalAnalysisService:
                 description=phase_analysis["description"],
                 overall_score=phase_analysis["detailed_analysis"]["overall_score"],
                 trend_structure=phase_analysis["detailed_analysis"]["trend_structure"],
-                volume_confirmation=phase_analysis["detailed_analysis"]["volume_behavior"].get("status") == "analyzed",
+                volume_confirmation=phase_analysis["detailed_analysis"]["volume_behavior"].get(
+                    "status"
+                )
+                == "analyzed",
                 recommendations=phase_analysis["recommendations"],
                 detailed_scores=phase_analysis["detailed_analysis"]["scores"],
                 dow_theory_compliance=phase_analysis["dow_theory_compliance"],
-                timestamp=phase_analysis["timestamp"]
+                timestamp=phase_analysis["timestamp"],
             )
 
             compute_overall_signals(result)
@@ -131,15 +132,11 @@ class TechnicalAnalysisService:
                 "analysis_completed",
                 symbol=request.symbol,
                 overall_signal=result.overall_signal.value if result.overall_signal else None,
-                confidence=result.overall_confidence
+                confidence=result.overall_confidence,
             )
 
         except Exception as e:
-            logger.error(
-                "analysis_failed",
-                symbol=request.symbol,
-                error=str(e)
-            )
+            logger.error("analysis_failed", symbol=request.symbol, error=str(e))
             raise
 
         return result
@@ -160,14 +157,14 @@ class TechnicalAnalysisService:
                 # Convert to IndicatorResult if needed
                 if isinstance(indicator, IndicatorResult):
                     target.append(indicator)
-                elif hasattr(indicator, 'value') and hasattr(indicator, 'signal'):
+                elif hasattr(indicator, "value") and hasattr(indicator, "signal"):
                     # Convert VolatilityResult and similar types
                     converted = convert_volatility_to_indicator_result(indicator, name.upper())
                     target.append(converted)
         else:
             # Handle list case
             for indicator in indicators:
-                if hasattr(indicator, 'indicator_name') and indicator.indicator_name in skip_names:
+                if hasattr(indicator, "indicator_name") and indicator.indicator_name in skip_names:
                     continue
                 target.append(indicator)
 
@@ -212,8 +209,7 @@ class TechnicalAnalysisService:
 
     @staticmethod
     async def analyze_specific_indicators(
-        candles: list[Candle],
-        indicator_names: list[str]
+        candles: list[Candle], indicator_names: list[str]
     ) -> list[IndicatorResult]:
         """
         Analyze specific indicators only
@@ -245,27 +241,22 @@ class TechnicalAnalysisService:
             "ema": lambda: TrendIndicators.ema(candles, 20),
             "macd": lambda: TrendIndicators.macd(candles),
             "adx": lambda: TrendIndicators.adx(candles, 14),
-
             # Momentum
             "rsi": lambda: MomentumIndicators.rsi(candles, 14),
             "stochastic": lambda: MomentumIndicators.stochastic(candles, 14, 3),
             "cci": lambda: MomentumIndicators.cci(candles, 20),
-
             # Cycle
             "sine": lambda: CycleIndicators.sine_wave(candles, 20),
             "dpo": lambda: CycleIndicators.detrended_price_oscillator(candles, 20),
             "stc": lambda: CycleIndicators.schaff_trend_cycle(candles, 23, 50, 10),
             "cycle_phase": lambda: CycleIndicators.cycle_phase_index(candles, 20),
-
             # Volume
             "obv": lambda: VolumeIndicators.obv(candles),
             "cmf": lambda: VolumeIndicators.cmf(candles, 20),
             "vwap": lambda: VolumeIndicators.vwap(candles),
-
             # Volatility
             "bollinger": lambda: VolatilityIndicators.bollinger_bands(candles, 20, 2.0),
             "atr": lambda: VolatilityIndicators.atr(candles, 14),
-
             # Support/Resistance
             "pivot": lambda: SupportResistanceIndicators.pivot_points(candles),
             "fibonacci": lambda: SupportResistanceIndicators.fibonacci_retracement(candles, 50),
