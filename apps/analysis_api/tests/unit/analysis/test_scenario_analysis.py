@@ -21,28 +21,30 @@ from gravity_tech.core.domain.entities import Candle
 @pytest.fixture
 def real_tse_candles():
     """Realistic TSE market data for testing."""
-    df = create_realistic_tse_data(num_samples=200, trend='uptrend', seed=42)
+    df = create_realistic_tse_data(num_samples=200, trend="uptrend", seed=42)
     return dataframe_to_candles(df)
 
 
 @pytest.fixture
 def downtrend_candles():
     """Downtrend TSE data."""
-    df = create_realistic_tse_data(num_samples=200, trend='downtrend', seed=123)
+    df = create_realistic_tse_data(num_samples=200, trend="downtrend", seed=123)
     return dataframe_to_candles(df)
 
 
 @pytest.fixture
 def mixed_candles():
     """Mixed trend TSE data."""
-    df = create_realistic_tse_data(num_samples=200, trend='mixed', seed=456)
+    df = create_realistic_tse_data(num_samples=200, trend="mixed", seed=456)
     return dataframe_to_candles(df)
 
 
-def create_realistic_tse_data(num_samples: int = 200, trend: str = 'mixed', seed: int = 42) -> pd.DataFrame:
+def create_realistic_tse_data(
+    num_samples: int = 200, trend: str = "mixed", seed: int = 42
+) -> pd.DataFrame:
     """Create realistic TSE market data."""
     rng = np.random.default_rng(seed)
-    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq='1d')
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=num_samples, freq="1d")
 
     base_price = 15000.0
     volatility = 0.025
@@ -53,9 +55,9 @@ def create_realistic_tse_data(num_samples: int = 200, trend: str = 'mixed', seed
     volumes = []
 
     for i in range(1, num_samples):
-        if trend == 'uptrend':
+        if trend == "uptrend":
             drift = 0.0015
-        elif trend == 'downtrend':
+        elif trend == "downtrend":
             drift = -0.0015
         else:  # mixed
             if i < num_samples // 3:
@@ -74,23 +76,20 @@ def create_realistic_tse_data(num_samples: int = 200, trend: str = 'mixed', seed
 
     volumes.insert(0, base_volume)
 
-    df = pd.DataFrame({
-        'timestamp': dates,
-        'close': prices
-    })
+    df = pd.DataFrame({"timestamp": dates, "close": prices})
 
-    df['open'] = df['close'].shift(1).fillna(df['close'].iloc[0])
-    open_prices = df['open'].to_numpy()
-    close_prices = df['close'].to_numpy()
+    df["open"] = df["close"].shift(1).fillna(df["close"].iloc[0])
+    open_prices = df["open"].to_numpy()
+    close_prices = df["close"].to_numpy()
     body_highs = np.maximum(open_prices, close_prices)
     body_lows = np.minimum(open_prices, close_prices)
     wick_ranges = np.abs(close_prices) * 0.008
     wick_above = rng.uniform(0, wick_ranges)
     wick_below = rng.uniform(0, wick_ranges)
 
-    df['high'] = body_highs + wick_above
-    df['low'] = body_lows - wick_below
-    df['volume'] = volumes
+    df["high"] = body_highs + wick_above
+    df["low"] = body_lows - wick_below
+    df["volume"] = volumes
 
     return df
 
@@ -99,14 +98,16 @@ def dataframe_to_candles(df: pd.DataFrame) -> list[Candle]:
     """Convert DataFrame to Candle list."""
     candles = []
     for _, row in df.iterrows():
-        candles.append(Candle(
-            timestamp=row['timestamp'],
-            open=float(row['open']),
-            high=float(row['high']),
-            low=float(row['low']),
-            close=float(row['close']),
-            volume=int(row['volume'])
-        ))
+        candles.append(
+            Candle(
+                timestamp=row["timestamp"],
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=int(row["volume"]),
+            )
+        )
     return candles
 
 
@@ -197,7 +198,16 @@ class TestThreeScenarioAnalysis:
         analyzer, candles = scenario_analyzer
         base = analyzer._base_technical_analysis(candles)
 
-        for key in ["sma_20", "sma_50", "sma_200", "rsi", "macd_line", "signal_line", "patterns", "trend"]:
+        for key in [
+            "sma_20",
+            "sma_50",
+            "sma_200",
+            "rsi",
+            "macd_line",
+            "signal_line",
+            "patterns",
+            "trend",
+        ]:
             assert key in base
 
     def test_signal_identification_consistency(self, scenario_analyzer):
@@ -223,14 +233,16 @@ class TestThreeScenarioAnalysis:
 
     def test_analyze_three_scenarios_single_candle(self):
         """Test analysis with single candle."""
-        single_candle = [Candle(
-            timestamp=pd.Timestamp.now(),
-            open=15000.0,
-            high=15100.0,
-            low=14900.0,
-            close=15050.0,
-            volume=100000
-        )]
+        single_candle = [
+            Candle(
+                timestamp=pd.Timestamp.now(),
+                open=15000.0,
+                high=15100.0,
+                low=14900.0,
+                close=15050.0,
+                volume=100000,
+            )
+        ]
 
         analyzer = ScenarioAnalyzer()
         result = analyzer.analyze("SINGLE", single_candle, 15050.0)
@@ -250,7 +262,7 @@ class TestThreeScenarioAnalysis:
             key_signals=["signal1", "signal2"],
             recommendation="BUY",
             confidence="HIGH",
-            timeframe_days=30
+            timeframe_days=30,
         )
 
         assert result.scenario_type == "test"
@@ -270,11 +282,19 @@ class TestThreeScenarioAnalysis:
     def test_calculate_expected_values_outputs_metrics(self, scenario_analyzer):
         """Expected value calculation should return coherent metrics."""
         analyzer, _ = scenario_analyzer
-        optimistic = ScenarioResult("optimistic", 80, 60, 120.0, 100.0, 2.0, ["bullish"], "BUY", "HIGH", 30)
-        neutral = ScenarioResult("neutral", 55, 30, 110.0, 100.0, 1.0, ["balanced"], "HOLD", "MEDIUM", 60)
-        pessimistic = ScenarioResult("pessimistic", 25, 10, 90.0, 100.0, 0.5, ["bearish"], "SELL", "LOW", 90)
+        optimistic = ScenarioResult(
+            "optimistic", 80, 60, 120.0, 100.0, 2.0, ["bullish"], "BUY", "HIGH", 30
+        )
+        neutral = ScenarioResult(
+            "neutral", 55, 30, 110.0, 100.0, 1.0, ["balanced"], "HOLD", "MEDIUM", 60
+        )
+        pessimistic = ScenarioResult(
+            "pessimistic", 25, 10, 90.0, 100.0, 0.5, ["bearish"], "SELL", "LOW", 90
+        )
 
-        expected_return, expected_risk, sharpe = analyzer._calculate_expected_values(optimistic, neutral, pessimistic)
+        expected_return, expected_risk, sharpe = analyzer._calculate_expected_values(
+            optimistic, neutral, pessimistic
+        )
 
         assert expected_risk > 0
         assert sharpe >= 0
@@ -290,7 +310,9 @@ class TestThreeScenarioAnalysis:
         rec = analyzer._determine_recommended_scenario(optimistic, neutral, pessimistic)
         assert rec == "optimistic"
 
-        low_conf_opt = ScenarioResult("optimistic", 60, 45, 118.0, 100.0, 1.5, [], "BUY", "MEDIUM", 45)
+        low_conf_opt = ScenarioResult(
+            "optimistic", 60, 45, 118.0, 100.0, 1.5, [], "BUY", "MEDIUM", 45
+        )
         bearish = ScenarioResult("pessimistic", 30, 55, 80.0, 95.0, 0.3, [], "SELL", "HIGH", 45)
         rec_bear = analyzer._determine_recommended_scenario(low_conf_opt, neutral, bearish)
         assert rec_bear == "pessimistic"
@@ -298,15 +320,26 @@ class TestThreeScenarioAnalysis:
     def test_calculate_overall_confidence_thresholds(self, scenario_analyzer):
         """Overall confidence should follow probability ranges."""
         analyzer, _ = scenario_analyzer
-        optimistic_high = ScenarioResult("optimistic", 75, 65, 120.0, 100.0, 2.0, [], "BUY", "HIGH", 30)
+        optimistic_high = ScenarioResult(
+            "optimistic", 75, 65, 120.0, 100.0, 2.0, [], "BUY", "HIGH", 30
+        )
         neutral = ScenarioResult("neutral", 45, 25, 110.0, 100.0, 1.0, [], "HOLD", "MEDIUM", 60)
         pessimistic = ScenarioResult("pessimistic", 15, 10, 90.0, 100.0, 0.5, [], "SELL", "LOW", 90)
 
-        assert analyzer._calculate_overall_confidence(optimistic_high, neutral, pessimistic) == "HIGH"
+        assert (
+            analyzer._calculate_overall_confidence(optimistic_high, neutral, pessimistic) == "HIGH"
+        )
 
-        optimistic_medium = ScenarioResult("optimistic", 60, 50, 118.0, 100.0, 1.5, [], "BUY", "MEDIUM", 45)
-        neutral_prob = ScenarioResult("neutral", 50, 45, 110.0, 100.0, 1.0, [], "HOLD", "MEDIUM", 60)
-        assert analyzer._calculate_overall_confidence(optimistic_medium, neutral_prob, pessimistic) == "MEDIUM"
+        optimistic_medium = ScenarioResult(
+            "optimistic", 60, 50, 118.0, 100.0, 1.5, [], "BUY", "MEDIUM", 45
+        )
+        neutral_prob = ScenarioResult(
+            "neutral", 50, 45, 110.0, 100.0, 1.0, [], "HOLD", "MEDIUM", 60
+        )
+        assert (
+            analyzer._calculate_overall_confidence(optimistic_medium, neutral_prob, pessimistic)
+            == "MEDIUM"
+        )
 
     def test_calculate_atr_handles_short_and_long_series(self, scenario_analyzer):
         """ATR should be zero for short series and positive for long ones."""
