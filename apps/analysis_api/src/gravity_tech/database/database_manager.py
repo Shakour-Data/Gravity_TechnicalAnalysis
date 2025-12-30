@@ -33,6 +33,7 @@ from gravity_tech.config.settings import settings
 try:
     import psycopg2
     from psycopg2 import pool
+
     POSTGRES_AVAILABLE = True
 except ImportError:
     psycopg2 = None  # type: ignore
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 
 class DatabaseType(str, Enum):
     """نوع دیتابیس"""
+
     POSTGRESQL = "postgresql"
     SQLITE = "sqlite"
     JSON_FILE = "json_file"
@@ -99,6 +101,7 @@ class DatabaseManager:
         chosen_sqlite = sqlite_path or default_sqlite
         try:
             from pathlib import Path as _Path
+
             if _Path(chosen_sqlite).exists() and _Path(chosen_sqlite).is_dir():
                 chosen_sqlite = str(_Path(chosen_sqlite) / "tool_performance.db")
         except Exception:
@@ -145,7 +148,9 @@ class DatabaseManager:
                 except Exception as e:
                     logger.error(f"⚠️ PostgreSQL connection failed: {e}")
                     if not self.allow_fallback:
-                        raise RuntimeError("PostgreSQL connection failed and fallback disabled") from e
+                        raise RuntimeError(
+                            "PostgreSQL connection failed and fallback disabled"
+                        ) from e
             else:
                 msg = "PostgreSQL driver not available while connection string is set"
                 logger.error(f"⚠️ {msg}")
@@ -187,9 +192,7 @@ class DatabaseManager:
             raise RuntimeError("PostgreSQL connection string is not set")
         try:
             self.connection_pool = pool.SimpleConnectionPool(
-                minconn=1,
-                maxconn=10,
-                dsn=self.connection_string
+                minconn=1, maxconn=10, dsn=self.connection_string
             )
             logger.info("✅ PostgreSQL connection pool created")
         except Exception as e:
@@ -200,10 +203,7 @@ class DatabaseManager:
         """راه‌اندازی SQLite"""
         try:
             Path(self.sqlite_path).parent.mkdir(parents=True, exist_ok=True)
-            self.sqlite_connection = sqlite3.connect(
-                self.sqlite_path,
-                check_same_thread=False
-            )
+            self.sqlite_connection = sqlite3.connect(self.sqlite_path, check_same_thread=False)
             self.sqlite_connection.row_factory = sqlite3.Row
             logger.info(f"✅ SQLite initialized: {self.sqlite_path}")
         except Exception as e:
@@ -216,7 +216,7 @@ class DatabaseManager:
             Path(self.json_path).parent.mkdir(parents=True, exist_ok=True)
 
             if Path(self.json_path).exists():
-                with open(self.json_path, encoding='utf-8') as f:
+                with open(self.json_path, encoding="utf-8") as f:
                     self.json_data = json.load(f)
             else:
                 self.json_data = {
@@ -299,7 +299,7 @@ class DatabaseManager:
         schema_file = Path(__file__).parent / "tool_performance_history.sql"
         if schema_file.exists():
             try:
-                with open(schema_file, encoding='utf-8') as f:
+                with open(schema_file, encoding="utf-8") as f:
                     schema_sql = f.read()
 
                 conn = self.connection_pool.getconn()
@@ -317,7 +317,7 @@ class DatabaseManager:
         historical_schema_file = Path(__file__).parent / "historical_schemas.sql"
         if historical_schema_file.exists():
             try:
-                with open(historical_schema_file, encoding='utf-8') as f:
+                with open(historical_schema_file, encoding="utf-8") as f:
                     schema_sql = f.read()
 
                 conn = self.connection_pool.getconn()
@@ -674,7 +674,6 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"❌ Failed to create SQLite schema: {e}")
 
-
     def save_backtest_run(
         self,
         *,
@@ -799,10 +798,7 @@ class DatabaseManager:
         raise ValueError("SQL placeholders not supported for JSON storage")
 
     def execute_query(
-        self,
-        query: str,
-        params: tuple | None = None,
-        fetch: bool = False
+        self, query: str, params: tuple | None = None, fetch: bool = False
     ) -> list[dict[str, Any]] | None:
         """
         اجرای query با fallback
@@ -837,10 +833,7 @@ class DatabaseManager:
                 rows = cursor.fetchall()
                 if self.db_type == DatabaseType.POSTGRESQL:
                     columns = [desc[0] for desc in cursor.description or []]
-                    result = [
-                        dict(zip(columns, row, strict=True))
-                        for row in rows
-                    ]
+                    result = [dict(zip(columns, row, strict=True)) for row in rows]
                 else:  # SQLite
                     result = [dict(row) for row in rows]
 
@@ -881,7 +874,7 @@ class DatabaseManager:
         volatility_level: float | None = None,
         trend_strength: float | None = None,
         volume_profile: str | None = None,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> int:
         """
         ثبت عملکرد ابزار
@@ -892,32 +885,52 @@ class DatabaseManager:
 
         if self.db_type == DatabaseType.JSON_FILE:
             return self._record_tool_performance_json(
-                tool_name, tool_category, symbol, timeframe, market_regime,
-                prediction_type, confidence_score, volatility_level,
-                trend_strength, volume_profile, metadata
+                tool_name,
+                tool_category,
+                symbol,
+                timeframe,
+                market_regime,
+                prediction_type,
+                confidence_score,
+                volatility_level,
+                trend_strength,
+                volume_profile,
+                metadata,
             )
 
-        query = """
+        query = (
+            """
         INSERT INTO tool_performance_history (
             tool_name, tool_category, symbol, timeframe, market_regime,
             volatility_level, trend_strength, volume_profile,
             prediction_type, confidence_score, metadata
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
-        """ if self.db_type == DatabaseType.POSTGRESQL else """
+        """
+            if self.db_type == DatabaseType.POSTGRESQL
+            else """
         INSERT INTO tool_performance_history (
             tool_name, tool_category, symbol, timeframe, market_regime,
             volatility_level, trend_strength, volume_profile,
             prediction_type, confidence_score, metadata
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
+        )
 
         metadata_json = json.dumps(metadata) if metadata else None
 
         params = (
-            tool_name, tool_category, symbol, timeframe, market_regime,
-            volatility_level, trend_strength, volume_profile,
-            prediction_type, confidence_score, metadata_json
+            tool_name,
+            tool_category,
+            symbol,
+            timeframe,
+            market_regime,
+            volatility_level,
+            trend_strength,
+            volume_profile,
+            prediction_type,
+            confidence_score,
+            metadata_json,
         )
 
         try:
@@ -1000,8 +1013,14 @@ class DatabaseManager:
             """
             params = [
                 (
-                    r["symbol"], r["timeframe"], r["timestamp"],
-                    float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["volume"])
+                    r["symbol"],
+                    r["timeframe"],
+                    r["timestamp"],
+                    float(r["open"]),
+                    float(r["high"]),
+                    float(r["low"]),
+                    float(r["close"]),
+                    float(r["volume"]),
                 )
                 for r in rows
             ]
@@ -1031,8 +1050,14 @@ class DatabaseManager:
             """
             params = [
                 (
-                    r["symbol"], r["timeframe"], r["timestamp"],
-                    float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["volume"])
+                    r["symbol"],
+                    r["timeframe"],
+                    r["timestamp"],
+                    float(r["open"]),
+                    float(r["high"]),
+                    float(r["low"]),
+                    float(r["close"]),
+                    float(r["volume"]),
                 )
                 for r in rows
             ]
@@ -1064,7 +1089,12 @@ class DatabaseManager:
 
         cleaned: list[dict[str, Any]] = []
         for p in patterns:
-            if not (p.get("symbol") and p.get("timeframe") and p.get("timestamp") and p.get("pattern_name")):
+            if not (
+                p.get("symbol")
+                and p.get("timeframe")
+                and p.get("timestamp")
+                and p.get("pattern_name")
+            ):
                 continue
             cleaned.append(p)
 
@@ -1109,9 +1139,20 @@ class DatabaseManager:
 
             params = [
                 (
-                    p.get("symbol"), p.get("timeframe"), p.get("timestamp"), p.get("pattern_type"), p.get("pattern_name"),
-                    p.get("confidence"), p.get("strength"), p.get("start_time"), p.get("end_time"),
-                    p.get("start_price"), p.get("end_price"), p.get("prediction"), p.get("target_price"), p.get("stop_loss"),
+                    p.get("symbol"),
+                    p.get("timeframe"),
+                    p.get("timestamp"),
+                    p.get("pattern_type"),
+                    p.get("pattern_name"),
+                    p.get("confidence"),
+                    p.get("strength"),
+                    p.get("start_time"),
+                    p.get("end_time"),
+                    p.get("start_price"),
+                    p.get("end_price"),
+                    p.get("prediction"),
+                    p.get("target_price"),
+                    p.get("stop_loss"),
                     json.dumps(p.get("metadata", {})) if p.get("metadata") is not None else None,
                 )
                 for p in cleaned
@@ -1150,9 +1191,20 @@ class DatabaseManager:
 
             params = [
                 (
-                    p.get("symbol"), p.get("timeframe"), p.get("timestamp"), p.get("pattern_type"), p.get("pattern_name"),
-                    p.get("confidence"), p.get("strength"), p.get("start_time"), p.get("end_time"),
-                    p.get("start_price"), p.get("end_price"), p.get("prediction"), p.get("target_price"), p.get("stop_loss"),
+                    p.get("symbol"),
+                    p.get("timeframe"),
+                    p.get("timestamp"),
+                    p.get("pattern_type"),
+                    p.get("pattern_name"),
+                    p.get("confidence"),
+                    p.get("strength"),
+                    p.get("start_time"),
+                    p.get("end_time"),
+                    p.get("start_price"),
+                    p.get("end_price"),
+                    p.get("prediction"),
+                    p.get("target_price"),
+                    p.get("stop_loss"),
                     json.dumps(p.get("metadata", {})) if p.get("metadata") is not None else None,
                 )
                 for p in cleaned
@@ -1168,9 +1220,18 @@ class DatabaseManager:
         raise RuntimeError(f"Unsupported db_type for patterns: {self.db_type}")
 
     def _record_tool_performance_json(
-        self, tool_name, tool_category, symbol, timeframe, market_regime,
-        prediction_type, confidence_score, volatility_level,
-        trend_strength, volume_profile, metadata
+        self,
+        tool_name,
+        tool_category,
+        symbol,
+        timeframe,
+        market_regime,
+        prediction_type,
+        confidence_score,
+        volatility_level,
+        trend_strength,
+        volume_profile,
+        metadata,
     ) -> int:
         """ثبت عملکرد در JSON"""
 
@@ -1188,7 +1249,7 @@ class DatabaseManager:
             "confidence_score": confidence_score,
             "metadata": metadata,
             "prediction_timestamp": datetime.now(UTC).isoformat(),
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         self.json_data["tool_performance_history"].append(record)
@@ -1197,10 +1258,7 @@ class DatabaseManager:
         return record["id"]
 
     def get_tool_accuracy(
-        self,
-        tool_name: str,
-        market_regime: str | None = None,
-        days: int = 30
+        self, tool_name: str, market_regime: str | None = None, days: int = 30
     ) -> dict[str, Any]:
         """
         دریافت دقت یک ابزار
@@ -1217,7 +1275,8 @@ class DatabaseManager:
         if self.db_type == DatabaseType.JSON_FILE:
             return self._get_tool_accuracy_json(tool_name, market_regime, days)
 
-        query = """
+        query = (
+            """
         SELECT
             tool_name,
             market_regime,
@@ -1231,7 +1290,9 @@ class DatabaseManager:
           AND prediction_timestamp >= NOW() - make_interval(days => %s)
           AND success IS NOT NULL
         GROUP BY tool_name, market_regime
-        """ if self.db_type == DatabaseType.POSTGRESQL else """
+        """
+            if self.db_type == DatabaseType.POSTGRESQL
+            else """
         SELECT
             tool_name,
             market_regime,
@@ -1246,9 +1307,13 @@ class DatabaseManager:
           AND success IS NOT NULL
         GROUP BY tool_name, market_regime
         """
+        )
 
-        params = (tool_name, market_regime, market_regime, days) if self.db_type == DatabaseType.POSTGRESQL \
-                 else (tool_name, market_regime, market_regime, days)
+        params = (
+            (tool_name, market_regime, market_regime, days)
+            if self.db_type == DatabaseType.POSTGRESQL
+            else (tool_name, market_regime, market_regime, days)
+        )
 
         results = self.execute_query(query, params, fetch=True)
 
@@ -1261,7 +1326,7 @@ class DatabaseManager:
                     "total_predictions": row.get("total_predictions", 0),
                     "correct_predictions": row.get("correct_predictions", 0),
                     "accuracy": row.get("accuracy", 0.0),
-                    "avg_confidence": row.get("avg_confidence", 0.0)
+                    "avg_confidence": row.get("avg_confidence", 0.0),
                 }
             # Fallback for unexpected cursor return types
             return {
@@ -1270,7 +1335,7 @@ class DatabaseManager:
                 "total_predictions": row[2] if len(row) > 2 else 0,
                 "correct_predictions": row[3] if len(row) > 3 else 0,
                 "accuracy": row[4] if len(row) > 4 else 0.0,
-                "avg_confidence": row[5] if len(row) > 5 else 0.0
+                "avg_confidence": row[5] if len(row) > 5 else 0.0,
             }
 
         return {
@@ -1279,17 +1344,14 @@ class DatabaseManager:
             "total_predictions": 0,
             "correct_predictions": 0,
             "accuracy": 0.0,
-            "avg_confidence": 0.0
+            "avg_confidence": 0.0,
         }
 
     # ------------------------------------------------------------------
     # Aggregation: tool_performance_stats
     # ------------------------------------------------------------------
     def aggregate_tool_performance_stats(
-        self,
-        *,
-        period_hours: int = 24,
-        now: datetime | None = None
+        self, *, period_hours: int = 24, now: datetime | None = None
     ) -> int:
         """Aggregate tool_performance_history into tool_performance_stats.
 
@@ -1505,27 +1567,30 @@ class DatabaseManager:
                 continue
 
             key = (tool_name, tool_category, market_regime, timeframe)
-            bucket = groups.setdefault(key, {
-                "tool_name": tool_name,
-                "tool_category": tool_category,
-                "market_regime": market_regime,
-                "timeframe": timeframe,
-                "period_start": period_start,
-                "period_end": period_end,
-                "total_predictions": 0,
-                "correct_predictions": 0,
-                "confidence_sum": 0.0,
-                "confidence_count": 0,
-                "actual_sum": 0.0,
-                "actual_count": 0,
-                "bullish_predictions": 0,
-                "bearish_predictions": 0,
-                "neutral_predictions": 0,
-                "bullish_correct": 0,
-                "bearish_correct": 0,
-                "neutral_correct": 0,
-                "symbol_stats": {},
-            })
+            bucket = groups.setdefault(
+                key,
+                {
+                    "tool_name": tool_name,
+                    "tool_category": tool_category,
+                    "market_regime": market_regime,
+                    "timeframe": timeframe,
+                    "period_start": period_start,
+                    "period_end": period_end,
+                    "total_predictions": 0,
+                    "correct_predictions": 0,
+                    "confidence_sum": 0.0,
+                    "confidence_count": 0,
+                    "actual_sum": 0.0,
+                    "actual_count": 0,
+                    "bullish_predictions": 0,
+                    "bearish_predictions": 0,
+                    "neutral_predictions": 0,
+                    "bullish_correct": 0,
+                    "bearish_correct": 0,
+                    "neutral_correct": 0,
+                    "symbol_stats": {},
+                },
+            )
 
             bucket["total_predictions"] += 1
 
@@ -1573,24 +1638,29 @@ class DatabaseManager:
 
             confidence_avg = (
                 bucket["confidence_sum"] / bucket["confidence_count"]
-                if bucket["confidence_count"] > 0 else None
+                if bucket["confidence_count"] > 0
+                else None
             )
             actual_avg = (
                 bucket["actual_sum"] / bucket["actual_count"]
-                if bucket["actual_count"] > 0 else None
+                if bucket["actual_count"] > 0
+                else None
             )
 
             bullish_sr = (
                 bucket["bullish_correct"] / bucket["bullish_predictions"]
-                if bucket["bullish_predictions"] > 0 else None
+                if bucket["bullish_predictions"] > 0
+                else None
             )
             bearish_sr = (
                 bucket["bearish_correct"] / bucket["bearish_predictions"]
-                if bucket["bearish_predictions"] > 0 else None
+                if bucket["bearish_predictions"] > 0
+                else None
             )
             neutral_sr = (
                 bucket["neutral_correct"] / bucket["neutral_predictions"]
-                if bucket["neutral_predictions"] > 0 else None
+                if bucket["neutral_predictions"] > 0
+                else None
             )
 
             best_symbol = None
@@ -1702,8 +1772,7 @@ class DatabaseManager:
             return record["id"]
 
         placeholders = "%s" if self.db_type == DatabaseType.POSTGRESQL else "?"
-        insert_query = (
-            f"""
+        insert_query = f"""
             INSERT INTO tool_recommendations_log (
                 request_id, user_id, symbol, timeframe, analysis_goal, trading_style,
                 market_regime, volatility_level, trend_strength, recommended_tools,
@@ -1713,7 +1782,6 @@ class DatabaseManager:
                       {placeholders}, {placeholders}, {placeholders}, {placeholders},
                       {placeholders}, {placeholders}, {placeholders}, {placeholders}, {placeholders})
             """
-        )
 
         params = (
             payload["request_id"],
@@ -1860,7 +1928,8 @@ class DatabaseManager:
         cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         records = [
-            r for r in self.json_data["tool_performance_history"]
+            r
+            for r in self.json_data["tool_performance_history"]
             if r["tool_name"] == tool_name
             and (market_regime is None or r["market_regime"] == market_regime)
             and r.get("success") is not None
@@ -1870,7 +1939,9 @@ class DatabaseManager:
         total = len(records)
         correct = sum(1 for r in records if r.get("success"))
         accuracy = correct / total if total > 0 else 0.0
-        avg_confidence = sum(r.get("confidence_score", 0) for r in records) / total if total > 0 else 0.0
+        avg_confidence = (
+            sum(r.get("confidence_score", 0) for r in records) / total if total > 0 else 0.0
+        )
 
         return {
             "tool_name": tool_name,
@@ -1878,7 +1949,7 @@ class DatabaseManager:
             "total_predictions": total,
             "correct_predictions": correct,
             "accuracy": accuracy,
-            "avg_confidence": avg_confidence
+            "avg_confidence": avg_confidence,
         }
 
     def _check_database_exists(self) -> bool:
@@ -1907,7 +1978,7 @@ class DatabaseManager:
 
         info: dict[str, Any] = {
             "type": self.db_type.value,
-            "connected": self._check_database_exists()
+            "connected": self._check_database_exists(),
         }
 
         if self.db_type == DatabaseType.SQLITE:
@@ -1940,7 +2011,10 @@ class DatabaseManager:
         try:
             results = self.execute_query(query, fetch=True)
             if results:
-                return [r["name" if self.db_type == DatabaseType.SQLITE else "tablename"] for r in results]
+                return [
+                    r["name" if self.db_type == DatabaseType.SQLITE else "tablename"]
+                    for r in results
+                ]
         except Exception:
             pass
 
@@ -1965,14 +2039,12 @@ class DatabaseManager:
                     for r in results
                 ]
         else:  # PostgreSQL
-            query = (
-                """
+            query = """
             SELECT column_name, data_type, is_nullable, column_default
             FROM information_schema.columns
             WHERE table_name = %s
             ORDER BY ordinal_position
             """
-            )
             results = self.execute_query(query, (table_name,), fetch=True)
             if results:
                 return [
@@ -2041,7 +2113,9 @@ class DatabaseManager:
         logger.info("✅ No pending migrations")
         return []
 
-    def create_backup(self, tables: list[str] | None = None, row_limit: int | None = None) -> dict[str, Any]:
+    def create_backup(
+        self, tables: list[str] | None = None, row_limit: int | None = None
+    ) -> dict[str, Any]:
         """ایجاد backup از دیتابیس"""
         max_rows = row_limit if row_limit is not None else settings.db_backup_row_limit
         backup_data: dict[str, Any] = {
@@ -2055,12 +2129,12 @@ class DatabaseManager:
 
             if self.db_type == DatabaseType.JSON_FILE:
                 for table in table_list:
-                    rows = json.loads(
-                        json.dumps(self.json_data.get(table, []), default=str)
-                    )
+                    rows = json.loads(json.dumps(self.json_data.get(table, []), default=str))
                     if max_rows and len(rows) > max_rows:
                         rows = rows[:max_rows]
-                        logger.warning(f"⚠️ Backup truncated for table={table} at {max_rows} rows (JSON storage)")
+                        logger.warning(
+                            f"⚠️ Backup truncated for table={table} at {max_rows} rows (JSON storage)"
+                        )
                     backup_data["data"][table] = rows
                 logger.info("✅ Backup created successfully (JSON storage)")
                 return backup_data
@@ -2099,9 +2173,7 @@ class DatabaseManager:
         return result
 
     def stream_table_records(
-        self,
-        table_name: str,
-        chunk_size: int = 1000
+        self, table_name: str, chunk_size: int = 1000
     ) -> Iterator[dict[str, Any]]:
         """بازگرداندن رکوردهای یک جدول به صورت chunk برای کاهش مصرف حافظه"""
 
@@ -2175,7 +2247,7 @@ class DatabaseManager:
     def _save_json(self):
         """ذخیره داده‌ها در JSON file"""
         try:
-            with open(self.json_path, 'w', encoding='utf-8') as f:
+            with open(self.json_path, "w", encoding="utf-8") as f:
                 json.dump(self.json_data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"❌ Failed to save JSON: {e}")
@@ -2229,22 +2301,13 @@ def main():
     parser.add_argument(
         "--type",
         choices=["postgresql", "sqlite", "json"],
-        help="نوع دیتابیس (اگر مشخص نشود، خودکار تشخیص داده می‌شود)"
+        help="نوع دیتابیس (اگر مشخص نشود، خودکار تشخیص داده می‌شود)",
     )
+    parser.add_argument("--connection", help="رشته اتصال PostgreSQL")
     parser.add_argument(
-        "--connection",
-        help="رشته اتصال PostgreSQL"
+        "--sqlite-path", default="data/tool_performance.db", help="مسیر فایل SQLite"
     )
-    parser.add_argument(
-        "--sqlite-path",
-        default="data/tool_performance.db",
-        help="مسیر فایل SQLite"
-    )
-    parser.add_argument(
-        "--json-path",
-        default="data/tool_performance.json",
-        help="مسیر فایل JSON"
-    )
+    parser.add_argument("--json-path", default="data/tool_performance.json", help="مسیر فایل JSON")
 
     args = parser.parse_args()
 
@@ -2260,7 +2323,7 @@ def main():
             connection_string=args.connection,
             sqlite_path=args.sqlite_path,
             json_path=args.json_path,
-            auto_setup=True
+            auto_setup=True,
         ) as db:
             print("\n✅ Database setup complete!")
             if db.db_type is not None:
