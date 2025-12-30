@@ -21,10 +21,11 @@ License: MIT
 - Adjustment calculations
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+import numpy as np
 import structlog
 from pydantic import BaseModel, Field
 from redis import asyncio as aioredis
@@ -34,6 +35,7 @@ logger = structlog.get_logger()
 
 class CandleData(BaseModel):
     """Single candle/bar data point with adjusted values."""
+
     timestamp: datetime
     adjusted_open: float = Field(gt=0, description="Open price adjusted for splits/dividends")
     adjusted_high: float = Field(gt=0, description="High price adjusted for splits/dividends")
@@ -42,13 +44,12 @@ class CandleData(BaseModel):
     adjusted_volume: int = Field(ge=0, description="Volume adjusted for splits")
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class DataServiceResponse(BaseModel):
     """Response from Data Ingestion Service."""
+
     symbol: str
     timeframe: str
     candles: list[CandleData]
@@ -79,7 +80,7 @@ class DataServiceClient:
         timeout: float = 30.0,
         max_retries: int = 3,
         redis_url: str | None = None,
-        cache_ttl: int = 21600  # 6 hours
+        cache_ttl: int = 21600,  # 6 hours
     ):
         """
         Initialize Data Service client.
@@ -91,7 +92,7 @@ class DataServiceClient:
             redis_url: Redis connection URL for caching
             cache_ttl: Cache TTL in seconds (default: 6 hours)
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
         self.cache_ttl = cache_ttl
@@ -102,8 +103,7 @@ class DataServiceClient:
 
         # HTTP client with retry
         self.client = httpx.AsyncClient(
-            timeout=timeout,
-            transport=httpx.AsyncHTTPTransport(retries=max_retries)
+            timeout=timeout, transport=httpx.AsyncHTTPTransport(retries=max_retries)
         )
 
         # Redis cache (optional)
@@ -116,7 +116,7 @@ class DataServiceClient:
             base_url=base_url,
             timeout=timeout,
             max_retries=max_retries,
-            cache_enabled=bool(redis_url)
+            cache_enabled=bool(redis_url),
         )
 
     async def get_candles(
@@ -125,7 +125,7 @@ class DataServiceClient:
         timeframe: str = "1d",
         start_date: datetime | None = None,
         end_date: datetime | None = None,
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> list[CandleData]:
         """
         Get adjusted candle data from Data Service.
@@ -146,7 +146,7 @@ class DataServiceClient:
         """
         # Default date range
         if end_date is None:
-            end_date = datetime.now(timezone.utc)
+            end_date = datetime.now(UTC)
         if start_date is None:
             start_date = end_date - timedelta(days=365)
 
@@ -169,7 +169,7 @@ class DataServiceClient:
             symbol=symbol,
             timeframe=timeframe,
             start_date=start_date.date(),
-            end_date=end_date.date()
+            end_date=end_date.date(),
         )
 
         try:
@@ -179,8 +179,8 @@ class DataServiceClient:
                     "timeframe": timeframe,
                     "start_date": start_date.isoformat(),
                     "end_date": end_date.isoformat(),
-                    "fields": "adjusted_open,adjusted_high,adjusted_low,adjusted_close,adjusted_volume"
-                }
+                    "fields": "adjusted_open,adjusted_high,adjusted_low,adjusted_close,adjusted_volume",
+                },
             )
             response.raise_for_status()
 
@@ -200,7 +200,7 @@ class DataServiceClient:
                 symbol=symbol,
                 timeframe=timeframe,
                 count=len(service_response.candles),
-                data_quality=service_response.metadata.get("data_quality_score", "N/A")
+                data_quality=service_response.metadata.get("data_quality_score", "N/A"),
             )
 
             return service_response.candles
@@ -210,15 +210,12 @@ class DataServiceClient:
                 "data_service_error",
                 symbol=symbol,
                 status_code=e.response.status_code,
-                error=str(e)
+                error=str(e),
             )
             raise
         except Exception as e:
             logger.error(
-                "unexpected_error",
-                symbol=symbol,
-                error=str(e),
-                error_type=type(e).__name__
+                "unexpected_error", symbol=symbol, error=str(e), error_type=type(e).__name__
             )
             raise
 
@@ -235,7 +232,9 @@ class DataServiceClient:
         if not candles:
             raise ValueError("No candle data received")
         if len(candles) < self._min_candles:
-            raise ValueError(f"Received only {len(candles)} candles (min {self._min_candles} required)")
+            raise ValueError(
+                f"Received only {len(candles)} candles (min {self._min_candles} required)"
+            )
 
         # Check for required fields
         for i, candle in enumerate(candles):
@@ -256,15 +255,17 @@ class DataServiceClient:
                     index=i,
                     close=candle.adjusted_close,
                     low=candle.adjusted_low,
-                    high=candle.adjusted_high
+                    high=candle.adjusted_high,
                 )
 
         # Check chronological order
         for i in range(1, len(candles)):
-            if candles[i].timestamp <= candles[i-1].timestamp:
+            if candles[i].timestamp <= candles[i - 1].timestamp:
                 raise ValueError(f"Candles not in chronological order at index {i}")
 
-    def _validate_request(self, symbol: str, timeframe: str, start_date: datetime, end_date: datetime) -> None:
+    def _validate_request(
+        self, symbol: str, timeframe: str, start_date: datetime, end_date: datetime
+    ) -> None:
         """Validate request parameters before hitting the service."""
         if not symbol or len(symbol) < 2:
             raise ValueError("symbol is required and must be at least 2 characters")
@@ -276,8 +277,7 @@ class DataServiceClient:
             raise ValueError("start_date must be before end_date")
         if (end_date - start_date).days > self._max_days:
             raise ValueError(f"date range too large (>{self._max_days} days)")
-
-        logger.debug("candle_validation_passed", count=len(candles))
+        logger.debug("request_validation_passed", symbol=symbol, timeframe=timeframe)
 
     async def _get_from_cache(self, key: str) -> list[CandleData] | None:
         """Get candles from Redis cache."""
@@ -288,6 +288,7 @@ class DataServiceClient:
             cached_json = await self.redis.get(key)
             if cached_json:
                 import json
+
                 candles_data = json.loads(cached_json)
                 return [CandleData(**c) for c in candles_data]
         except Exception as e:
@@ -302,6 +303,7 @@ class DataServiceClient:
 
         try:
             import json
+
             candles_json = json.dumps([c.dict() for c in candles], default=str)
             await self.redis.setex(key, self.cache_ttl, candles_json)
             logger.debug("cache_saved", key=key, ttl=self.cache_ttl)
