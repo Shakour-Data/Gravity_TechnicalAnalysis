@@ -14,8 +14,9 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from gravity_tech.config.settings import settings
 from pydantic import BaseModel
+
+from gravity_tech.config.settings import settings
 
 router = APIRouter()
 
@@ -47,13 +48,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     # Create token
     access_token_expires = datetime.now(UTC) + timedelta(minutes=settings.jwt_expiration_minutes)
     access_token = jwt.encode(
-        {
-            "sub": form_data.username,
-            "exp": access_token_expires,
-            "scopes": ["read", "write"]
-        },
+        {"sub": form_data.username, "exp": access_token_expires, "scopes": ["read", "write"]},
         settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm
+        algorithm=settings.jwt_algorithm,
     )
 
     return Token(access_token=access_token, token_type="bearer")
