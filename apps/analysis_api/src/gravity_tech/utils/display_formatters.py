@@ -65,6 +65,8 @@ def score_to_display(score: float) -> int:
 
     # Round to integer
     return int(round(display_score))
+
+
 def confidence_to_display(confidence: float) -> int:
     """
     Convert confidence from range [0, 1] to [0, 100].
@@ -93,6 +95,8 @@ def confidence_to_display(confidence: float) -> int:
 
     # Round to integer
     return int(round(display_confidence))
+
+
 def display_to_score(display_score: int | float) -> float:
     """
     Convert display score from [-100, +100] to [-1, +1].
@@ -121,6 +125,8 @@ def display_to_score(display_score: int | float) -> float:
 
     # Convert to [-1, +1]
     return display_score / 100.0
+
+
 def display_to_confidence(display_confidence: int | float) -> float:
     """
     Convert display confidence from [0, 100] to [0, 1].
@@ -144,6 +150,8 @@ def display_to_confidence(display_confidence: int | float) -> float:
 
     # Convert to [0, 1]
     return display_confidence / 100.0
+
+
 def get_signal_label(score: float, use_persian: bool = False) -> str:
     """
     Convert score to signal label.
@@ -191,6 +199,8 @@ def get_signal_label(score: float, use_persian: bool = False) -> str:
             return "BEARISH"
         else:
             return "VERY_BEARISH"
+
+
 def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
     """
     Convert confidence to quality label.
@@ -234,9 +244,12 @@ def get_confidence_label(confidence: float, use_persian: bool = False) -> str:
             return "LOW"
         else:
             return "VERY_LOW"
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Additional Formatting Functions
 # ═══════════════════════════════════════════════════════════════════
+
 
 def format_price(price: float | int, currency: str = "$", decimals: int = 2) -> str:
     """
