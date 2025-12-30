@@ -1,6 +1,7 @@
 """
 Test suite for volume indicators
 """
+
 import numpy as np
 import pytest
 from gravity_tech.core.indicators.volume import VolumeIndicators
@@ -35,7 +36,7 @@ class TestVolumeIndicators:
                 low=low_price,
                 close=close_price,
                 volume=max(1000, volume),  # Ensure positive volume
-                symbol="TEST"
+                symbol="TEST",
             )
             candles.append(candle)
 
@@ -49,100 +50,100 @@ class TestVolumeIndicators:
         assert len(results) > 0
 
         for result in results:
-            assert hasattr(result, 'indicator_name')
-            assert hasattr(result, 'value')
-            assert hasattr(result, 'signal')
-            assert hasattr(result, 'confidence')
+            assert hasattr(result, "indicator_name")
+            assert hasattr(result, "value")
+            assert hasattr(result, "signal")
+            assert hasattr(result, "confidence")
 
     def test_accumulation_distribution_basic(self, sample_candles):
         """Test basic accumulation/distribution calculation."""
         result = VolumeIndicators.accumulation_distribution(sample_candles)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'A/D Line'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "A/D Line"
 
     def test_volume_rate_of_change_basic(self, sample_candles):
         """Test basic volume rate of change calculation."""
         result = VolumeIndicators.volume_rate_of_change(sample_candles, period=14)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'VROC(14)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "VROC(14)"
 
     def test_volume_profile_basic(self, sample_candles):
         """Test basic volume profile calculation."""
         result = VolumeIndicators.volume_profile(sample_candles, bins=20)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Volume Profile(20)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Volume Profile(20)"
 
     def test_volume_oscillator_basic(self, sample_candles):
         """Test basic volume oscillator calculation."""
         result = VolumeIndicators.volume_oscillator(sample_candles, short_period=5, long_period=10)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'Volume Oscillator(5,10)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "Volume Oscillator(5,10)"
 
     def test_obv_basic(self, sample_candles):
         """Test basic OBV calculation."""
         result = VolumeIndicators.obv(sample_candles)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'OBV'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "OBV"
 
     def test_cmf_basic(self, sample_candles):
         """Test basic Chaikin Money Flow calculation."""
         result = VolumeIndicators.cmf(sample_candles, period=20)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'CMF(20)'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "CMF(20)"
 
     def test_vwap_basic(self, sample_candles):
         """Test basic VWAP calculation."""
         result = VolumeIndicators.vwap(sample_candles)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'VWAP'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "VWAP"
 
     def test_ad_line_basic(self, sample_candles):
         """Test basic Accumulation/Distribution Line calculation."""
         result = VolumeIndicators.ad_line(sample_candles)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'A/D Line'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "A/D Line"
 
     def test_pvt_basic(self, sample_candles):
         """Test basic Price Volume Trend calculation."""
         result = VolumeIndicators.pvt(sample_candles)
 
-        assert hasattr(result, 'indicator_name')
-        assert hasattr(result, 'value')
-        assert hasattr(result, 'signal')
-        assert hasattr(result, 'confidence')
-        assert result.indicator_name == 'PVT'
+        assert hasattr(result, "indicator_name")
+        assert hasattr(result, "value")
+        assert hasattr(result, "signal")
+        assert hasattr(result, "confidence")
+        assert result.indicator_name == "PVT"
 
     def test_accumulation_distribution_insufficient_data(self, sample_candles):
         """Test accumulation/distribution with insufficient data."""
@@ -163,8 +164,10 @@ class TestVolumeIndicators:
         """Test volume oscillator with insufficient data."""
         # Volume oscillator may not have validation, so test with minimal data
         try:
-            result = VolumeIndicators.volume_oscillator(sample_candles[:5], short_period=5, long_period=10)
-            assert hasattr(result, 'indicator_name')
+            result = VolumeIndicators.volume_oscillator(
+                sample_candles[:5], short_period=5, long_period=10
+            )
+            assert hasattr(result, "indicator_name")
         except (ValueError, IndexError, KeyError):
             pass  # Expected for insufficient data
 
@@ -175,7 +178,9 @@ class TestVolumeIndicators:
 
     def test_cmf_insufficient_data(self, sample_candles):
         """Test Chaikin Money Flow with insufficient data."""
-        with pytest.raises(ValueError, match="Not enough candles or invalid period for Chaikin Money Flow"):
+        with pytest.raises(
+            ValueError, match="Not enough candles or invalid period for Chaikin Money Flow"
+        ):
             VolumeIndicators.cmf(sample_candles[:10], period=20)
 
     def test_vwap_insufficient_data(self, sample_candles):
@@ -188,7 +193,7 @@ class TestVolumeIndicators:
         # AD Line may not handle empty list gracefully
         try:
             result = VolumeIndicators.ad_line([])
-            assert hasattr(result, 'indicator_name')
+            assert hasattr(result, "indicator_name")
         except (ValueError, IndexError, KeyError):
             pass  # Expected for insufficient data
 
@@ -196,7 +201,7 @@ class TestVolumeIndicators:
         """Test Price Volume Trend with insufficient data."""
         # PVT doesn't have validation, so it should work with any data
         result = VolumeIndicators.pvt(sample_candles[:1])
-        assert hasattr(result, 'indicator_name')
+        assert hasattr(result, "indicator_name")
 
     def test_calculate_all_insufficient_data(self, sample_candles):
         """Test calculate_all with insufficient data."""
