@@ -20,7 +20,6 @@ import math
 import os
 import sqlite3
 import sys
-from pathlib import Path
 
 import numpy as np
 
@@ -32,7 +31,7 @@ from _paths import REPO_ROOT, extend_sys_path
 
 extend_sys_path()
 
-from gravity_tech.core.domain.entities import Candle, CoreSignalStrength, PatternType  # noqa: E402
+from gravity_tech.core.domain.entities import Candle, CoreSignalStrength  # noqa: E402
 from gravity_tech.core.patterns.candlestick import CandlestickPatterns  # noqa: E402
 from gravity_tech.core.patterns.classical import ClassicalPatterns  # noqa: E402
 
@@ -67,7 +66,9 @@ def fast_pragmas(con: sqlite3.Connection) -> None:
 
 def fetch_symbols_and_window(con: sqlite3.Connection) -> tuple[list[str], dt.date, dt.date]:
     cur = con.cursor()
-    cur.execute("select max(date(timestamp)) from market_data_cache where timeframe=?", (TIMEFRAME,))
+    cur.execute(
+        "select max(date(timestamp)) from market_data_cache where timeframe=?", (TIMEFRAME,)
+    )
     max_ts = cur.fetchone()[0]
     if not max_ts:
         raise RuntimeError("market_data_cache is empty for timeframe 1d")
@@ -211,7 +212,9 @@ def detect_patterns_for_symbol(symbol: str, candles: list[Candle]) -> list[tuple
     return rows
 
 
-def compute_backtest_row(symbol: str, candles: list[Candle], start: dt.date, end: dt.date) -> tuple | None:
+def compute_backtest_row(
+    symbol: str, candles: list[Candle], start: dt.date, end: dt.date
+) -> tuple | None:
     """Compute a simple buy-and-hold style backtest over the window."""
     filtered = [c for c in candles if start <= c.timestamp.date() <= end]
     if len(filtered) < 2:
@@ -248,7 +251,7 @@ def compute_backtest_row(symbol: str, candles: list[Candle], start: dt.date, end
         filtered[0].timestamp.isoformat(),
         filtered[-1].timestamp.isoformat(),
         "v0.1-auto",
-        dt.datetime.now(dt.timezone.utc).isoformat(),
+        dt.datetime.now(dt.UTC).isoformat(),
     )
 
 
@@ -279,7 +282,9 @@ def load_future_returns(
     return returns
 
 
-def compute_ml_weights(con: sqlite3.Connection, start: dt.date, end: dt.date) -> tuple[dict[str, float], dict]:
+def compute_ml_weights(
+    con: sqlite3.Connection, start: dt.date, end: dt.date
+) -> tuple[dict[str, float], dict]:
     """
     Compute simple category-level weights using correlation between category
     scores and next-day returns.
@@ -324,7 +329,7 @@ def compute_ml_weights(con: sqlite3.Connection, start: dt.date, end: dt.date) ->
         if len(pairs) < 5:
             corrs[key] = 0.0
             continue
-        vals, futs = zip(*pairs)
+        vals, futs = zip(*pairs, strict=False)
         coef = float(np.corrcoef(vals, futs)[0, 1])
         if math.isnan(coef):
             coef = 0.0
@@ -335,7 +340,7 @@ def compute_ml_weights(con: sqlite3.Connection, start: dt.date, end: dt.date) ->
     weights = {k: v / total for k, v in abs_corrs.items()}
 
     training_accuracy = float(np.mean(list(abs_corrs.values()))) if abs_corrs else 0.0
-    r2_score = float(np.mean([c ** 2 for c in corrs.values()])) if corrs else 0.0
+    r2_score = float(np.mean([c**2 for c in corrs.values()])) if corrs else 0.0
     mae = float(np.mean([abs(r) for r in future_returns.values()])) if future_returns else 0.0
 
     metadata = {
@@ -377,7 +382,7 @@ def insert_ml_weights(con: sqlite3.Connection, weights: dict[str, float], metada
             metadata.get("r2_score"),
             metadata.get("mae"),
             metadata.get("training_samples"),
-            dt.datetime.now(dt.timezone.utc).isoformat(),
+            dt.datetime.now(dt.UTC).isoformat(),
             json.dumps(metadata, ensure_ascii=False),
         ),
     )
@@ -392,9 +397,13 @@ def main() -> None:
     symbols, start_date, end_date = fetch_symbols_and_window(con)
     if SYMBOL_OFFSET or SYMBOL_LIMIT:
         symbols = symbols[SYMBOL_OFFSET : (SYMBOL_OFFSET + SYMBOL_LIMIT) if SYMBOL_LIMIT else None]
-        print(f"Batching symbols offset={SYMBOL_OFFSET} limit={SYMBOL_LIMIT} -> {len(symbols)} symbols")
+        print(
+            f"Batching symbols offset={SYMBOL_OFFSET} limit={SYMBOL_LIMIT} -> {len(symbols)} symbols"
+        )
 
-    print(f"Processing timeframe={TIMEFRAME}, start={start_date}, end={end_date}, symbols={len(symbols)}")
+    print(
+        f"Processing timeframe={TIMEFRAME}, start={start_date}, end={end_date}, symbols={len(symbols)}"
+    )
     cur = con.cursor()
 
     if SKIP_DELETE:
