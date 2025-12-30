@@ -22,17 +22,20 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from config import TSE_DB_FILE
+from database import TSEDatabaseConnector
+
 from gravity_tech.database.database_manager import DatabaseManager
 from gravity_tech.ml.data_connector import DataConnector
 from gravity_tech.ml.pattern_features import PatternFeatureExtractor
 from gravity_tech.patterns.harmonic import HarmonicPattern, HarmonicPatternDetector
-from database import TSEDatabaseConnector
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _load_real_ohlcv(symbol: str, limit: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DatetimeIndex]:
+def _load_real_ohlcv(
+    symbol: str, limit: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DatetimeIndex]:
     """Load OHLCV from the real TSE database (Postgres or SQLite via connector)."""
 
     connector = TSEDatabaseConnector(TSE_DB_FILE)
@@ -78,6 +81,7 @@ def _to_json_ready(obj: Any):
 @dataclass
 class TradeResult:
     """Result of a single pattern trade."""
+
     entry_date: datetime
     entry_price: float
     exit_date: datetime
@@ -110,7 +114,7 @@ class PatternBacktester:
         self,
         detector: HarmonicPatternDetector,
         classifier: Any | None = None,
-        min_confidence: float = 0.6
+        min_confidence: float = 0.6,
     ):
         """
         Initialize backtester.
@@ -183,9 +187,7 @@ class PatternBacktester:
             window_lows = lows[start_idx:end_idx]
             window_closes = closes[start_idx:end_idx]
 
-            patterns = self.detector.detect_patterns(
-                window_highs, window_lows, window_closes
-            )
+            patterns = self.detector.detect_patterns(window_highs, window_lows, window_closes)
 
             if len(patterns) == 0:
                 continue
@@ -193,7 +195,7 @@ class PatternBacktester:
             # Evaluate each pattern
             for pattern in patterns:
                 # Get pattern completion point (D point index in window)
-                d_idx_window = pattern.points['D'].index
+                d_idx_window = pattern.points["D"].index
                 d_idx_global = start_idx + d_idx_window
 
                 # Need future data to evaluate trade
@@ -204,15 +206,18 @@ class PatternBacktester:
                 if self.classifier:
                     extractor = PatternFeatureExtractor()
                     features = extractor.extract_features(
-                        pattern, window_highs, window_lows, window_closes,
-                        volume[start_idx:end_idx] if volume is not None else None
+                        pattern,
+                        window_highs,
+                        window_lows,
+                        window_closes,
+                        volume[start_idx:end_idx] if volume is not None else None,
                     )
                     feature_array = extractor.features_to_array(features)
 
                     # Handle both PatternClassifier and sklearn models
-                    if hasattr(self.classifier, 'predict_single'):
+                    if hasattr(self.classifier, "predict_single"):
                         prediction = self.classifier.predict_single(feature_array)
-                        confidence = prediction['confidence']
+                        confidence = prediction["confidence"]
                     else:
                         # sklearn model - use predict_proba
                         probas = self.classifier.predict_proba(feature_array.reshape(1, -1))[0]
@@ -226,13 +231,7 @@ class PatternBacktester:
 
                 # Simulate trade
                 trade_result = self._simulate_trade(
-                    pattern,
-                    d_idx_global,
-                    closes,
-                    highs,
-                    lows,
-                    dates,
-                    confidence
+                    pattern, d_idx_global, closes, highs, lows, dates, confidence
                 )
 
                 if trade_result:
@@ -249,7 +248,7 @@ class PatternBacktester:
         highs: np.ndarray,
         lows: np.ndarray,
         dates: pd.DatetimeIndex,
-        confidence: float
+        confidence: float,
     ) -> TradeResult | None:
         """
         Simulate a single trade based on pattern.
@@ -272,31 +271,31 @@ class PatternBacktester:
         # Look ahead for exit (max 50 bars)
         max_holding = min(50, len(closes) - entry_idx - 1)
 
-        hit_target = 'none'
+        hit_target = "none"
         exit_price = entry_price
         exit_idx = entry_idx
 
         for i in range(1, max_holding + 1):
             bar_idx = entry_idx + i
 
-            if pattern.direction.value == 'bullish':
+            if pattern.direction.value == "bullish":
                 # Check stop loss
                 if lows[bar_idx] <= stop_loss:
                     exit_price = stop_loss
                     exit_idx = bar_idx
-                    hit_target = 'stop_loss'
+                    hit_target = "stop_loss"
                     break
 
                 # Check targets
                 if highs[bar_idx] >= target_2:
                     exit_price = target_2
                     exit_idx = bar_idx
-                    hit_target = 'target2'
+                    hit_target = "target2"
                     break
                 elif highs[bar_idx] >= target_1:
                     exit_price = target_1
                     exit_idx = bar_idx
-                    hit_target = 'target1'
+                    hit_target = "target1"
                     break
 
             else:  # bearish
@@ -304,28 +303,28 @@ class PatternBacktester:
                 if highs[bar_idx] >= stop_loss:
                     exit_price = stop_loss
                     exit_idx = bar_idx
-                    hit_target = 'stop_loss'
+                    hit_target = "stop_loss"
                     break
 
                 # Check targets
                 if lows[bar_idx] <= target_2:
                     exit_price = target_2
                     exit_idx = bar_idx
-                    hit_target = 'target2'
+                    hit_target = "target2"
                     break
                 elif lows[bar_idx] <= target_1:
                     exit_price = target_1
                     exit_idx = bar_idx
-                    hit_target = 'target1'
+                    hit_target = "target1"
                     break
 
         # If no exit triggered, exit at close
-        if hit_target == 'none':
+        if hit_target == "none":
             exit_price = closes[entry_idx + max_holding]
             exit_idx = entry_idx + max_holding
 
         # Calculate P&L
-        if pattern.direction.value == 'bullish':
+        if pattern.direction.value == "bullish":
             pnl = exit_price - entry_price
         else:
             pnl = entry_price - exit_price
@@ -334,11 +333,11 @@ class PatternBacktester:
 
         # Determine outcome
         if pnl > 0:
-            outcome = 'win'
+            outcome = "win"
         elif pnl < 0:
-            outcome = 'loss'
+            outcome = "loss"
         else:
-            outcome = 'breakeven'
+            outcome = "breakeven"
 
         return TradeResult(
             entry_date=dates[entry_idx],
@@ -354,7 +353,7 @@ class PatternBacktester:
             pnl=pnl,
             pnl_percent=pnl_percent,
             outcome=outcome,
-            hit_target=hit_target
+            hit_target=hit_target,
         )
 
     def calculate_metrics(self) -> dict:
@@ -365,78 +364,87 @@ class PatternBacktester:
             Dictionary with performance metrics
         """
         if len(self.trades) == 0:
-            return {'error': 'No trades to analyze'}
+            return {"error": "No trades to analyze"}
 
         # Convert trades to DataFrame for analysis
-        df = pd.DataFrame([
-            {
-                'pnl': t.pnl,
-                'pnl_percent': t.pnl_percent,
-                'outcome': t.outcome,
-                'pattern_type': t.pattern_type,
-                'direction': t.direction,
-                'confidence': t.confidence,
-                'hit_target': t.hit_target
-            }
-            for t in self.trades
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "pnl": t.pnl,
+                    "pnl_percent": t.pnl_percent,
+                    "outcome": t.outcome,
+                    "pattern_type": t.pattern_type,
+                    "direction": t.direction,
+                    "confidence": t.confidence,
+                    "hit_target": t.hit_target,
+                }
+                for t in self.trades
+            ]
+        )
 
         # Basic metrics
         total_trades = len(df)
-        winning_trades = len(df[df['outcome'] == 'win'])
-        losing_trades = len(df[df['outcome'] == 'loss'])
+        winning_trades = len(df[df["outcome"] == "win"])
+        losing_trades = len(df[df["outcome"] == "loss"])
         win_rate = winning_trades / total_trades if total_trades > 0 else 0
 
         # P&L metrics
-        total_pnl = df['pnl'].sum()
-        avg_pnl = df['pnl'].mean()
-        avg_win = df[df['outcome'] == 'win']['pnl'].mean() if winning_trades > 0 else 0
-        avg_loss = df[df['outcome'] == 'loss']['pnl'].mean() if losing_trades > 0 else 0
+        total_pnl = df["pnl"].sum()
+        avg_pnl = df["pnl"].mean()
+        avg_win = df[df["outcome"] == "win"]["pnl"].mean() if winning_trades > 0 else 0
+        avg_loss = df[df["outcome"] == "loss"]["pnl"].mean() if losing_trades > 0 else 0
 
         # Risk/Reward
-        profit_factor = abs(avg_win * winning_trades / (avg_loss * losing_trades)) if losing_trades > 0 and avg_loss != 0 else 0
+        profit_factor = (
+            abs(avg_win * winning_trades / (avg_loss * losing_trades))
+            if losing_trades > 0 and avg_loss != 0
+            else 0
+        )
 
         # Sharpe ratio (simplified)
-        returns = df['pnl_percent'].values
+        returns = df["pnl_percent"].values
         sharpe_ratio = np.mean(returns) / np.std(returns) if np.std(returns) > 0 else 0
         sharpe_annual = sharpe_ratio * np.sqrt(252)  # Annualized
 
         # Maximum drawdown
-        cumulative_pnl = np.cumsum(df['pnl'].values)
+        cumulative_pnl = np.cumsum(df["pnl"].values)
         running_max = np.maximum.accumulate(cumulative_pnl)
         drawdown = running_max - cumulative_pnl
         max_drawdown = np.max(drawdown)
 
         # Target hit analysis
-        target_hit_counts = df['hit_target'].value_counts().to_dict()
+        target_hit_counts = df["hit_target"].value_counts().to_dict()
 
         # Pattern type performance
-        pattern_performance = df.groupby('pattern_type').agg({
-            'pnl': ['mean', 'sum', 'count'],
-            'outcome': lambda x: (x == 'win').sum() / len(x)
-        }).to_dict()
+        pattern_performance = (
+            df.groupby("pattern_type")
+            .agg(
+                {"pnl": ["mean", "sum", "count"], "outcome": lambda x: (x == "win").sum() / len(x)}
+            )
+            .to_dict()
+        )
 
         return {
-            'total_trades': total_trades,
-            'winning_trades': winning_trades,
-            'losing_trades': losing_trades,
-            'win_rate': win_rate,
-            'total_pnl': total_pnl,
-            'avg_pnl': avg_pnl,
-            'avg_win': avg_win,
-            'avg_loss': avg_loss,
-            'profit_factor': profit_factor,
-            'sharpe_ratio': sharpe_annual,
-            'max_drawdown': max_drawdown,
-            'target_hit_counts': target_hit_counts,
-            'pattern_performance': pattern_performance
+            "total_trades": total_trades,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
+            "win_rate": win_rate,
+            "total_pnl": total_pnl,
+            "avg_pnl": avg_pnl,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
+            "profit_factor": profit_factor,
+            "sharpe_ratio": sharpe_annual,
+            "max_drawdown": max_drawdown,
+            "target_hit_counts": target_hit_counts,
+            "pattern_performance": pattern_performance,
         }
 
     def print_summary(self):
         """Print backtest summary."""
         metrics = self.calculate_metrics()
 
-        if 'error' in metrics:
+        if "error" in metrics:
             print(f"\n❌ {metrics['error']}")
             return
 
@@ -462,7 +470,7 @@ class PatternBacktester:
         print(f"   Max Drawdown:      ${metrics['max_drawdown']:.2f}")
 
         print("\n🎯 Target Hit Analysis:")
-        for target, count in metrics['target_hit_counts'].items():
+        for target, count in metrics["target_hit_counts"].items():
             print(f"   {target.replace('_', ' ').title():15s} {count:3d} trades")
 
         print("=" * 80)
@@ -481,7 +489,7 @@ def demo_backtesting():
     backtester = PatternBacktester(
         detector=detector,
         classifier=None,  # No ML for this demo
-        min_confidence=0.5
+        min_confidence=0.5,
     )
 
     # Load historical data
@@ -496,6 +504,8 @@ def demo_backtesting():
 
     # Print summary
     backtester.print_summary()
+
+
 def run_backtest_with_real_data(
     symbol: str,
     source: str,
@@ -532,7 +542,7 @@ def run_backtest_with_real_data(
     backtester = PatternBacktester(
         detector=detector,
         classifier=None,  # No ML for basic backtesting
-        min_confidence=min_confidence
+        min_confidence=min_confidence,
     )
 
     if source == "db":
@@ -562,12 +572,14 @@ def run_backtest_with_real_data(
             print("\n⚠️ No trades to persist; skipping database save.")
             return backtester
 
-        params = _to_json_ready({
-            "min_confidence": min_confidence,
-            "limit": limit,
-            "interval": interval,
-            "source": source,
-        })
+        params = _to_json_ready(
+            {
+                "min_confidence": min_confidence,
+                "limit": limit,
+                "interval": interval,
+                "source": source,
+            }
+        )
         period_start = pd.to_datetime(dates[0]).to_pydatetime()
         period_end = pd.to_datetime(dates[-1]).to_pydatetime()
 
