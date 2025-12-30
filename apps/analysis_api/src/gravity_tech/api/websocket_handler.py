@@ -16,11 +16,12 @@ License: MIT
 import asyncio
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
+
 from gravity_tech.core.domain.entities import (
     Candle,
     MarketData,
@@ -29,7 +30,6 @@ from gravity_tech.core.domain.entities import (
 )
 from gravity_tech.core.indicators.momentum import MomentumIndicators
 from gravity_tech.core.indicators.trend import TrendIndicators
-from datetime import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +48,13 @@ class ConnectionManager:
         self.active_connections[client_id] = websocket
         self.subscriptions[client_id] = set()
         self.client_data[client_id] = {
-            'connected_at': datetime.now(timezone.utc),
-            'last_activity': datetime.now(timezone.utc),
-            'message_count': 0
+            "connected_at": datetime.now(UTC),
+            "last_activity": datetime.now(UTC),
+            "message_count": 0,
         }
-        logger.info(f"Client {client_id} connected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"Client {client_id} connected. Total connections: {len(self.active_connections)}"
+        )
 
     def disconnect(self, client_id: str) -> None:
         """Remove a WebSocket connection"""
@@ -62,7 +64,9 @@ class ConnectionManager:
             del self.subscriptions[client_id]
         if client_id in self.client_data:
             del self.client_data[client_id]
-        logger.info(f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}"
+        )
 
     async def subscribe(self, client_id: str, subscription_type: SubscriptionType) -> None:
         """Subscribe client to a data stream"""
@@ -77,8 +81,9 @@ class ConnectionManager:
             self.subscriptions[client_id].discard(subscription_type)
             logger.info(f"Client {client_id} unsubscribed from {subscription_type}")
 
-    async def broadcast_to_subscribers(self, subscription_type: SubscriptionType,
-                                     message: dict[str, Any]) -> None:
+    async def broadcast_to_subscribers(
+        self, subscription_type: SubscriptionType, message: dict[str, Any]
+    ) -> None:
         """Broadcast message to all subscribers of a type"""
         disconnected_clients = []
 
@@ -99,18 +104,18 @@ class ConnectionManager:
         if client_id in self.active_connections:
             websocket = self.active_connections[client_id]
             await websocket.send_json(message)
-            self.client_data[client_id]['last_activity'] = datetime.now(timezone.utc)
-            self.client_data[client_id]['message_count'] += 1
+            self.client_data[client_id]["last_activity"] = datetime.now(UTC)
+            self.client_data[client_id]["message_count"] += 1
 
     def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics"""
         return {
-            'total_connections': len(self.active_connections),
-            'total_subscriptions': sum(len(subs) for subs in self.subscriptions.values()),
-            'subscription_breakdown': {
+            "total_connections": len(self.active_connections),
+            "total_subscriptions": sum(len(subs) for subs in self.subscriptions.values()),
+            "subscription_breakdown": {
                 sub_type.value: sum(1 for subs in self.subscriptions.values() if sub_type in subs)
                 for sub_type in SubscriptionType
-            }
+            },
         }
 
 
@@ -137,39 +142,43 @@ class WebSocketHandler:
                 # Process message based on type
                 if message.message_type == "subscribe":
                     if message.subscription_type:
-                        await self.connection_manager.subscribe(client_id, message.subscription_type)
+                        await self.connection_manager.subscribe(
+                            client_id, message.subscription_type
+                        )
 
                     # Send confirmation
                     await self.connection_manager.send_personal_message(
                         client_id,
                         {
                             "type": "subscription_confirmed",
-                            "subscription_type": message.subscription_type.value if message.subscription_type else None,
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        }
+                            "subscription_type": message.subscription_type.value
+                            if message.subscription_type
+                            else None,
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        },
                     )
 
                 elif message.message_type == "unsubscribe":
                     if message.subscription_type:
-                        await self.connection_manager.unsubscribe(client_id, message.subscription_type)
+                        await self.connection_manager.unsubscribe(
+                            client_id, message.subscription_type
+                        )
 
                     # Send confirmation
                     await self.connection_manager.send_personal_message(
                         client_id,
                         {
                             "type": "unsubscription_confirmed",
-                            "subscription_type": message.subscription_type.value if message.subscription_type else None,
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        }
+                            "subscription_type": message.subscription_type.value
+                            if message.subscription_type
+                            else None,
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        },
                     )
 
                 elif message.message_type == "ping":
                     await self.connection_manager.send_personal_message(
-                        client_id,
-                        {
-                            "type": "pong",
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        }
+                        client_id, {"type": "pong", "timestamp": datetime.now(UTC).isoformat()}
                     )
 
         except WebSocketDisconnect:
@@ -238,7 +247,7 @@ class WebSocketHandler:
                 high_price=Decimal(str(candle.high)),
                 low_price=Decimal(str(candle.low)),
                 close_price=Decimal(str(candle.close)),
-                volume=Decimal(str(candle.volume))
+                volume=Decimal(str(candle.volume)),
             )
 
             # Broadcast to subscribers
@@ -249,8 +258,8 @@ class WebSocketHandler:
                     "data": market_data.to_dict(),
                     "indicators": indicators,
                     "patterns": patterns,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
             )
 
         except Exception as e:
@@ -266,11 +275,11 @@ class WebSocketHandler:
                 # RSI
                 try:
                     rsi = self.momentum_indicators.rsi(candles, 14)
-                    indicators['rsi'] = {
-                        'name': rsi.indicator_name,
-                        'value': rsi.value,
-                        'signal': rsi.signal.value,
-                        'confidence': rsi.confidence
+                    indicators["rsi"] = {
+                        "name": rsi.indicator_name,
+                        "value": rsi.value,
+                        "signal": rsi.signal.value,
+                        "confidence": rsi.confidence,
                     }
                 except Exception:
                     pass
@@ -279,9 +288,9 @@ class WebSocketHandler:
                 try:
                     sma_20 = self.trend_indicators.sma(candles, 20)
                     sma_50 = self.trend_indicators.sma(candles, 50)
-                    indicators['sma'] = {
-                        'sma_20': sma_20.value if sma_20 else None,
-                        'sma_50': sma_50.value if sma_50 else None
+                    indicators["sma"] = {
+                        "sma_20": sma_20.value if sma_20 else None,
+                        "sma_50": sma_50.value if sma_50 else None,
                     }
                 except Exception:
                     pass
@@ -302,32 +311,40 @@ class WebSocketHandler:
                 # Check for bullish engulfing
                 try:
                     last_two = candles[-2:]
-                    if (last_two[0].close < last_two[0].open and  # First candle is bearish
-                        last_two[1].close > last_two[1].open and  # Second candle is bullish
-                        last_two[1].low <= last_two[0].low and    # Engulfs low
-                        last_two[1].high >= last_two[0].high):    # Engulfs high
-                        patterns.append({
-                            'name': 'Bullish Engulfing',
-                            'type': 'reversal',
-                            'direction': 'bullish',
-                            'confidence': 0.7
-                        })
+                    if (
+                        last_two[0].close < last_two[0].open  # First candle is bearish
+                        and last_two[1].close > last_two[1].open  # Second candle is bullish
+                        and last_two[1].low <= last_two[0].low  # Engulfs low
+                        and last_two[1].high >= last_two[0].high
+                    ):  # Engulfs high
+                        patterns.append(
+                            {
+                                "name": "Bullish Engulfing",
+                                "type": "reversal",
+                                "direction": "bullish",
+                                "confidence": 0.7,
+                            }
+                        )
                 except Exception:
                     pass
 
                 # Check for bearish engulfing
                 try:
                     last_two = candles[-2:]
-                    if (last_two[0].close > last_two[0].open and  # First candle is bullish
-                        last_two[1].close < last_two[1].open and  # Second candle is bearish
-                        last_two[1].low <= last_two[0].low and    # Engulfs low
-                        last_two[1].high >= last_two[0].high):    # Engulfs high
-                        patterns.append({
-                            'name': 'Bearish Engulfing',
-                            'type': 'reversal',
-                            'direction': 'bearish',
-                            'confidence': 0.7
-                        })
+                    if (
+                        last_two[0].close > last_two[0].open  # First candle is bullish
+                        and last_two[1].close < last_two[1].open  # Second candle is bearish
+                        and last_two[1].low <= last_two[0].low  # Engulfs low
+                        and last_two[1].high >= last_two[0].high
+                    ):  # Engulfs high
+                        patterns.append(
+                            {
+                                "name": "Bearish Engulfing",
+                                "type": "reversal",
+                                "direction": "bearish",
+                                "confidence": 0.7,
+                            }
+                        )
                 except Exception:
                     pass
 
@@ -360,20 +377,20 @@ class WebSocketHandler:
         volume = random.randint(1000, 10000)
 
         return Candle(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             open=open_price,
             high=high,
             low=low,
             close=close_price,
-            volume=volume
+            volume=volume,
         )
 
     def get_stats(self) -> dict[str, Any]:
         """Get WebSocket handler statistics"""
         return {
-            'connections': self.connection_manager.get_connection_stats(),
-            'streaming_symbols': list(self.market_data_buffer.keys()),
-            'is_streaming': self.is_streaming
+            "connections": self.connection_manager.get_connection_stats(),
+            "streaming_symbols": list(self.market_data_buffer.keys()),
+            "is_streaming": self.is_streaming,
         }
 
 
