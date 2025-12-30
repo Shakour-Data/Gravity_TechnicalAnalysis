@@ -45,11 +45,15 @@ def main() -> None:
     parser.add_argument("--volatility-weights", required=True, help="Volatility weights JSON path.")
     parser.add_argument("--trend-model", help="Optional pickled model for the trend learner.")
     parser.add_argument("--momentum-model", help="Optional pickled model for the momentum learner.")
-    parser.add_argument("--volatility-model", help="Optional pickled model for the volatility learner.")
+    parser.add_argument(
+        "--volatility-model", help="Optional pickled model for the volatility learner."
+    )
     parser.add_argument("--cycle-weights", help="Optional cycle weights JSON path.")
     parser.add_argument("--cycle-model", help="Optional pickled model for the cycle learner.")
     parser.add_argument("--sr-weights", help="Optional support/resistance weights JSON path.")
-    parser.add_argument("--sr-model", help="Optional pickled model for the support/resistance learner.")
+    parser.add_argument(
+        "--sr-model", help="Optional pickled model for the support/resistance learner."
+    )
     parser.add_argument(
         "--disable-volume-matrix",
         action="store_true",
