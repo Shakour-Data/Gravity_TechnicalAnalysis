@@ -35,6 +35,7 @@ from typing import Any
 
 class SignalType(Enum):
     """Type of trading signal"""
+
     BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
@@ -43,13 +44,14 @@ class SignalType(Enum):
 
 class SignalStrength(Enum):
     """Strength level of the signal"""
-    VERY_BULLISH = 5      # Very strong buy signal
-    BULLISH = 4           # Strong buy signal
+
+    VERY_BULLISH = 5  # Very strong buy signal
+    BULLISH = 4  # Strong buy signal
     SLIGHTLY_BULLISH = 3  # Weak buy signal
-    NEUTRAL = 2           # No clear direction
+    NEUTRAL = 2  # No clear direction
     SLIGHTLY_BEARISH = 1  # Weak sell signal
-    BEARISH = 0           # Strong sell signal
-    VERY_BEARISH = -1     # Very strong sell signal
+    BEARISH = 0  # Strong sell signal
+    VERY_BEARISH = -1  # Very strong sell signal
 
     def to_numeric(self) -> int:
         """Convert to numeric score for aggregation"""
@@ -88,6 +90,7 @@ class Signal:
         timeframe: Analysis timeframe
         symbol: Trading pair symbol
     """
+
     signal_type: SignalType
     strength: SignalStrength
     source: str
@@ -116,7 +119,7 @@ class Signal:
             SignalStrength.VERY_BULLISH,
             SignalStrength.BULLISH,
             SignalStrength.BEARISH,
-            SignalStrength.VERY_BEARISH
+            SignalStrength.VERY_BEARISH,
         ]
 
     def to_dict(self) -> dict[str, Any]:
