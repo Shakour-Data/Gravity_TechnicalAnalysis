@@ -1,11 +1,17 @@
 """Data loaders for persisting data to databases"""
 
 from .base import Loader
-from .postgres_loader import PostgreSQLLoader
 from .sqlite_loader import SQLiteLoader
+
+try:
+    from .postgres_loader import PostgreSQLLoader
+except ImportError:
+    PostgreSQLLoader = None
 
 __all__ = [
     "Loader",
     "SQLiteLoader",
-    "PostgreSQLLoader",
 ]
+
+if PostgreSQLLoader is not None:
+    __all__.append("PostgreSQLLoader")
