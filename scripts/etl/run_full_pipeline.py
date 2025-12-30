@@ -36,9 +36,13 @@ from gravity_tech.ml.pipeline_factory import (  # type: ignore  # noqa: E402
     load_trend_analyzer,
     load_volatility_analyzer,
 )
-from gravity_tech.services.analysis_service import TechnicalAnalysisService  # type: ignore  # noqa: E402
+from gravity_tech.services.analysis_service import (
+    TechnicalAnalysisService,  # type: ignore  # noqa: E402
+)
 from gravity_tech.services.data_ingestor_service import data_ingestor  # type: ignore  # noqa: E402
-from gravity_tech.services.ingestion_payload import build_ingestion_payload  # type: ignore  # noqa: E402
+from gravity_tech.services.ingestion_payload import (
+    build_ingestion_payload,  # type: ignore  # noqa: E402
+)
 
 DEFAULT_WEIGHTS = ANALYSIS_MODELS / "multi_horizon" / "indicator_weights_btcusdt.json"
 DEFAULT_MODEL = ANALYSIS_MODELS / "multi_horizon" / "indicator_weights_btcusdt.pkl"
@@ -48,16 +52,28 @@ logger = logging.getLogger("full_pipeline")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run full TSE -> analysis -> TechAnalysis.db pipeline.")
-    parser.add_argument("--source-db", default=TSE_DB_FILE, help="Path to the TSE source SQLite database.")
-    parser.add_argument("--target-db", default=str(DEFAULT_TARGET_DB), help="Path to TechAnalysis.db (output).")
+    parser = argparse.ArgumentParser(
+        description="Run full TSE -> analysis -> TechAnalysis.db pipeline."
+    )
+    parser.add_argument(
+        "--source-db", default=TSE_DB_FILE, help="Path to the TSE source SQLite database."
+    )
+    parser.add_argument(
+        "--target-db", default=str(DEFAULT_TARGET_DB), help="Path to TechAnalysis.db (output)."
+    )
     parser.add_argument(
         "--symbols",
         help="Comma-separated symbols to process. If omitted, all available symbols are processed.",
     )
-    parser.add_argument("--max-symbols", type=int, default=0, help="Optional cap on number of symbols to process.")
-    parser.add_argument("--limit", type=int, default=500, help="Number of most recent candles per symbol.")
-    parser.add_argument("--timeframe", default="1d", help="Logical timeframe label stored with results.")
+    parser.add_argument(
+        "--max-symbols", type=int, default=0, help="Optional cap on number of symbols to process."
+    )
+    parser.add_argument(
+        "--limit", type=int, default=500, help="Number of most recent candles per symbol."
+    )
+    parser.add_argument(
+        "--timeframe", default="1d", help="Logical timeframe label stored with results."
+    )
     parser.add_argument(
         "--weights-json",
         default=str(DEFAULT_WEIGHTS),
@@ -137,7 +153,9 @@ def upsert_analysis_result(
     created_at = datetime.now(UTC)
     volume_score = 0.0
     if result.volume_interactions:
-        scores = [interaction.interaction_score for interaction in result.volume_interactions.values()]
+        scores = [
+            interaction.interaction_score for interaction in result.volume_interactions.values()
+        ]
         if scores:
             volume_score = sum(scores) / len(scores)
 
@@ -159,7 +177,7 @@ def upsert_analysis_result(
 
     if manager.db_type == DatabaseType.POSTGRESQL:
         insert_sql = f"""
-        INSERT INTO analysis_results ({', '.join(columns)})
+        INSERT INTO analysis_results ({", ".join(columns)})
         VALUES ({placeholders})
         ON CONFLICT (symbol, analysis_date) DO UPDATE SET
             final_signal = EXCLUDED.final_signal,
@@ -175,7 +193,7 @@ def upsert_analysis_result(
         """
     else:
         insert_sql = f"""
-        INSERT OR REPLACE INTO analysis_results ({', '.join(columns)})
+        INSERT OR REPLACE INTO analysis_results ({", ".join(columns)})
         VALUES ({placeholders});
         """
 
@@ -348,11 +366,17 @@ def main() -> None:
                     except Exception as exc:
                         logger.warning(
                             "ingestion_persist_failed",
-                            extra={"symbol": symbol, "date": end_date.isoformat(), "error": str(exc)},
+                            extra={
+                                "symbol": symbol,
+                                "date": end_date.isoformat(),
+                                "error": str(exc),
+                            },
                         )
-                upsert_analysis_result(manager, symbol, args.timeframe, result, analysis_date=end_date)
+                upsert_analysis_result(
+                    manager, symbol, args.timeframe, result, analysis_date=end_date
+                )
                 daily_success += 1
-            except Exception as exc:
+            except Exception:
                 logger.error(
                     "pipeline_failed",
                     extra={"symbol": symbol, "date": end_date.isoformat()},
@@ -360,7 +384,9 @@ def main() -> None:
                 )
         if daily_success > 0:
             success += 1
-            logger.info("symbol_processed", extra={"symbol": symbol, "daily_analyses": daily_success})
+            logger.info(
+                "symbol_processed", extra={"symbol": symbol, "daily_analyses": daily_success}
+            )
         else:
             logger.warning("no_daily_analyses", extra={"symbol": symbol})
         processed += 1
