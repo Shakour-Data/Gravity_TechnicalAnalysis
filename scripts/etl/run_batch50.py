@@ -28,8 +28,9 @@ import sqlite3
 import subprocess
 import sys
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List
+
 try:
     import psycopg2  # type: ignore
 except Exception:  # pragma: no cover
@@ -40,7 +41,7 @@ TEMP_TSE_DIR = REPO_ROOT / "temp_gravity_tse"
 TEMP_TSE_SRC = TEMP_TSE_DIR / "src"
 
 
-def pick_symbols(db_path: Path, batch_size: int, min_candles: int) -> List[str]:
+def pick_symbols(db_path: Path, batch_size: int, min_candles: int) -> list[str]:
     conn = sqlite3.connect(db_path)
     try:
         rows = conn.execute(
@@ -110,7 +111,9 @@ def fetch_prices_for_symbols(
     print("[fetch] Done.")
 
 
-def run_analysis_pipeline(symbols: Iterable[str], source_db: Path, target_db: str, limit: int) -> None:
+def run_analysis_pipeline(
+    symbols: Iterable[str], source_db: Path, target_db: str, limit: int
+) -> None:
     """Call the existing full pipeline for the given symbols."""
     sym_list = list(symbols)
     if not sym_list:
@@ -176,7 +179,9 @@ def verify_source_data(db_path: Path, symbols: Iterable[str]) -> None:
 
         missing_rows = [s for s in sym_list if s not in stats or stats[s][0] == 0]
         if missing_rows:
-            print(f"[verify] WARNING: no rows in price_data for {len(missing_rows)} symbols: {missing_rows[:5]}...")
+            print(
+                f"[verify] WARNING: no rows in price_data for {len(missing_rows)} symbols: {missing_rows[:5]}..."
+            )
 
         for s in sym_list:
             if s in stats:
@@ -258,11 +263,15 @@ def main() -> None:
 
     source_db = Path(args.source_db).resolve()
     target_db_input = args.target_db
-    target_db = target_db_input if str(target_db_input).lower().startswith("postgres") else str(Path(target_db_input).resolve())
+    target_db = (
+        target_db_input
+        if str(target_db_input).lower().startswith("postgres")
+        else str(Path(target_db_input).resolve())
+    )
 
     ensure_target_ready(target_db)
 
-    symbols_arg: List[str] = []
+    symbols_arg: list[str] = []
     if args.symbols:
         symbols_arg = [s.strip() for s in args.symbols.split(",") if s.strip()]
         # Explicit symbol list means exactly one iteration.
@@ -274,10 +283,16 @@ def main() -> None:
             print(f"Reached max iterations ({args.max_iterations}); stopping.")
             break
 
-        symbols = symbols_arg if symbols_arg else pick_symbols(source_db, args.batch_size, args.min_candles)
+        symbols = (
+            symbols_arg
+            if symbols_arg
+            else pick_symbols(source_db, args.batch_size, args.min_candles)
+        )
         if not symbols:
             if iteration == 0:
-                print("No symbols found to process (maybe already up-to-date or below min-candles).")
+                print(
+                    "No symbols found to process (maybe already up-to-date or below min-candles)."
+                )
             else:
                 print("All eligible symbols processed; stopping.")
             break
