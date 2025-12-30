@@ -1,6 +1,7 @@
 """
 Quick script to reload all indices data
 """
+
 import subprocess
 import sys
 
@@ -11,11 +12,9 @@ print()
 print("=" * 80)
 print("LOADING MARKET INDICES")
 print("=" * 80)
-result = subprocess.run([
-    sys.executable, 
-    "main.py", 
-    "load-market-indices"
-], capture_output=False, text=True)
+result = subprocess.run(
+    [sys.executable, "main.py", "load-market-indices"], capture_output=False, text=True
+)
 
 if result.returncode != 0:
     print("❌ Failed to load market indices")
@@ -27,11 +26,9 @@ print("LOADING SECTOR INDICES")
 print("=" * 80)
 
 # Load sector indices
-result = subprocess.run([
-    sys.executable, 
-    "main.py", 
-    "load-sector-indices"
-], capture_output=False, text=True)
+result = subprocess.run(
+    [sys.executable, "main.py", "load-sector-indices"], capture_output=False, text=True
+)
 
 if result.returncode != 0:
     print("❌ Failed to load sector indices")
