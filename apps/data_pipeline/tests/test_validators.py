@@ -36,11 +36,11 @@ async def test_validate_good_candles(validator):
             "low": 95.0,
             "close": 110.0,
             "volume": 1200.0,
-        }
+        },
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     assert valid == 2
     assert invalid == 0
 
@@ -58,9 +58,9 @@ async def test_reject_invalid_ohlc(validator):
             "volume": 1000.0,
         }
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     assert valid == 0
     assert invalid == 1
 
@@ -78,9 +78,9 @@ async def test_reject_negative_volume(validator):
             "volume": -100.0,  # Negative!
         }
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     assert valid == 0
     assert invalid == 1
 
@@ -91,16 +91,16 @@ async def test_reject_nan_values(validator):
     candles = [
         {
             "timestamp": "2024-01-01",
-            "open": float('nan'),  # NaN!
+            "open": float("nan"),  # NaN!
             "high": 110.0,
             "low": 90.0,
             "close": 105.0,
             "volume": 1000.0,
         }
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     assert valid == 0
     assert invalid == 1
 
@@ -112,15 +112,15 @@ async def test_reject_inf_values(validator):
         {
             "timestamp": "2024-01-01",
             "open": 100.0,
-            "high": float('inf'),  # Inf!
+            "high": float("inf"),  # Inf!
             "low": 90.0,
             "close": 105.0,
             "volume": 1000.0,
         }
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     assert valid == 0
     assert invalid == 1
 
@@ -129,7 +129,7 @@ async def test_reject_inf_values(validator):
 async def test_detect_duplicates(validator):
     """Test detecting duplicate timestamps"""
     validator.check_duplicates = True
-    
+
     candles = [
         {
             "timestamp": "2024-01-01",
@@ -146,11 +146,11 @@ async def test_detect_duplicates(validator):
             "low": 91.0,
             "close": 106.0,
             "volume": 1100.0,
-        }
+        },
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     # Should detect duplicate
     assert invalid >= 1
 
@@ -182,11 +182,11 @@ async def test_partial_validation(validator):
             "low": 95.0,
             "close": 110.0,
             "volume": 1200.0,
-        }
+        },
     ]
-    
+
     valid, invalid = await validator.validate(candles)
-    
+
     assert valid == 2
     assert invalid == 1
 
@@ -204,9 +204,9 @@ async def test_stats(validator):
             "volume": 1000.0,
         }
     ]
-    
+
     await validator.validate(candles)
-    
+
     stats = validator.get_stats()
     assert stats["checked"] >= 1
     assert stats["invalid"] == 0
