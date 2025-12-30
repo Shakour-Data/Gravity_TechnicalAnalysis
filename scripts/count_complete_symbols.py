@@ -6,6 +6,7 @@ A symbol is considered 'complete' if it has at least N candles and no missing/nu
 Usage:
   python scripts/count_complete_symbols.py --source-db data/TechAnalysis.db --min-candles 120
 """
+
 import argparse
 import math
 import sqlite3
@@ -18,10 +19,11 @@ def is_valid_row(row):
         for r in row
     )
 
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--source-db', required=True)
-    p.add_argument('--min-candles', type=int, default=120)
+    p.add_argument("--source-db", required=True)
+    p.add_argument("--min-candles", type=int, default=120)
     args = p.parse_args()
 
     conn = sqlite3.connect(args.source_db)
@@ -30,7 +32,10 @@ def main():
     symbols = [r[0] for r in cur.fetchall()]
     complete = []
     for sym in symbols:
-        cur.execute("SELECT open, high, low, close, volume FROM price_data WHERE ticker=? ORDER BY date ASC", (sym,))
+        cur.execute(
+            "SELECT open, high, low, close, volume FROM price_data WHERE ticker=? ORDER BY date ASC",
+            (sym,),
+        )
         rows = cur.fetchall()
         if len(rows) < args.min_candles:
             continue
@@ -40,5 +45,6 @@ def main():
     print(f"Symbols with >= {args.min_candles} valid candles: {len(complete)}")
     print("Sample symbols:", complete[:10])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
