@@ -1,21 +1,37 @@
 import json
-from datetime import datetime, timedelta, timezone
+import pickle
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from gravity_tech.core.domain.entities import Candle
+from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore, MultiHorizonCycleAnalyzer
+from gravity_tech.ml.multi_horizon_support_resistance_analysis import (
+    MultiHorizonSupportResistanceAnalyzer,
+    SupportResistanceScore,
+)
 from gravity_tech.ml.pipeline_factory import build_pipeline_from_weights
-from gravity_tech.ml.multi_horizon_cycle_analysis import CycleScore
-from gravity_tech.ml.multi_horizon_support_resistance_analysis import SupportResistanceScore
 from gravity_tech.models.schemas import SignalStrength
-from datetime import timezone
 
 pytestmark = pytest.mark.integration
 
 
-class StubCycleAnalyzer:
+class DummyMultiHorizonModel:
+    def __init__(self, horizons: list[str]):
+        self.horizons = horizons
+
+    def predict(self, X):
+        import numpy as np
+
+        return np.zeros((len(X), len(self.horizons)))
+
+
+class StubCycleAnalyzer(MultiHorizonCycleAnalyzer):
+    def __init__(self):
+        # Don't call super().__init__() to avoid initialization overhead
+        pass
+
     def analyze(self, candles):
         def _score(horizon: str) -> CycleScore:
             return CycleScore(
@@ -34,7 +50,11 @@ class StubCycleAnalyzer:
         )
 
 
-class StubSupportResistanceAnalyzer:
+class StubSupportResistanceAnalyzer(MultiHorizonSupportResistanceAnalyzer):
+    def __init__(self):
+        # Don't call super().__init__() to avoid initialization overhead
+        pass
+
     def analyze(self, candles):
         def _score(horizon: str) -> SupportResistanceScore:
             return SupportResistanceScore(
@@ -108,11 +128,11 @@ def _write_weights(path: Path, feature_names: list[str]) -> Path:
     horizons = ["3d", "7d", "30d"]
     payload = {
         "horizons": horizons,
-        "feature_names": feature_names,
+        "feature_names": [],
         "weights": {
             horizon: {
                 "horizon": horizon,
-                "weights": {feature: 0.5 for feature in feature_names},
+                "weights": {},
                 "metrics": {
                     "r2_train": 0.1,
                     "r2_test": 0.1,
@@ -125,11 +145,14 @@ def _write_weights(path: Path, feature_names: list[str]) -> Path:
         },
     }
     path.write_text(json.dumps(payload), encoding="utf-8")
+    model_path = path.with_suffix(".pkl")
+    with open(model_path, "wb") as fh:
+        pickle.dump(DummyMultiHorizonModel(horizons=horizons), fh)
     return path
 
 
 def _make_candles(count: int) -> list[Candle]:
-    base_time = datetime.now(timezone.utc) - timedelta(days=count)
+    base_time = datetime.now(UTC) - timedelta(days=count)
     candles: list[Candle] = []
     price = 100.0
 
