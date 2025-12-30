@@ -15,10 +15,16 @@ from gravity_tech.ml.backtesting import run_backtest_with_real_data
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run harmonic-pattern backtests using real data only.")
-    parser.add_argument("--symbol", help="Ticker symbol to backtest (required for db/connector source).")
+    parser = argparse.ArgumentParser(
+        description="Run harmonic-pattern backtests using real data only."
+    )
+    parser.add_argument(
+        "--symbol", help="Ticker symbol to backtest (required for db/connector source)."
+    )
     parser.add_argument("--source", choices=["db", "connector"], default="db")
-    parser.add_argument("--interval", default="1d", help="Interval for DataConnector requests (connector only).")
+    parser.add_argument(
+        "--interval", default="1d", help="Interval for DataConnector requests (connector only)."
+    )
     parser.add_argument("--limit", type=int, default=1200, help="Number of bars to load.")
     parser.add_argument("--min-confidence", type=float, default=0.6, dest="min_confidence")
     parser.add_argument(
