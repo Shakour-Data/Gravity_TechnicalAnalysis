@@ -14,14 +14,12 @@ You can also provide --symbols-file with one symbol per line.
 from __future__ import annotations
 
 import argparse
-import sys
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Iterable, List, Set
 
 import psycopg2
-
 
 TABLES_WITH_SYMBOL = [
     "analysis_results",
@@ -33,8 +31,8 @@ TABLES_WITH_SYMBOL = [
 ]
 
 
-def load_symbols(args: argparse.Namespace) -> List[str]:
-    symbols: List[str] = []
+def load_symbols(args: argparse.Namespace) -> list[str]:
+    symbols: list[str] = []
     if args.symbols:
         symbols.extend([s.strip() for s in args.symbols.split(",") if s.strip()])
     if args.symbols_file:
@@ -55,22 +53,22 @@ def format_list(items: Iterable[str], limit: int = 10) -> str:
     return ", ".join(lst[:limit]) + f" ... (+{len(lst) - limit})"
 
 
-def report(target_db: str, symbols: List[str], outfile: Path | None) -> None:
+def report(target_db: str, symbols: list[str], outfile: Path | None) -> None:
     if not symbols:
         raise SystemExit("No symbols provided. Use --symbols or --symbols-file.")
 
     conn = psycopg2.connect(target_db)
     cur = conn.cursor()
 
-    lines: List[str] = []
-    lines.append(f"Report generated at {datetime.now(timezone.utc).isoformat()}")
+    lines: list[str] = []
+    lines.append(f"Report generated at {datetime.now(UTC).isoformat()}")
     lines.append(f"Target DB: {target_db}")
     lines.append(f"Batch size: {len(symbols)}")
     lines.append(f"Symbols: {format_list(symbols, limit=20)}")
     lines.append("")
 
     sym_tuple = tuple(symbols)
-    missing: dict[str, Set[str]] = defaultdict(set)
+    missing: dict[str, set[str]] = defaultdict(set)
 
     for tbl in TABLES_WITH_SYMBOL:
         cur.execute(
@@ -96,7 +94,7 @@ def report(target_db: str, symbols: List[str], outfile: Path | None) -> None:
         cur.execute(
             "SELECT symbol, COUNT(*), MIN(ts), MAX(ts) "
             "FROM analysis_results WHERE symbol IN %s AND ts >= %s GROUP BY symbol",
-            (sym_tuple, datetime.now(timezone.utc) - timedelta(days=90)),
+            (sym_tuple, datetime.now(UTC) - timedelta(days=90)),
         )
         rows90 = cur.fetchall()
         for sym, cnt, ts_min, ts_max in rows90:
@@ -107,7 +105,7 @@ def report(target_db: str, symbols: List[str], outfile: Path | None) -> None:
             cur.execute(
                 "SELECT symbol, COUNT(*), MIN(analysis_date), MAX(analysis_date) "
                 "FROM analysis_results WHERE symbol IN %s AND analysis_date >= %s GROUP BY symbol",
-                (sym_tuple, datetime.now(timezone.utc).date() - timedelta(days=90)),
+                (sym_tuple, datetime.now(UTC).date() - timedelta(days=90)),
             )
             rows90 = cur.fetchall()
             for sym, cnt, ts_min, ts_max in rows90:
@@ -136,7 +134,9 @@ def report(target_db: str, symbols: List[str], outfile: Path | None) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Verify that all batch symbols exist in all analysis tables.")
+    parser = argparse.ArgumentParser(
+        description="Verify that all batch symbols exist in all analysis tables."
+    )
     parser.add_argument("--target-db", required=True, help="Postgres DSN.")
     parser.add_argument("--symbols", help="Comma-separated symbols.")
     parser.add_argument("--symbols-file", help="Path to a file containing symbols (one per line).")
