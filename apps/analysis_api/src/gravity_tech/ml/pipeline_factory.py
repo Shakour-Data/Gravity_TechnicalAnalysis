@@ -10,7 +10,6 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-
 from gravity_tech.core.domain.entities import Candle
 from gravity_tech.ml.complete_analysis_pipeline import CompleteAnalysisPipeline
 from gravity_tech.ml.multi_horizon_analysis import MultiHorizonAnalyzer
@@ -37,17 +36,23 @@ def load_trend_analyzer(weights_path: str, model_path: str | None = None) -> Mul
     return MultiHorizonAnalyzer(learner)
 
 
-def load_momentum_analyzer(weights_path: str, model_path: str | None = None) -> MultiHorizonMomentumAnalyzer:
+def load_momentum_analyzer(
+    weights_path: str, model_path: str | None = None
+) -> MultiHorizonMomentumAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonMomentumAnalyzer(learner)
 
 
-def load_volatility_analyzer(weights_path: str, model_path: str | None = None) -> MultiHorizonVolatilityAnalyzer:
+def load_volatility_analyzer(
+    weights_path: str, model_path: str | None = None
+) -> MultiHorizonVolatilityAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonVolatilityAnalyzer(learner)
 
 
-def load_cycle_analyzer(weights_path: str, model_path: str | None = None, *, lookback_period: int = 100) -> MultiHorizonCycleAnalyzer:
+def load_cycle_analyzer(
+    weights_path: str, model_path: str | None = None, *, lookback_period: int = 100
+) -> MultiHorizonCycleAnalyzer:
     learner = _load_weight_learner(weights_path, model_path)
     return MultiHorizonCycleAnalyzer(weight_learner=learner, lookback_period=lookback_period)
 
@@ -124,14 +129,16 @@ def load_trend_analyzer_from_config(config_path: str) -> MultiHorizonAnalyzer:
 
 
 def _load_weight_learner(weights_path: str, model_path: str | None) -> MultiHorizonWeightLearner:
-    learner = MultiHorizonWeightLearner()
+    learner = MultiHorizonWeightLearner(allow_weight_fallback=True)
     learner.load_weights(weights_path)
 
     candidate_model = Path(model_path) if model_path else Path(weights_path).with_suffix(".pkl")
     if not candidate_model.exists():
-        raise FileNotFoundError(
-            f"Model state is required for real predictions; missing file: {candidate_model}"
+        logger.warning(
+            "pipeline_factory.missing_model_state_using_weight_fallback",
+            extra={"model_path": str(candidate_model), "weights_path": weights_path},
         )
+        return learner
 
     learner.load_model_state(str(candidate_model))
     return learner
