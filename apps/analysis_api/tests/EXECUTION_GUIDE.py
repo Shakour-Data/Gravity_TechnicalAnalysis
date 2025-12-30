@@ -43,12 +43,12 @@ pytest tests/ -m "not slow" -v
 EXPECTED_COVERAGE = {
     "middleware": 95,  # Authentication, rate limiting, security
     "indicators": 90,  # Technical indicators
-    "patterns": 85,    # Pattern recognition
-    "services": 80,    # Business services
-    "ml": 75,          # Machine learning
-    "utils": 85,       # Utility functions
-    "domain": 90,      # Domain entities
-    "analysis": 80,    # Market analysis
+    "patterns": 85,  # Pattern recognition
+    "services": 80,  # Business services
+    "ml": 75,  # Machine learning
+    "utils": 85,  # Utility functions
+    "domain": 90,  # Domain entities
+    "analysis": 80,  # Market analysis
 }
 
 # 🎯 Coverage Target
@@ -141,4 +141,3 @@ if __name__ == "__main__":
     for name, cmd in list(TEST_COMMANDS.items())[:5]:
         print(f"  {name:15} -> {cmd}")
     print("\n... and more! See TEST_COMMANDS dictionary for complete list.")
-
