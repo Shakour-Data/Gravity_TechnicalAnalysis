@@ -11,18 +11,18 @@ License: MIT
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
 import structlog
+
 from gravity_tech.clients.data_service_client import CandleData, DataServiceClient
 from gravity_tech.indicators.momentum import MomentumIndicators
 from gravity_tech.indicators.trend import TrendIndicators
 from gravity_tech.indicators.volume import VolumeIndicators
 from gravity_tech.models.schemas import Candle
 from gravity_tech.patterns.classical import ClassicalPatterns
-from datetime import timezone
 
 logger = structlog.get_logger()
 
@@ -30,6 +30,7 @@ logger = structlog.get_logger()
 @dataclass
 class ScenarioResult:
     """نتیجه یک سناریو"""
+
     scenario_type: str  # "optimistic", "neutral", "pessimistic"
     score: float  # 0-100
     probability: float  # 0-100%
@@ -45,6 +46,7 @@ class ScenarioResult:
 @dataclass
 class ThreeScenarioAnalysis:
     """تحلیل کامل سه‌سناریویی"""
+
     symbol: str
     timestamp: datetime
     current_price: float
@@ -109,7 +111,7 @@ class ScenarioAnalyzer:
             logger.warning(
                 "insufficient_candles_for_scenario",
                 received=len(candles),
-                minimum=self._min_candles
+                minimum=self._min_candles,
             )
         for c in candles:
             values = np.array([c.open, c.high, c.low, c.close, c.volume], dtype=float)
@@ -122,10 +124,7 @@ class ScenarioAnalyzer:
         return candles
 
     async def analyze_from_service(
-        self,
-        symbol: str,
-        timeframe: str = "1d",
-        lookback_days: int = 365
+        self, symbol: str, timeframe: str = "1d", lookback_days: int = 365
     ) -> ThreeScenarioAnalysis:
         """
         تحلیل سه‌سناریویی با دریافت داده از Data Service
@@ -142,19 +141,22 @@ class ScenarioAnalyzer:
             ValueError: اگر Data Service client تنظیم نشده باشد
         """
         if not self.data_client:
-            raise ValueError("Data service client not configured. Use analyze() with candles instead.")
+            raise ValueError(
+                "Data service client not configured. Use analyze() with candles instead."
+            )
         self._validate_inputs(symbol, timeframe, lookback_days)
 
         logger.info(
             "fetching_data_for_scenario_analysis",
             symbol=symbol,
             timeframe=timeframe,
-            lookback_days=lookback_days
+            lookback_days=lookback_days,
         )
 
         # دریافت داده از Data Service
         from datetime import timedelta
-        end_date = datetime.now(timezone.utc)
+
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=lookback_days)
 
         candle_data = await self.data_client.get_candles(
@@ -162,7 +164,7 @@ class ScenarioAnalyzer:
             timeframe=timeframe,
             start_date=start_date,
             end_date=end_date,
-            use_cache=True
+            use_cache=True,
         )
 
         # تبدیل CandleData به Candle objects
@@ -175,7 +177,7 @@ class ScenarioAnalyzer:
             "data_received_for_scenario_analysis",
             symbol=symbol,
             candles_count=len(candles),
-            current_price=current_price
+            current_price=current_price,
         )
 
         # تحلیل سناریوها
@@ -190,14 +192,11 @@ class ScenarioAnalyzer:
             high=candle_data.adjusted_high,
             low=candle_data.adjusted_low,
             close=candle_data.adjusted_close,
-            volume=candle_data.adjusted_volume
+            volume=candle_data.adjusted_volume,
         )
 
     def analyze(
-        self,
-        symbol: str,
-        candles: list[Candle],
-        current_price: float = None
+        self, symbol: str, candles: list[Candle], current_price: float = None
     ) -> ThreeScenarioAnalysis:
         """
         تحلیل سه‌سناریویی کامل
@@ -219,7 +218,7 @@ class ScenarioAnalyzer:
             "starting_scenario_analysis",
             symbol=symbol,
             candles_count=len(candles),
-            current_price=current_price
+            current_price=current_price,
         )
 
         # محاسبه ATR برای target و stop loss
@@ -250,14 +249,10 @@ class ScenarioAnalyzer:
         )
 
         # تعیین سناریوی پیشنهادی
-        recommended = self._determine_recommended_scenario(
-            optimistic, neutral, pessimistic
-        )
+        recommended = self._determine_recommended_scenario(optimistic, neutral, pessimistic)
 
         # محاسبه confidence کلی
-        overall_confidence = self._calculate_overall_confidence(
-            optimistic, neutral, pessimistic
-        )
+        overall_confidence = self._calculate_overall_confidence(optimistic, neutral, pessimistic)
 
         return ThreeScenarioAnalysis(
             symbol=symbol,
@@ -270,7 +265,7 @@ class ScenarioAnalyzer:
             expected_risk=expected_risk,
             sharpe_ratio=sharpe,
             recommended_scenario=recommended,
-            overall_confidence=overall_confidence
+            overall_confidence=overall_confidence,
         )
 
     def _base_technical_analysis(self, candles: list[Candle]) -> dict[str, Any]:
@@ -308,11 +303,7 @@ class ScenarioAnalyzer:
         }
 
     def _analyze_optimistic_scenario(
-        self,
-        candles: list[Candle],
-        current_price: float,
-        atr_pct: float,
-        base: dict
+        self, candles: list[Candle], current_price: float, atr_pct: float, base: dict
     ) -> ScenarioResult:
         """تحلیل سناریو خوشبینانه"""
 
@@ -353,15 +344,11 @@ class ScenarioAnalyzer:
             key_signals=key_signals,
             recommendation=recommendation,
             confidence=confidence,
-            timeframe_days=30
+            timeframe_days=30,
         )
 
     def _analyze_neutral_scenario(
-        self,
-        candles: list[Candle],
-        current_price: float,
-        atr_pct: float,
-        base: dict
+        self, candles: list[Candle], current_price: float, atr_pct: float, base: dict
     ) -> ScenarioResult:
         """تحلیل سناریو خنثی"""
 
@@ -397,15 +384,11 @@ class ScenarioAnalyzer:
             key_signals=key_signals,
             recommendation=recommendation,
             confidence=confidence,
-            timeframe_days=60
+            timeframe_days=60,
         )
 
     def _analyze_pessimistic_scenario(
-        self,
-        candles: list[Candle],
-        current_price: float,
-        atr_pct: float,
-        base: dict
+        self, candles: list[Candle], current_price: float, atr_pct: float, base: dict
     ) -> ScenarioResult:
         """تحلیل سناریو بدبینانه"""
 
@@ -440,7 +423,7 @@ class ScenarioAnalyzer:
             key_signals=key_signals,
             recommendation=recommendation,
             confidence=confidence,
-            timeframe_days=90
+            timeframe_days=90,
         )
 
     def _calculate_optimistic_score(self, base: dict) -> float:
@@ -515,7 +498,11 @@ class ScenarioAnalyzer:
 
     def _calculate_neutral_probability(self, base: dict) -> float:
         """احتمال سناریو خنثی"""
-        return 100.0 - self._calculate_optimistic_probability(base) - self._calculate_pessimistic_probability(base)
+        return (
+            100.0
+            - self._calculate_optimistic_probability(base)
+            - self._calculate_pessimistic_probability(base)
+        )
 
     def _calculate_pessimistic_probability(self, base: dict) -> float:
         """احتمال سناریو بدبینانه"""
@@ -583,10 +570,7 @@ class ScenarioAnalyzer:
         return signals
 
     def _calculate_expected_values(
-        self,
-        optimistic: ScenarioResult,
-        neutral: ScenarioResult,
-        pessimistic: ScenarioResult
+        self, optimistic: ScenarioResult, neutral: ScenarioResult, pessimistic: ScenarioResult
     ) -> tuple[float, float, float]:
         """محاسبه Expected Return, Risk, Sharpe"""
 
@@ -598,17 +582,13 @@ class ScenarioAnalyzer:
 
         # Expected Return
         expected_return = (
-            p_opt * ((optimistic.target_price / optimistic.stop_loss) - 1) * 100 +
-            p_neu * ((neutral.target_price / neutral.stop_loss) - 1) * 100 +
-            p_pes * ((pessimistic.target_price / pessimistic.stop_loss) - 1) * 100
+            p_opt * ((optimistic.target_price / optimistic.stop_loss) - 1) * 100
+            + p_neu * ((neutral.target_price / neutral.stop_loss) - 1) * 100
+            + p_pes * ((pessimistic.target_price / pessimistic.stop_loss) - 1) * 100
         )
 
         # Expected Risk
-        expected_risk = (
-            p_opt * 10 +
-            p_neu * 20 +
-            p_pes * 30
-        )
+        expected_risk = p_opt * 10 + p_neu * 20 + p_pes * 30
 
         # Sharpe Ratio
         sharpe = expected_return / expected_risk if expected_risk > 0 else 0
@@ -616,10 +596,7 @@ class ScenarioAnalyzer:
         return round(expected_return, 2), round(expected_risk, 2), round(sharpe, 2)
 
     def _determine_recommended_scenario(
-        self,
-        optimistic: ScenarioResult,
-        neutral: ScenarioResult,
-        pessimistic: ScenarioResult
+        self, optimistic: ScenarioResult, neutral: ScenarioResult, pessimistic: ScenarioResult
     ) -> str:
         """تعیین سناریوی پیشنهادی"""
 
@@ -631,10 +608,7 @@ class ScenarioAnalyzer:
             return "neutral"
 
     def _calculate_overall_confidence(
-        self,
-        optimistic: ScenarioResult,
-        neutral: ScenarioResult,
-        pessimistic: ScenarioResult
+        self, optimistic: ScenarioResult, neutral: ScenarioResult, pessimistic: ScenarioResult
     ) -> str:
         """محاسبه confidence کلی"""
 
@@ -657,13 +631,9 @@ class ScenarioAnalyzer:
         for i in range(1, len(candles)):
             high = candles[i].high
             low = candles[i].low
-            prev_close = candles[i-1].close
+            prev_close = candles[i - 1].close
 
-            tr = max(
-                high - low,
-                abs(high - prev_close),
-                abs(low - prev_close)
-            )
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
             true_ranges.append(tr)
 
         return np.mean(true_ranges[-period:])
@@ -689,11 +659,7 @@ class ScenarioAnalyzer:
         return rsi
 
     def _calculate_macd(
-        self,
-        closes: np.ndarray,
-        fast: int = 12,
-        slow: int = 26,
-        signal: int = 9
+        self, closes: np.ndarray, fast: int = 12, slow: int = 26, signal: int = 9
     ) -> tuple[float, float]:
         """محاسبه MACD"""
         if len(closes) < slow:
