@@ -14,12 +14,10 @@ import json
 import math
 import os
 import sqlite3
-from pathlib import Path
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 import numpy as np
-
-from _paths import ANALYSIS_SRC, REPO_ROOT, extend_sys_path
+from _paths import REPO_ROOT, extend_sys_path
 
 extend_sys_path()
 
@@ -64,7 +62,9 @@ def safe_iso(ts: dt.datetime | None) -> str:
 
 def fetch_window(con: sqlite3.Connection) -> tuple[dt.date, dt.date]:
     cur = con.cursor()
-    cur.execute("select max(date(timestamp)) from market_data_cache where timeframe=?", (TIMEFRAME,))
+    cur.execute(
+        "select max(date(timestamp)) from market_data_cache where timeframe=?", (TIMEFRAME,)
+    )
     end = cur.fetchone()[0]
     if not end:
         raise RuntimeError("market_data_cache is empty for timeframe 1d")
@@ -240,7 +240,8 @@ def build_pattern_rows(
                 safe_iso(end_time),
                 start_price,
                 end_price,
-                getattr(getattr(p, "signal", None), "name", None) or str(getattr(p, "signal", "NEUTRAL")),
+                getattr(getattr(p, "signal", None), "name", None)
+                or str(getattr(p, "signal", "NEUTRAL")),
                 getattr(p, "price_target", None),
                 getattr(p, "stop_loss", None),
                 json.dumps({"description": getattr(p, "description", None)}, ensure_ascii=False),
@@ -287,7 +288,8 @@ def insert_summary(
             float(payload.get("volatility_score", 0.0) or 0.0),
             float(payload.get("cycle_score", 0.0) or 0.0),
             float(payload.get("support_resistance_score", 0.0) or 0.0),
-            payload.get("recommendation") or ("BUY" if payload.get("combined_score", 0) > 0 else "HOLD"),
+            payload.get("recommendation")
+            or ("BUY" if payload.get("combined_score", 0) > 0 else "HOLD"),
             payload.get("action") or "HOLD",
             float(payload.get("price_at_analysis", 0.0) or 0.0),
             json.dumps(payload, default=str, ensure_ascii=False),
@@ -411,7 +413,7 @@ def compute_ml_weights(
         if len(pairs) < 5:
             corrs[key] = 0.0
             continue
-        vals, futs = zip(*pairs)
+        vals, futs = zip(*pairs, strict=False)
         coef = float(np.corrcoef(vals, futs)[0, 1])
         if math.isnan(coef):
             coef = 0.0
@@ -422,7 +424,7 @@ def compute_ml_weights(
     weights = {k: v / total for k, v in abs_corrs.items()}
 
     training_accuracy = float(np.mean(list(abs_corrs.values()))) if abs_corrs else 0.0
-    r2_score = float(np.mean([c ** 2 for c in corrs.values()])) if corrs else 0.0
+    r2_score = float(np.mean([c**2 for c in corrs.values()])) if corrs else 0.0
     mae = float(np.mean([abs(r) for r in future_returns.values()])) if future_returns else 0.0
 
     metadata = {
@@ -521,7 +523,9 @@ def main() -> None:
             total_summaries += 1
 
             indicator_buffer.extend(build_indicator_rows(result, summary_id, candle.timestamp))
-            pattern_buffer.extend(build_pattern_rows(symbol, result, price_lookup, candle.timestamp))
+            pattern_buffer.extend(
+                build_pattern_rows(symbol, result, price_lookup, candle.timestamp)
+            )
 
             if len(indicator_buffer) >= INSERT_CHUNK:
                 cur.executemany(
