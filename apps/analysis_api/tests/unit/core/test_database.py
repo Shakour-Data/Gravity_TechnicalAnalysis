@@ -8,7 +8,7 @@ import sqlite3
 import tempfile
 from unittest.mock import MagicMock, patch
 
-from src.database import TSEDatabaseConnector
+from database import TSEDatabaseConnector
 
 
 class TestTSEDatabaseConnector:
@@ -21,7 +21,7 @@ class TestTSEDatabaseConnector:
 
     def test_get_connection(self):
         """Test database connection creation."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             connector = TSEDatabaseConnector(tmp.name)
 
             conn = connector.get_connection()
@@ -35,7 +35,7 @@ class TestTSEDatabaseConnector:
 
             conn.close()
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_get_connection_with_foreign_keys(self, mock_connect):
         """Test that foreign keys are enabled on connection."""
         mock_conn = MagicMock()
@@ -50,7 +50,7 @@ class TestTSEDatabaseConnector:
 
     def test_list_symbols(self):
         """Test listing symbols from database."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create a test database with price_data table
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -67,17 +67,20 @@ class TestTSEDatabaseConnector:
 
             # Insert test data for multiple tickers
             prices = [
-                ('ABC', '2023-01-01', 100.0, 105.0, 95.0, 102.0, 1000),
-                ('ABC', '2023-01-02', 102.0, 108.0, 100.0, 106.0, 1200),
-                ('ABC', '2023-01-03', 106.0, 112.0, 104.0, 110.0, 1300),
-                ('DEF', '2023-01-01', 200.0, 205.0, 195.0, 202.0, 2000),
-                ('DEF', '2023-01-02', 202.0, 208.0, 200.0, 206.0, 2200),
-                ('DEF', '2023-01-03', 206.0, 212.0, 204.0, 210.0, 2300),
+                ("ABC", "2023-01-01", 100.0, 105.0, 95.0, 102.0, 1000),
+                ("ABC", "2023-01-02", 102.0, 108.0, 100.0, 106.0, 1200),
+                ("ABC", "2023-01-03", 106.0, 112.0, 104.0, 110.0, 1300),
+                ("DEF", "2023-01-01", 200.0, 205.0, 195.0, 202.0, 2000),
+                ("DEF", "2023-01-02", 202.0, 208.0, 200.0, 206.0, 2200),
+                ("DEF", "2023-01-03", 206.0, 212.0, 204.0, 210.0, 2300),
             ]
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO price_data (ticker, date, adj_open, adj_high, adj_low, adj_close, adj_volume)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, prices)
+            """,
+                prices,
+            )
             conn.commit()
             conn.close()
 
@@ -90,7 +93,7 @@ class TestTSEDatabaseConnector:
 
     def test_list_market_indices(self):
         """Test listing market indices."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create test database
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -100,8 +103,10 @@ class TestTSEDatabaseConnector:
                 )
             """)
 
-            indices = [('INDEX1', 'شاخص اول'), ('INDEX2', 'شاخص دوم')]
-            conn.executemany("INSERT INTO market_indices (index_code, index_name_fa) VALUES (?, ?)", indices)
+            indices = [("INDEX1", "شاخص اول"), ("INDEX2", "شاخص دوم")]
+            conn.executemany(
+                "INSERT INTO market_indices (index_code, index_name_fa) VALUES (?, ?)", indices
+            )
             conn.commit()
             conn.close()
 
@@ -113,7 +118,7 @@ class TestTSEDatabaseConnector:
 
     def test_list_sector_indices(self):
         """Test listing sector indices."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create test database
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -123,8 +128,10 @@ class TestTSEDatabaseConnector:
                 )
             """)
 
-            sectors = [('SEC1', 'بخش اول'), ('SEC2', 'بخش دوم')]
-            conn.executemany("INSERT INTO sector_indices (sector_code, sector_name) VALUES (?, ?)", sectors)
+            sectors = [("SEC1", "بخش اول"), ("SEC2", "بخش دوم")]
+            conn.executemany(
+                "INSERT INTO sector_indices (sector_code, sector_name) VALUES (?, ?)", sectors
+            )
             conn.commit()
             conn.close()
 
@@ -136,7 +143,7 @@ class TestTSEDatabaseConnector:
 
     def test_fetch_price_data(self):
         """Test fetching price data for a symbol."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create test database
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -153,29 +160,32 @@ class TestTSEDatabaseConnector:
 
             # Insert test data
             prices = [
-                ('ABC', '2023-01-01', 100.0, 105.0, 95.0, 102.0, 1000),
-                ('ABC', '2023-01-02', 102.0, 108.0, 100.0, 106.0, 1200),
+                ("ABC", "2023-01-01", 100.0, 105.0, 95.0, 102.0, 1000),
+                ("ABC", "2023-01-02", 102.0, 108.0, 100.0, 106.0, 1200),
             ]
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO price_data (ticker, date, adj_open, adj_high, adj_low, adj_close, adj_volume)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, prices)
+            """,
+                prices,
+            )
             conn.commit()
             conn.close()
 
             connector = TSEDatabaseConnector(tmp.name)
-            result = connector.fetch_price_data('ABC')
+            result = connector.fetch_price_data("ABC")
 
             assert isinstance(result, list)
             assert len(result) == 2
             assert all(isinstance(record, dict) for record in result)
-            assert 'timestamp' in result[0]
-            assert 'open' in result[0]
-            assert 'close' in result[0]
+            assert "timestamp" in result[0]
+            assert "open" in result[0]
+            assert "close" in result[0]
 
     def test_fetch_price_data_with_date_range(self):
         """Test fetching price data with date range."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create test database
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -192,26 +202,31 @@ class TestTSEDatabaseConnector:
 
             # Insert test data
             prices = [
-                ('ABC', '2023-01-01', 100.0, 105.0, 95.0, 102.0, 1000),
-                ('ABC', '2023-01-02', 102.0, 108.0, 100.0, 106.0, 1200),
-                ('ABC', '2023-01-03', 106.0, 112.0, 104.0, 110.0, 1300),
+                ("ABC", "2023-01-01", 100.0, 105.0, 95.0, 102.0, 1000),
+                ("ABC", "2023-01-02", 102.0, 108.0, 100.0, 106.0, 1200),
+                ("ABC", "2023-01-03", 106.0, 112.0, 104.0, 110.0, 1300),
             ]
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO price_data (ticker, date, adj_open, adj_high, adj_low, adj_close, adj_volume)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, prices)
+            """,
+                prices,
+            )
             conn.commit()
             conn.close()
 
             connector = TSEDatabaseConnector(tmp.name)
-            result = connector.fetch_price_data('ABC', start_date='2023-01-02', end_date='2023-01-02')
+            result = connector.fetch_price_data(
+                "ABC", start_date="2023-01-02", end_date="2023-01-02"
+            )
 
             assert len(result) == 1
-            assert result[0]['timestamp'].strftime('%Y-%m-%d') == '2023-01-02'
+            assert result[0]["timestamp"].strftime("%Y-%m-%d") == "2023-01-02"
 
     def test_fetch_market_index(self):
         """Test fetching market index data."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create test database
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -226,18 +241,21 @@ class TestTSEDatabaseConnector:
             """)
 
             data = [
-                ('INDEX1', '2023-01-01', 1000.0, 1010.0, 990.0, 1005.0),
-                ('INDEX1', '2023-01-02', 1005.0, 1020.0, 1000.0, 1015.0),
+                ("INDEX1", "2023-01-01", 1000.0, 1010.0, 990.0, 1005.0),
+                ("INDEX1", "2023-01-02", 1005.0, 1020.0, 1000.0, 1015.0),
             ]
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO market_indices (index_code, date, open, high, low, close)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, data)
+            """,
+                data,
+            )
             conn.commit()
             conn.close()
 
             connector = TSEDatabaseConnector(tmp.name)
-            result = connector.fetch_market_index('INDEX1')
+            result = connector.fetch_market_index("INDEX1")
 
             assert isinstance(result, list)
             assert len(result) == 2
@@ -245,7 +263,7 @@ class TestTSEDatabaseConnector:
 
     def test_fetch_sector_index(self):
         """Test fetching sector index data."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             # Create test database
             conn = sqlite3.connect(tmp.name)
             conn.execute("""
@@ -260,18 +278,21 @@ class TestTSEDatabaseConnector:
             """)
 
             data = [
-                ('SEC1', '2023-01-01', 500.0, 510.0, 490.0, 505.0),
-                ('SEC1', '2023-01-02', 505.0, 520.0, 500.0, 515.0),
+                ("SEC1", "2023-01-01", 500.0, 510.0, 490.0, 505.0),
+                ("SEC1", "2023-01-02", 505.0, 520.0, 500.0, 515.0),
             ]
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO sector_indices (sector_code, date, open, high, low, close)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, data)
+            """,
+                data,
+            )
             conn.commit()
             conn.close()
 
             connector = TSEDatabaseConnector(tmp.name)
-            result = connector.fetch_sector_index('SEC1')
+            result = connector.fetch_sector_index("SEC1")
 
             assert isinstance(result, list)
             assert len(result) == 2
