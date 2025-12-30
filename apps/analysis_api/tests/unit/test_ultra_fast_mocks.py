@@ -27,7 +27,7 @@ from gravity_tech.ml.multi_horizon_weights import MultiHorizonWeightLearner
 
 # Add project path
 project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root / 'src'))
+sys.path.insert(0, str(project_root / "src"))
 
 
 @pytest.fixture(scope="session")
@@ -44,8 +44,8 @@ def mock_candles():
             low=29990.0 + i,
             close=30005.0 + i,
             volume=1000 + i * 10,
-            symbol='TEST',
-            timeframe='1h'
+            symbol="TEST",
+            timeframe="1h",
         )
         candles.append(candle)
 
@@ -60,24 +60,28 @@ def mock_trained_models():
     mock_momentum_learner = Mock(spec=MultiHorizonWeightLearner)
 
     # Mock horizons
-    mock_trend_learner.horizons = ['3d', '7d', '30d']
-    mock_momentum_learner.horizons = ['3d', '7d', '30d']
+    mock_trend_learner.horizons = ["3d", "7d", "30d"]
+    mock_momentum_learner.horizons = ["3d", "7d", "30d"]
 
     # Mock predict_multi_horizon method
     def mock_predict_trend(X):
         # Return mock predictions for all horizons
-        return pd.DataFrame({
-            'pred_3d': [0.02] * len(X),  # 2% return
-            'pred_7d': [0.01] * len(X),  # 1% return
-            'pred_30d': [-0.005] * len(X)  # -0.5% return
-        })
+        return pd.DataFrame(
+            {
+                "pred_3d": [0.02] * len(X),  # 2% return
+                "pred_7d": [0.01] * len(X),  # 1% return
+                "pred_30d": [-0.005] * len(X),  # -0.5% return
+            }
+        )
 
     def mock_predict_momentum(X):
-        return pd.DataFrame({
-            'pred_3d': [0.015] * len(X),  # Positive momentum
-            'pred_7d': [0.008] * len(X),
-            'pred_30d': [-0.002] * len(X)
-        })
+        return pd.DataFrame(
+            {
+                "pred_3d": [0.015] * len(X),  # Positive momentum
+                "pred_7d": [0.008] * len(X),
+                "pred_30d": [-0.002] * len(X),
+            }
+        )
 
     mock_trend_learner.predict_multi_horizon = mock_predict_trend
     mock_momentum_learner.predict_multi_horizon = mock_predict_momentum
@@ -116,28 +120,28 @@ def mock_combined_analyzer(mock_analyzers):
 def mock_features():
     """Mock features for testing."""
     return {
-        'sma_20': 29950.0,
-        'sma_50': 29800.0,
-        'rsi': 65.0,
-        'macd': 25.0,
-        'macd_signal': 20.0,
-        'bb_upper': 30200.0,
-        'bb_lower': 29700.0,
-        'stoch_k': 75.0,
-        'stoch_d': 70.0,
-        'volume_sma': 1500.0,
-        'price_change': 0.005,
-        'volatility': 0.02,
-        'trend_strength': 0.7,
-        'momentum': 0.6,
-        'support_level': 29500.0,
-        'resistance_level': 30500.0,
-        'fib_236': 29750.0,
-        'fib_382': 29900.0,
-        'fib_618': 30100.0,
-        'pivot_point': 30000.0,
-        'r1': 30100.0,
-        's1': 29900.0
+        "sma_20": 29950.0,
+        "sma_50": 29800.0,
+        "rsi": 65.0,
+        "macd": 25.0,
+        "macd_signal": 20.0,
+        "bb_upper": 30200.0,
+        "bb_lower": 29700.0,
+        "stoch_k": 75.0,
+        "stoch_d": 70.0,
+        "volume_sma": 1500.0,
+        "price_change": 0.005,
+        "volatility": 0.02,
+        "trend_strength": 0.7,
+        "momentum": 0.6,
+        "support_level": 29500.0,
+        "resistance_level": 30500.0,
+        "fib_236": 29750.0,
+        "fib_382": 29900.0,
+        "fib_618": 30100.0,
+        "pivot_point": 30000.0,
+        "r1": 30100.0,
+        "s1": 29900.0,
     }
 
 
@@ -152,11 +156,11 @@ def test_mock_trend_analysis_ultra_fast(mock_trained_models, mock_features):
     analysis = analyzer.analyze(mock_features)
 
     # Basic assertions
-    assert hasattr(analysis, 'score_3d')
-    assert hasattr(analysis, 'score_7d')
-    assert hasattr(analysis, 'score_30d')
-    assert hasattr(analysis, 'pattern')
-    assert hasattr(analysis, 'combined_score')
+    assert hasattr(analysis, "score_3d")
+    assert hasattr(analysis, "score_7d")
+    assert hasattr(analysis, "score_30d")
+    assert hasattr(analysis, "pattern")
+    assert hasattr(analysis, "combined_score")
 
     # Check scores are reasonable
     assert -1.0 <= analysis.score_3d.score <= 1.0
@@ -176,9 +180,9 @@ def test_mock_momentum_analysis_ultra_fast(mock_trained_models, mock_features):
     analysis = analyzer.analyze(mock_features)
 
     # Basic assertions
-    assert hasattr(analysis, 'momentum_3d')
-    assert hasattr(analysis, 'momentum_7d')
-    assert hasattr(analysis, 'momentum_30d')
+    assert hasattr(analysis, "momentum_3d")
+    assert hasattr(analysis, "momentum_7d")
+    assert hasattr(analysis, "momentum_30d")
 
     # Check scores are reasonable
     assert -1.0 <= analysis.momentum_3d.score <= 1.0
@@ -194,17 +198,15 @@ def test_mock_combined_analysis_ultra_fast(mock_trained_models, mock_features):
     # Create analyzers
     trend_analyzer = MultiHorizonTrendAnalyzer(trend_learner)
     momentum_analyzer = MultiHorizonMomentumAnalyzer(momentum_learner)
-    combined_analyzer = CombinedTrendMomentumAnalyzer(
-        trend_analyzer, momentum_analyzer, 0.6, 0.4
-    )
+    combined_analyzer = CombinedTrendMomentumAnalyzer(trend_analyzer, momentum_analyzer, 0.6, 0.4)
 
     # Analyze
     analysis = combined_analyzer.analyze(mock_features, mock_features)
 
     # Basic assertions
-    assert hasattr(analysis, 'final_action')
-    assert hasattr(analysis, 'final_confidence')
-    assert analysis.final_action.value in ['BUY', 'SELL', 'HOLD']  # Use enum value
+    assert hasattr(analysis, "final_action")
+    assert hasattr(analysis, "final_confidence")
+    assert analysis.final_action.value in ["BUY", "SELL", "HOLD"]  # Use enum value
     assert 0.0 <= analysis.final_confidence <= 1.0
 
 
@@ -215,35 +217,33 @@ def test_mock_feature_shapes(mock_candles):
 
     # Check first candle has required attributes
     candle = mock_candles[0]
-    assert hasattr(candle, 'timestamp')
-    assert hasattr(candle, 'open')
-    assert hasattr(candle, 'high')
-    assert hasattr(candle, 'low')
-    assert hasattr(candle, 'close')
-    assert hasattr(candle, 'volume')
+    assert hasattr(candle, "timestamp")
+    assert hasattr(candle, "open")
+    assert hasattr(candle, "high")
+    assert hasattr(candle, "low")
+    assert hasattr(candle, "close")
+    assert hasattr(candle, "volume")
 
 
 def test_mock_model_structure(mock_trained_models):
     """Test that mock models have expected structure."""
     trend_learner, momentum_learner = mock_trained_models
 
-    assert hasattr(trend_learner, 'horizons')
-    assert hasattr(momentum_learner, 'horizons')
+    assert hasattr(trend_learner, "horizons")
+    assert hasattr(momentum_learner, "horizons")
     assert len(trend_learner.horizons) == 3
     assert len(momentum_learner.horizons) == 3
-    assert '3d' in trend_learner.horizons
-    assert '7d' in trend_learner.horizons
-    assert '30d' in trend_learner.horizons
+    assert "3d" in trend_learner.horizons
+    assert "7d" in trend_learner.horizons
+    assert "30d" in trend_learner.horizons
 
 
-@pytest.mark.parametrize("trend_weight,momentum_weight", [
-    (0.5, 0.5),
-    (0.7, 0.3),
-    (0.3, 0.7),
-    (1.0, 0.0),
-    (0.0, 1.0)
-])
-def test_combined_weights_variations(mock_trained_models, mock_features, trend_weight, momentum_weight):
+@pytest.mark.parametrize(
+    "trend_weight,momentum_weight", [(0.5, 0.5), (0.7, 0.3), (0.3, 0.7), (1.0, 0.0), (0.0, 1.0)]
+)
+def test_combined_weights_variations(
+    mock_trained_models, mock_features, trend_weight, momentum_weight
+):
     """Test combined analysis with different weight combinations."""
     trend_learner, momentum_learner = mock_trained_models
 
@@ -255,7 +255,7 @@ def test_combined_weights_variations(mock_trained_models, mock_features, trend_w
 
     analysis = combined_analyzer.analyze(mock_features, mock_features)
 
-    assert analysis.final_action.value in ['BUY', 'SELL', 'HOLD']  # Use enum value
+    assert analysis.final_action.value in ["BUY", "SELL", "HOLD"]  # Use enum value
     assert 0.0 <= analysis.final_confidence <= 1.0
 
 
@@ -264,13 +264,13 @@ def test_edge_case_all_zeros(mock_trained_models):
     trend_learner, momentum_learner = mock_trained_models
 
     # Zero features
-    zero_features = {f'feature_{k}': 0.0 for k in range(21)}  # 21 features
+    zero_features = {f"feature_{k}": 0.0 for k in range(21)}  # 21 features
 
     trend_analyzer = MultiHorizonTrendAnalyzer(trend_learner)
     analysis = trend_analyzer.analyze(zero_features)
 
     # Should still produce valid results
-    assert hasattr(analysis, 'score_3d')
+    assert hasattr(analysis, "score_3d")
     assert isinstance(analysis.score_3d.score, int | float)
     assert isinstance(analysis.score_3d.confidence, int | float)
 
@@ -280,12 +280,12 @@ def test_edge_case_extreme_values(mock_trained_models):
     trend_learner, momentum_learner = mock_trained_models
 
     # Extreme features
-    extreme_features = {f'feature_{k}': 1000000.0 if k % 2 == 0 else -1000000.0 for k in range(21)}
+    extreme_features = {f"feature_{k}": 1000000.0 if k % 2 == 0 else -1000000.0 for k in range(21)}
 
     trend_analyzer = MultiHorizonTrendAnalyzer(trend_learner)
     analysis = trend_analyzer.analyze(extreme_features)
     # Should still produce valid results (clipped to reasonable ranges)
-    assert hasattr(analysis, 'score_3d')
+    assert hasattr(analysis, "score_3d")
     assert -1.0 <= analysis.score_3d.score <= 1.0
     assert 0.0 <= analysis.score_3d.confidence <= 1.0
 
@@ -302,4 +302,4 @@ def test_performance_ultra_fast(mock_combined_analyzer, mock_features):
 
     # Should complete in under 0.1 seconds
     assert execution_time < 0.1, f"Test took {execution_time:.3f}s, should be < 0.1s"
-    assert analysis.final_action.value in ['BUY', 'SELL', 'HOLD']
+    assert analysis.final_action.value in ["BUY", "SELL", "HOLD"]
