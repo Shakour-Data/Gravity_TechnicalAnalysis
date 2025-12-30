@@ -5,18 +5,13 @@ Shared helpers for DB DSN resolution and symbol standardization.
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 
 def resolve_dsn(default: str | None = None) -> str:
     """
     Resolve DATABASE_URL from environment, falling back to provided default.
     """
-    dsn = (
-        os.getenv("DATABASE_URL")
-        or os.getenv("PG_DSN")
-        or default
-    )
+    dsn = os.getenv("DATABASE_URL") or os.getenv("PG_DSN") or default
     if not dsn:
         raise RuntimeError("DATABASE_URL/PG_DSN not set and no default provided")
     # Normalize legacy postgres+psycopg2 URL to standard postgres://
@@ -25,7 +20,7 @@ def resolve_dsn(default: str | None = None) -> str:
     return dsn
 
 
-def resolve_tse_dsn(default: Optional[str] = None) -> str:
+def resolve_tse_dsn(default: str | None = None) -> str:
     """
     Resolve TSE data source DSN/path.
     """
