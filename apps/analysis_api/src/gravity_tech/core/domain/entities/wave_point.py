@@ -43,6 +43,7 @@ class WavePoint:
         timestamp: Time when this wave point occurred
         wave_type: "PEAK" for tops, "TROUGH" for bottoms
     """
+
     wave_number: int
     price: float
     timestamp: datetime
