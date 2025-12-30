@@ -17,7 +17,6 @@ from gravity_tech.core.contracts.analysis import (
     TechnicalAnalysisResult,
 )
 from gravity_tech.core.domain.entities import (
-    CoreSignalStrength as SignalStrength,
     Candle,
     ElliottWaveResult,
     FibonacciLevel,
@@ -34,6 +33,9 @@ from gravity_tech.core.domain.entities import (
     TransformerResult,
     WavePoint,
     WebSocketMessage,
+)
+from gravity_tech.core.domain.entities import (
+    CoreSignalStrength as SignalStrength,
 )
 
 warnings.warn(
