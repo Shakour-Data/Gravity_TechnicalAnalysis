@@ -18,6 +18,7 @@ class TSEDatabaseConnector:
     Connector for the External TSE Database (Input Source).
     Supports both SQLite file input and PostgreSQL DSN (when TSE_DATABASE_URL is set).
     """
+
     def __init__(self, db_file: str):
         self.db_file = db_file
         is_pg = False
@@ -30,8 +31,12 @@ class TSEDatabaseConnector:
 
         # Table/column naming differs between SQLite source and Postgres schema
         self.price_table = "tse_input.price_data" if self.backend == "postgres" else "price_data"
-        self.market_idx_table = "tse_input.market_indices" if self.backend == "postgres" else "market_indices"
-        self.sector_idx_table = "tse_input.sector_indices" if self.backend == "postgres" else "sector_indices"
+        self.market_idx_table = (
+            "tse_input.market_indices" if self.backend == "postgres" else "market_indices"
+        )
+        self.sector_idx_table = (
+            "tse_input.sector_indices" if self.backend == "postgres" else "sector_indices"
+        )
         self.date_col = "trading_date" if self.backend == "postgres" else "date"
 
     def get_connection(self) -> sqlite3.Connection:
@@ -177,9 +182,13 @@ class TSEDatabaseConnector:
         """)
 
         # Create Indexes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_data(ticker, date);")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_data(ticker, date);"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_price_date ON price_data(date);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_market_index_code_date ON market_indices(index_code, date);")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_market_index_code_date ON market_indices(index_code, date);"
+        )
 
         conn.commit()
         conn.close()
@@ -187,16 +196,19 @@ class TSEDatabaseConnector:
     def insert_indices_info(self):
         """Inserts default indices info."""
         default_indices = [
-            ('CWI', 'شاخص کل', 'Overall Index', 'market'),
-            ('EWI', 'شاخص هم‌وزن', 'Equal Weighted Index', 'market'),
+            ("CWI", "شاخص کل", "Overall Index", "market"),
+            ("EWI", "شاخص هم‌وزن", "Equal Weighted Index", "market"),
             # Add more default indices as needed
         ]
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.executemany("""
+        cursor.executemany(
+            """
             INSERT OR IGNORE INTO indices_info (index_code, index_name_fa, index_name_en, index_type)
             VALUES (?, ?, ?, ?)
-        """, default_indices)
+        """,
+            default_indices,
+        )
         conn.commit()
         conn.close()
 
@@ -211,28 +223,33 @@ class TSEDatabaseConnector:
 
         data_to_insert = []
         for r in records:
-            if r.get('Ticker') == 'USD':
-                continue # Skip USD, handled in usd_prices
+            if r.get("Ticker") == "USD":
+                continue  # Skip USD, handled in usd_prices
 
-            data_to_insert.append((
-                r.get('Date'),
-                r.get('J-Date'),
-                r.get('Adj Open'),
-                r.get('Adj High'),
-                r.get('Adj Low'),
-                r.get('Adj Close'),
-                r.get('Adj Final'),
-                r.get('Adj Volume'),
-                r.get('Ticker'),
-                r.get('CompanyID')
-            ))
+            data_to_insert.append(
+                (
+                    r.get("Date"),
+                    r.get("J-Date"),
+                    r.get("Adj Open"),
+                    r.get("Adj High"),
+                    r.get("Adj Low"),
+                    r.get("Adj Close"),
+                    r.get("Adj Final"),
+                    r.get("Adj Volume"),
+                    r.get("Ticker"),
+                    r.get("CompanyID"),
+                )
+            )
 
-        cursor.executemany("""
+        cursor.executemany(
+            """
             INSERT OR REPLACE INTO price_data (
                 date, j_date, adj_open, adj_high, adj_low, adj_close,
                 adj_final, adj_volume, ticker, company_id
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, data_to_insert)
+        """,
+            data_to_insert,
+        )
 
         conn.commit()
         conn.close()
@@ -247,30 +264,40 @@ class TSEDatabaseConnector:
         cursor = conn.cursor()
 
         # Ensure index info exists
-        cursor.execute("INSERT OR IGNORE INTO indices_info (index_code, index_name_fa, index_type) VALUES (?, ?, 'market')", (index_code, index_name_fa))
+        cursor.execute(
+            "INSERT OR IGNORE INTO indices_info (index_code, index_name_fa, index_type) VALUES (?, ?, 'market')",
+            (index_code, index_name_fa),
+        )
 
         data_to_insert = []
         for idx, row in df.iterrows():
             # Assuming df has 'Date' and 'J-Date' columns, or they are in the index
             # Adjust based on actual DataFrame structure passed
-            date_val = row.get('Date') if 'Date' in row else (idx if isinstance(idx, str) else str(idx)) # Fallback
-            j_date_val = row.get('J-Date', '')
+            date_val = (
+                row.get("Date") if "Date" in row else (idx if isinstance(idx, str) else str(idx))
+            )  # Fallback
+            j_date_val = row.get("J-Date", "")
 
-            data_to_insert.append((
-                index_code,
-                j_date_val,
-                str(date_val),
-                row.get('Open'),
-                row.get('High'),
-                row.get('Low'),
-                row.get('Close')
-            ))
+            data_to_insert.append(
+                (
+                    index_code,
+                    j_date_val,
+                    str(date_val),
+                    row.get("Open"),
+                    row.get("High"),
+                    row.get("Low"),
+                    row.get("Close"),
+                )
+            )
 
-        cursor.executemany("""
+        cursor.executemany(
+            """
             INSERT OR REPLACE INTO market_indices (
                 index_code, j_date, date, open, high, low, close
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, data_to_insert)
+        """,
+            data_to_insert,
+        )
 
         conn.commit()
         conn.close()
@@ -285,10 +312,13 @@ class TSEDatabaseConnector:
 
         data = list(updates.items())
 
-        cursor.executemany("""
+        cursor.executemany(
+            """
             INSERT OR REPLACE INTO last_updates (symbol, last_date)
             VALUES (?, ?)
-        """, data)
+        """,
+            data,
+        )
 
         conn.commit()
         conn.close()
@@ -407,7 +437,9 @@ class TSEDatabaseConnector:
         conn.close()
         return sectors
 
-    def fetch_price_data(self, ticker: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
+    def fetch_price_data(
+        self, ticker: str, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Fetches price data for a given ticker.
         Returns a list of dictionaries compatible with Candle schema.
@@ -492,18 +524,22 @@ class TSEDatabaseConnector:
                 # Skip rows with unrecognized dates
                 continue
 
-            candles.append({
-                "timestamp": dt,
-                "open": row["adj_open"],
-                "high": row["adj_high"],
-                "low": row["adj_low"],
-                "close": row["adj_close"],
-                "volume": row["adj_volume"]
-            })
+            candles.append(
+                {
+                    "timestamp": dt,
+                    "open": row["adj_open"],
+                    "high": row["adj_high"],
+                    "low": row["adj_low"],
+                    "close": row["adj_close"],
+                    "volume": row["adj_volume"],
+                }
+            )
 
         return candles
 
-    def fetch_market_index(self, index_code: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
+    def fetch_market_index(
+        self, index_code: str, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Fetches market index data (e.g., CWI).
         """
@@ -540,14 +576,16 @@ class TSEDatabaseConnector:
                         dt = datetime.fromisoformat(str(dval))
                     except Exception:
                         continue
-                candles.append({
-                    "timestamp": dt,
-                    "open": r[1],
-                    "high": r[2],
-                    "low": r[3],
-                    "close": r[4],
-                    "volume": 0
-                })
+                candles.append(
+                    {
+                        "timestamp": dt,
+                        "open": r[1],
+                        "high": r[2],
+                        "low": r[3],
+                        "close": r[4],
+                        "volume": 0,
+                    }
+                )
             return candles
 
         conn = self.get_connection()
@@ -578,18 +616,22 @@ class TSEDatabaseConnector:
             except (ValueError, TypeError):
                 continue
 
-            candles.append({
-                "timestamp": dt,
-                "open": row["open"],
-                "high": row["high"],
-                "low": row["low"],
-                "close": row["close"],
-                "volume": 0  # Indices often don't have volume in the same way, or it's not in this table
-            })
+            candles.append(
+                {
+                    "timestamp": dt,
+                    "open": row["open"],
+                    "high": row["high"],
+                    "low": row["low"],
+                    "close": row["close"],
+                    "volume": 0,  # Indices often don't have volume in the same way, or it's not in this table
+                }
+            )
 
         return candles
 
-    def fetch_sector_index(self, sector_code: str, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
+    def fetch_sector_index(
+        self, sector_code: str, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Fetches sector index data using the sector_code (sector_id).
         """
@@ -626,14 +668,16 @@ class TSEDatabaseConnector:
                         dt = datetime.fromisoformat(str(dval))
                     except Exception:
                         continue
-                candles.append({
-                    "timestamp": dt,
-                    "open": r[1],
-                    "high": r[2],
-                    "low": r[3],
-                    "close": r[4],
-                    "volume": 0,
-                })
+                candles.append(
+                    {
+                        "timestamp": dt,
+                        "open": r[1],
+                        "high": r[2],
+                        "low": r[3],
+                        "close": r[4],
+                        "volume": 0,
+                    }
+                )
             return candles
 
         conn = self.get_connection()
@@ -664,16 +708,19 @@ class TSEDatabaseConnector:
             except (ValueError, TypeError):
                 continue
 
-            candles.append({
-                "timestamp": dt,
-                "open": row["open"],
-                "high": row["high"],
-                "low": row["low"],
-                "close": row["close"],
-                "volume": 0,
-            })
+            candles.append(
+                {
+                    "timestamp": dt,
+                    "open": row["open"],
+                    "high": row["high"],
+                    "low": row["low"],
+                    "close": row["close"],
+                    "volume": 0,
+                }
+            )
 
         return candles
+
 
 # Global instance for accessing the External TSE Database
 tse_data_source = TSEDatabaseConnector(TSE_DB_FILE)
